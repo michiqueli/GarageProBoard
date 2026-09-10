@@ -1,0 +1,7 @@
+export * from './_comunes.ts'
+export * from './acceso.ts'
+export * from './catalogos.ts'
+export * from './comercial.ts'
+export * from './organizacion.ts'
+export * from './tenant.ts'
+export * from './vehiculo.ts'

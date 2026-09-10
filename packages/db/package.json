@@ -1,0 +1,41 @@
+{
+  "name": "@garagetick/db",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./schema": {
+      "types": "./dist/schema/index.d.ts",
+      "import": "./dist/schema/index.js"
+    }
+  },
+  "scripts": {
+    "generate": "tsx --env-file=../../.env ../../node_modules/drizzle-kit/bin.cjs generate",
+    "migrate": "tsx --env-file=../../.env scripts/migrate.ts",
+    "app-role": "tsx --env-file=../../.env scripts/app-role.ts",
+    "studio": "drizzle-kit studio",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "typecheck": "tsc --noEmit -p tsconfig.test.json",
+    "build": "tsc -p tsconfig.json"
+  },
+  "dependencies": {
+    "drizzle-orm": "0.45.2",
+    "pg": "8.23.0"
+  },
+  "devDependencies": {
+    "@testcontainers/postgresql": "12.1.0",
+    "@types/pg": "8.23.1",
+    "drizzle-kit": "0.31.10",
+    "tsx": "4.23.13",
+    "typescript": "7.0.2",
+    "vitest": "5.0.0",
+    "@types/node": "24.13.4"
+  },
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts"
+}

@@ -1,0 +1,14 @@
+# Producción es un VPS con Ubuntu: el repositorio se normaliza a LF para que un
+# script con CRLF no falle con "bad interpreter" al desplegar.
+* text=auto eol=lf
+
+# Binarios y lockfiles que no conviene tocar
+*.png binary
+*.jpg binary
+*.pdf binary
+*.p12 binary
+pnpm-lock.yaml -diff linguist-generated
+
+# El SQL generado por drizzle-kit no se revisa a mano en los diffs
+packages/db/migrations/**/*.sql linguist-generated
+packages/db/migrations/meta/** linguist-generated

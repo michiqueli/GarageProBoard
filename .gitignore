@@ -1,0 +1,30 @@
+node_modules/
+dist/
+build/
+.turbo/
+coverage/
+
+# entorno: nunca versionar credenciales ni certificados de clientes
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.crt
+*.p12
+secretos/
+
+# editores / SO
+.idea/
+.vscode/*
+!.vscode/extensions.json
+.DS_Store
+Thumbs.db
+
+# logs
+*.log
+npm-debug.log*
+pnpm-debug.log*
+
+# artefactos de compilacion incremental de TypeScript
+*.tsbuildinfo

@@ -1,0 +1,18 @@
+@import "tailwindcss";
+
+/*
+ * Responsive desde el diseño, no como parche: el gerente mira facturación del
+ * celular y el asesor consulta una OR desde una tablet en la playa de entrega.
+ *
+ * La regla que gobierna casi todas las pantallas de este sistema: los listados
+ * densos son tabla en escritorio y tarjetas en teléfono. Las dos formas se
+ * diseñan juntas o la segunda nunca llega.
+ */
+
+@theme {
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+}
+
+html {
+  color-scheme: light dark;
+}

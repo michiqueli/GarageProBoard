@@ -1,0 +1,33 @@
+{
+  "name": "@garagetick/web",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@garagetick/contracts": "workspace:*",
+    "@garagetick/core": "workspace:*",
+    "@tanstack/react-query": "5.102.8",
+    "@tanstack/react-router": "1.170.35",
+    "@tanstack/react-table": "9.2.4",
+    "react": "19.3.0",
+    "react-dom": "19.3.0",
+    "zustand": "5.0.15",
+    "@orpc/client": "1.15.0",
+    "@orpc/tanstack-query": "1.15.0"
+  },
+  "devDependencies": {
+    "@tailwindcss/vite": "4.3.3",
+    "@types/react": "19.3.0",
+    "@types/react-dom": "19.3.0",
+    "@vitejs/plugin-react": "6.1.1",
+    "tailwindcss": "4.3.3",
+    "typescript": "7.0.2",
+    "vite": "8.3.0"
+  }
+}
