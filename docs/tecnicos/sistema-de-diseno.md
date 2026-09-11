@@ -40,26 +40,52 @@ Esta es la parte más importante del documento y la más cara de cambiar despué
 guarda en una pantalla y busca en otra, la memoria muscular no se forma nunca y todo el
 esfuerzo se pierde.
 
+Las teclas se reparten por **alcance**: F1 a F4 son el primer bloque y se llegan sin
+mirar el teclado, así que ahí van las cuatro acciones que más se repiten en el día.
+
 | Tecla | Acción | Siempre disponible |
 | --- | --- | --- |
 | `F1` | Ayuda contextual de la pantalla | Sí |
 | `F2` | Guardar | Si hay algo que guardar |
 | `F3` | Buscar — lleva el foco al buscador | Sí |
-| `F4` | Desplegar el selector del campo activo (cliente, vehículo, repuesto) | Sobre un campo con búsqueda |
+| `F4` | **Acción principal del módulo** — contextual | Depende de la pantalla |
 | `F5` | Refrescar los datos de la pantalla | Sí |
 | `F6` | Cambiar de sucursal | Sí |
 | `F7` | Imprimir o vista previa | Si hay algo imprimible |
-| `F8` | **Acción principal del módulo** — contextual | Depende de la pantalla |
-| `F9` | Totales y resumen | En pantallas con importes |
+| `F8` | Totales y resumen | En pantallas con importes |
 | `F10` | Paleta de comandos | Sí |
+| `Alt` + `↓` | Desplegar el selector del campo activo (cliente, vehículo, repuesto) | Sobre un campo con búsqueda |
 | `Ins` | Nuevo registro | En listados y fichas |
 | `Supr` | Dar de baja, con confirmación | Sobre un registro seleccionado |
 | `Esc` | Cancelar, cerrar el modal, salir del campo | Sí |
 | `Ctrl` + `Enter` | Confirmar el formulario activo | En formularios |
 
-**`F8` es el verbo de la pantalla.** En caja factura, en taller cierra la orden, en
+**`F4` es el verbo de la pantalla.** En caja factura, en taller cierra la orden, en
 entregas entrega. Es la única tecla cuyo significado cambia según el contexto, y
 justamente por eso **siempre tiene que estar escrita en la barra de estado**.
+
+Está en el primer bloque porque es, junto con guardar y buscar, lo que más se toca en el
+día. Que la acción más frecuente quede a dos teclas de distancia es medio segundo por
+operación, y son cientos de operaciones por jornada.
+
+### F4 abre la confirmación, nunca ejecuta
+
+Consecuencia directa de moverla al primer bloque: queda **pegada a F3**, que se usa
+todo el tiempo. Alguien le va a errar. Así que F4 abre el diálogo de confirmación con el
+resumen de lo que va a pasar, y recién ahí `Enter` ejecuta.
+
+Emitir una factura porque se te fue un dedo es un comprobante fiscal que hay que anular
+con nota de crédito. El medio segundo que cuesta la confirmación se paga solo.
+
+**`F9` queda sin asignar** a propósito. Las teclas libres se dejan libres: llenarlas
+por simetría produce atajos que nadie usa y que se disparan sin querer.
+
+### Por qué el selector se fue a `Alt` + `↓`
+
+Estaba en F4 y hubo que moverlo. Terminó mejor de donde estaba: `Alt` + `↓` es la
+convención de Windows para desplegar cualquier combo, así que no hay que enseñarla, y
+queda más a mano que cualquier tecla de función para algo que se usa constantemente
+mientras se carga un dato.
 
 ### Lo que no se toca
 
@@ -82,7 +108,7 @@ Fija abajo, siempre visible, mostrando **las teclas activas en este contexto**. 
 convención que esta gente ya conoce de los sistemas de caracteres, y resuelve el
 descubrimiento sin ocupar lugar:
 
-    F1 Ayuda   F2 Guardar   F3 Buscar   F8 Facturar   Esc Cancelar
+    F1 Ayuda   F2 Guardar   F3 Buscar   F4 Facturar   Esc Cancelar
 
 Las teclas que en ese momento no aplican se muestran atenuadas, no se esconden: que
 desaparezcan y reaparezcan hace que la barra se lea distinta en cada pantalla.

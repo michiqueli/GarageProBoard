@@ -57,15 +57,24 @@ mouse, ese flujo está roto.
 Se registra en **un solo lugar** (`apps/web/src/teclado/`). Si cada pantalla escucha
 `keydown` por su cuenta, en tres meses F2 hace dos cosas distintas.
 
+Repartidas por alcance: F1 a F4 es el primer bloque del teclado, se llega sin mirar, y
+ahí van las cuatro acciones que más se repiten en el día.
+
 | | | | |
 | --- | --- | --- | --- |
-| `F1` Ayuda | `F2` Guardar | `F3` Buscar | `F4` Desplegar selector |
-| `F5` Refrescar | `F6` Cambiar sucursal | `F7` Imprimir | `F8` **Acción del módulo** |
-| `F9` Totales | `F10` Paleta | `Ins` Nuevo | `Supr` Baja |
+| `F1` Ayuda | `F2` Guardar | `F3` Buscar | `F4` **Acción del módulo** |
+| `F5` Refrescar | `F6` Cambiar sucursal | `F7` Imprimir | `F8` Totales |
+| `F10` Paleta | `Alt+↓` Desplegar selector | `Ins` Nuevo | `Supr` Baja |
 | `Esc` Cancelar | `Ctrl+Enter` Confirmar | | |
 
-`F8` es el verbo de la pantalla: factura en caja, cierra la orden en taller, entrega en
+`F4` es el verbo de la pantalla: factura en caja, cierra la orden en taller, entrega en
 entregas. Es la única contextual, y por eso siempre va escrita en la barra de estado.
+
+**F4 abre la confirmación, nunca ejecuta.** Está pegada a F3, que se usa todo el tiempo,
+y emitir una factura por un dedo errado es un comprobante fiscal que hay que anular con
+nota de crédito.
+
+`F9` queda sin asignar a propósito: las teclas libres se dejan libres.
 
 ## Redacción
 
