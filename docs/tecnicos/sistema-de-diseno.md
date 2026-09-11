@@ -113,6 +113,70 @@ descubrimiento sin ocupar lugar:
 Las teclas que en ese momento no aplican se muestran atenuadas, no se esconden: que
 desaparezcan y reaparezcan hace que la barra se lea distinta en cada pantalla.
 
+### Todo esto es configurable por usuario
+
+Los valores de arriba son el punto de partida, no una imposición. Cada usuario puede
+reasignar sus teclas desde **Configuración → Teclas rápidas**, agrupadas por módulo:
+
+    Configuración → Teclas rápidas → Generales
+                                   → Órdenes de trabajo
+                                   → Entregas
+                                   → Repuestos
+                                   → Caja y facturación
+                                   → Clientes
+                                   → Vehículos
+
+Eso vuelve barato el riesgo del mapa: si el operador que viene de Oversoft tiene otra
+tecla en los dedos, se la acomoda en dos minutos en vez de pelearse un año.
+
+#### El verbo de la pantalla es una acción por módulo
+
+`F4` no es una acción sola con significado variable: son `caja.facturar`,
+`ordenes.cerrar`, `entregas.entregar`, cada una configurable por separado. Comparten
+tecla por omisión porque **nunca coexisten** — o estás en caja o estás en taller — y así
+el operador aprende una sola posición para «la acción de esta pantalla».
+
+De ahí sale la regla de unicidad: **dos módulos pueden compartir una tecla, un módulo y
+lo global no**. Una acción de caja en F7 choca con Imprimir aunque el usuario nunca haya
+tocado Imprimir.
+
+#### Reglas de la configuración
+
+- Las **teclas prohibidas** se rechazan con el motivo escrito: F11, F12, `Ctrl+W`,
+  `Ctrl+T`, `Ctrl+N` y sus variantes con Shift. El navegador se las queda y el atajo
+  nunca llegaría a la aplicación.
+- `Esc`, `Tab` y `Shift+Tab` están **reservadas** y no se pueden asignar. `Esc` cancela
+  en todos lados o los modales se vuelven trampas.
+- Los modificadores se guardan en **orden canónico** `Ctrl+Alt+Shift+Tecla`. Sin eso,
+  `Alt+Ctrl+K` y `Ctrl+Alt+K` serían dos teclas distintas y la unicidad no serviría.
+- La tecla Windows se trata como `Ctrl`, para que un mapa configurado en una máquina no
+  se rompa en otra.
+
+#### La consecuencia para el código
+
+**Ninguna pantalla escribe `F2` a mano.** Ni en un botón, ni en la barra de estado, ni
+en un texto de ayuda. Todo sale del mapa resuelto del usuario:
+
+    <Boton accion="global.guardar">Guardar</Boton>
+
+El botón consulta el mapa y dibuja la tecla que ese usuario tenga puesta. Un `F2`
+escrito en el JSX es un botón que va a mentir apenas alguien configure otra cosa — y
+mentir sobre un atajo es peor que no mostrarlo.
+
+El catálogo de acciones vive en `packages/core/src/atajos.ts` y es la única fuente de
+verdad. Agregar una acción es sumarla ahí; el test verifica que su tecla por omisión no
+choque con ninguna existente.
+
+#### Qué guarda la base
+
+`usuario_config` para tema, densidad, filas por página y sucursal predeterminada.
+`usuario_atajo` para el mapa, **sembrado completo al crear el usuario** y con dos
+índices únicos: una tecla por acción, y una acción por tecla dentro de cada ámbito.
+
+El mapa va en su propia tabla y no dentro de un JSON justamente por esos índices: un
+mapa con F3 duplicado no es un dato feo, es un usuario cuyo teclado hace cosas al azar
+según el orden en que se recorra el objeto.
+
 ### ⚠ Lo primero a validar con un piloto
 
 Este mapa está razonado sobre convenciones del rubro y de Windows, **no sobre observar
@@ -154,9 +218,9 @@ Neutros con sesgo frío, un color de marca y los semánticos aparte. El color de
 Cada uno con su variante para tema oscuro. **El tema oscuro no es opcional**: en un
 taller la pantalla se mira todo el día.
 
-### Estado de la orden de reparación
+### Estado de la orden de trabajo
 
-Los estados de la OR son el dato que más se lee en todo el sistema, así que se codifican
+Los estados de la OT son el dato que más se lee en todo el sistema, así que se codifican
 en **forma y color a la vez** —  nunca solo en color, porque uno de cada doce varones
 no distingue rojo de verde y en un taller son casi todos varones.
 
@@ -272,7 +336,7 @@ porque es lo que se consulta.
 
 - **Castellano rioplatense, voseo, sin solemnidad.** «Guardá los cambios», no «Guarde
   los cambios» ni «Guardar cambios del formulario».
-- **El nombre que usa el usuario, no el del sistema.** Es una *orden de reparación*, no
+- **El nombre que usa el usuario, no el del sistema.** Es una *orden de trabajo*, no
   una `OrdenReparacionEntity`. Es el *dominio*, no la `patente_id`.
 - **El botón dice lo que va a pasar**, y el aviso posterior confirma que pasó:
   `Facturar` → «Factura B 0001-00001234 emitida».

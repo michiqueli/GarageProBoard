@@ -28,9 +28,15 @@ interfaz 14px, radio 4px, escala de espaciado de 4px. Casi nada de sombras: un b
 1px separa igual y no ensucia. Nada de `rounded-lg` en todos lados — si todo parece un
 objeto separado, nada resalta. La referencia es Linear, no una landing page.
 
-**3. El atajo se muestra.** La tecla va escrita en el botón: `Guardar F2`. Y la barra de
-estado inferior lista siempre las teclas activas del contexto. Las que no aplican van
-atenuadas, no se esconden.
+**3. El atajo se muestra, y sale del mapa del usuario.** La tecla va escrita en el
+botón y la barra de estado lista siempre las teclas activas del contexto (las que no
+aplican, atenuadas, no escondidas). Pero **nunca se escribe `F2` a mano**: los atajos
+son configurables por usuario, así que todo sale del mapa resuelto.
+
+    <Boton accion="global.guardar">Guardar</Boton>
+
+Un `F2` escrito en el JSX es un botón que va a mentir apenas alguien configure otra
+cosa, y mentir sobre un atajo es peor que no mostrarlo.
 
 **4. Nunca F11 ni F12.** Chrome no las deja interceptar y el atajo no falla con error:
 simplemente no pasa nada y el usuario concluye que el sistema está roto. En `F1`, `F3` y
@@ -74,12 +80,29 @@ entregas. Es la única contextual, y por eso siempre va escrita en la barra de e
 y emitir una factura por un dedo errado es un comprobante fiscal que hay que anular con
 nota de crédito.
 
-`F9` queda sin asignar a propósito: las teclas libres se dejan libres.
+`F9` no tiene global: cada módulo lo usa para su segunda acción.
+
+### Son valores por omisión, no imposiciones
+
+Cada usuario reasigna los suyos en **Configuración → Teclas rápidas**, agrupadas por
+módulo (Generales, Órdenes de trabajo, Entregas, Repuestos, Caja, Clientes, Vehículos).
+
+El catálogo de acciones vive en `packages/core/src/atajos.ts` y es la única fuente de
+verdad. Agregar una acción nueva es sumarla ahí con su ámbito y su tecla por omisión;
+hay un test que falla si esa tecla choca con alguna existente.
+
+**El verbo de la pantalla es una acción por módulo** — `caja.facturar`,
+`ordenes.cerrar`, `entregas.entregar` — que comparten F4 por omisión porque nunca
+coexisten. De ahí la regla de choques: dos módulos pueden compartir una tecla, un módulo
+y lo global no.
+
+Nunca asignar F11, F12, `Ctrl+W`, `Ctrl+T` ni `Ctrl+N`: el navegador se las queda.
+`Esc`, `Tab` y `Shift+Tab` están reservadas.
 
 ## Redacción
 
 Castellano rioplatense con voseo, sin solemnidad: «Guardá los cambios». El nombre que
-usa el usuario, no el del sistema: es una *orden de reparación*, no una entidad. El
+usa el usuario, no el del sistema: es una *orden de trabajo*, no una entidad. El
 botón dice lo que va a pasar y el aviso confirma que pasó. Los errores dicen **cómo
 arreglarlo**: «El CUIT son 11 dígitos sin guiones», no «Formato inválido». Sin signos de
 admiración y sin «¡Ups!» — el que usa esto está trabajando.

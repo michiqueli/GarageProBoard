@@ -1,6 +1,6 @@
 # GarageTick
 
-Sistema de gestión integral para concesionarias argentinas: órdenes de reparación,
+Sistema de gestión integral para concesionarias argentinas: órdenes de trabajo,
 tiempos de taller, repuestos, garantías, facturación electrónica, RRHH y ventas.
 
 SaaS multi-tenant. Una sola instalación, todas las concesionarias en la misma base con

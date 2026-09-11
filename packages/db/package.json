@@ -14,7 +14,7 @@
     }
   },
   "scripts": {
-    "generate": "tsx --env-file=../../.env ../../node_modules/drizzle-kit/bin.cjs generate",
+    "generate": "drizzle-kit generate",
     "migrate": "tsx --env-file=../../.env scripts/migrate.ts",
     "app-role": "tsx --env-file=../../.env scripts/app-role.ts",
     "studio": "drizzle-kit studio",

@@ -22,6 +22,8 @@ export const TABLAS_CON_TENANT = [
   'rol',
   'usuario_rol',
   'usuario_sucursal',
+  'usuario_config',
+  'usuario_atajo',
   'auditoria',
 ] as const
 

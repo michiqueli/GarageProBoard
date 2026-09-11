@@ -20,6 +20,8 @@ Monorepo, entorno reproducible y aislamiento multi-tenant probado.
 - ✅ API que arranca y responde, front que la consulta
 - ✅ Contrato oRPC compartido
 - ✅ Documento OpenAPI y Swagger UI generados desde el contrato
+- ✅ Catálogo de acciones con atajo configurable y sus tablas (`usuario_config`,
+  `usuario_atajo`), con 26 tests en `@garagetick/core`
 
 ---
 
@@ -28,6 +30,7 @@ Monorepo, entorno reproducible y aislamiento multi-tenant probado.
 Sin esto no hay pantalla que mostrar a nadie.
 
 - ⬜ Registro y login: argon2, access + refresh con rotación
+- ⬜ Al crear un usuario, sembrar `usuario_config` y su mapa de `usuario_atajo`
 - ⬜ Resolución del tenant desde el token y `conTenant()` como interceptor de Nest,
       para que ninguna consulta pueda salir sin tenant por olvido
 - ⬜ Roles y permisos con CASL, compartidos entre API y front
@@ -38,7 +41,10 @@ Sin esto no hay pantalla que mostrar a nadie.
       `ui-garagetick` que lo aplica sola. Falta implementar los tokens en
       `index.css` y el registro de atajos en `apps/web/src/teclado/`.
 - ⬜ Tokens del `@theme` en `index.css`, según el sistema de diseño
-- ⬜ Registro único de atajos en `apps/web/src/teclado/` + barra de estado
+- ⬜ Registro único de atajos en `apps/web/src/teclado/` + barra de estado, leyendo
+      del mapa del usuario (nunca teclas escritas a mano en los componentes)
+- ⬜ Pantalla **Configuración → Teclas rápidas**, agrupada por módulo, con captura de
+      la combinación y los motivos de rechazo escritos
 - ⬜ Shell del front: navegación, sesión, tema claro y oscuro
 - ⬜ Barra de estado inferior con las teclas activas del contexto
 - ⬜ Auditoría automática de altas, modificaciones y bajas
@@ -82,18 +88,18 @@ y el PDF valida contra el QR.
 
 ---
 
-## Hito 4 — Taller: la orden de reparación ⬜
+## Hito 4 — Taller: la orden de trabajo ⬜
 
 El corazón del producto y lo que el nombre promete.
 
 - ⬜ Turnos y agenda
-- ⬜ Apertura de OR con los cuatro roles (titular, quien trae, quien autoriza,
+- ⬜ Apertura de OT con los cuatro roles (titular, quien trae, quien autoriza,
       quien paga)
 - ⬜ Operaciones con tiempos de referencia por terminal
 - ⬜ Fichaje de mecánicos: tiempo real contra tiempo de referencia
 - ⬜ Repuestos consumidos, con descuento de stock
 - ⬜ Presupuesto, autorización y cierre
-- ⬜ Facturación de la OR
+- ⬜ Facturación de la OT
 - ⬜ **Tablero de piso en tiempo real**: qué auto, quién lo tiene, cuánto lleva.
       Es la pantalla que vende el producto en una demo.
 - ⬜ Flujo de recepción **sin tocar el mouse**: el asesor compite con la velocidad

@@ -75,7 +75,7 @@ export const vehiculo = pgTable(
     anio: integer(),
     color: text(),
     combustible: text(),
-    /** Última lectura conocida. La histórica vive en cada orden de reparación. */
+    /** Última lectura conocida. La histórica vive en cada orden de trabajo. */
     kilometraje: integer(),
     fechaVenta: date(),
     observaciones: text(),

@@ -126,7 +126,7 @@ mayoría de los sistemas colapsan en uno solo:
 | Quien autoriza | Jefe de flota, perito de la aseguradora | Requerido si supera un tope |
 | Quien paga | Aseguradora, leasing, la terminal en garantía | Receptor de la factura, editable |
 
-Si la OR asume «se le factura al titular», el módulo de garantías y el de siniestros
+Si la OT asume «se le factura al titular», el módulo de garantías y el de siniestros
 no entran nunca.
 
 ---
