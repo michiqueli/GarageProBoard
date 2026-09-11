@@ -9,7 +9,7 @@ export default defineConfig({
     // El front habla con la API por el mismo origen en desarrollo: así no hay
     // CORS en el medio y las cookies de sesión se comportan como en producción.
     proxy: {
-      '/api': { target: 'http://localhost:3000', changeOrigin: true },
+      '/api': { target: 'http://localhost:3080', changeOrigin: true },
     },
   },
 })

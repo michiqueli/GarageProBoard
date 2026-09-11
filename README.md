@@ -21,7 +21,19 @@ aislamiento por Row Level Security de Postgres.
     pnpm db:migrate        # migraciones + políticas de aislamiento
     pnpm db:app-role       # habilita el login del rol de la aplicación
 
-    pnpm dev               # API en :3000, front en :5173
+    pnpm dev               # API en :3080, front en :5173
+
+Con eso arriba:
+
+| | |
+| --- | --- |
+| API | <http://localhost:3080/api> |
+| **Swagger** | <http://localhost:3080/api/docs> |
+| Spec OpenAPI | <http://localhost:3080/api/openapi.json> |
+| Front | <http://localhost:5173> |
+
+El spec se genera del mismo contrato que implementa la API y consume el front, así
+que no hay una segunda fuente de verdad que se desactualice.
 
 El Postgres del contenedor va al **5433** a propósito: el 5432 suele estar ocupado por
 una instalación nativa, y su `psql` sirve igual como cliente de línea de comandos.
@@ -45,7 +57,7 @@ de `apps/web`.
 
 | Comando | Qué hace |
 | --- | --- |
-| `pnpm dev` | Levanta API y front |
+| `pnpm dev` | Levanta API (:3080) y front (:5173) |
 | `pnpm test` | Corre todos los tests |
 | `pnpm typecheck` | Chequea tipos en todo el workspace |
 | `pnpm lint` / `pnpm lint:fix` | Biome |

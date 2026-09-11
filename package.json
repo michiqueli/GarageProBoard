@@ -37,6 +37,9 @@
       "msgpackr-extract",
       "cpu-features",
       "ssh2"
-    ]
+    ],
+    "overrides": {
+      "fastify": "5.12.1"
+    }
   }
 }

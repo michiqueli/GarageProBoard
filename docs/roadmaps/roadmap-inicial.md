@@ -19,6 +19,7 @@ Monorepo, entorno reproducible y aislamiento multi-tenant probado.
 - ✅ 9 tests de aislamiento con Testcontainers contra Postgres real
 - ✅ API que arranca y responde, front que la consulta
 - ✅ Contrato oRPC compartido
+- ✅ Documento OpenAPI y Swagger UI generados desde el contrato
 
 ---
 
@@ -33,7 +34,12 @@ Sin esto no hay pantalla que mostrar a nadie.
 - ⬜ Elección de sucursal activa (un usuario puede tener varias)
 - ⬜ Semilla de datos: provincias, condiciones de IVA y tipos de comprobante desde
       los web services de AFIP, no escritos a mano
+- ⬜ **Sistema de diseño escrito** (`docs/tecnicos/sistema-de-diseno.md`): tokens,
+      escala de densidad, mapa global de teclas F1-F10 e inventario de componentes.
+      Va antes de la primera pantalla, no después: es lo que evita que cada una
+      invente lo suyo, y es el documento que el especialista de UX va a corregir.
 - ⬜ Shell del front: navegación, sesión, tema claro y oscuro
+- ⬜ Barra de estado inferior con las teclas activas del contexto
 - ⬜ Auditoría automática de altas, modificaciones y bajas
 
 **Criterio de terminado:** un usuario entra, elige sucursal, y lo que ve depende de
@@ -117,7 +123,6 @@ Cosas que sabemos que faltan, para que no se descubran de golpe:
   negocio en una tarde.
 - **Convenio Multilateral de Ingresos Brutos**: los campos están en el esquema, la
   lógica de coeficientes y retenciones por jurisdicción no.
-- **`@orpc/openapi`** está instalado pero todavía no se expone el documento OpenAPI.
 - El adaptador de AFIP está pendiente a propósito: sin certificados de homologación
   cargados no hay forma de verificar que ande, y un adaptador que nadie probó contra
   AFIP es peor que ninguno porque parece que funciona.
