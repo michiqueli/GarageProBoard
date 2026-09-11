@@ -11,6 +11,14 @@
     "./schema": {
       "types": "./dist/schema/index.d.ts",
       "import": "./dist/schema/index.js"
+    },
+    "./pruebas": {
+      "types": "./dist/pruebas.d.ts",
+      "import": "./dist/pruebas.js"
+    },
+    "./semillas": {
+      "types": "./dist/semillas/catalogos.d.ts",
+      "import": "./dist/semillas/catalogos.js"
     }
   },
   "scripts": {
@@ -21,20 +29,23 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "typecheck": "tsc --noEmit -p tsconfig.test.json",
-    "build": "tsc -p tsconfig.json"
+    "build": "tsc -p tsconfig.json",
+    "sembrar": "tsx --env-file=../../.env scripts/sembrar.ts"
   },
   "dependencies": {
     "drizzle-orm": "0.45.2",
-    "pg": "8.23.0"
+    "pg": "8.23.0",
+    "@garagetick/core": "workspace:*",
+    "@testcontainers/postgresql": "12.1.0"
   },
   "devDependencies": {
-    "@testcontainers/postgresql": "12.1.0",
+    "@types/node": "24.13.4",
     "@types/pg": "8.23.1",
+    "argon2": "0.45.1",
     "drizzle-kit": "0.31.10",
     "tsx": "4.23.13",
     "typescript": "7.0.2",
-    "vitest": "5.0.0",
-    "@types/node": "24.13.4"
+    "vitest": "5.0.0"
   },
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts"

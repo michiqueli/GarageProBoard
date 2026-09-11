@@ -54,6 +54,28 @@ $$;
 
 grant execute on function app_tenant_id() to ${ROL_APP};`)
 
+  partes.push(`
+-- La escotilla del inicio de sesión.
+--
+-- Para leer la tabla "tenant" hay que saber el tenant, pero el tenant es justamente lo
+-- que el login está buscando. La salida no es aflojar la política: es esta función, que
+-- expone **una sola cosa** — si existe una concesionaria activa con este slug, cuál es
+-- su id — y nada más. Ni el nombre, ni cuántas hay, ni ninguna otra fila.
+--
+-- SECURITY DEFINER con search_path fijo: sin eso, quien pudiera crear un esquema propio
+-- podría anteponerlo y hacer que la función resuelva contra sus tablas.
+create or replace function tenant_por_slug(p_slug text) returns uuid
+language sql
+stable
+security definer
+set search_path = public, pg_temp
+as $$
+  select id from tenant where slug = p_slug and activo;
+$$;
+
+revoke all on function tenant_por_slug(text) from public;
+grant execute on function tenant_por_slug(text) to ${ROL_APP};`)
+
   // El propio tenant se filtra por su clave primaria, no por una columna tenant_id.
   partes.push(politica('tenant', 'id'))
 

@@ -29,11 +29,14 @@ Monorepo, entorno reproducible y aislamiento multi-tenant probado.
 
 Sin esto no hay pantalla que mostrar a nadie.
 
-- ⬜ Registro y login: argon2, access + refresh con rotación
-- ⬜ Al crear un usuario, sembrar `usuario_config` y su mapa de `usuario_atajo`
+- ✅ Login con argon2, access de 15 min y refresco rotativo de 30 días con detección
+      de reuso. 14 tests de integración.
+- ✅ Semillas: catálogos y una concesionaria de ejemplo con dos razones sociales
+- ⬜ Al crear un usuario desde la aplicación, sembrar su config y su mapa de atajos
 - ⬜ Resolución del tenant desde el token y `conTenant()` como interceptor de Nest,
       para que ninguna consulta pueda salir sin tenant por olvido
-- ⬜ Roles y permisos con CASL, compartidos entre API y front
+- ✅ Roles y permisos con CASL, compartidos entre API y front (falta aplicarlos en
+      las pantallas y como guardia por operación)
 - ⬜ Elección de sucursal activa (un usuario puede tener varias)
 - ⬜ Semilla de datos: provincias, condiciones de IVA y tipos de comprobante desde
       los web services de AFIP, no escritos a mano

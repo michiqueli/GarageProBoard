@@ -1,7 +1,9 @@
 import { oc } from '@orpc/contract'
 import { z } from 'zod'
+import { contratoAuth } from './auth.ts'
 import { chasis, dominio, paginado, problema } from './comunes.ts'
 
+export * from './auth.ts'
 export * from './comunes.ts'
 
 export const vehiculoSalida = z.object({
@@ -22,6 +24,8 @@ export const vehiculoSalida = z.object({
  * que no son nuestro front.
  */
 export const contrato = {
+  auth: contratoAuth,
+
   salud: oc
     .route({ method: 'GET', path: '/salud', summary: 'Chequeo de vida del servicio' })
     .output(z.object({ estado: z.literal('ok'), version: z.string() })),
@@ -49,7 +53,11 @@ export const contrato = {
         }),
       )
       .errors({
-        CHASIS_DUPLICADO: { message: 'Ya hay un vehículo con ese chasis', data: problema },
+        CHASIS_DUPLICADO: {
+          status: 409,
+          message: 'Ya hay un vehículo con ese chasis',
+          data: problema,
+        },
       })
       .output(vehiculoSalida),
   },

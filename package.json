@@ -21,7 +21,8 @@
     "infra:down": "docker compose -f infra/docker-compose.yml down",
     "infra:logs": "docker compose -f infra/docker-compose.yml logs -f",
     "infra:reset": "docker compose -f infra/docker-compose.yml down -v && pnpm infra:up",
-    "db:app-role": "pnpm --filter @garagetick/db app-role"
+    "db:app-role": "pnpm --filter @garagetick/db app-role",
+    "db:sembrar": "pnpm --filter @garagetick/db sembrar"
   },
   "devDependencies": {
     "@biomejs/biome": "2.5.13",

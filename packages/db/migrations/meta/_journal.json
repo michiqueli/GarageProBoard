@@ -15,6 +15,13 @@
       "when": 1789085959131,
       "tag": "0001_tiny_sphinx",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1789088986675,
+      "tag": "0002_gifted_patriot",
+      "breakpoints": true
     }
   ]
 }

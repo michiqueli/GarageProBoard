@@ -1,56 +1,23 @@
-import { dirname, resolve } from 'node:path'
-import { fileURLToPath } from 'node:url'
-import { PostgreSqlContainer, type StartedPostgreSqlContainer } from '@testcontainers/postgresql'
-import { migrate } from 'drizzle-orm/node-postgres/migrator'
 import type { Pool } from 'pg'
-import { crearDb, crearPool, type Db } from '../src/index.ts'
-import { ddlAislamiento, ROL_APP } from '../src/rls/index.ts'
-
-const aqui = dirname(fileURLToPath(import.meta.url))
-
-const PASSWORD_APP = 'test_app'
+import type { Db } from '../src/index.ts'
+import { levantarPostgres, type PostgresDePrueba } from '../src/pruebas.ts'
 
 export interface EntornoPrueba {
-  contenedor: StartedPostgreSqlContainer
-  /** Conexión del dueño del esquema: superusuario, ignora RLS. Sólo para preparar datos. */
   poolDuenio: Pool
   dbDuenio: Db
-  /** Conexión de la aplicación: sin BYPASSRLS y sin ser dueño de nada. */
   poolApp: Pool
   dbApp: Db
   cerrar: () => Promise<void>
 }
 
 export async function levantarEntorno(): Promise<EntornoPrueba> {
-  const contenedor = await new PostgreSqlContainer('postgres:18-alpine')
-    .withDatabase('garagetick_test')
-    .withUsername('garagetick')
-    .withPassword('garagetick')
-    .start()
-
-  const urlDuenio = contenedor.getConnectionUri()
-  const poolDuenio = crearPool(urlDuenio)
-  const dbDuenio = crearDb(poolDuenio)
-
-  await migrate(dbDuenio, { migrationsFolder: resolve(aqui, '../migrations') })
-  await poolDuenio.query(ddlAislamiento())
-  await poolDuenio.query(`alter role ${ROL_APP} with login password '${PASSWORD_APP}'`)
-
-  const urlApp = urlDuenio.replace('garagetick:garagetick@', `${ROL_APP}:${PASSWORD_APP}@`)
-  const poolApp = crearPool(urlApp)
-  const dbApp = crearDb(poolApp)
-
+  const pg: PostgresDePrueba = await levantarPostgres()
   return {
-    contenedor,
-    poolDuenio,
-    dbDuenio,
-    poolApp,
-    dbApp,
-    cerrar: async () => {
-      await poolApp.end()
-      await poolDuenio.end()
-      await contenedor.stop()
-    },
+    poolDuenio: pg.poolDuenio,
+    dbDuenio: pg.dbDuenio,
+    poolApp: pg.poolApp,
+    dbApp: pg.dbApp,
+    cerrar: pg.cerrar,
   }
 }
 

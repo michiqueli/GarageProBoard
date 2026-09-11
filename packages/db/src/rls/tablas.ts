@@ -25,6 +25,7 @@ export const TABLAS_CON_TENANT = [
   'usuario_config',
   'usuario_atajo',
   'auditoria',
+  'sesion',
 ] as const
 
 /**

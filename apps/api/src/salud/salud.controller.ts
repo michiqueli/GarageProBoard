@@ -2,12 +2,14 @@ import { contrato } from '@garagetick/contracts'
 import { type Db, sql } from '@garagetick/db'
 import { Controller, Inject } from '@nestjs/common'
 import { Implement, implement } from '@orpc/nest'
+import { Publica } from '../auth/guard.ts'
 import { DB } from '../comun/base.module.ts'
 
 @Controller()
 export class ControladorSalud {
   constructor(@Inject(DB) private readonly db: Db) {}
 
+  @Publica()
   @Implement(contrato.salud)
   salud() {
     return implement(contrato.salud).handler(async () => {

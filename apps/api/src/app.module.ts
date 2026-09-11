@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common'
 import { ConfigModule } from '@nestjs/config'
 import { ORPCModule } from '@orpc/nest'
 import { LoggerModule } from 'nestjs-pino'
+import { ModuloAuth } from './auth/auth.module.ts'
 import { ModuloBase } from './comun/base.module.ts'
 import { ControladorSalud } from './salud/salud.controller.ts'
 
@@ -24,6 +25,7 @@ import { ControladorSalud } from './salud/salud.controller.ts'
       interceptors: [],
     }),
     ModuloBase,
+    ModuloAuth,
   ],
   controllers: [ControladorSalud],
 })

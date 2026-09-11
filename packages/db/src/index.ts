@@ -6,7 +6,23 @@ import * as schema from './schema/index.ts'
 
 // Reexportado a propósito: la API construye consultas sin depender de drizzle ni
 // de pg por su cuenta. Si mañana cambia el driver, cambia acá y en ningún otro lado.
-export { sql } from 'drizzle-orm'
+export {
+  and,
+  asc,
+  desc,
+  eq,
+  gt,
+  gte,
+  ilike,
+  inArray,
+  isNotNull,
+  isNull,
+  lt,
+  lte,
+  ne,
+  or,
+  sql,
+} from 'drizzle-orm'
 export type { Pool } from 'pg'
 export * from './rls/index.ts'
 export * as schema from './schema/index.ts'
@@ -47,3 +63,5 @@ export async function conTenant<T>(
     return fn(tx as unknown as Db)
   })
 }
+export * from './semillas/catalogos.ts'
+export * from './semillas/sembrar.ts'

@@ -1,5 +1,5 @@
 import { crearDb, crearPool, type Db, type Pool } from '@garagetick/db'
-import { Global, Module, type OnApplicationShutdown } from '@nestjs/common'
+import { Global, Inject, Module, type OnApplicationShutdown } from '@nestjs/common'
 
 export const POOL = Symbol('POOL')
 export const DB = Symbol('DB')
@@ -29,8 +29,14 @@ export const DB = Symbol('DB')
   exports: [POOL, DB],
 })
 export class ModuloBase implements OnApplicationShutdown {
+  // Inyección explícita en todo el proyecto: ver la nota en auth.service.ts. Nest
+  // podría deducirla del tipo, pero eso ata el código a que cada transpilador emita
+  // la metadata igual, y no lo hacen.
+  constructor(@Inject(POOL) private readonly pool: Pool) {}
+
   async onApplicationShutdown(): Promise<void> {
-    // El pool se cierra explícitamente para que un redeploy no deje conexiones
-    // colgadas contra Postgres.
+    // Cerrar de verdad: un redeploy que deja conexiones colgadas va agotando el
+    // límite de Postgres hasta que un despliegue cualquiera no puede conectarse.
+    await this.pool.end()
   }
 }
