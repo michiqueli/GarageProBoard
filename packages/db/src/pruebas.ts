@@ -31,9 +31,9 @@ export interface PostgresDePrueba {
 
 export async function levantarPostgres(): Promise<PostgresDePrueba> {
   const contenedor = await new PostgreSqlContainer('postgres:18-alpine')
-    .withDatabase('garagetick_test')
-    .withUsername('garagetick')
-    .withPassword('garagetick')
+    .withDatabase('garagepro_test')
+    .withUsername('garagepro')
+    .withPassword('garagepro')
     .start()
 
   const urlDuenio = contenedor.getConnectionUri()
@@ -44,7 +44,7 @@ export async function levantarPostgres(): Promise<PostgresDePrueba> {
   await poolDuenio.query(ddlAislamiento())
   await poolDuenio.query(`alter role ${ROL_APP} with login password '${PASSWORD_APP}'`)
 
-  const urlApp = urlDuenio.replace('garagetick:garagetick@', `${ROL_APP}:${PASSWORD_APP}@`)
+  const urlApp = urlDuenio.replace('garagepro:garagepro@', `${ROL_APP}:${PASSWORD_APP}@`)
   const poolApp = crearPool(urlApp)
   const dbApp = crearDb(poolApp)
 

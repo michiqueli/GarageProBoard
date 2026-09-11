@@ -1,9 +1,9 @@
 ---
-name: ui-garagetick
-description: Sistema de diseño de GarageTick. Usar SIEMPRE al crear o modificar cualquier pantalla, componente, formulario, listado, tabla o estilo de apps/web, al tocar index.css o los tokens, y al agregar atajos de teclado. Cubre tokens, densidad, el mapa global de teclas F1-F10, el patrón de listado responsive y las reglas de redacción de la interfaz.
+name: ui-garagepro
+description: Sistema de diseño de GaragePro. Usar SIEMPRE al crear o modificar cualquier pantalla, componente, formulario, listado, tabla o estilo de apps/web, al tocar index.css o los tokens, y al agregar atajos de teclado. Cubre tokens, densidad, el mapa global de teclas F1-F10, el patrón de listado responsive y las reglas de redacción de la interfaz.
 ---
 
-# Sistema de diseño de GarageTick
+# Sistema de diseño de GaragePro
 
 Antes de escribir UI, leé `docs/tecnicos/sistema-de-diseno.md`. Ese documento es la
 fuente de verdad; esto es el resumen operativo con lo que no se negocia.
@@ -48,7 +48,7 @@ tabla rota, no una versión móvil.
 
 **6. Los importes**: alineados a la derecha, dos decimales siempre,
 `font-variant-numeric: tabular-nums`. Nunca un `number` de JavaScript — son strings
-decimales y se operan con `decimal.js` desde `@garagetick/core`.
+decimales y se operan con `decimal.js` desde `@garagepro/core`.
 
 **7. Estado en forma y color, nunca solo color.** Píldora llena = alguien tiene que
 hacer algo. Contorneada = en curso normal. Sin píldora = cerrado. Uno de cada doce

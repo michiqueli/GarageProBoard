@@ -1,4 +1,4 @@
-import { contrato } from '@garagetick/contracts'
+import { contrato } from '@garagepro/contracts'
 import { type OpenAPI, OpenAPIGenerator } from '@orpc/openapi'
 import { ConversorZod } from './conversor-zod.ts'
 
@@ -46,7 +46,7 @@ export async function generarOpenApi(): Promise<OpenAPI.Document> {
 
   return generador.generate(contrato, {
     info: {
-      title: 'GarageTick',
+      title: 'GaragePro',
       version: '0.0.0',
       description: [
         '## Gestión integral para concesionarias',

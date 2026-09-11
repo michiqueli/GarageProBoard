@@ -1,6 +1,6 @@
 # Sistema de diseño
 
-Las reglas visuales y de interacción de GarageTick. Este documento se escribe **antes
+Las reglas visuales y de interacción de GaragePro. Este documento se escribe **antes
 de la primera pantalla** a propósito: es lo que evita que cada una invente lo suyo.
 
 Cuando llegue el especialista de UX/UI a hacer la pasada final, este es el archivo que
@@ -270,7 +270,7 @@ responsabilidad. Va como configuración del tenant, junto con el logo y el color
 
 ### El color fuerte es el del cliente, no el nuestro
 
-Hay tres marcas apiladas: GarageTick, la concesionaria, y la terminal que la
+Hay tres marcas apiladas: GaragePro, la concesionaria, y la terminal que la
 concesionaria representa. Si nuestro acento grita, le pelea a la marca de cada cliente
 en cada pantalla.
 

@@ -1,5 +1,5 @@
 {
-  "name": "@garagetick/web",
+  "name": "@garagepro/web",
   "version": "0.0.0",
   "private": true,
   "type": "module",
@@ -11,8 +11,8 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@garagetick/contracts": "workspace:*",
-    "@garagetick/core": "workspace:*",
+    "@garagepro/contracts": "workspace:*",
+    "@garagepro/core": "workspace:*",
     "@orpc/client": "1.15.0",
     "@orpc/openapi-client": "1.15.0",
     "@orpc/tanstack-query": "1.15.0",

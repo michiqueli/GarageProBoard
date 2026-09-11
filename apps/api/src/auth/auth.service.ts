@@ -1,5 +1,5 @@
-import { type ReglaPermiso, ROLES_PREDEFINIDOS, resolverCondiciones } from '@garagetick/core'
-import { and, conTenant, type Db, eq, isNull, sql } from '@garagetick/db'
+import { type ReglaPermiso, ROLES_PREDEFINIDOS, resolverCondiciones } from '@garagepro/core'
+import { and, conTenant, type Db, eq, isNull, sql } from '@garagepro/db'
 import {
   empresa,
   rol,
@@ -11,7 +11,7 @@ import {
   usuarioConfig,
   usuarioRol,
   usuarioSucursal,
-} from '@garagetick/db/schema'
+} from '@garagepro/db/schema'
 import { Inject, Injectable } from '@nestjs/common'
 import { JwtService } from '@nestjs/jwt'
 import argon2 from 'argon2'

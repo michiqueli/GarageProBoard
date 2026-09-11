@@ -1,4 +1,4 @@
-import { mostrarTecla } from '@garagetick/core'
+import { mostrarTecla } from '@garagepro/core'
 
 /**
  * La representación visual de una tecla. Recibe la forma canónica (`Alt+ArrowDown`) y

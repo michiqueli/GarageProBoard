@@ -35,16 +35,16 @@ importers:
       '@fastify/static':
         specifier: 10.1.3
         version: 10.1.3
-      '@garagetick/afip':
+      '@garagepro/afip':
         specifier: workspace:*
         version: link:../../packages/afip
-      '@garagetick/contracts':
+      '@garagepro/contracts':
         specifier: workspace:*
         version: link:../../packages/contracts
-      '@garagetick/core':
+      '@garagepro/core':
         specifier: workspace:*
         version: link:../../packages/core
-      '@garagetick/db':
+      '@garagepro/db':
         specifier: workspace:*
         version: link:../../packages/db
       '@nestjs/common':
@@ -129,10 +129,10 @@ importers:
 
   apps/web:
     dependencies:
-      '@garagetick/contracts':
+      '@garagepro/contracts':
         specifier: workspace:*
         version: link:../../packages/contracts
-      '@garagetick/core':
+      '@garagepro/core':
         specifier: workspace:*
         version: link:../../packages/core
       '@orpc/client':
@@ -259,7 +259,7 @@ importers:
 
   packages/db:
     dependencies:
-      '@garagetick/core':
+      '@garagepro/core':
         specifier: workspace:*
         version: link:../core
       '@testcontainers/postgresql':

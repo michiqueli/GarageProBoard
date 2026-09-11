@@ -51,7 +51,7 @@ function paginaSwagger(): string {
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>API de GarageTick</title>
+    <title>API de GaragePro</title>
     <link rel="stylesheet" href="${RUTA_UI}/recursos/swagger-ui.css" />
     <style>
       body { margin: 0; background: #fafafa; }

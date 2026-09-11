@@ -1,4 +1,4 @@
-import { crearDb, crearPool, type Db, type Pool } from '@garagetick/db'
+import { crearDb, crearPool, type Db, type Pool } from '@garagepro/db'
 import { Global, Inject, Module, type OnApplicationShutdown } from '@nestjs/common'
 
 export const POOL = Symbol('POOL')

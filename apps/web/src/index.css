@@ -1,7 +1,7 @@
 @import "tailwindcss";
 
 /*
- * Tokens de GarageTick. Fuente de verdad: docs/tecnicos/sistema-de-diseno.md
+ * Tokens de GaragePro. Fuente de verdad: docs/tecnicos/sistema-de-diseno.md
  *
  * Esto es lo único que un rediseño necesita tocar. Ningún componente escribe un
  * color, un espaciado o un tamaño a mano: si cambiar un valor de acá no mueve una
@@ -49,7 +49,7 @@
 
   /* La marca es lo único que cambia por tenant: la concesionaria sube su color.
      Éste es el valor por omisión, a propósito sobrio — hay tres marcas apiladas
-     (GarageTick, la concesionaria y la terminal que representa) y la nuestra es la
+     (GaragePro, la concesionaria y la terminal que representa) y la nuestra es la
      que tiene que hacerse a un lado. */
   --color-marca: #f0a621;
   --color-marca-suave: #f0a62124;

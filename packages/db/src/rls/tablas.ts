@@ -40,7 +40,7 @@ export const TABLAS_CATALOGO = [
 ] as const
 
 /** El rol con el que se conecta la API: sin BYPASSRLS y sin ser dueño de nada. */
-export const ROL_APP = 'garagetick_app'
+export const ROL_APP = 'garagepro_app'
 
 /** Variable de sesión que las políticas comparan contra `tenant_id`. */
 export const VAR_TENANT = 'app.tenant_id'

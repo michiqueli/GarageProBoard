@@ -1,4 +1,4 @@
-import { CATALOGO } from '@garagetick/core'
+import { CATALOGO } from '@garagepro/core'
 import { useTeclado } from '../teclado/index.ts'
 import { Tecla } from './Tecla.tsx'
 

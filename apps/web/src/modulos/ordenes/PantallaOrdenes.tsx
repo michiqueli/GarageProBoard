@@ -1,4 +1,4 @@
-import { formatearImporte } from '@garagetick/core'
+import { formatearImporte } from '@garagepro/core'
 import { useState } from 'react'
 import { Boton } from '../../componentes/Boton.tsx'
 import { EstadoOT } from '../../componentes/EstadoOT.tsx'

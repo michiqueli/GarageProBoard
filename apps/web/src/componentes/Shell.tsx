@@ -1,4 +1,4 @@
-import type { Modulo } from '@garagetick/core'
+import type { Modulo } from '@garagepro/core'
 import type { ReactNode } from 'react'
 import { usarSesion } from '../sesion/almacen.ts'
 import { api } from '../sesion/cliente.ts'
@@ -157,7 +157,7 @@ export function Shell({
       <aside className="hidden flex-col gap-0.5 border-r border-borde bg-superficie p-2.5 md:flex">
         <div className="flex items-center gap-2.5 px-2 pt-1 pb-4">
           <span className="size-4 rotate-45 rounded-[3px] bg-marca" />
-          <b className="font-display text-base font-bold tracking-tight">GarageTick</b>
+          <b className="font-display text-base font-bold tracking-tight">GaragePro</b>
         </div>
         <p className="truncate px-2 pb-3 font-mono text-[10.5px] tracking-[0.1em] text-texto-tenue uppercase">
           {datos?.tenant.nombre ?? '—'}

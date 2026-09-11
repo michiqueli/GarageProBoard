@@ -4,7 +4,7 @@ import {
   type Modulo,
   resolverAtajos,
   teclaDesdeEvento,
-} from '@garagetick/core'
+} from '@garagepro/core'
 import {
   createContext,
   type ReactNode,

@@ -1,4 +1,4 @@
-# GarageTick
+# GaragePro
 
 Sistema de gestión integral para concesionarias argentinas: órdenes de trabajo,
 tiempos de taller, repuestos, garantías, facturación electrónica, RRHH y ventas.
@@ -105,5 +105,5 @@ Arrancá por [el modelo del núcleo](docs/tecnicos/nucleo-modelo-datos.md), segu
 [el sistema de diseño](docs/tecnicos/sistema-de-diseno.md) y mirá
 [el roadmap](docs/roadmaps/roadmap-inicial.md).
 
-La carpeta `.claude/skills/` también se versiona: la skill `ui-garagetick` hace que
+La carpeta `.claude/skills/` también se versiona: la skill `ui-garagepro` hace que
 cualquier cambio de interfaz siga el sistema de diseño sin que haya que recordarlo.

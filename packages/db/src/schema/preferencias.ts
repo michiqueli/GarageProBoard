@@ -43,7 +43,7 @@ export const usuarioConfig = pgTable(
  * azar según el orden en que se recorra el objeto.
  *
  * Se siembra completo al crear el usuario. El catálogo de acciones vive en
- * `@garagetick/core` porque cada una necesita un manejador en el front: no tiene
+ * `@garagepro/core` porque cada una necesita un manejador en el front: no tiene
  * sentido que exista en la base algo que no hay quién ejecute.
  */
 export const usuarioAtajo = pgTable(
@@ -71,7 +71,7 @@ export const usuarioAtajo = pgTable(
     // en entregas, y ésa es justamente la idea.
     //
     // El choque que esto no puede ver es el de una acción de módulo contra una global.
-    // Ése lo valida `validarAtajos()` en @garagetick/core, que resuelve el mapa
+    // Ése lo valida `validarAtajos()` en @garagepro/core, que resuelve el mapa
     // efectivo de cada módulo antes de guardar.
     unique('usuario_atajo_tecla_uq').on(t.usuarioId, t.ambito, t.tecla),
 

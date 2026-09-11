@@ -1,5 +1,5 @@
-import { contrato } from '@garagetick/contracts'
-import { type Db, sql } from '@garagetick/db'
+import { contrato } from '@garagepro/contracts'
+import { type Db, sql } from '@garagepro/db'
 import { Controller, Inject } from '@nestjs/common'
 import { Implement, implement } from '@orpc/nest'
 import { Publica } from '../auth/guard.ts'

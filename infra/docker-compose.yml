@@ -1,18 +1,18 @@
 # Postgres va al 5433 a proposito: el 5432 lo ocupa el PostgreSQL 18 nativo de
 # Windows, y su psql nos sirve igual como cliente de linea de comandos.
-name: garagetick
+name: garagepro
 
 services:
   postgres:
     image: postgres:18-alpine
-    container_name: garagetick-pg
+    container_name: garagepro-pg
     restart: unless-stopped
     ports:
       - "5433:5432"
     environment:
-      POSTGRES_USER: garagetick
-      POSTGRES_PASSWORD: garagetick_dev
-      POSTGRES_DB: garagetick
+      POSTGRES_USER: garagepro
+      POSTGRES_PASSWORD: garagepro_dev
+      POSTGRES_DB: garagepro
       # Colación ICU es-AR: sin esto, ordenar razones sociales pone "Ñandú" después
       # de "Zapata" y el listado de clientes queda raro a la vista del usuario.
       POSTGRES_INITDB_ARGS: "--encoding=UTF8 --locale-provider=icu --icu-locale=es-AR"
@@ -22,14 +22,14 @@ services:
       # los datos en un subdirectorio y habilita pg_upgrade --link a futuro.
       - pgdata:/var/lib/postgresql
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U garagetick -d garagetick"]
+      test: ["CMD-SHELL", "pg_isready -U garagepro -d garagepro"]
       interval: 5s
       timeout: 5s
       retries: 10
 
   redis:
     image: redis:8-alpine
-    container_name: garagetick-redis
+    container_name: garagepro-redis
     restart: unless-stopped
     ports:
       - "6379:6379"
