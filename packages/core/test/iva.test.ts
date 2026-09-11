@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { aFacturable, plata } from '../src/dinero.ts'
+import { aFacturable, formatearImporte, plata } from '../src/dinero.ts'
 import { totalizar } from '../src/iva.ts'
 
 describe('totalización de comprobantes', () => {
@@ -30,5 +30,21 @@ describe('totalización de comprobantes', () => {
       { neto: plata('0.2'), codigoAlicuota: 3 },
     ])
     expect(neto.toFixed(4)).toBe('0.3000')
+  })
+})
+
+describe('formato de importes', () => {
+  it('usa punto de miles y coma decimal', () => {
+    expect(formatearImporte('1140200.00')).toBe('1.140.200,00')
+    expect(formatearImporte('284500.5')).toBe('284.500,50')
+    expect(formatearImporte('0')).toBe('0,00')
+  })
+
+  it('no pasa por Number, así que aguanta importes enormes sin perder centavos', () => {
+    expect(formatearImporte('98765432109876.99')).toBe('98.765.432.109.876,99')
+  })
+
+  it('conserva el signo', () => {
+    expect(formatearImporte('-4520.25')).toBe('-4.520,25')
   })
 })

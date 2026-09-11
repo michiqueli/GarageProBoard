@@ -1,18 +1,131 @@
 @import "tailwindcss";
 
 /*
- * Responsive desde el diseño, no como parche: el gerente mira facturación del
- * celular y el asesor consulta una OR desde una tablet en la playa de entrega.
+ * Tokens de GarageTick. Fuente de verdad: docs/tecnicos/sistema-de-diseno.md
  *
- * La regla que gobierna casi todas las pantallas de este sistema: los listados
- * densos son tabla en escritorio y tarjetas en teléfono. Las dos formas se
- * diseñan juntas o la segunda nunca llega.
+ * Esto es lo único que un rediseño necesita tocar. Ningún componente escribe un
+ * color, un espaciado o un tamaño a mano: si cambiar un valor de acá no mueve una
+ * pantalla, esa pantalla tiene un valor escrito a mano y eso es un bug.
+ *
+ * El tema oscuro es el valor por omisión, no una variante. En un taller la pantalla
+ * se mira todo el día.
  */
 
 @theme {
-  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  /* ── Tipografía ───────────────────────────────────────────────────────────
+     Plex Sans para interfaz, Archivo para títulos, Plex Mono para todo dato que
+     se compara en columna: patentes, chasis, comprobantes, importes. */
+  --font-sans: "IBM Plex Sans", system-ui, -apple-system, sans-serif;
+  --font-display: "Archivo", system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, "Cascadia Mono", Consolas, monospace;
+
+  --text-dato: 0.8125rem; /* 13px — tablas y formularios */
+  --text-dato--line-height: 1.35;
+  --text-ui: 0.875rem; /* 14px — texto de interfaz */
+  --text-ui--line-height: 1.45;
+  --text-etiqueta: 0.75rem; /* 12px — etiquetas, barra de estado */
+  --text-etiqueta--line-height: 1.3;
+
+  /* ── Densidad ─────────────────────────────────────────────────────────────
+     'compacta' es la de trabajo. 'comoda' se activa por preferencia del usuario y
+     en el tablero, donde el aire ayuda en vez de estorbar. */
+  --spacing-fila: 2rem; /* 32px — alto de fila compacta */
+  --spacing-fila-comoda: 2.5rem;
+  --spacing-campo: 2rem; /* 32px — alto de campo y de botón */
+  --spacing-tactil: 2.75rem; /* 44px — piso de taller: dedo con guantes */
+
+  --radius-base: 4px;
+
+  /* ── Color: tema oscuro, el valor por omisión ─────────────────────────────
+     Neutros con sesgo frío verdoso: elegidos, no heredados de un gris puro. */
+  --color-fondo: #0e1412;
+  --color-superficie: #151d1a;
+  --color-superficie-2: #1b2523;
+  --color-borde: #2a3734;
+  --color-borde-suave: #202b29;
+  --color-texto: #e8edea;
+  --color-texto-suave: #97a5a0;
+  --color-texto-tenue: #61706b;
+
+  /* La marca es lo único que cambia por tenant: la concesionaria sube su color.
+     Éste es el valor por omisión, a propósito sobrio — hay tres marcas apiladas
+     (GarageTick, la concesionaria y la terminal que representa) y la nuestra es la
+     que tiene que hacerse a un lado. */
+  --color-marca: #f0a621;
+  --color-marca-suave: #f0a62124;
+
+  /* Semánticos. Nunca se usan para marca, ni la marca para estado: si el mismo
+     color significa «nosotros» y «en proceso», deja de significar cualquiera. */
+  --color-ok: #3fbf8f;
+  --color-atencion: #d9962b;
+  --color-critico: #e0705c;
+  --color-info: #5aa9e6;
 }
 
-html {
-  color-scheme: light dark;
+/*
+ * Tema claro.
+ *
+ * El atributo lo estampa la aplicación leyendo `usuario_config.tema`, que puede ser
+ * 'claro', 'oscuro' o 'sistema'; el caso 'sistema' se resuelve en JavaScript y
+ * termina estampando uno de los dos. Así el CSS sólo contempla dos estados y no
+ * hay una tercera combinación sin probar.
+ */
+[data-tema="claro"] {
+  --color-fondo: #eff1ee;
+  --color-superficie: #fbfcfa;
+  --color-superficie-2: #e9ede9;
+  --color-borde: #d2d9d3;
+  --color-borde-suave: #e2e7e2;
+  --color-texto: #16211e;
+  --color-texto-suave: #55635e;
+  --color-texto-tenue: #7e8c86;
+
+  --color-marca: #b87309;
+  --color-marca-suave: #b873091f;
+
+  --color-ok: #1c8a63;
+  --color-atencion: #a96c10;
+  --color-critico: #b2412c;
+  --color-info: #2a6fa8;
+}
+
+@layer base {
+  html {
+    background: var(--color-fondo);
+    color: var(--color-texto);
+  }
+
+  body {
+    font-family: var(--font-sans);
+    font-size: var(--text-ui);
+  }
+
+  /* Los números que se comparan en columna van en tabular o no alinean, y una
+     columna de importes que no alinea no se puede escanear con la vista. */
+  .tabular,
+  td,
+  th {
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* El foco siempre visible: el sistema se opera con el teclado. */
+  :focus-visible {
+    outline: 2px solid var(--color-marca);
+    outline-offset: 2px;
+  }
+
+  /* El !important es correcto acá y en ningún otro lado: quien pidió menos
+     movimiento no puede quedar a merced de que una animación tenga más
+     especificidad. Es la excepción que confirma la regla. */
+  @media (prefers-reduced-motion: reduce) {
+    /* biome-ignore-start lint/complexity/noImportantStyles: la preferencia del
+       sistema tiene que ganarle a cualquier animación declarada después */
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      transition-duration: 0.01ms !important;
+    }
+    /* biome-ignore-end lint/complexity/noImportantStyles: fin de la excepción */
+  }
 }

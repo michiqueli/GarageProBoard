@@ -238,6 +238,46 @@ no distingue rojo de verde y en un taller son casi todos varones.
 La regla detrás: **píldora llena = alguien tiene que hacer algo**. Contorneada = está en
 curso normal. Sin píldora = cerrado. Se lee de un vistazo a tres metros del monitor.
 
+### Fondos: dónde sí y dónde no
+
+Se evaluó el patrón de paneles flotando sobre una foto (referencia: CAR XPERT en
+`docs/ideas/`). Es lindo y diferencia mucho frente a Oversoft, pero tiene un costo que
+sólo se paga en algunos lugares. Decisión:
+
+| Pantalla | Fondo |
+| --- | --- |
+| Login y selección de sucursal | **Imagen plena y nítida.** La marca de la concesionaria. |
+| Tablero | Plano hoy. A futuro, opcional con imagen muy atenuada. |
+| OT, caja, repuestos, clientes, vehículos | **Plano. Siempre.** |
+
+Por qué se corta ahí: para que una tabla densa se lea sobre una foto hay que ponerle un
+velo del 78% y catorce píxeles de desenfoque, y entonces **la foto ya no se ve** —
+queda como atmósfera en los bordes. Se paga el costo (legibilidad, GPU en la máquina
+del mostrador, licencia de las imágenes de la terminal) sin cobrar el beneficio.
+
+En login sí se cobra entero: no hay contenido que proteger, y es el momento en que el
+gerente ve «su» sistema.
+
+Si algún día el tablero lleva imagen, **los KPIs y los paneles van más separados**: es
+la densidad `cómoda`, no la `compacta`. Un fondo con forma necesita respiro entre
+bloques o pelea con ellos.
+
+### Las imágenes las sube la concesionaria, no las traemos nosotros
+
+Las fotos de Toyota, VW o Ford son marcas registradas. Si el producto las distribuye,
+es un problema de licencia nuestro; si las carga el cliente, es su elección y su
+responsabilidad. Va como configuración del tenant, junto con el logo y el color.
+
+### El color fuerte es el del cliente, no el nuestro
+
+Hay tres marcas apiladas: GarageTick, la concesionaria, y la terminal que la
+concesionaria representa. Si nuestro acento grita, le pelea a la marca de cada cliente
+en cada pantalla.
+
+Por eso `--color-marca` es un **token por tenant**, configurable, con un valor por
+omisión sobrio. La concesionaria sube su logo, su color y sus imágenes, y el sistema se
+pone su piel. Es una función de SaaS que se vende sola y cuesta poco.
+
 ### Espaciado
 
 Escala de 4 px. Nada de valores sueltos:

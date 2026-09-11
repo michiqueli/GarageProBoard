@@ -40,12 +40,14 @@ Sin esto no hay pantalla que mostrar a nadie.
 - ✅ **Sistema de diseño escrito** (`docs/tecnicos/sistema-de-diseno.md`) y skill
       `ui-garagetick` que lo aplica sola. Falta implementar los tokens en
       `index.css` y el registro de atajos en `apps/web/src/teclado/`.
-- ⬜ Tokens del `@theme` en `index.css`, según el sistema de diseño
-- ⬜ Registro único de atajos en `apps/web/src/teclado/` + barra de estado, leyendo
-      del mapa del usuario (nunca teclas escritas a mano en los componentes)
+- ✅ Tokens del `@theme` en `index.css`, con tema claro y oscuro
+- ✅ Registro único de atajos en `apps/web/src/teclado/` + barra de estado, leyendo
+      del mapa del usuario. 11 tests contra un DOM real.
+- ✅ Shell: navegación, encabezado, barra de estado
+- ✅ Patrón de listado responsive, aplicado en la pantalla de OT
 - ⬜ Pantalla **Configuración → Teclas rápidas**, agrupada por módulo, con captura de
       la combinación y los motivos de rechazo escritos
-- ⬜ Shell del front: navegación, sesión, tema claro y oscuro
+- ⬜ Enrutado con TanStack Router y sesión (el shell ya está, falta el router)
 - ⬜ Barra de estado inferior con las teclas activas del contexto
 - ⬜ Auditoría automática de altas, modificaciones y bajas
 
@@ -63,8 +65,9 @@ Las entidades ya están modeladas; falta poder operarlas.
 - ⬜ ABM de vehículos y transferencia de titularidad
 - ⬜ Búsqueda única: por patente, por chasis, por cliente, por CUIT
 - ⬜ Ficha del vehículo con su historia completa, incluidos los titulares anteriores
-- ⬜ **Patrón de listado responsive**: tabla densa en escritorio, tarjetas en
-      teléfono. Se define una vez acá y lo heredan todas las pantallas siguientes.
+- ✅ **Patrón de listado responsive** resuelto en la pantalla de OT: tabla densa en
+      escritorio, tarjetas en teléfono, eligiendo cuál renderizar en vez de ocultar
+      una con CSS.
 
 **Criterio de terminado:** se puede cargar una concesionaria entera desde cero.
 
