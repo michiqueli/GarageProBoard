@@ -57,24 +57,38 @@ grant execute on function app_tenant_id() to ${ROL_APP};`)
   partes.push(`
 -- La escotilla del inicio de sesión.
 --
--- Para leer la tabla "tenant" hay que saber el tenant, pero el tenant es justamente lo
--- que el login está buscando. La salida no es aflojar la política: es esta función, que
--- expone **una sola cosa** — si existe una concesionaria activa con este slug, cuál es
--- su id — y nada más. Ni el nombre, ni cuántas hay, ni ninguna otra fila.
+-- Autenticarse ocurre **antes** de saber a qué concesionaria pertenece quien entra, así
+-- que esta consulta no puede pasar por RLS: no hay tenant contra el cual filtrar. La
+-- salida no es aflojar las políticas, es exponer una función que devuelve lo mínimo.
+--
+-- Recibe un correo y devuelve tres cosas: quién es, de qué concesionaria, y el hash
+-- para verificar la contraseña. Nada más — ni el nombre, ni cuántos usuarios hay, ni
+-- ninguna otra fila. Y si el correo no existe, no devuelve nada, que es lo mismo que
+-- devuelve cuando existe pero está inactivo.
 --
 -- SECURITY DEFINER con search_path fijo: sin eso, quien pudiera crear un esquema propio
 -- podría anteponerlo y hacer que la función resuelva contra sus tablas.
-create or replace function tenant_por_slug(p_slug text) returns uuid
+create or replace function autenticar_usuario(p_email text)
+returns table (usuario_id uuid, tenant_id uuid, hash_password text)
 language sql
 stable
 security definer
 set search_path = public, pg_temp
 as $$
-  select id from tenant where slug = p_slug and activo;
+  select u.id, u.tenant_id, u.hash_password
+    from usuario u
+    join tenant t on t.id = u.tenant_id
+   where u.email = lower(p_email)
+     and u.activo
+     and t.activo;
 $$;
 
-revoke all on function tenant_por_slug(text) from public;
-grant execute on function tenant_por_slug(text) to ${ROL_APP};`)
+revoke all on function autenticar_usuario(text) from public;
+grant execute on function autenticar_usuario(text) to ${ROL_APP};
+
+-- Ya no se usa: el inicio de sesión dejó de pedir el nombre de la concesionaria. Cada
+-- función SECURITY DEFINER es superficie de ataque, así que las que sobran se borran.
+drop function if exists tenant_por_slug(text);`)
 
   // El propio tenant se filtra por su clave primaria, no por una columna tenant_id.
   partes.push(politica('tenant', 'id'))

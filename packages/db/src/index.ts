@@ -9,6 +9,7 @@ import * as schema from './schema/index.ts'
 export {
   and,
   asc,
+  count,
   desc,
   eq,
   gt,

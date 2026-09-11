@@ -1,5 +1,7 @@
 import type { Modulo } from '@garagetick/core'
 import type { ReactNode } from 'react'
+import { usarSesion } from '../sesion/almacen.ts'
+import { api } from '../sesion/cliente.ts'
 import { useTeclado } from '../teclado/index.ts'
 import { BarraEstado } from './BarraEstado.tsx'
 import { Tecla } from './Tecla.tsx'
@@ -122,15 +124,33 @@ export function Shell({
   titulo,
   modulo,
   acciones,
+  onNavegar,
   children,
 }: {
   seccion: string
   titulo: string
   modulo?: Modulo | undefined
   acciones?: ReactNode | undefined
+  onNavegar?: ((seccion: string) => void) | undefined
   children: ReactNode
 }) {
   const { teclaDe } = useTeclado()
+  const datos = usarSesion((e) => e.datos)
+
+  /**
+   * Cerrar sesión de verdad: se le avisa al servidor para que anule la familia entera
+   * de tokens. Limpiar sólo el estado local dejaría la sesión viva treinta días del
+   * lado del servidor, que es exactamente lo que alguien que dice «salir» no quiere.
+   */
+  async function salir() {
+    await api.auth.cerrar({}).catch(() => undefined)
+    usarSesion.getState().limpiar()
+  }
+
+  /** Vuelve a la pantalla de elección sin cerrar la sesión. */
+  function cambiarSucursal() {
+    usarSesion.getState().elegirSucursal()
+  }
 
   return (
     <div className="grid min-h-dvh grid-cols-1 md:grid-cols-[13rem_1fr]">
@@ -139,24 +159,47 @@ export function Shell({
           <span className="size-4 rotate-45 rounded-[3px] bg-marca" />
           <b className="font-display text-base font-bold tracking-tight">GarageTick</b>
         </div>
-        <p className="px-2 pb-3 font-mono text-[10.5px] tracking-[0.1em] text-texto-tenue uppercase">
-          Automotores Litoral
+        <p className="truncate px-2 pb-3 font-mono text-[10.5px] tracking-[0.1em] text-texto-tenue uppercase">
+          {datos?.tenant.nombre ?? '—'}
         </p>
 
-        <Nav secciones={PRINCIPALES} activa={seccion} />
+        <Nav secciones={PRINCIPALES} activa={seccion} onNavegar={onNavegar} />
         <div className="mx-2 my-3 h-px bg-borde-suave" />
-        <Nav secciones={SECUNDARIAS} activa={seccion} />
+        <Nav secciones={SECUNDARIAS} activa={seccion} onNavegar={onNavegar} />
 
-        <div className="mt-auto flex items-center gap-2.5 rounded-base border border-borde p-2">
-          <span className="grid size-7 shrink-0 place-items-center rounded-full border border-borde bg-superficie-2 text-[10px] font-semibold text-texto-suave">
-            MG
-          </span>
-          <span className="min-w-0">
-            <b className="block truncate text-etiqueta font-semibold">M. Gutiérrez</b>
-            <span className="block truncate text-[10.5px] text-texto-tenue">
-              Asesor · Casa Central
+        <div className="mt-auto grid gap-2 rounded-base border border-borde p-2">
+          <div className="flex items-center gap-2.5">
+            <span className="grid size-7 shrink-0 place-items-center rounded-full border border-borde bg-superficie-2 text-[10px] font-semibold text-texto-suave">
+              {(datos?.usuario.nombre[0] ?? '') + (datos?.usuario.apellido[0] ?? '')}
             </span>
-          </span>
+            <span className="min-w-0 flex-1">
+              <b className="block truncate text-etiqueta font-semibold">
+                {datos ? `${datos.usuario.nombre[0]}. ${datos.usuario.apellido}` : ''}
+              </b>
+              <span className="block truncate text-[10.5px] text-texto-tenue">
+                {datos?.sucursalActiva.nombre ?? ''}
+              </span>
+            </span>
+          </div>
+
+          <div className="flex gap-1">
+            {(datos?.sucursales.length ?? 0) > 1 && (
+              <button
+                type="button"
+                onClick={cambiarSucursal}
+                className="flex-1 rounded-[3px] border border-borde px-2 py-1 text-[11px] text-texto-suave hover:bg-superficie-2 hover:text-texto"
+              >
+                Cambiar sucursal
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={salir}
+              className="flex-1 rounded-[3px] border border-borde px-2 py-1 text-[11px] text-texto-suave hover:border-critico hover:text-critico"
+            >
+              Salir
+            </button>
+          </div>
         </div>
       </aside>
 
@@ -187,7 +230,7 @@ export function Shell({
           </label>
 
           <span className="flex h-campo items-center gap-2 rounded-base border border-borde px-2.5 text-dato">
-            Casa Central
+            {datos?.sucursalActiva.nombre ?? ''}
             {teclaDe('global.cambiarSucursal') && (
               <Tecla tecla={teclaDe('global.cambiarSucursal') ?? ''} />
             )}
@@ -204,18 +247,27 @@ export function Shell({
   )
 }
 
-function Nav({ secciones, activa }: { secciones: Seccion[]; activa: string }) {
+function Nav({
+  secciones,
+  activa,
+  onNavegar,
+}: {
+  secciones: Seccion[]
+  activa: string
+  onNavegar?: ((seccion: string) => void) | undefined
+}) {
   return (
     <nav className="flex flex-col gap-px">
       {secciones.map((s) => {
         const esActiva = s.id === activa
         return (
-          <a
+          <button
             key={s.id}
-            href={`#${s.id}`}
+            type="button"
+            onClick={() => onNavegar?.(s.id)}
             aria-current={esActiva ? 'page' : undefined}
             className={[
-              'flex h-[30px] items-center gap-2.5 rounded-base px-2.5 text-dato no-underline',
+              'flex h-[30px] w-full items-center gap-2.5 rounded-base px-2.5 text-left text-dato',
               esActiva
                 ? 'bg-marca-suave font-semibold text-marca'
                 : 'text-texto-suave hover:bg-superficie-2 hover:text-texto',
@@ -223,7 +275,7 @@ function Nav({ secciones, activa }: { secciones: Seccion[]; activa: string }) {
           >
             <span className="size-[15px] shrink-0 [&>svg]:size-full">{s.icono}</span>
             {s.etiqueta}
-          </a>
+          </button>
         )
       })}
     </nav>

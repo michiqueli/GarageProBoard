@@ -9,6 +9,7 @@ import {
   text,
   timestamp,
   unique,
+  uniqueIndex,
   uuid,
 } from 'drizzle-orm/pg-core'
 import { actualizadoEn, creadoEn, pk, tenantId } from './_comunes.ts'
@@ -30,7 +31,22 @@ export const usuario = pgTable(
     creadoEn: creadoEn(),
     actualizadoEn: actualizadoEn(),
   },
-  (t) => [unique('usuario_email_uq').on(t.tenantId, t.email)],
+  (t) => [
+    // Único en **todo el sistema**, no por concesionaria.
+    //
+    // Cada usuario pertenece a una sola concesionaria, así que su correo alcanza para
+    // identificarlo sin preguntarle a cuál entra. Eso es lo que permite que el login
+    // sea sólo correo y contraseña: si el mismo correo pudiera existir en dos
+    // concesionarias, habría que preguntar en cuál antes de poder buscarlo.
+    //
+    // La contrapartida, aceptada a propósito: una persona que trabaje en dos
+    // concesionarias necesita dos correos. Es el precio de no armar un modelo de
+    // identidad global, que para este producto sería complicarse de más.
+    uniqueIndex('usuario_email_uq').on(t.email),
+    // En minúsculas siempre: sin esto, Admin@taller.com y admin@taller.com serían dos
+    // usuarios distintos y uno de los dos no podría entrar nunca.
+    check('usuario_email_minuscula', sql`${t.email} = lower(${t.email})`),
+  ],
 )
 
 /**

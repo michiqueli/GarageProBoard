@@ -37,7 +37,7 @@ Sin esto no hay pantalla que mostrar a nadie.
       para que ninguna consulta pueda salir sin tenant por olvido
 - ✅ Roles y permisos con CASL, compartidos entre API y front (falta aplicarlos en
       las pantallas y como guardia por operación)
-- ⬜ Elección de sucursal activa (un usuario puede tener varias)
+- ✅ Elección de sucursal al entrar, y cambio de sucursal sin volver a autenticarse
 - ⬜ Semilla de datos: provincias, condiciones de IVA y tipos de comprobante desde
       los web services de AFIP, no escritos a mano
 - ✅ **Sistema de diseño escrito** (`docs/tecnicos/sistema-de-diseno.md`) y skill
@@ -52,7 +52,11 @@ Sin esto no hay pantalla que mostrar a nadie.
       la combinación y los motivos de rechazo escritos
 - ⬜ Enrutado con TanStack Router y sesión (el shell ya está, falta el router)
 - ⬜ Barra de estado inferior con las teclas activas del contexto
+- ✅ Cookie httpOnly para el refresco, con entrega por cuerpo para clientes sin cookies
+- ✅ Login sólo con correo y contraseña: el tenant sale del usuario
 - ⬜ Auditoría automática de altas, modificaciones y bajas
+- ⬜ Pantalla de configuración: sucursal predeterminada, tema, densidad y teclas
+- ⬜ Aplicar CASL en las pantallas y como guardia por operación
 
 **Criterio de terminado:** un usuario entra, elige sucursal, y lo que ve depende de
 sus permisos.
@@ -65,7 +69,7 @@ Las entidades ya están modeladas; falta poder operarlas.
 
 - ⬜ ABM de empresas, sucursales y puntos de venta
 - ⬜ ABM de entidades comerciales con consulta al padrón de AFIP por CUIT
-- ⬜ ABM de vehículos y transferencia de titularidad
+- 🔨 ABM de vehículos: listado y alta contra la API; falta edición y titularidad
 - ⬜ Búsqueda única: por patente, por chasis, por cliente, por CUIT
 - ⬜ Ficha del vehículo con su historia completa, incluidos los titulares anteriores
 - ✅ **Patrón de listado responsive** resuelto en la pantalla de OT: tabla densa en
@@ -128,6 +132,9 @@ El corazón del producto y lo que el nombre promete.
 ## Deuda técnica registrada
 
 Cosas que sabemos que faltan, para que no se descubran de golpe:
+
+- **Enrutado.** La navegación es estado local, no URL. Con dos pantallas alcanza; con
+  cinco no. TanStack Router entra antes de que se note.
 
 - **Backups de Postgres antes del primer cliente en producción.** Vamos a guardar
   comprobantes fiscales de terceros con obligación legal de conservación. `pgBackRest`

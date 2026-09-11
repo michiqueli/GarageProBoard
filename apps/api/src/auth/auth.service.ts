@@ -49,31 +49,17 @@ export class ServicioAuth {
   ) {}
 
   async iniciar(entrada: {
-    tenant: string
     email: string
     password: string
     sucursalId?: string | undefined
     agente?: string | undefined
     ip?: string | undefined
   }) {
-    const tenantId = await this.buscarTenant(entrada.tenant)
+    const encontrado = await this.buscarPorCorreo(entrada.email)
 
-    if (!tenantId) {
-      // Se verifica igual contra el señuelo: que el tenant no exista tampoco puede
-      // notarse en el tiempo de respuesta.
-      await argon2.verify(HASH_SENUELO, entrada.password).catch(() => false)
-      throw new ErrorAuth('CREDENCIALES_INVALIDAS')
-    }
-
-    const encontrado = await conTenant(this.db, tenantId, async (tx) => {
-      const [u] = await tx
-        .select()
-        .from(usuario)
-        .where(and(eq(usuario.email, entrada.email), eq(usuario.activo, true)))
-        .limit(1)
-      return u
-    })
-
+    // Se verifica igual cuando el correo no existe, contra un hash señuelo: sin eso, la
+    // diferencia de tiempo entre "no existe" y "existe con otra clave" alcanza para
+    // saber qué direcciones están registradas.
     const valida = await argon2
       .verify(encontrado?.hashPassword ?? HASH_SENUELO, entrada.password)
       .catch(() => false)
@@ -81,8 +67,8 @@ export class ServicioAuth {
     if (!encontrado || !valida) throw new ErrorAuth('CREDENCIALES_INVALIDAS')
 
     return this.abrirSesion({
-      tenantId,
-      usuarioId: encontrado.id,
+      tenantId: encontrado.tenantId,
+      usuarioId: encontrado.usuarioId,
       sucursalPedida: entrada.sucursalId,
       familia: crypto.randomUUID(),
       agente: entrada.agente,
@@ -173,13 +159,28 @@ export class ServicioAuth {
     return conTenant(this.db, s.tenantId, (tx) => this.armarPayload(tx, s.usuarioId, s.sucursalId))
   }
 
-  private async buscarTenant(slug: string): Promise<string | null> {
-    // La única consulta del sistema que corre sin tenant en la sesión, contra una
-    // función SECURITY DEFINER que sólo puede devolver un id.
-    const { rows } = await this.db.execute<{ id: string | null }>(
-      sql`select tenant_por_slug(${slug}) as id`,
-    )
-    return rows[0]?.id ?? null
+  /**
+   * Quién es y de qué concesionaria, a partir del correo.
+   *
+   * La única consulta del sistema que corre sin tenant en la sesión: autenticarse pasa
+   * antes de saber a qué concesionaria pertenece quien entra. Va contra una función
+   * SECURITY DEFINER que devuelve tres campos y nada más.
+   */
+  private async buscarPorCorreo(email: string) {
+    const { rows } = await this.db.execute<{
+      usuario_id: string
+      tenant_id: string
+      hash_password: string
+    }>(sql`select * from autenticar_usuario(${email.toLowerCase()})`)
+
+    const fila = rows[0]
+    if (!fila) return null
+
+    return {
+      usuarioId: fila.usuario_id,
+      tenantId: fila.tenant_id,
+      hashPassword: fila.hash_password,
+    }
   }
 
   private async abrirSesion(
@@ -319,6 +320,7 @@ export class ServicioAuth {
         tema: (config?.tema ?? 'sistema') as 'claro' | 'oscuro' | 'sistema',
         densidad: (config?.densidad ?? 'compacta') as 'compacta' | 'comoda',
         filasPorPagina: config?.filasPorPagina ?? 50,
+        sucursalPredeterminadaId: config?.sucursalPredeterminadaId ?? null,
       },
     }
   }

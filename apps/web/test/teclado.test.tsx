@@ -1,10 +1,23 @@
 import { cleanup, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { App } from '../src/App.tsx'
 import { Boton } from '../src/componentes/Boton.tsx'
+import { PantallaOrdenes } from '../src/modulos/ordenes/PantallaOrdenes.tsx'
 import { ProveedorTeclado } from '../src/teclado/index.ts'
 import { conAncho } from './preparar.ts'
+
+/**
+ * El listado con su proveedor, que es como lo monta la aplicación una vez que hay
+ * sesión. No se renderiza `<App />` porque eso arrancaría por el login y estos tests
+ * son sobre el teclado y el listado, no sobre autenticarse.
+ */
+function montarOrdenes() {
+  return render(
+    <ProveedorTeclado modulo="ordenes">
+      <PantallaOrdenes />
+    </ProveedorTeclado>,
+  )
+}
 
 afterEach(() => {
   cleanup()
@@ -13,7 +26,7 @@ afterEach(() => {
 
 describe('la pantalla se monta', () => {
   it('renderiza el listado con el shell y la barra de estado', () => {
-    render(<App />)
+    montarOrdenes()
 
     expect(screen.getByRole('heading', { name: 'Órdenes de trabajo', level: 1 })).toBeDefined()
     expect(screen.getByText('AB123CD')).toBeDefined()
@@ -22,7 +35,7 @@ describe('la pantalla se monta', () => {
   })
 
   it('la barra de estado anuncia las teclas del contexto', () => {
-    render(<App />)
+    montarOrdenes()
 
     // Las globales, más la del módulo activo.
     expect(screen.getAllByText('F2').length).toBeGreaterThan(0)
@@ -31,7 +44,7 @@ describe('la pantalla se monta', () => {
   })
 
   it('no muestra teclas de otros módulos', () => {
-    render(<App />)
+    montarOrdenes()
     expect(screen.queryByText('Facturar')).toBeNull()
     expect(screen.queryByText('Entregar el vehículo')).toBeNull()
   })
@@ -138,7 +151,7 @@ describe('el registro de atajos', () => {
 describe('el listado responsive', () => {
   it('en teléfono muestra tarjetas y no una tabla con scroll horizontal', () => {
     conAncho(390)
-    render(<App />)
+    montarOrdenes()
 
     expect(screen.queryByRole('table')).toBeNull()
     // La patente sigue estando, pero una sola vez: se renderiza una forma, no las dos.
@@ -148,7 +161,7 @@ describe('el listado responsive', () => {
 
   it('en escritorio muestra la tabla densa', () => {
     conAncho(1440)
-    render(<App />)
+    montarOrdenes()
 
     expect(screen.getByRole('table')).toBeDefined()
     expect(screen.getAllByText('AB123CD')).toHaveLength(1)

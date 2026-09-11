@@ -1,4 +1,4 @@
-import { oc } from '@orpc/contract'
+import { type ContractRouterClient, oc } from '@orpc/contract'
 import { z } from 'zod'
 import { contratoAuth } from './auth.ts'
 import { chasis, dominio, paginado, problema } from './comunes.ts'
@@ -27,12 +27,26 @@ export const contrato = {
   auth: contratoAuth,
 
   salud: oc
-    .route({ method: 'GET', path: '/salud', summary: 'Chequeo de vida del servicio' })
+    .route({
+      method: 'GET',
+      path: '/salud',
+      tags: ['Sistema'],
+      operationId: 'salud',
+      summary: 'Chequeo de vida del servicio',
+      description: 'Toca la base: un servicio que responde sin poder consultar no está sano.',
+    })
     .output(z.object({ estado: z.literal('ok'), version: z.string() })),
 
   vehiculos: {
     listar: oc
-      .route({ method: 'GET', path: '/vehiculos', summary: 'Vehículos del tenant' })
+      .route({
+        method: 'GET',
+        path: '/vehiculos',
+        tags: ['Vehículos'],
+        operationId: 'listarVehiculos',
+        summary: 'Listado de vehículos',
+        description: 'El buscador acepta patente, número de chasis o nombre del cliente.',
+      })
       .input(
         paginado.extend({
           // El mecánico busca por la patente que ve en el parabrisas; el
@@ -43,7 +57,17 @@ export const contrato = {
       .output(z.object({ datos: z.array(vehiculoSalida), total: z.number().int() })),
 
     crear: oc
-      .route({ method: 'POST', path: '/vehiculos', summary: 'Alta de vehículo' })
+      .route({
+        method: 'POST',
+        path: '/vehiculos',
+        tags: ['Vehículos'],
+        operationId: 'crearVehiculo',
+        summary: 'Alta de vehículo',
+        successStatus: 201,
+        description:
+          'El dominio puede omitirse: un 0km existe con su chasis desde que la terminal ' +
+          'lo factura y puede pasar semanas sin chapa.',
+      })
       .input(
         z.object({
           chasis,
@@ -64,3 +88,12 @@ export const contrato = {
 }
 
 export type Contrato = typeof contrato
+
+/**
+ * El tipo del cliente, listo para usar.
+ *
+ * Se exporta desde acá para que el front no tenga que depender de `@orpc/contract`
+ * directamente: el paquete de contratos es la única frontera con esa librería, igual
+ * que `@garagetick/db` lo es con drizzle.
+ */
+export type ClienteApi = ContractRouterClient<typeof contrato>

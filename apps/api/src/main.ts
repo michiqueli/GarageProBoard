@@ -3,6 +3,7 @@ import { NestFactory } from '@nestjs/core'
 import { FastifyAdapter, type NestFastifyApplication } from '@nestjs/platform-fastify'
 import { Logger } from 'nestjs-pino'
 import { ModuloPrincipal } from './app.module.ts'
+import { configurarApp } from './arranque.ts'
 import { montarDocumentacion } from './documentacion/documentacion.ts'
 
 const app = await NestFactory.create<NestFastifyApplication>(
@@ -13,9 +14,7 @@ const app = await NestFactory.create<NestFastifyApplication>(
 
 app.useLogger(app.get(Logger))
 
-// Las rutas del contrato se declaran sin prefijo; el /api se agrega acá una vez.
-app.setGlobalPrefix('api')
-
+await configurarApp(app)
 await montarDocumentacion(app)
 
 // 3080 y no 3000: el VPS de pruebas ya tiene ocupada esa franja de puertos.

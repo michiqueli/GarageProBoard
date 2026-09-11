@@ -9,7 +9,7 @@ import { ORDENES, type OrdenListada } from './datos-de-ejemplo.ts'
 
 const COLUMNAS = ['OT', 'Patente', 'Vehículo', 'Cliente', 'Ingreso', 'Mecánico', 'Estado'] as const
 
-export function PantallaOrdenes() {
+export function PantallaOrdenes({ onNavegar }: { onNavegar?: (s: string) => void }) {
   const [seleccionada, setSeleccionada] = useState(ORDENES[0]?.numero ?? '')
   const esEscritorio = useMedia(ES_ESCRITORIO)
 
@@ -23,6 +23,7 @@ export function PantallaOrdenes() {
       seccion="ordenes"
       titulo="Órdenes de trabajo"
       modulo="ordenes"
+      onNavegar={onNavegar}
       acciones={
         <Boton accion="ordenes.cerrar" variante="principal" onClick={() => {}}>
           Cerrar la orden
@@ -41,6 +42,11 @@ export function PantallaOrdenes() {
           <h2 className="font-display text-dato font-semibold">Piso de taller</h2>
           <span className="font-mono text-etiqueta text-texto-tenue">
             {ORDENES.length} abiertas
+          </span>
+          {/* Se dice en la pantalla y no sólo en el código: una demo con datos
+              inventados sin avisar es una demo que engaña. */}
+          <span className="rounded-full border border-atencion px-2 py-px text-[10.5px] font-semibold text-atencion">
+            datos de ejemplo
           </span>
           <span className="ml-auto">
             <Boton accion="global.nuevo" onClick={() => {}}>

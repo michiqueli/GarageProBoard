@@ -1,6 +1,8 @@
 import { oc } from '@orpc/contract'
 import { z } from 'zod'
 
+const TAG = 'Sesión'
+
 export const sucursalSalida = z.object({
   id: z.uuid(),
   nombre: z.string(),
@@ -19,6 +21,13 @@ export const configSalida = z.object({
   tema: z.enum(['claro', 'oscuro', 'sistema']),
   densidad: z.enum(['compacta', 'comoda']),
   filasPorPagina: z.number().int(),
+  /**
+   * A qué sucursal entra sin preguntar.
+   *
+   * Si es `null` y el usuario tiene más de una, la aplicación le pregunta al entrar.
+   * Con una sola sucursal nunca se pregunta: elegir entre una opción no es elegir.
+   */
+  sucursalPredeterminadaId: z.uuid().nullable(),
 })
 
 /**
@@ -33,8 +42,14 @@ export const sesionSalida = z.object({
   /** JWT de vida corta. Va en el encabezado de cada pedido. */
   access: z.string(),
   expiraEn: z.string(),
-  /** Cadena opaca, de vida larga y **de un solo uso**: cada refresco emite otra. */
-  refresh: z.string(),
+  /**
+   * Cadena opaca, de vida larga y **de un solo uso**: cada refresco emite otra.
+   *
+   * Sólo aparece si se pidió `entrega: 'cuerpo'`. En un navegador se omite a propósito
+   * y viaja en una cookie `httpOnly`: si estuviera acá, un script malicioso podría
+   * leerla y quedarse con treinta días de sesión.
+   */
+  refresh: z.string().optional(),
 
   usuario: usuarioSalida,
   tenant: z.object({ id: z.uuid(), nombre: z.string(), slug: z.string() }),
@@ -50,18 +65,37 @@ export const sesionSalida = z.object({
 
 export const contratoAuth = {
   iniciar: oc
-    .route({ method: 'POST', path: '/auth/iniciar', summary: 'Iniciar sesión' })
+    .route({
+      method: 'POST',
+      path: '/auth/iniciar',
+      tags: [TAG],
+      operationId: 'iniciarSesion',
+      summary: 'Iniciar sesión',
+      description:
+        'Devuelve el token de acceso y todo lo que la aplicación necesita para arrancar: ' +
+        'usuario, sucursales, permisos, mapa de teclas y preferencias.',
+    })
     .input(
       z.object({
         /**
-         * En producción sale del subdominio (`litoral.garagetick.com`) y el usuario
-         * nunca lo escribe. Viaja en el cuerpo para que también funcione en
-         * desarrollo y desde una app mobile, donde no hay subdominio del que leerlo.
+         * No se pide la concesionaria: el correo es único en todo el sistema y de él
+         * sale a cuál pertenece el usuario. Preguntarle a alguien dónde trabaja antes
+         * de dejarlo entrar es hacerle recordar algo que el sistema ya sabe.
          */
-        tenant: z.string().min(1),
         email: z.email(),
         password: z.string().min(1),
         sucursalId: z.uuid().optional(),
+        /**
+         * Dónde recibir el token de refresco.
+         *
+         * 'cookie' (por omisión) lo manda en una cookie `httpOnly` que el JavaScript de
+         * la página no puede leer. Es lo correcto para un navegador.
+         *
+         * 'cuerpo' lo devuelve en la respuesta, para clientes que no manejan cookies
+         * — la app mobile, una integración de terceros. Quien lo pide se hace cargo de
+         * guardarlo en un lugar seguro del sistema operativo.
+         */
+        entrega: z.enum(['cookie', 'cuerpo']).default('cookie'),
       }),
     )
     .errors({
@@ -76,21 +110,44 @@ export const contratoAuth = {
     .output(sesionSalida),
 
   refrescar: oc
-    .route({ method: 'POST', path: '/auth/refrescar', summary: 'Renovar la sesión' })
-    .input(z.object({ refresh: z.string().min(1) }))
+    .route({
+      method: 'POST',
+      path: '/auth/refrescar',
+      tags: [TAG],
+      operationId: 'refrescarSesion',
+      summary: 'Renovar la sesión',
+      description:
+        'El token de refresco es de un solo uso: cada llamada emite uno nuevo y anula el ' +
+        'anterior. Reusar uno ya rotado anula la sesión entera.',
+    })
+    .input(z.object({ refresh: z.string().min(1).optional() }))
     .errors({
       REFRESCO_INVALIDO: { status: 401, message: 'La sesión expiró o fue cerrada' },
     })
     .output(sesionSalida),
 
   cerrar: oc
-    .route({ method: 'POST', path: '/auth/cerrar', summary: 'Cerrar sesión' })
-    .input(z.object({ refresh: z.string().min(1) }))
+    .route({
+      method: 'POST',
+      path: '/auth/cerrar',
+      tags: [TAG],
+      operationId: 'cerrarSesion',
+      summary: 'Cerrar sesión',
+      description: 'Anula la sesión completa, no sólo el token presentado.',
+    })
+    .input(z.object({ refresh: z.string().min(1).optional() }))
     .output(z.object({ cerrada: z.boolean() })),
 
   cambiarSucursal: oc
-    .route({ method: 'POST', path: '/auth/sucursal', summary: 'Cambiar de sucursal' })
-    .input(z.object({ refresh: z.string().min(1), sucursalId: z.uuid() }))
+    .route({
+      method: 'POST',
+      path: '/auth/sucursal',
+      tags: [TAG],
+      operationId: 'cambiarSucursal',
+      summary: 'Cambiar de sucursal',
+      description: 'Emite tokens nuevos apuntando a otra sucursal del mismo usuario.',
+    })
+    .input(z.object({ refresh: z.string().min(1).optional(), sucursalId: z.uuid() }))
     .errors({
       SIN_ACCESO: { status: 403, message: 'No tenés acceso a esa sucursal' },
       REFRESCO_INVALIDO: { status: 401, message: 'La sesión expiró o fue cerrada' },
@@ -98,7 +155,14 @@ export const contratoAuth = {
     .output(sesionSalida),
 
   yo: oc
-    .route({ method: 'GET', path: '/auth/yo', summary: 'Datos de la sesión actual' })
+    .route({
+      method: 'GET',
+      path: '/auth/yo',
+      tags: [TAG],
+      operationId: 'sesionActual',
+      summary: 'Datos de la sesión actual',
+      description: 'Lo mismo que devuelve el inicio de sesión, sin emitir credenciales nuevas.',
+    })
     .errors({ NO_AUTENTICADO: { status: 401, message: 'Falta iniciar sesión' } })
     .output(sesionSalida.omit({ access: true, refresh: true, expiraEn: true })),
 }

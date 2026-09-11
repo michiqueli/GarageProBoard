@@ -13,6 +13,7 @@ import {
   usuarioConfig,
   usuarioRol,
   usuarioSucursal,
+  vehiculo,
 } from '../src/schema/index.ts'
 import {
   CONDICIONES_IVA,
@@ -41,19 +42,23 @@ if (!url) {
 const pool = crearPool(url)
 const db = crearDb(pool)
 
-try {
-  await informarCatalogos(db)
+// Envuelto en una función y llamado al final del archivo: si el trabajo corriera acá
+// arriba, las constantes declaradas más abajo todavía no existirían.
+async function principal(): Promise<void> {
+  try {
+    await informarCatalogos(db)
 
-  if (process.env.NODE_ENV === 'production') {
-    console.log('✓ Catálogos al día. No se siembran datos de ejemplo en producción.')
-  } else {
-    await sembrarConcesionariaDeEjemplo(db)
+    if (process.env.NODE_ENV === 'production') {
+      console.log('✓ Catálogos al día. No se siembran datos de ejemplo en producción.')
+    } else {
+      await sembrarEjemplos(db)
+    }
+  } catch (error) {
+    console.error('✗ Falló la siembra:', error)
+    process.exitCode = 1
+  } finally {
+    await pool.end()
   }
-} catch (error) {
-  console.error('✗ Falló la siembra:', error)
-  process.exitCode = 1
-} finally {
-  await pool.end()
 }
 
 async function informarCatalogos(db: Db): Promise<void> {
@@ -65,131 +70,133 @@ async function informarCatalogos(db: Db): Promise<void> {
   )
 }
 
-/**
- * Una concesionaria completa para poder trabajar: dos razones sociales, dos sucursales,
- * sus puntos de venta y un usuario con todos los permisos.
- *
- * Es a propósito el caso incómodo y no el fácil — dos SAS bajo el mismo tenant, cada
- * una con su CUIT y su PDV 0001. Si el sistema se desarrolla siempre contra una sola
- * empresa, el día que aparezca la segunda se rompe todo a la vez.
- */
-async function sembrarConcesionariaDeEjemplo(db: Db): Promise<void> {
-  const SLUG = 'automotores-litoral'
+interface Boca {
+  nombre: string
+  /** El CUIT tiene que ser distinto en cada una: hay un único por tenant. */
+  cuit: string
+  sucursales: string[]
+}
 
-  const [existente] = await db.select().from(tenant).where(eq(tenant.slug, SLUG)).limit(1)
-  if (existente) {
-    console.log(`✓ La concesionaria de ejemplo ya existe (${SLUG}).`)
-    return
+interface Concesionaria {
+  slug: string
+  nombre: string
+  empresas: Boca[]
+  usuario: { email: string; nombre: string; apellido: string }
+  vehiculos: Array<{ chasis: string; dominio: string | null; anio: number; color: string }>
+}
+
+/**
+ * Dos concesionarias, a propósito.
+ *
+ * Con una sola, un error de aislamiento no se nota: todo lo que se ve es lo que
+ * corresponde porque no hay otra cosa que ver. Con dos, entrar como uno y como el otro
+ * muestra listas distintas, y si algún día se cruzan salta a la vista.
+ *
+ * La primera lleva además el caso incómodo: **dos razones sociales bajo el mismo
+ * tenant**, cada una con su CUIT y su punto de venta 0001. Si el sistema se desarrolla
+ * siempre contra una sola empresa, el día que aparezca la segunda se rompe todo junto.
+ */
+const EJEMPLOS: Concesionaria[] = [
+  {
+    slug: 'litoral',
+    nombre: 'Grupo Automotores del Litoral',
+    empresas: [
+      {
+        nombre: 'Automotores Litoral SAS',
+        cuit: '30712345679',
+        sucursales: ['Casa Central', 'Rafaela'],
+      },
+      { nombre: 'Litoral Repuestos SAS', cuit: '30719876543', sucursales: ['Depósito Central'] },
+    ],
+    usuario: { email: 'admin@litoral.test', nombre: 'Martín', apellido: 'Gutiérrez' },
+    vehiculos: [
+      { chasis: '8AWZZZ377KA123456', dominio: 'AB123CD', anio: 2019, color: 'Gris plata' },
+      { chasis: '9BWZZZ377KA654321', dominio: 'ABC123', anio: 2014, color: 'Blanco' },
+      { chasis: '3VWZZZ377KA999888', dominio: 'AC844KL', anio: 2021, color: 'Negro' },
+      { chasis: '93YRBB000LJ445566', dominio: 'MFV872', anio: 2016, color: 'Rojo' },
+      // Un 0km sin patentar: existe con chasis y todavía no tiene chapa.
+      { chasis: '8AJBA3FS0P0112233', dominio: null, anio: 2026, color: 'Azul' },
+    ],
+  },
+  {
+    slug: 'norte',
+    nombre: 'Automotores del Norte SA',
+    empresas: [
+      { nombre: 'Automotores del Norte SA', cuit: '30655443321', sucursales: ['Salta Centro'] },
+    ],
+    usuario: { email: 'admin@norte.test', nombre: 'Lucía', apellido: 'Quiroga' },
+    vehiculos: [
+      { chasis: '9BFZH55P4NB778899', dominio: 'XY987ZW', anio: 2022, color: 'Blanco' },
+      { chasis: '8AGZC5210MR334455', dominio: 'NPQ334', anio: 2013, color: 'Verde' },
+      { chasis: '93HGM6650NZ667788', dominio: 'AF220RS', anio: 2020, color: 'Gris' },
+    ],
+  },
+]
+
+async function sembrarEjemplos(db: Db): Promise<void> {
+  for (const ejemplo of EJEMPLOS) {
+    const [existente] = await db.select().from(tenant).where(eq(tenant.slug, ejemplo.slug)).limit(1)
+
+    if (existente) {
+      console.log(`✓ ${ejemplo.nombre} ya existe.`)
+      continue
+    }
+
+    await sembrarConcesionaria(db, ejemplo)
   }
 
-  console.log('› Concesionaria de ejemplo…')
+  console.log('')
+  console.log('  Para entrar, con la misma contraseña en las dos:')
+  for (const e of EJEMPLOS) {
+    console.log(`    ${e.usuario.email.padEnd(22)} ${e.nombre}`)
+  }
+  console.log(`    contraseña: ${process.env.ADMIN_PASSWORD ?? 'garagetick'}`)
+  console.log('')
+}
 
-  const [t] = await db
-    .insert(tenant)
-    .values({ nombre: 'Grupo Automotores del Litoral', slug: SLUG })
-    .returning()
+async function sembrarConcesionaria(db: Db, ej: Concesionaria): Promise<void> {
+  console.log(`› ${ej.nombre}…`)
+
+  const [t] = await db.insert(tenant).values({ nombre: ej.nombre, slug: ej.slug }).returning()
   if (!t) throw new Error('No se pudo crear el tenant.')
 
-  const [taller] = await db
-    .insert(empresa)
-    .values({
-      tenantId: t.id,
-      razonSocial: 'Automotores Litoral SAS',
-      nombreFantasia: 'Automotores Litoral',
-      cuit: '30712345679',
-      condicionIva: 1,
-      provinciaCodigo: 12,
-      domicilioFiscal: 'Av. Freyre 2350, Santa Fe',
-    })
-    .returning()
+  const sucursalesCreadas: Array<{ id: string }> = []
 
-  const [repuestos] = await db
-    .insert(empresa)
-    .values({
-      tenantId: t.id,
-      razonSocial: 'Litoral Repuestos SAS',
-      cuit: '30719876543',
-      condicionIva: 1,
-      provinciaCodigo: 12,
-      domicilioFiscal: 'Av. Freyre 2360, Santa Fe',
-    })
-    .returning()
+  for (const boca of ej.empresas) {
+    const [e] = await db
+      .insert(empresa)
+      .values({
+        tenantId: t.id,
+        razonSocial: boca.nombre,
+        cuit: boca.cuit,
+        condicionIva: 1,
+        provinciaCodigo: 12,
+      })
+      .returning()
+    if (!e) throw new Error('No se pudo crear la empresa.')
 
-  if (!taller || !repuestos) throw new Error('No se pudieron crear las empresas.')
+    for (const [indice, nombre] of boca.sucursales.entries()) {
+      const [s] = await db
+        .insert(sucursal)
+        .values({ tenantId: t.id, empresaId: e.id, nombre })
+        .returning()
+      if (!s) throw new Error('No se pudo crear la sucursal.')
 
-  const [casaCentral] = await db
-    .insert(sucursal)
-    .values({
-      tenantId: t.id,
-      empresaId: taller.id,
-      nombre: 'Casa Central',
-      domicilio: 'Av. Freyre 2350',
-      localidad: 'Santa Fe',
-      provinciaCodigo: 12,
-    })
-    .returning()
+      sucursalesCreadas.push(s)
 
-  const [rafaela] = await db
-    .insert(sucursal)
-    .values({
-      tenantId: t.id,
-      empresaId: taller.id,
-      nombre: 'Rafaela',
-      domicilio: 'Bv. Roca 1180',
-      localidad: 'Rafaela',
-      provinciaCodigo: 12,
-    })
-    .returning()
-
-  const [deposito] = await db
-    .insert(sucursal)
-    .values({
-      tenantId: t.id,
-      empresaId: repuestos.id,
-      nombre: 'Depósito Central',
-      localidad: 'Santa Fe',
-      provinciaCodigo: 12,
-    })
-    .returning()
-
-  if (!casaCentral || !rafaela || !deposito) throw new Error('No se pudieron crear las sucursales.')
-
-  // Los dos PDV 0001 conviven porque la unicidad es por CUIT, no por tenant. Sembrar
-  // este caso a propósito es lo que hace que el bug no llegue nunca a producción.
-  await db.insert(puntoVenta).values([
-    {
-      tenantId: t.id,
-      empresaId: taller.id,
-      sucursalId: casaCentral.id,
-      numero: 1,
-      uso: 'facturacion',
-      predeterminado: true,
-    },
-    {
-      tenantId: t.id,
-      empresaId: taller.id,
-      sucursalId: casaCentral.id,
-      numero: 2,
-      uso: 'remito',
-      predeterminado: true,
-    },
-    {
-      tenantId: t.id,
-      empresaId: taller.id,
-      sucursalId: rafaela.id,
-      numero: 3,
-      uso: 'facturacion',
-      predeterminado: true,
-    },
-    {
-      tenantId: t.id,
-      empresaId: repuestos.id,
-      sucursalId: deposito.id,
-      numero: 1,
-      uso: 'facturacion',
-      predeterminado: true,
-    },
-  ])
+      // El número de punto de venta es único **por CUIT**, no por tenant: las dos
+      // empresas del grupo tienen las dos su 0001. Sembrarlo así a propósito es lo
+      // que hace que ese bug no llegue nunca a producción.
+      await db.insert(puntoVenta).values({
+        tenantId: t.id,
+        empresaId: e.id,
+        sucursalId: s.id,
+        numero: indice + 1,
+        uso: 'facturacion',
+        predeterminado: true,
+      })
+    }
+  }
 
   const roles = await db
     .insert(rol)
@@ -206,48 +213,45 @@ async function sembrarConcesionariaDeEjemplo(db: Db): Promise<void> {
   const gerente = roles.find((r) => r.nombre === 'Gerente')
   if (!gerente) throw new Error('No se creó el rol de gerente.')
 
-  const clave = process.env.ADMIN_PASSWORD ?? 'garagetick'
-  const [admin] = await db
+  const [u] = await db
     .insert(usuario)
     .values({
       tenantId: t.id,
-      email: 'admin@litoral.test',
-      hashPassword: await argon2.hash(clave, { type: argon2.argon2id }),
-      nombre: 'Martín',
-      apellido: 'Gutiérrez',
+      email: ej.usuario.email,
+      hashPassword: await argon2.hash(process.env.ADMIN_PASSWORD ?? 'garagetick', {
+        type: argon2.argon2id,
+      }),
+      nombre: ej.usuario.nombre,
+      apellido: ej.usuario.apellido,
     })
     .returning()
+  if (!u) throw new Error('No se pudo crear el usuario.')
 
-  if (!admin) throw new Error('No se pudo crear el usuario.')
+  await db.insert(usuarioRol).values({ tenantId: t.id, usuarioId: u.id, rolId: gerente.id })
+  await db
+    .insert(usuarioSucursal)
+    .values(sucursalesCreadas.map((s) => ({ tenantId: t.id, usuarioId: u.id, sucursalId: s.id })))
 
-  await db.insert(usuarioRol).values({ tenantId: t.id, usuarioId: admin.id, rolId: gerente.id })
-  await db.insert(usuarioSucursal).values([
-    { tenantId: t.id, usuarioId: admin.id, sucursalId: casaCentral.id },
-    { tenantId: t.id, usuarioId: admin.id, sucursalId: rafaela.id },
-    { tenantId: t.id, usuarioId: admin.id, sucursalId: deposito.id },
-  ])
+  // Sin sucursal predeterminada a propósito: así se ve la pantalla de elección cuando
+  // hay más de una. Se configura desde la aplicación cuando exista esa pantalla.
+  await db.insert(usuarioConfig).values({ tenantId: t.id, usuarioId: u.id })
 
-  await db.insert(usuarioConfig).values({
-    tenantId: t.id,
-    usuarioId: admin.id,
-    sucursalPredeterminadaId: casaCentral.id,
-  })
-
-  // El mapa de teclas se siembra completo al crear el usuario.
   await db.insert(usuarioAtajo).values(
     atajosParaSembrar().map((a) => ({
       tenantId: t.id,
-      usuarioId: admin.id,
+      usuarioId: u.id,
       ambito: a.ambito,
       accion: a.accion,
       tecla: a.tecla,
     })),
   )
 
-  console.log(`  2 empresas · 3 sucursales · 4 puntos de venta · ${roles.length} roles`)
-  console.log('')
-  console.log('  Para entrar:')
-  console.log('    admin@litoral.test')
-  console.log(`    ${clave}`)
-  console.log('')
+  await db.insert(vehiculo).values(ej.vehiculos.map((v) => ({ tenantId: t.id, ...v })))
+
+  console.log(
+    `  ${ej.empresas.length} empresa(s) · ${sucursalesCreadas.length} sucursal(es) · ` +
+      `${ej.vehiculos.length} vehículos · ${roles.length} roles`,
+  )
 }
+
+await principal()

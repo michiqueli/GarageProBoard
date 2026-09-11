@@ -5,6 +5,7 @@ import { LoggerModule } from 'nestjs-pino'
 import { ModuloAuth } from './auth/auth.module.ts'
 import { ModuloBase } from './comun/base.module.ts'
 import { ControladorSalud } from './salud/salud.controller.ts'
+import { ControladorVehiculos } from './vehiculos/vehiculos.controller.ts'
 
 @Module({
   imports: [
@@ -27,6 +28,6 @@ import { ControladorSalud } from './salud/salud.controller.ts'
     ModuloBase,
     ModuloAuth,
   ],
-  controllers: [ControladorSalud],
+  controllers: [ControladorSalud, ControladorVehiculos],
 })
 export class ModuloPrincipal {}
