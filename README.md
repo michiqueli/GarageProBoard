@@ -88,8 +88,10 @@ diseñan juntas o la segunda nunca llega.
 
 **Teclado en escritorio, dedo en el taller.** El operador de Oversoft es rapidísimo
 con el teclado, y el asesor de servicios no va a aceptar algo más lento aunque sea más
-lindo: el flujo de recepción se completa sin tocar el mouse. En el piso de taller es
-al revés — objetivos grandes, porque el mecánico tiene guantes.
+lindo: el flujo de recepción se completa sin tocar el mouse, con atajos en F1 a F10 que
+van escritos en los propios botones. En el piso de taller es al revés — objetivos
+grandes, porque el mecánico tiene guantes. Todo eso está en
+[el sistema de diseño](docs/tecnicos/sistema-de-diseno.md).
 
 ## Documentación
 
@@ -99,5 +101,9 @@ Las decisiones viven en [`docs/`](docs/), versionadas con el código:
 - [`docs/roadmaps/`](docs/roadmaps/) — planes por hitos, con estado
 - [`docs/tecnicos/`](docs/tecnicos/) — modelo de datos, integraciones, arquitectura
 
-Arrancá por [el modelo del núcleo](docs/tecnicos/nucleo-modelo-datos.md) y por
+Arrancá por [el modelo del núcleo](docs/tecnicos/nucleo-modelo-datos.md), seguí por
+[el sistema de diseño](docs/tecnicos/sistema-de-diseno.md) y mirá
 [el roadmap](docs/roadmaps/roadmap-inicial.md).
+
+La carpeta `.claude/skills/` también se versiona: la skill `ui-garagetick` hace que
+cualquier cambio de interfaz siga el sistema de diseño sin que haya que recordarlo.

@@ -34,10 +34,11 @@ Sin esto no hay pantalla que mostrar a nadie.
 - ⬜ Elección de sucursal activa (un usuario puede tener varias)
 - ⬜ Semilla de datos: provincias, condiciones de IVA y tipos de comprobante desde
       los web services de AFIP, no escritos a mano
-- ⬜ **Sistema de diseño escrito** (`docs/tecnicos/sistema-de-diseno.md`): tokens,
-      escala de densidad, mapa global de teclas F1-F10 e inventario de componentes.
-      Va antes de la primera pantalla, no después: es lo que evita que cada una
-      invente lo suyo, y es el documento que el especialista de UX va a corregir.
+- ✅ **Sistema de diseño escrito** (`docs/tecnicos/sistema-de-diseno.md`) y skill
+      `ui-garagetick` que lo aplica sola. Falta implementar los tokens en
+      `index.css` y el registro de atajos en `apps/web/src/teclado/`.
+- ⬜ Tokens del `@theme` en `index.css`, según el sistema de diseño
+- ⬜ Registro único de atajos en `apps/web/src/teclado/` + barra de estado
 - ⬜ Shell del front: navegación, sesión, tema claro y oscuro
 - ⬜ Barra de estado inferior con las teclas activas del contexto
 - ⬜ Auditoría automática de altas, modificaciones y bajas
