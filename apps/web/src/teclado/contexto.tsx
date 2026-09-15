@@ -20,6 +20,8 @@ import { debeDisparar, debePrevenir } from './coincide.ts'
 interface Teclado {
   /** El mapa resuelto: valores por omisión más las diferencias de este usuario. */
   mapa: MapaAtajos
+  /** El módulo de la pantalla montada, que define cuál es la acción de F4. */
+  modulo: Modulo | undefined
   /** Las acciones que ahora mismo tienen un manejador montado. */
   activas: ReadonlySet<string>
   teclaDe(accion: string): string | undefined
@@ -81,11 +83,12 @@ export function ProveedorTeclado({
   const valor = useMemo<Teclado>(
     () => ({
       mapa,
+      modulo,
       activas,
       teclaDe: (accion) => mapa[accion],
       registrar,
     }),
-    [mapa, activas, registrar],
+    [mapa, modulo, activas, registrar],
   )
 
   return <Contexto.Provider value={valor}>{children}</Contexto.Provider>

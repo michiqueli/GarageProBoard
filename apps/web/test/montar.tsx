@@ -1,0 +1,64 @@
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { createMemoryHistory, RouterProvider } from '@tanstack/react-router'
+import { render } from '@testing-library/react'
+import type { DatosSesion } from '../src/sesion/almacen.ts'
+
+/**
+ * Monta la aplicación entera en una dirección, con el router de verdad y un historial
+ * en memoria. Se prueba lo que ve el usuario al pegar esa URL, no un componente suelto.
+ *
+ * El router se importa acá adentro y no arriba: así cada test puede mockear el cliente
+ * de la API antes de que la aplicación lo cargue.
+ */
+export async function montarApp(ruta: string) {
+  const { crearRouter } = await import('../src/rutas.tsx')
+  const router = crearRouter({ history: createMemoryHistory({ initialEntries: [ruta] }) })
+
+  // Sin reintentos: un error tiene que verse ya, no después de que el test espere.
+  const consultas = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+
+  render(
+    <QueryClientProvider client={consultas}>
+      <RouterProvider router={router} />
+    </QueryClientProvider>,
+  )
+
+  return router
+}
+
+const CENTRAL = { id: 's1', nombre: 'Casa Central', empresaId: 'e1', razonSocial: 'Litoral SAS' }
+const NORTE = {
+  id: 's2',
+  nombre: 'Taller Norte',
+  empresaId: 'e2',
+  razonSocial: 'Litoral Repuestos SAS',
+}
+
+const BASE: DatosSesion = {
+  usuario: { id: 'u1', email: 'admin@litoral.test', nombre: 'Martín', apellido: 'Gutiérrez' },
+  tenant: { id: 't1', nombre: 'Litoral', slug: 'litoral' },
+  sucursalActiva: CENTRAL,
+  sucursales: [CENTRAL],
+  habilidades: [],
+  atajos: {},
+  config: {
+    tema: 'oscuro',
+    densidad: 'compacta',
+    filasPorPagina: 50,
+    sucursalPredeterminadaId: null,
+  },
+}
+
+/** Una sola sucursal: nunca se le pregunta a cuál entrar. */
+export const SESION = { access: 'un-access', ...BASE }
+
+/** Dos sucursales de dos SAS distintas y ninguna predeterminada: el caso incómodo. */
+export const SESION_VARIAS = { ...SESION, sucursales: [CENTRAL, NORTE] }
+
+export const EN_NORTE = { ...SESION_VARIAS, sucursalActiva: NORTE }
+
+/** La misma forma, de otra persona. */
+export const OTRA_PERSONA = {
+  ...SESION_VARIAS,
+  usuario: { id: 'u2', email: 'caja@litoral.test', nombre: 'Laura', apellido: 'Paz' },
+}

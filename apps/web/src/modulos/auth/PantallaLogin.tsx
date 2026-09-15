@@ -13,7 +13,7 @@ import { api } from '../../sesion/cliente.ts'
  * queda el lugar preparado y un degradado mientras tanto.
  */
 export function PantallaLogin() {
-  const establecer = usarSesion((e) => e.establecer)
+  const entrarConDatos = usarSesion((e) => e.entrar)
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
 
@@ -36,7 +36,9 @@ export function PantallaLogin() {
         throw new Error('No se pudo conectar con el servidor. Revisá tu conexión.')
       }
     },
-    onSuccess: (datos) => establecer(datos),
+    // No navega: la sesión es la fuente de verdad y las rutas se reacomodan solas. Así
+    // hay un solo lugar que decide adónde ir después de entrar, y no uno por pantalla.
+    onSuccess: (datos) => entrarConDatos(datos),
   })
 
   function enviar(evento: FormEvent) {

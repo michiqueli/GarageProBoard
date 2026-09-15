@@ -1,10 +1,15 @@
 import { useQuery } from '@tanstack/react-query'
+import { getRouteApi } from '@tanstack/react-router'
 import { useState } from 'react'
 import { Boton } from '../../componentes/Boton.tsx'
 import { Shell } from '../../componentes/Shell.tsx'
 import { ES_ESCRITORIO, useMedia } from '../../ganchos/useMedia.ts'
 import { usarSesion } from '../../sesion/almacen.ts'
 import { api } from '../../sesion/cliente.ts'
+
+// Por id y no importando la ruta: `rutas.tsx` importa esta pantalla, y el camino
+// inverso armaría un ciclo. El id igual está tipado — uno que no existe no compila.
+const ruta = getRouteApi('/con-sesion/vehiculos')
 
 /**
  * El parque de vehículos de la concesionaria, contra la base de verdad.
@@ -13,9 +18,22 @@ import { api } from '../../sesion/cliente.ts'
  * filtro no lo pone esta consulta sino Row Level Security. Si mañana alguien escribe
  * una consulta y se olvida de acotarla, no se filtran datos ajenos — revienta.
  */
-export function PantallaVehiculos({ onNavegar }: { onNavegar: (seccion: string) => void }) {
-  const [buscar, setBuscar] = useState('')
+export function PantallaVehiculos() {
+  const navegar = ruta.useNavigate()
+  const inicial = ruta.useSearch({ select: (s) => s.buscar ?? '' })
+
+  // Lo tipeado vive en estado local y la URL lo copia, no al revés. Si el campo leyera
+  // directo de la URL, cada tecla esperaría a que el router termine de navegar y el
+  // cursor saltaría al final en medio de una patente.
+  const [buscar, setBuscarLocal] = useState(inicial)
   const esEscritorio = useMedia(ES_ESCRITORIO)
+
+  function setBuscar(valor: string) {
+    setBuscarLocal(valor)
+    // `replace`: una búsqueda no es un lugar al que se vuelve con Atrás. Sin esto, tipear
+    // una patente dejaría siete entradas en el historial, una por letra.
+    void navegar({ search: { buscar: valor || undefined }, replace: true })
+  }
   const tenant = usarSesion((e) => e.datos?.tenant.nombre)
   const tenantId = usarSesion((e) => e.datos?.tenant.id)
 
@@ -29,10 +47,7 @@ export function PantallaVehiculos({ onNavegar }: { onNavegar: (seccion: string) 
 
   return (
     <Shell
-      seccion="vehiculos"
       titulo="Vehículos"
-      modulo="vehiculos"
-      onNavegar={onNavegar}
       acciones={
         <Boton accion="global.nuevo" onClick={() => {}}>
           Nuevo vehículo

@@ -9,7 +9,7 @@ import { ORDENES, type OrdenListada } from './datos-de-ejemplo.ts'
 
 const COLUMNAS = ['OT', 'Patente', 'Vehículo', 'Cliente', 'Ingreso', 'Mecánico', 'Estado'] as const
 
-export function PantallaOrdenes({ onNavegar }: { onNavegar?: (s: string) => void }) {
+export function PantallaOrdenes() {
   const [seleccionada, setSeleccionada] = useState(ORDENES[0]?.numero ?? '')
   const esEscritorio = useMedia(ES_ESCRITORIO)
 
@@ -20,10 +20,7 @@ export function PantallaOrdenes({ onNavegar }: { onNavegar?: (s: string) => void
 
   return (
     <Shell
-      seccion="ordenes"
       titulo="Órdenes de trabajo"
-      modulo="ordenes"
-      onNavegar={onNavegar}
       acciones={
         <Boton accion="ordenes.cerrar" variante="principal" onClick={() => {}}>
           Cerrar la orden

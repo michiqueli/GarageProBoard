@@ -1,8 +1,8 @@
-import type { Modulo } from '@garagepro/core'
+import { Link, type LinkProps } from '@tanstack/react-router'
 import type { ReactNode } from 'react'
 import { usarSesion } from '../sesion/almacen.ts'
 import { api } from '../sesion/cliente.ts'
-import { useTeclado } from '../teclado/index.ts'
+import { useAtajo, useTeclado } from '../teclado/index.ts'
 import { BarraEstado } from './BarraEstado.tsx'
 import { Tecla } from './Tecla.tsx'
 
@@ -10,6 +10,11 @@ interface Seccion {
   id: string
   etiqueta: string
   icono: ReactNode
+  /**
+   * La ruta, tipada contra el árbol real: un destino que no existe no compila.
+   * Las secciones sin ruta todavía no están construidas y se muestran atenuadas.
+   */
+  to?: LinkProps['to']
 }
 
 const trazo = { fill: 'none', stroke: 'currentColor', strokeWidth: 1.5 } as const
@@ -30,6 +35,7 @@ const PRINCIPALES: Seccion[] = [
   {
     id: 'ordenes',
     etiqueta: 'Órdenes de trabajo',
+    to: '/ordenes',
     icono: (
       <svg viewBox="0 0 16 16" {...trazo} aria-hidden="true">
         <path d="M3 2h7l3 3v9H3z" />
@@ -40,6 +46,7 @@ const PRINCIPALES: Seccion[] = [
   {
     id: 'vehiculos',
     etiqueta: 'Vehículos',
+    to: '/vehiculos',
     icono: (
       <svg viewBox="0 0 16 16" {...trazo} aria-hidden="true">
         <path d="M2 10h12M3.5 10V7l1.5-3h6l1.5 3v3" />
@@ -115,42 +122,43 @@ const SECUNDARIAS: Seccion[] = [
 /**
  * El armazón de la aplicación: navegación, encabezado y barra de estado.
  *
- * La navegación todavía no está enrutada — TanStack Router entra junto con la sesión,
- * en el hito de autenticación. Hasta entonces `seccion` es un valor y no una URL, para
- * no dejar un router a medio cablear.
+ * La sección activa sale de la URL y no de una prop: el enlace se marca solo cuando su
+ * ruta coincide, así que no hay forma de que el menú diga una pantalla y se vea otra.
  */
 export function Shell({
-  seccion,
   titulo,
-  modulo,
   acciones,
-  onNavegar,
   children,
 }: {
-  seccion: string
   titulo: string
-  modulo?: Modulo | undefined
   acciones?: ReactNode | undefined
-  onNavegar?: ((seccion: string) => void) | undefined
   children: ReactNode
 }) {
   const { teclaDe } = useTeclado()
   const datos = usarSesion((e) => e.datos)
+  const variasSucursales = (datos?.sucursales.length ?? 0) > 1
 
   /**
    * Cerrar sesión de verdad: se le avisa al servidor para que anule la familia entera
    * de tokens. Limpiar sólo el estado local dejaría la sesión viva treinta días del
    * lado del servidor, que es exactamente lo que alguien que dice «salir» no quiere.
+   *
+   * No navega: al quedar sin sesión, las rutas mandan al inicio de sesión por su cuenta.
    */
   async function salir() {
     await api.auth.cerrar({}).catch(() => undefined)
     usarSesion.getState().limpiar()
   }
 
-  /** Vuelve a la pantalla de elección sin cerrar la sesión. */
+  /**
+   * Vuelve a la pantalla de elección sin cerrar la sesión. Con una sola sucursal la
+   * tecla queda atenuada en la barra: no hay a dónde cambiar.
+   */
   function cambiarSucursal() {
     usarSesion.getState().elegirSucursal()
   }
+
+  useAtajo('global.cambiarSucursal', cambiarSucursal, variasSucursales)
 
   return (
     <div className="grid min-h-dvh grid-cols-1 md:grid-cols-[13rem_1fr]">
@@ -163,9 +171,9 @@ export function Shell({
           {datos?.tenant.nombre ?? '—'}
         </p>
 
-        <Nav secciones={PRINCIPALES} activa={seccion} onNavegar={onNavegar} />
+        <Nav secciones={PRINCIPALES} />
         <div className="mx-2 my-3 h-px bg-borde-suave" />
-        <Nav secciones={SECUNDARIAS} activa={seccion} onNavegar={onNavegar} />
+        <Nav secciones={SECUNDARIAS} />
 
         <div className="mt-auto grid gap-2 rounded-base border border-borde p-2">
           <div className="flex items-center gap-2.5">
@@ -183,7 +191,7 @@ export function Shell({
           </div>
 
           <div className="flex gap-1">
-            {(datos?.sucursales.length ?? 0) > 1 && (
+            {variasSucursales && (
               <button
                 type="button"
                 onClick={cambiarSucursal}
@@ -242,40 +250,54 @@ export function Shell({
         <main className="grid gap-3 px-4 pt-3.5 pb-14">{children}</main>
       </div>
 
-      <BarraEstado modulo={modulo} />
+      <BarraEstado />
     </div>
   )
 }
 
-function Nav({
-  secciones,
-  activa,
-  onNavegar,
-}: {
-  secciones: Seccion[]
-  activa: string
-  onNavegar?: ((seccion: string) => void) | undefined
-}) {
+const CLASES_ITEM =
+  'flex h-[30px] w-full items-center gap-2.5 rounded-base px-2.5 text-left text-dato'
+
+function Nav({ secciones }: { secciones: Seccion[] }) {
   return (
     <nav className="flex flex-col gap-px">
       {secciones.map((s) => {
-        const esActiva = s.id === activa
-        return (
-          <button
-            key={s.id}
-            type="button"
-            onClick={() => onNavegar?.(s.id)}
-            aria-current={esActiva ? 'page' : undefined}
-            className={[
-              'flex h-[30px] w-full items-center gap-2.5 rounded-base px-2.5 text-left text-dato',
-              esActiva
-                ? 'bg-marca-suave font-semibold text-marca'
-                : 'text-texto-suave hover:bg-superficie-2 hover:text-texto',
-            ].join(' ')}
-          >
+        const contenido = (
+          <>
             <span className="size-[15px] shrink-0 [&>svg]:size-full">{s.icono}</span>
             {s.etiqueta}
-          </button>
+          </>
+        )
+
+        // Una sección sin pantalla se muestra igual, para que el menú tenga su forma
+        // definitiva desde ahora, pero atenuada y sin llevar a ningún lado. Un enlace
+        // que abre una pantalla vacía hace pensar que algo se rompió.
+        if (!s.to) {
+          return (
+            <span
+              key={s.id}
+              aria-disabled="true"
+              title="Todavía no está disponible"
+              className={`${CLASES_ITEM} cursor-default text-texto-tenue opacity-60`}
+            >
+              {contenido}
+            </span>
+          )
+        }
+
+        return (
+          <Link
+            key={s.id}
+            to={s.to}
+            // El listado filtrado sigue siendo la misma sección: sin esto, buscar una
+            // patente apagaría el resaltado del menú.
+            activeOptions={{ includeSearch: false }}
+            className={CLASES_ITEM}
+            activeProps={{ className: 'bg-marca-suave font-semibold text-marca' }}
+            inactiveProps={{ className: 'text-texto-suave hover:bg-superficie-2 hover:text-texto' }}
+          >
+            {contenido}
+          </Link>
         )
       })}
     </nav>

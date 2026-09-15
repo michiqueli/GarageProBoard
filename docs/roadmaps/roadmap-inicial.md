@@ -1,6 +1,6 @@
 # Roadmap inicial
 
-Estado al 10/09/2026. Los hitos están ordenados por dependencia, no por deseo: cada
+Estado al 15/09/2026. Los hitos están ordenados por dependencia, no por deseo: cada
 uno necesita el anterior. Lo que no está acá no está decidido todavía.
 
 Leyenda: ✅ hecho · 🔨 en curso · ⬜ pendiente
@@ -13,8 +13,8 @@ Monorepo, entorno reproducible y aislamiento multi-tenant probado.
 
 - ✅ Monorepo pnpm + Turborepo + Biome
 - ✅ `docker compose` con Postgres 18 (puerto 5433) y Redis 8
-- ✅ Esquema del núcleo: 22 tablas
-- ✅ RLS forzado en 18 tablas, con `app_tenant_id()` y política por tabla
+- ✅ Esquema del núcleo: 25 tablas
+- ✅ RLS forzado en 21 tablas, con `app_tenant_id()` y política por tabla
 - ✅ Rol de aplicación sin `BYPASSRLS` y sin ser dueño de nada
 - ✅ 9 tests de aislamiento con Testcontainers contra Postgres real
 - ✅ API que arranca y responde, front que la consulta
@@ -50,8 +50,9 @@ Sin esto no hay pantalla que mostrar a nadie.
 - ✅ Patrón de listado responsive, aplicado en la pantalla de OT
 - ⬜ Pantalla **Configuración → Teclas rápidas**, agrupada por módulo, con captura de
       la combinación y los motivos de rechazo escritos
-- ⬜ Enrutado con TanStack Router y sesión (el shell ya está, falta el router)
-- ⬜ Barra de estado inferior con las teclas activas del contexto
+- ✅ Enrutado con TanStack Router: guardias de sesión y sucursal, `volver` al entrar,
+      búsqueda en la URL y el módulo del teclado declarado por la ruta. 21 tests nuevos.
+- ✅ Barra de estado inferior con las teclas activas del contexto
 - ✅ Cookie httpOnly para el refresco, con entrega por cuerpo para clientes sin cookies
 - ✅ Login sólo con correo y contraseña: el tenant sale del usuario
 - ⬜ Auditoría automática de altas, modificaciones y bajas
@@ -133,8 +134,14 @@ El corazón del producto y lo que el nombre promete.
 
 Cosas que sabemos que faltan, para que no se descubran de golpe:
 
-- **Enrutado.** La navegación es estado local, no URL. Con dos pantallas alcanza; con
-  cinco no. TanStack Router entra antes de que se note.
+- **`pnpm dev` no levanta la API** (detectado el 15/09/2026). Con `tsx watch`, Nest
+  falla al resolver `ApplicationConfig` en el `LoggerModule` de `nestjs-pino`; compilada
+  con `tsc` y ejecutada con `node` arranca bien. Ver la bitácora del 15/09.
+- **El bundle del front pesa 518 kB.** Con el router puesto, partirlo por ruta es
+  declarar las pantallas como carga diferida; conviene hacerlo antes de que crezca.
+- **Recargar antes de elegir sucursal entra a la primera.** Si alguien recarga la página
+  justo en «¿A qué sucursal entrás?», la sesión recuperada no sabe que faltaba elegir.
+  Cerrarlo del todo requiere que el servidor recuerde que la elección está pendiente.
 
 - **Backups de Postgres antes del primer cliente en producción.** Vamos a guardar
   comprobantes fiscales de terceros con obligación legal de conservación. `pgBackRest`

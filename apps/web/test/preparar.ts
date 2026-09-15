@@ -32,6 +32,13 @@ window.matchMedia = vi.fn((consulta: string) => {
   return lista as unknown as MediaQueryList
 }) as typeof window.matchMedia
 
+/**
+ * Tampoco implementa `scrollTo`, que el router llama al navegar para dejar arriba la
+ * pantalla nueva. Sin esto la salida de los tests se llena de avisos que tapan los
+ * errores de verdad.
+ */
+window.scrollTo = (() => {}) as typeof window.scrollTo
+
 /** Simula un ancho de pantalla para probar la forma de teléfono de un listado. */
 export function conAncho(px: number): void {
   anchoActual = px

@@ -10,9 +10,12 @@ import { Tecla } from './Tecla.tsx'
  * Las que no aplican van atenuadas y **no se esconden**: si aparecieran y
  * desaparecieran, la barra se leería distinta en cada pantalla y dejaría de ser un
  * lugar fijo donde mirar.
+ *
+ * El módulo sale del teclado, que a su vez lo toma de la ruta: la barra no puede
+ * anunciar el F4 de un módulo distinto del que efectivamente dispara.
  */
-export function BarraEstado({ modulo }: { modulo?: string | undefined }) {
-  const { mapa, activas } = useTeclado()
+export function BarraEstado() {
+  const { mapa, modulo, activas } = useTeclado()
 
   const visibles = CATALOGO.filter(
     (d) => mapa[d.accion] && (d.ambito === 'global' || d.ambito === modulo),

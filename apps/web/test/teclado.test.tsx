@@ -1,23 +1,24 @@
 import { cleanup, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { Boton } from '../src/componentes/Boton.tsx'
-import { PantallaOrdenes } from '../src/modulos/ordenes/PantallaOrdenes.tsx'
+import { usarSesion } from '../src/sesion/almacen.ts'
 import { ProveedorTeclado } from '../src/teclado/index.ts'
+import { montarApp, SESION } from './montar.tsx'
 import { conAncho } from './preparar.ts'
 
 /**
- * El listado con su proveedor, que es como lo monta la aplicación una vez que hay
- * sesión. No se renderiza `<App />` porque eso arrancaría por el login y estos tests
- * son sobre el teclado y el listado, no sobre autenticarse.
+ * La pantalla de OT tal como la monta la aplicación: por su dirección, con una sesión
+ * ya abierta. El módulo del teclado lo pone la ruta, así que se prueba también que la
+ * ruta lo declare bien.
  */
-function montarOrdenes() {
-  return render(
-    <ProveedorTeclado modulo="ordenes">
-      <PantallaOrdenes />
-    </ProveedorTeclado>,
-  )
+async function montarOrdenes() {
+  usarSesion.getState().entrar(SESION)
+  await montarApp('/ordenes')
+  await screen.findByRole('heading', { name: 'Órdenes de trabajo', level: 1 })
 }
+
+beforeEach(() => usarSesion.getState().limpiar())
 
 afterEach(() => {
   cleanup()
@@ -25,17 +26,16 @@ afterEach(() => {
 })
 
 describe('la pantalla se monta', () => {
-  it('renderiza el listado con el shell y la barra de estado', () => {
-    montarOrdenes()
+  it('renderiza el listado con el shell y la barra de estado', async () => {
+    await montarOrdenes()
 
-    expect(screen.getByRole('heading', { name: 'Órdenes de trabajo', level: 1 })).toBeDefined()
     expect(screen.getByText('AB123CD')).toBeDefined()
     // El importe formateado a la argentina, no el string crudo de la base.
     expect(screen.getByText('1.140.200,00')).toBeDefined()
   })
 
-  it('la barra de estado anuncia las teclas del contexto', () => {
-    montarOrdenes()
+  it('la barra de estado anuncia las teclas del contexto', async () => {
+    await montarOrdenes()
 
     // Las globales, más la del módulo activo.
     expect(screen.getAllByText('F2').length).toBeGreaterThan(0)
@@ -43,8 +43,8 @@ describe('la pantalla se monta', () => {
     expect(screen.getAllByText('Cerrar la orden').length).toBeGreaterThan(0)
   })
 
-  it('no muestra teclas de otros módulos', () => {
-    montarOrdenes()
+  it('no muestra teclas de otros módulos', async () => {
+    await montarOrdenes()
     expect(screen.queryByText('Facturar')).toBeNull()
     expect(screen.queryByText('Entregar el vehículo')).toBeNull()
   })
@@ -149,9 +149,9 @@ describe('el registro de atajos', () => {
 })
 
 describe('el listado responsive', () => {
-  it('en teléfono muestra tarjetas y no una tabla con scroll horizontal', () => {
+  it('en teléfono muestra tarjetas y no una tabla con scroll horizontal', async () => {
     conAncho(390)
-    montarOrdenes()
+    await montarOrdenes()
 
     expect(screen.queryByRole('table')).toBeNull()
     // La patente sigue estando, pero una sola vez: se renderiza una forma, no las dos.
@@ -159,9 +159,9 @@ describe('el listado responsive', () => {
     expect(screen.getByText('1.140.200,00')).toBeDefined()
   })
 
-  it('en escritorio muestra la tabla densa', () => {
+  it('en escritorio muestra la tabla densa', async () => {
     conAncho(1440)
-    montarOrdenes()
+    await montarOrdenes()
 
     expect(screen.getByRole('table')).toBeDefined()
     expect(screen.getAllByText('AB123CD')).toHaveLength(1)

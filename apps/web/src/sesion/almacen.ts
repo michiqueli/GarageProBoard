@@ -37,8 +37,6 @@ export interface DatosSesion {
 interface EstadoSesion {
   datos: DatosSesion | null
   access: string | null
-  /** `true` mientras se intenta recuperar la sesión con la cookie que haya. */
-  cargando: boolean
   /**
    * Si todavía falta que el usuario elija sucursal.
    *
@@ -48,35 +46,53 @@ interface EstadoSesion {
    */
   eligiendoSucursal: boolean
 
+  /** Recién autenticado con correo y contraseña: acá sí se decide si preguntar. */
+  entrar(entrada: { access: string } & DatosSesion): void
+  /**
+   * Sesión renovada con la cookie: al recargar la página o cuando vence el acceso.
+   *
+   * **No vuelve a preguntar la sucursal.** El servidor la conserva en la familia de
+   * tokens, así que la renovación trae la que ya se eligió. Recalcular acá hacía que un
+   * usuario con varias sucursales rebotara a la pantalla de elección cada quince
+   * minutos, que es lo que dura el acceso.
+   *
+   * La excepción es que la sesión renovada sea de **otra persona** — otra pestaña cerró
+   * sesión y entró alguien más, y la cookie ahora es suya. Eso es un ingreso, no una
+   * renovación, y se trata como tal.
+   */
   establecer(entrada: { access: string } & DatosSesion): void
   sucursalElegida(): void
   /** Vuelve a preguntar a qué sucursal entrar, sin cerrar la sesión. */
   elegirSucursal(): void
   actualizarDatos(datos: DatosSesion): void
   limpiar(): void
-  terminarCarga(): void
+}
+
+function debeElegir(datos: DatosSesion): boolean {
+  return datos.sucursales.length > 1 && datos.config.sucursalPredeterminadaId === null
 }
 
 export const usarSesion = create<EstadoSesion>((set) => ({
   datos: null,
   access: null,
-  cargando: true,
   eligiendoSucursal: false,
 
+  entrar: ({ access, ...datos }) => set({ access, datos, eligiendoSucursal: debeElegir(datos) }),
+
   establecer: ({ access, ...datos }) =>
-    set({
+    set((actual) => ({
       access,
       datos,
-      cargando: false,
       eligiendoSucursal:
-        datos.sucursales.length > 1 && datos.config.sucursalPredeterminadaId === null,
-    }),
+        actual.datos && actual.datos.usuario.id !== datos.usuario.id
+          ? debeElegir(datos)
+          : actual.eligiendoSucursal,
+    })),
 
   sucursalElegida: () => set({ eligiendoSucursal: false }),
   elegirSucursal: () => set({ eligiendoSucursal: true }),
   actualizarDatos: (datos) => set({ datos }),
-  limpiar: () => set({ datos: null, access: null, cargando: false, eligiendoSucursal: false }),
-  terminarCarga: () => set({ cargando: false }),
+  limpiar: () => set({ datos: null, access: null, eligiendoSucursal: false }),
 }))
 
 /** Para leer el token fuera de React, desde el cliente HTTP. */
