@@ -134,9 +134,6 @@ El corazón del producto y lo que el nombre promete.
 
 Cosas que sabemos que faltan, para que no se descubran de golpe:
 
-- **`pnpm dev` no levanta la API** (detectado el 15/09/2026). Con `tsx watch`, Nest
-  falla al resolver `ApplicationConfig` en el `LoggerModule` de `nestjs-pino`; compilada
-  con `tsc` y ejecutada con `node` arranca bien. Ver la bitácora del 15/09.
 - **El bundle del front pesa 518 kB.** Con el router puesto, partirlo por ruta es
   declarar las pantallas como carga diferida; conviene hacerlo antes de que crezca.
 - **Recargar antes de elegir sucursal entra a la primera.** Si alguien recarga la página
