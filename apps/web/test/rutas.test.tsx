@@ -1,3 +1,4 @@
+import { ORPCError } from '@orpc/client'
 import { cleanup, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
@@ -229,6 +230,20 @@ describe('la navegación', () => {
     expect(screen.getByRole('link', { name: 'Vehículos' }).getAttribute('aria-current')).toBe(
       'page',
     )
+  })
+
+  it('sin permiso, la pantalla dice qué falta y no manda a refrescar', async () => {
+    conCookie(SESION)
+    const mensaje =
+      'Tu usuario no tiene permiso para ver vehículos. Pedíselo a quien administra los usuarios.'
+    listarVehiculos.mockRejectedValue(
+      new ORPCError('SIN_PERMISO', { status: 403, message: mensaje }),
+    )
+    await montarApp('/vehiculos')
+
+    const aviso = await screen.findByRole('alert')
+    expect(aviso.textContent).toBe(mensaje)
+    expect(aviso.textContent).not.toMatch(/refrescar/)
   })
 
   it('las secciones que todavía no existen no son enlaces', async () => {

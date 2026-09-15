@@ -42,6 +42,40 @@ export type Sujeto = (typeof SUJETOS)[number]
 
 export type Habilidades = MongoAbility<[AccionPermiso, Sujeto]>
 
+/**
+ * Cómo se dice cada permiso en una frase: «No tenés permiso para dar de alta vehículos».
+ *
+ * Son `Record` completos a propósito: agregar una acción o un sujeto sin su etiqueta no
+ * compila. Un aviso de permiso que dice «crear Vehiculo» le habla al programador, no a
+ * quien está parado en el mostrador.
+ */
+const VERBOS: Record<AccionPermiso, string> = {
+  ver: 'ver',
+  crear: 'dar de alta',
+  editar: 'modificar',
+  anular: 'anular',
+  facturar: 'facturar',
+  administrar: 'administrar',
+}
+
+const SUSTANTIVOS: Record<Sujeto, string> = {
+  Orden: 'órdenes de trabajo',
+  Vehiculo: 'vehículos',
+  Cliente: 'clientes',
+  Proveedor: 'proveedores',
+  Repuesto: 'repuestos',
+  Comprobante: 'comprobantes',
+  Empleado: 'legajos de empleados',
+  Empresa: 'empresas',
+  Usuario: 'usuarios',
+  Configuracion: 'la configuración',
+  all: 'todo el sistema',
+}
+
+export function describirPermiso(accion: AccionPermiso, sujeto: Sujeto): string {
+  return `${VERBOS[accion]} ${SUSTANTIVOS[sujeto]}`
+}
+
 /** Lo que se guarda en `rol.habilidades`: el formato crudo que CASL entiende. */
 export interface ReglaPermiso {
   action: AccionPermiso | AccionPermiso[]
@@ -53,7 +87,14 @@ export interface ReglaPermiso {
 }
 
 export function construirHabilidades(reglas: readonly ReglaPermiso[]): Habilidades {
-  return createMongoAbility<[AccionPermiso, Sujeto]>(reglas as never)
+  return createMongoAbility<[AccionPermiso, Sujeto]>(reglas as never, {
+    // Para CASL el comodín de acciones se llama `manage`, y `all` el de sujetos.
+    // Nuestra acción se llama `administrar`: sin esto, CASL la trata como una acción
+    // más, y el gerente — `administrar all` — no podía ni ver un vehículo. Pasó
+    // inadvertido hasta que la API empezó a aplicar los permisos.
+    anyAction: 'administrar',
+    anySubjectType: 'all',
+  })
 }
 
 /**

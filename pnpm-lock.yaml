@@ -108,6 +108,9 @@ importers:
       '@nestjs/testing':
         specifier: 12.0.1
         version: 12.0.1(@nestjs/common@12.0.1(reflect-metadata@0.2.2)(rxjs@7.8.2))(@nestjs/core@12.0.1(@nestjs/common@12.0.1(reflect-metadata@0.2.2)(rxjs@7.8.2))(reflect-metadata@0.2.2)(rxjs@7.8.2))
+      '@orpc/contract':
+        specifier: 1.15.0
+        version: 1.15.0
       '@types/node':
         specifier: 24.13.4
         version: 24.13.4
@@ -221,6 +224,9 @@ importers:
 
   packages/contracts:
     dependencies:
+      '@garagepro/core':
+        specifier: workspace:*
+        version: link:../core
       '@orpc/contract':
         specifier: 1.15.0
         version: 1.15.0

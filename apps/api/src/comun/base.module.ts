@@ -1,8 +1,9 @@
 import { crearDb, crearPool, type Db, type Pool } from '@garagepro/db'
 import { Global, Inject, Module, type OnApplicationShutdown } from '@nestjs/common'
+import { DatosDelTenant } from './datos.ts'
+import { DB, POOL } from './simbolos.ts'
 
-export const POOL = Symbol('POOL')
-export const DB = Symbol('DB')
+export { DB, POOL }
 
 /**
  * La API se conecta con `DATABASE_URL_APP`, que es el rol sin BYPASSRLS y que no es
@@ -25,8 +26,9 @@ export const DB = Symbol('DB')
       inject: [POOL],
       useFactory: (pool: Pool): Db => crearDb(pool),
     },
+    DatosDelTenant,
   ],
-  exports: [POOL, DB],
+  exports: [POOL, DB, DatosDelTenant],
 })
 export class ModuloBase implements OnApplicationShutdown {
   // Inyección explícita en todo el proyecto: ver la nota en auth.service.ts. Nest

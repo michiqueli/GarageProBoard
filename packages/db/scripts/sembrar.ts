@@ -1,6 +1,6 @@
 import { atajosParaSembrar, ROLES_PREDEFINIDOS } from '@garagepro/core'
 import argon2 from 'argon2'
-import { eq } from 'drizzle-orm'
+import { and, eq } from 'drizzle-orm'
 import { crearDb, crearPool, type Db } from '../src/index.ts'
 import {
   empresa,
@@ -77,11 +77,19 @@ interface Boca {
   sucursales: string[]
 }
 
+interface UsuarioEjemplo {
+  email: string
+  nombre: string
+  apellido: string
+  rol: string
+}
+
 interface Concesionaria {
   slug: string
   nombre: string
   empresas: Boca[]
-  usuario: { email: string; nombre: string; apellido: string }
+  /** El primero es el gerente, que es quien administra; los demás muestran los permisos. */
+  usuarios: UsuarioEjemplo[]
   vehiculos: Array<{ chasis: string; dominio: string | null; anio: number; color: string }>
 }
 
@@ -108,7 +116,13 @@ const EJEMPLOS: Concesionaria[] = [
       },
       { nombre: 'Litoral Repuestos SAS', cuit: '30719876543', sucursales: ['Depósito Central'] },
     ],
-    usuario: { email: 'admin@litoral.test', nombre: 'Martín', apellido: 'Gutiérrez' },
+    usuarios: [
+      { email: 'admin@litoral.test', nombre: 'Martín', apellido: 'Gutiérrez', rol: 'Gerente' },
+      // Uno que ve vehículos pero no los da de alta, y otro que ni los ve: con sólo un
+      // gerente, un permiso mal aplicado no se nota nunca, porque el gerente puede todo.
+      { email: 'taller@litoral.test', nombre: 'Diego', apellido: 'Sosa', rol: 'Mecánico' },
+      { email: 'repuestos@litoral.test', nombre: 'Carla', apellido: 'Benítez', rol: 'Repuestero' },
+    ],
     vehiculos: [
       { chasis: '8AWZZZ377KA123456', dominio: 'AB123CD', anio: 2019, color: 'Gris plata' },
       { chasis: '9BWZZZ377KA654321', dominio: 'ABC123', anio: 2014, color: 'Blanco' },
@@ -124,7 +138,7 @@ const EJEMPLOS: Concesionaria[] = [
     empresas: [
       { nombre: 'Automotores del Norte SA', cuit: '30655443321', sucursales: ['Salta Centro'] },
     ],
-    usuario: { email: 'admin@norte.test', nombre: 'Lucía', apellido: 'Quiroga' },
+    usuarios: [{ email: 'admin@norte.test', nombre: 'Lucía', apellido: 'Quiroga', rol: 'Gerente' }],
     vehiculos: [
       { chasis: '9BFZH55P4NB778899', dominio: 'XY987ZW', anio: 2022, color: 'Blanco' },
       { chasis: '8AGZC5210MR334455', dominio: 'NPQ334', anio: 2013, color: 'Verde' },
@@ -139,16 +153,21 @@ async function sembrarEjemplos(db: Db): Promise<void> {
 
     if (existente) {
       console.log(`✓ ${ejemplo.nombre} ya existe.`)
-      continue
+    } else {
+      await sembrarConcesionaria(db, ejemplo)
     }
 
-    await sembrarConcesionaria(db, ejemplo)
+    // Los usuarios van aparte y son idempotentes uno por uno: así una base sembrada antes
+    // de que existiera un usuario de ejemplo lo recibe sin tener que resetearla.
+    await sembrarUsuarios(db, ejemplo)
   }
 
   console.log('')
-  console.log('  Para entrar, con la misma contraseña en las dos:')
+  console.log('  Para entrar, todos con la misma contraseña:')
   for (const e of EJEMPLOS) {
-    console.log(`    ${e.usuario.email.padEnd(22)} ${e.nombre}`)
+    for (const u of e.usuarios) {
+      console.log(`    ${u.email.padEnd(24)} ${u.rol.padEnd(12)} ${e.nombre}`)
+    }
   }
   console.log(`    contraseña: ${process.env.ADMIN_PASSWORD ?? 'garagepro'}`)
   console.log('')
@@ -210,48 +229,67 @@ async function sembrarConcesionaria(db: Db, ej: Concesionaria): Promise<void> {
     )
     .returning()
 
-  const gerente = roles.find((r) => r.nombre === 'Gerente')
-  if (!gerente) throw new Error('No se creó el rol de gerente.')
-
-  const [u] = await db
-    .insert(usuario)
-    .values({
-      tenantId: t.id,
-      email: ej.usuario.email,
-      hashPassword: await argon2.hash(process.env.ADMIN_PASSWORD ?? 'garagepro', {
-        type: argon2.argon2id,
-      }),
-      nombre: ej.usuario.nombre,
-      apellido: ej.usuario.apellido,
-    })
-    .returning()
-  if (!u) throw new Error('No se pudo crear el usuario.')
-
-  await db.insert(usuarioRol).values({ tenantId: t.id, usuarioId: u.id, rolId: gerente.id })
-  await db
-    .insert(usuarioSucursal)
-    .values(sucursalesCreadas.map((s) => ({ tenantId: t.id, usuarioId: u.id, sucursalId: s.id })))
-
-  // Sin sucursal predeterminada a propósito: así se ve la pantalla de elección cuando
-  // hay más de una. Se configura desde la aplicación cuando exista esa pantalla.
-  await db.insert(usuarioConfig).values({ tenantId: t.id, usuarioId: u.id })
-
-  await db.insert(usuarioAtajo).values(
-    atajosParaSembrar().map((a) => ({
-      tenantId: t.id,
-      usuarioId: u.id,
-      ambito: a.ambito,
-      accion: a.accion,
-      tecla: a.tecla,
-    })),
-  )
-
   await db.insert(vehiculo).values(ej.vehiculos.map((v) => ({ tenantId: t.id, ...v })))
 
   console.log(
     `  ${ej.empresas.length} empresa(s) · ${sucursalesCreadas.length} sucursal(es) · ` +
       `${ej.vehiculos.length} vehículos · ${roles.length} roles`,
   )
+}
+
+async function sembrarUsuarios(db: Db, ej: Concesionaria): Promise<void> {
+  const [t] = await db.select().from(tenant).where(eq(tenant.slug, ej.slug)).limit(1)
+  if (!t) throw new Error(`No existe la concesionaria ${ej.slug}.`)
+
+  const roles = await db.select().from(rol).where(eq(rol.tenantId, t.id))
+  const sucursales = await db.select().from(sucursal).where(eq(sucursal.tenantId, t.id))
+
+  for (const datos of ej.usuarios) {
+    const [yaEsta] = await db
+      .select({ id: usuario.id })
+      .from(usuario)
+      .where(and(eq(usuario.tenantId, t.id), eq(usuario.email, datos.email)))
+      .limit(1)
+    if (yaEsta) continue
+
+    const elegido = roles.find((r) => r.nombre === datos.rol)
+    if (!elegido) throw new Error(`No existe el rol ${datos.rol} en ${ej.nombre}.`)
+
+    const [u] = await db
+      .insert(usuario)
+      .values({
+        tenantId: t.id,
+        email: datos.email,
+        hashPassword: await argon2.hash(process.env.ADMIN_PASSWORD ?? 'garagepro', {
+          type: argon2.argon2id,
+        }),
+        nombre: datos.nombre,
+        apellido: datos.apellido,
+      })
+      .returning()
+    if (!u) throw new Error('No se pudo crear el usuario.')
+
+    await db.insert(usuarioRol).values({ tenantId: t.id, usuarioId: u.id, rolId: elegido.id })
+    await db
+      .insert(usuarioSucursal)
+      .values(sucursales.map((s) => ({ tenantId: t.id, usuarioId: u.id, sucursalId: s.id })))
+
+    // Sin sucursal predeterminada a propósito: así se ve la pantalla de elección cuando
+    // hay más de una. Se configura desde la aplicación cuando exista esa pantalla.
+    await db.insert(usuarioConfig).values({ tenantId: t.id, usuarioId: u.id })
+
+    await db.insert(usuarioAtajo).values(
+      atajosParaSembrar().map((a) => ({
+        tenantId: t.id,
+        usuarioId: u.id,
+        ambito: a.ambito,
+        accion: a.accion,
+        tecla: a.tecla,
+      })),
+    )
+
+    console.log(`  + ${datos.email} (${datos.rol})`)
+  }
 }
 
 await principal()

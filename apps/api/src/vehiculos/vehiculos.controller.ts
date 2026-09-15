@@ -1,23 +1,26 @@
 import { contrato } from '@garagepro/contracts'
-import { and, conTenant, count, type Db, desc, eq, ilike, or, sql } from '@garagepro/db'
+import { count, desc, eq, ilike, or } from '@garagepro/db'
 import { vehiculo } from '@garagepro/db/schema'
 import { Controller, Inject } from '@nestjs/common'
-import { Implement, implement } from '@orpc/nest'
-import type { Sesion } from '../auth/auth.service.ts'
-import { DeSesion } from '../auth/guard.ts'
-import { DB } from '../comun/base.module.ts'
+import { implement } from '@orpc/nest'
+import { DatosDelTenant } from '../comun/datos.ts'
+import { Operacion } from '../comun/operacion.ts'
 
+/**
+ * Los permisos no están acá: los declara el contrato (`conPermiso('ver', 'Vehiculo')`)
+ * y los aplica la guardia antes de que el manejador corra. Y el tenant tampoco: lo pone
+ * `DatosDelTenant` desde la sesión. Lo que queda en el controlador es sólo el negocio.
+ */
 @Controller()
 export class ControladorVehiculos {
-  constructor(@Inject(DB) private readonly db: Db) {}
+  constructor(@Inject(DatosDelTenant) private readonly datos: DatosDelTenant) {}
 
-  @Implement(contrato.vehiculos.listar)
-  listar(@DeSesion() sesion: Sesion) {
-    return implement(contrato.vehiculos.listar).handler(async ({ input }) => {
-      // Todo pasa por conTenant. Ni siquiera hace falta filtrar por tenant en el
-      // WHERE: la política de RLS lo hace, y si alguien se olvidara de envolver la
-      // consulta acá, reventaría en vez de devolver datos ajenos.
-      return conTenant(this.db, sesion.tenantId, async (tx) => {
+  @Operacion(contrato.vehiculos.listar)
+  listar() {
+    return implement(contrato.vehiculos.listar).handler(({ input }) =>
+      // Ni siquiera hace falta filtrar por tenant en el WHERE: la política de RLS lo
+      // hace, y la transacción ya viene con el de la sesión puesto.
+      this.datos.transaccion(async (tx) => {
         const texto = input.buscar?.trim()
 
         // El mecánico busca por la patente que ve en el parabrisas; el administrativo,
@@ -46,14 +49,14 @@ export class ControladorVehiculos {
           .offset((input.pagina - 1) * input.porPagina)
 
         return { datos, total }
-      })
-    })
+      }),
+    )
   }
 
-  @Implement(contrato.vehiculos.crear)
-  crear(@DeSesion() sesion: Sesion) {
-    return implement(contrato.vehiculos.crear).handler(async ({ input, errors }) => {
-      return conTenant(this.db, sesion.tenantId, async (tx) => {
+  @Operacion(contrato.vehiculos.crear)
+  crear() {
+    return implement(contrato.vehiculos.crear).handler(({ input, errors }) =>
+      this.datos.transaccion(async (tx, sesion) => {
         // El chasis único por tenant lo garantiza un índice, no una consulta previa:
         // entre el "select si existe" y el insert hay una ventana en la que otro
         // proceso puede meter el mismo, y con dos recepciones cargando a la vez esa
@@ -85,11 +88,7 @@ export class ControladorVehiculos {
 
         if (!creado) throw new Error('No se pudo crear el vehículo.')
         return creado
-      })
-    })
+      }),
+    )
   }
 }
-
-// Referencias usadas sólo en los tipos de las consultas de arriba.
-void and
-void sql

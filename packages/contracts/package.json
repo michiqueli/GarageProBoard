@@ -14,12 +14,13 @@
     "build": "tsc -p tsconfig.json"
   },
   "dependencies": {
-    "zod": "4.6.2",
-    "@orpc/contract": "1.15.0"
+    "@garagepro/core": "workspace:*",
+    "@orpc/contract": "1.15.0",
+    "zod": "4.6.2"
   },
   "devDependencies": {
-    "typescript": "7.0.2",
-    "@types/node": "24.13.4"
+    "@types/node": "24.13.4",
+    "typescript": "7.0.2"
   },
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts"

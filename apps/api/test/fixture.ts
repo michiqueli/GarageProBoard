@@ -64,17 +64,28 @@ export async function levantarApi(): Promise<ApiDePrueba> {
 
 export interface Semilla {
   slug: string
+  /** El gerente: puede todo. */
   email: string
   sucursales?: string[]
   vehiculos?: Array<{ chasis: string; dominio: string | null }>
+  /** Más usuarios, cada uno con uno de los roles predefinidos. */
+  otros?: Array<{ email: string; rol: string }>
 }
 
-/** Una concesionaria mínima pero completa: empresa, sucursales, rol, usuario y vehículos. */
+/**
+ * Una concesionaria mínima pero completa: empresa, sucursales, los roles predefinidos,
+ * usuarios y vehículos.
+ *
+ * Se siembran **todos** los roles y no sólo el de gerente: los permisos se prueban con
+ * las mismas reglas que recibe una concesionaria nueva, no con unas escritas para el
+ * test que podrían no parecerse.
+ */
 export async function sembrarConcesionaria(db: Db, s: Semilla) {
   const nombres = s.sucursales ?? ['Casa Central']
 
   const [t] = await db.insert(tenant).values({ nombre: s.slug, slug: s.slug }).returning()
   if (!t) throw new Error('sin tenant')
+  const tenantId = t.id
 
   const [e] = await db
     .insert(empresa)
@@ -93,43 +104,56 @@ export async function sembrarConcesionaria(db: Db, s: Semilla) {
     .values(nombres.map((nombre) => ({ tenantId: t.id, empresaId: e.id, nombre })))
     .returning()
 
-  const plantilla = ROLES_PREDEFINIDOS.find((r) => r.nombre === 'Gerente')
-  const [g] = await db
+  const roles = await db
     .insert(rol)
-    .values({ tenantId: t.id, nombre: 'Gerente', habilidades: plantilla?.habilidades ?? [] })
+    .values(
+      ROLES_PREDEFINIDOS.map((r) => ({
+        tenantId: t.id,
+        nombre: r.nombre,
+        habilidades: r.habilidades,
+      })),
+    )
     .returning()
-  if (!g) throw new Error('sin rol')
 
-  const [u] = await db
-    .insert(usuario)
-    .values({
-      tenantId: t.id,
-      email: s.email,
-      hashPassword: await argon2.hash(CLAVE, { type: argon2.argon2id }),
-      nombre: 'Prueba',
-      apellido: 'Usuario',
-    })
-    .returning()
-  if (!u) throw new Error('sin usuario')
+  async function crearUsuario(email: string, nombreRol: string) {
+    const elegido = roles.find((r) => r.nombre === nombreRol)
+    if (!elegido) throw new Error(`No existe el rol ${nombreRol}`)
 
-  await db.insert(usuarioRol).values({ tenantId: t.id, usuarioId: u.id, rolId: g.id })
-  await db
-    .insert(usuarioSucursal)
-    .values(sucursales.map((x) => ({ tenantId: t.id, usuarioId: u.id, sucursalId: x.id })))
-  await db.insert(usuarioConfig).values({ tenantId: t.id, usuarioId: u.id })
-  await db.insert(usuarioAtajo).values(
-    atajosParaSembrar().map((a) => ({
-      tenantId: t.id,
-      usuarioId: u.id,
-      ambito: a.ambito,
-      accion: a.accion,
-      tecla: a.tecla,
-    })),
-  )
+    const [u] = await db
+      .insert(usuario)
+      .values({
+        tenantId,
+        email,
+        hashPassword: await argon2.hash(CLAVE, { type: argon2.argon2id }),
+        nombre: 'Prueba',
+        apellido: nombreRol,
+      })
+      .returning()
+    if (!u) throw new Error('sin usuario')
+
+    await db.insert(usuarioRol).values({ tenantId: tenantId, usuarioId: u.id, rolId: elegido.id })
+    await db
+      .insert(usuarioSucursal)
+      .values(sucursales.map((x) => ({ tenantId: tenantId, usuarioId: u.id, sucursalId: x.id })))
+    await db.insert(usuarioConfig).values({ tenantId: tenantId, usuarioId: u.id })
+    await db.insert(usuarioAtajo).values(
+      atajosParaSembrar().map((a) => ({
+        tenantId: tenantId,
+        usuarioId: u.id,
+        ambito: a.ambito,
+        accion: a.accion,
+        tecla: a.tecla,
+      })),
+    )
+    return u
+  }
+
+  const u = await crearUsuario(s.email, 'Gerente')
+  for (const otro of s.otros ?? []) await crearUsuario(otro.email, otro.rol)
 
   if (s.vehiculos?.length) {
     await db.insert(vehiculo).values(s.vehiculos.map((v) => ({ tenantId: t.id, ...v })))
   }
 
-  return { tenant: t, empresa: e, sucursales, usuario: u }
+  return { tenant: t, empresa: e, sucursales, roles, usuario: u }
 }

@@ -1,3 +1,4 @@
+import { ORPCError } from '@orpc/client'
 import { useQuery } from '@tanstack/react-query'
 import { getRouteApi } from '@tanstack/react-router'
 import { useState } from 'react'
@@ -73,7 +74,7 @@ export function PantallaVehiculos() {
 
         {consulta.isError && (
           <p role="alert" className="px-3 py-6 text-dato text-critico">
-            No se pudo traer el listado. Probá refrescar con F5.
+            {mensajeDeError(consulta.error)}
           </p>
         )}
 
@@ -140,6 +141,16 @@ export function PantallaVehiculos() {
       </section>
     </Shell>
   )
+}
+
+/**
+ * Un error dice qué hacer. «Probá refrescar» es un buen consejo ante un corte de red y
+ * uno malo ante un permiso: refrescar no le da permisos a nadie, y quien lo intenta
+ * cinco veces termina pensando que el sistema está roto.
+ */
+function mensajeDeError(error: Error): string {
+  if (error instanceof ORPCError && error.code === 'SIN_PERMISO') return error.message
+  return 'No se pudo traer el listado. Probá refrescar con F5.'
 }
 
 /** Un 0km existe con chasis desde que la terminal lo factura, y sin chapa por semanas. */

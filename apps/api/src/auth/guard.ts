@@ -1,78 +1,136 @@
 import {
+  type AccionPermiso,
+  construirHabilidades,
+  describirPermiso,
+  type Sujeto,
+} from '@garagepro/core'
+import { conTenant, type Db } from '@garagepro/db'
+import {
   type CanActivate,
   createParamDecorator,
   type ExecutionContext,
+  HttpException,
   Inject,
   Injectable,
-  SetMetadata,
-  UnauthorizedException,
+  InternalServerErrorException,
 } from '@nestjs/common'
-import { Reflector } from '@nestjs/core'
 import { JwtService } from '@nestjs/jwt'
-import type { FastifyRequest } from 'fastify'
-import type { Sesion } from './auth.service.ts'
+import type { PedidoConSesion, Sesion } from '../comun/contexto.ts'
+import { accesoDe } from '../comun/operacion.ts'
+import { DB } from '../comun/simbolos.ts'
+import { reglasDelUsuario } from './permisos.ts'
 import type { ClaimsAcceso } from './tokens.ts'
 
-/** Marca una ruta como accesible sin sesión: el login, el refresco, el chequeo de vida. */
-export const PUBLICA = 'ruta_publica'
-export const Publica = () => SetMetadata(PUBLICA, true)
-
-interface ConSesion extends FastifyRequest {
-  sesion?: Sesion
+/**
+ * Un rechazo con la forma de error de oRPC, la misma que el contrato declara.
+ *
+ * Nest respondería `{ statusCode, message, error }`, y el cliente del front no lo
+ * reconocería como error del contrato: vería un «error de red» donde hay un «no tenés
+ * permiso», y el usuario no sabría qué hacer.
+ */
+function rechazo(
+  status: 401 | 403,
+  code: 'NO_AUTENTICADO' | 'SIN_PERMISO',
+  message: string,
+  data?: unknown,
+): HttpException {
+  return new HttpException(
+    { defined: true, code, status, message, ...(data === undefined ? {} : { data }) },
+    status,
+  )
 }
 
 /**
- * Verifica el token de acceso y deja la sesión en el pedido.
+ * La única guardia del sistema: quién es, si sigue habilitado, y si puede hacer esto.
  *
- * Es un guardia global: se protege por omisión y se abre a mano con `@Publica()`. Al
- * revés — abierto por omisión y cerrado a mano — el día que alguien agrega un endpoint
- * y se olvida del decorador, queda expuesto sin que nada avise.
+ * Es una sola y no tres encadenadas porque el orden importa — sin sesión no hay
+ * permisos que evaluar — y el orden entre guardias globales depende de cómo se
+ * registren. Una sola no tiene orden que romper.
+ *
+ * Lee lo que el contrato declara para la ruta (`@Operacion` lo deja a mano). Cerrada
+ * por omisión: una ruta sin declaración no pasa.
  */
 @Injectable()
-export class GuardiaAuth implements CanActivate {
+export class GuardiaAcceso implements CanActivate {
   constructor(
     @Inject(JwtService) private readonly jwt: JwtService,
-    @Inject(Reflector) private readonly reflector: Reflector,
+    @Inject(DB) private readonly db: Db,
   ) {}
 
   async canActivate(contexto: ExecutionContext): Promise<boolean> {
-    const esPublica = this.reflector.getAllAndOverride<boolean>(PUBLICA, [
-      contexto.getHandler(),
-      contexto.getClass(),
-    ])
-    if (esPublica) return true
+    const acceso = accesoDe(contexto.getHandler())
 
-    const pedido = contexto.switchToHttp().getRequest<ConSesion>()
-    const encabezado = pedido.headers.authorization
+    // `VerificadorAcceso` impide arrancar con una ruta así; esto es por si algo se le
+    // escapa. Un 500 y no un 403: no es que el usuario no pueda, es que falta código.
+    if (acceso === undefined) {
+      throw new InternalServerErrorException('Esta ruta no declara quién puede usarla.')
+    }
+    if (acceso === 'publico') return true
 
+    const pedido = contexto.switchToHttp().getRequest<PedidoConSesion>()
+    const sesion = await this.autenticar(pedido.headers.authorization)
+
+    // Las reglas se leen de la base **en cada pedido**, no del token. Guardarlas en el
+    // token ahorraría esta consulta, pero un usuario dado de baja o al que le sacaron un
+    // rol seguiría pudiendo todo hasta que venza — quince minutos para vaciar una caja.
+    // La consulta va por clave primaria y cuesta menos que eso.
+    const reglas = await conTenant(this.db, sesion.tenantId, (tx) => reglasDelUsuario(tx, sesion))
+    if (!reglas) {
+      throw rechazo(
+        401,
+        'NO_AUTENTICADO',
+        'Tu usuario está deshabilitado. Pedile a quien administra los usuarios que lo habilite.',
+      )
+    }
+
+    const habilidades = construirHabilidades(reglas)
+    pedido.sesion = sesion
+    pedido.habilidades = habilidades
+
+    if (acceso === 'sesion') return true
+
+    if (habilidades.cannot(acceso.accion, acceso.sujeto)) {
+      throw this.sinPermiso(acceso.accion, acceso.sujeto)
+    }
+    return true
+  }
+
+  private async autenticar(encabezado: string | undefined): Promise<Sesion> {
     if (!encabezado?.startsWith('Bearer ')) {
-      throw new UnauthorizedException('Falta iniciar sesión')
+      throw rechazo(401, 'NO_AUTENTICADO', 'Falta iniciar sesión')
     }
 
     try {
       const claims = await this.jwt.verifyAsync<ClaimsAcceso>(encabezado.slice(7))
-      pedido.sesion = {
+      return {
         usuarioId: claims.sub,
         tenantId: claims.ten,
         sucursalId: claims.suc,
         sesionId: claims.ses,
       }
-      return true
     } catch {
-      throw new UnauthorizedException('La sesión expiró')
+      throw rechazo(401, 'NO_AUTENTICADO', 'La sesión expiró')
     }
+  }
+
+  /** Dice qué falta y a quién pedírselo: «Formato inválido» no le sirve a nadie. */
+  private sinPermiso(accion: AccionPermiso, sujeto: Sujeto): HttpException {
+    return rechazo(
+      403,
+      'SIN_PERMISO',
+      `Tu usuario no tiene permiso para ${describirPermiso(accion, sujeto)}. ` +
+        'Pedíselo a quien administra los usuarios.',
+      { accion, sujeto },
+    )
   }
 }
 
 /**
- * Inyecta la sesión en un manejador.
- *
- * De acá sale el `tenantId` que se le pasa a `conTenant()`. Si alguien lo olvida, la
- * consulta revienta contra las políticas de RLS en vez de devolver datos ajenos: la
- * disciplina ayuda, pero la garantía la da la base.
+ * Inyecta la sesión en un manejador. Para las rutas que sólo necesitan saber quién es;
+ * las que leen datos usan `DatosDelTenant`, que la toma sola.
  */
 export const DeSesion = createParamDecorator((_: unknown, contexto: ExecutionContext): Sesion => {
-  const pedido = contexto.switchToHttp().getRequest<ConSesion>()
-  if (!pedido.sesion) throw new UnauthorizedException('Falta iniciar sesión')
+  const pedido = contexto.switchToHttp().getRequest<PedidoConSesion>()
+  if (!pedido.sesion) throw rechazo(401, 'NO_AUTENTICADO', 'Falta iniciar sesión')
   return pedido.sesion
 })

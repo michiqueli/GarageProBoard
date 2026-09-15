@@ -1,8 +1,10 @@
-import { type ContractRouterClient, oc } from '@orpc/contract'
+import type { ContractRouterClient } from '@orpc/contract'
 import { z } from 'zod'
+import { conPermiso, publico } from './acceso.ts'
 import { contratoAuth } from './auth.ts'
 import { chasis, dominio, paginado, problema } from './comunes.ts'
 
+export * from './acceso.ts'
 export * from './auth.ts'
 export * from './comunes.ts'
 
@@ -26,7 +28,7 @@ export const vehiculoSalida = z.object({
 export const contrato = {
   auth: contratoAuth,
 
-  salud: oc
+  salud: publico
     .route({
       method: 'GET',
       path: '/salud',
@@ -38,7 +40,7 @@ export const contrato = {
     .output(z.object({ estado: z.literal('ok'), version: z.string() })),
 
   vehiculos: {
-    listar: oc
+    listar: conPermiso('ver', 'Vehiculo')
       .route({
         method: 'GET',
         path: '/vehiculos',
@@ -56,7 +58,7 @@ export const contrato = {
       )
       .output(z.object({ datos: z.array(vehiculoSalida), total: z.number().int() })),
 
-    crear: oc
+    crear: conPermiso('crear', 'Vehiculo')
       .route({
         method: 'POST',
         path: '/vehiculos',

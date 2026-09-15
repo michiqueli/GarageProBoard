@@ -1,21 +1,21 @@
-import { type ReglaPermiso, ROLES_PREDEFINIDOS, resolverCondiciones } from '@garagepro/core'
+import { ROLES_PREDEFINIDOS } from '@garagepro/core'
 import { and, conTenant, type Db, eq, isNull, sql } from '@garagepro/db'
 import {
   empresa,
-  rol,
   sesion,
   sucursal,
   tenant,
   usuario,
   usuarioAtajo,
   usuarioConfig,
-  usuarioRol,
   usuarioSucursal,
 } from '@garagepro/db/schema'
 import { Inject, Injectable } from '@nestjs/common'
 import { JwtService } from '@nestjs/jwt'
 import argon2 from 'argon2'
-import { DB } from '../comun/base.module.ts'
+import type { Sesion } from '../comun/contexto.ts'
+import { DB } from '../comun/simbolos.ts'
+import { reglasDelUsuario } from './permisos.ts'
 import { type ClaimsAcceso, generarRefresco, hashearRefresco, partirRefresco } from './tokens.ts'
 
 /**
@@ -29,17 +29,18 @@ const HASH_SENUELO =
   '$argon2id$v=19$m=65536,t=3,p=4$c2VudWVsb3NlbnVlbG8$3vT4qkP0mYcJXK2mQ8jVxRZ0nB1yD5wLfA6uH9eKmTs'
 
 export class ErrorAuth extends Error {
-  constructor(readonly codigo: 'CREDENCIALES_INVALIDAS' | 'SIN_ACCESO' | 'REFRESCO_INVALIDO') {
+  constructor(
+    readonly codigo:
+      | 'CREDENCIALES_INVALIDAS'
+      | 'SIN_ACCESO'
+      | 'REFRESCO_INVALIDO'
+      | 'USUARIO_INACTIVO',
+  ) {
     super(codigo)
   }
 }
 
-export interface Sesion {
-  usuarioId: string
-  tenantId: string
-  sucursalId: string
-  sesionId: string
-}
+export type { Sesion }
 
 @Injectable()
 export class ServicioAuth {
@@ -285,18 +286,11 @@ export class ServicioAuth {
     const activa = disponibles.find((s) => s.id === sucursalId)
     if (!activa) throw new ErrorAuth('SIN_ACCESO')
 
-    const roles = await tx
-      .select({ habilidades: rol.habilidades })
-      .from(usuarioRol)
-      .innerJoin(rol, eq(rol.id, usuarioRol.rolId))
-      .where(eq(usuarioRol.usuarioId, usuarioId))
-
-    // Las condiciones traen marcadores como `${usuarioId}`, que sólo se pueden
-    // resolver ahora que sabemos quién entró.
-    const habilidades = resolverCondiciones(
-      roles.flatMap((r) => (r.habilidades as ReglaPermiso[]) ?? []),
-      { usuarioId, sucursalId, tenantId: t.id },
-    )
+    // Renovar la sesión también pasa por acá, y es donde se mira si el usuario sigue
+    // habilitado: el login lo verifica, pero sin esto un usuario dado de baja seguía
+    // renovando su sesión durante los treinta días del token de refresco.
+    const habilidades = await reglasDelUsuario(tx, { usuarioId, sucursalId, tenantId: t.id })
+    if (!habilidades) throw new ErrorAuth('USUARIO_INACTIVO')
 
     const guardados = await tx
       .select({ accion: usuarioAtajo.accion, tecla: usuarioAtajo.tecla })

@@ -1,12 +1,15 @@
 import { Module } from '@nestjs/common'
-import { APP_GUARD } from '@nestjs/core'
+import { APP_GUARD, APP_INTERCEPTOR, DiscoveryModule } from '@nestjs/core'
 import { JwtModule } from '@nestjs/jwt'
+import { InterceptorContexto } from '../comun/contexto.ts'
+import { VerificadorAcceso } from '../comun/operacion.ts'
 import { ControladorAuth } from './auth.controller.ts'
 import { ServicioAuth } from './auth.service.ts'
-import { GuardiaAuth } from './guard.ts'
+import { GuardiaAcceso } from './guard.ts'
 
 @Module({
   imports: [
+    DiscoveryModule,
     JwtModule.registerAsync({
       useFactory: () => {
         const secreto = process.env.JWT_SECRET
@@ -20,7 +23,15 @@ import { GuardiaAuth } from './guard.ts'
     }),
   ],
   controllers: [ControladorAuth],
-  providers: [ServicioAuth, { provide: APP_GUARD, useClass: GuardiaAuth }],
+  providers: [
+    ServicioAuth,
+    VerificadorAcceso,
+    // Global: toda ruta pasa por acá, y cada una se abre declarando su acceso en el
+    // contrato. Al revés — abierto por omisión — el endpoint que alguien se olvida de
+    // proteger queda expuesto sin que nada avise.
+    { provide: APP_GUARD, useClass: GuardiaAcceso },
+    { provide: APP_INTERCEPTOR, useClass: InterceptorContexto },
+  ],
   exports: [ServicioAuth],
 })
 export class ModuloAuth {}

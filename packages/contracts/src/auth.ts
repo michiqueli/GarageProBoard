@@ -1,5 +1,5 @@
-import { oc } from '@orpc/contract'
 import { z } from 'zod'
+import { conSesion, publico } from './acceso.ts'
 
 const TAG = 'Sesión'
 
@@ -64,7 +64,7 @@ export const sesionSalida = z.object({
 })
 
 export const contratoAuth = {
-  iniciar: oc
+  iniciar: publico
     .route({
       method: 'POST',
       path: '/auth/iniciar',
@@ -109,7 +109,7 @@ export const contratoAuth = {
     })
     .output(sesionSalida),
 
-  refrescar: oc
+  refrescar: publico
     .route({
       method: 'POST',
       path: '/auth/refrescar',
@@ -126,7 +126,7 @@ export const contratoAuth = {
     })
     .output(sesionSalida),
 
-  cerrar: oc
+  cerrar: publico
     .route({
       method: 'POST',
       path: '/auth/cerrar',
@@ -138,7 +138,7 @@ export const contratoAuth = {
     .input(z.object({ refresh: z.string().min(1).optional() }))
     .output(z.object({ cerrada: z.boolean() })),
 
-  cambiarSucursal: oc
+  cambiarSucursal: publico
     .route({
       method: 'POST',
       path: '/auth/sucursal',
@@ -154,7 +154,7 @@ export const contratoAuth = {
     })
     .output(sesionSalida),
 
-  yo: oc
+  yo: conSesion
     .route({
       method: 'GET',
       path: '/auth/yo',
@@ -163,6 +163,5 @@ export const contratoAuth = {
       summary: 'Datos de la sesión actual',
       description: 'Lo mismo que devuelve el inicio de sesión, sin emitir credenciales nuevas.',
     })
-    .errors({ NO_AUTENTICADO: { status: 401, message: 'Falta iniciar sesión' } })
     .output(sesionSalida.omit({ access: true, refresh: true, expiraEn: true })),
 }

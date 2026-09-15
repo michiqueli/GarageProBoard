@@ -1,10 +1,11 @@
 import { contrato } from '@garagepro/contracts'
 import { Controller, Inject, Req, Res } from '@nestjs/common'
-import { Implement, implement } from '@orpc/nest'
+import { implement } from '@orpc/nest'
 import type { FastifyReply, FastifyRequest } from 'fastify'
+import { Operacion } from '../comun/operacion.ts'
 import { ErrorAuth, ServicioAuth, type Sesion } from './auth.service.ts'
 import { borrarRefresco, leerRefresco, ponerRefresco } from './cookie.ts'
-import { DeSesion, Publica } from './guard.ts'
+import { DeSesion } from './guard.ts'
 
 /**
  * El token de refresco sale por uno de dos caminos y nunca por los dos.
@@ -30,8 +31,7 @@ function entregar<T extends { refresh?: string | undefined }>(
 export class ControladorAuth {
   constructor(@Inject(ServicioAuth) private readonly auth: ServicioAuth) {}
 
-  @Publica()
-  @Implement(contrato.auth.iniciar)
+  @Operacion(contrato.auth.iniciar)
   iniciar(@Req() pedido: FastifyRequest, @Res({ passthrough: true }) respuesta: FastifyReply) {
     return implement(contrato.auth.iniciar).handler(async ({ input, errors }) => {
       try {
@@ -53,8 +53,7 @@ export class ControladorAuth {
     })
   }
 
-  @Publica()
-  @Implement(contrato.auth.refrescar)
+  @Operacion(contrato.auth.refrescar)
   refrescar(@Req() pedido: FastifyRequest, @Res({ passthrough: true }) respuesta: FastifyReply) {
     return implement(contrato.auth.refrescar).handler(async ({ input, errors }) => {
       const token = leerRefresco(pedido, input.refresh)
@@ -75,8 +74,7 @@ export class ControladorAuth {
     })
   }
 
-  @Publica()
-  @Implement(contrato.auth.cerrar)
+  @Operacion(contrato.auth.cerrar)
   cerrar(@Req() pedido: FastifyRequest, @Res({ passthrough: true }) respuesta: FastifyReply) {
     return implement(contrato.auth.cerrar).handler(async ({ input }) => {
       const token = leerRefresco(pedido, input.refresh)
@@ -86,8 +84,7 @@ export class ControladorAuth {
     })
   }
 
-  @Publica()
-  @Implement(contrato.auth.cambiarSucursal)
+  @Operacion(contrato.auth.cambiarSucursal)
   cambiarSucursal(
     @Req() pedido: FastifyRequest,
     @Res({ passthrough: true }) respuesta: FastifyReply,
@@ -109,7 +106,7 @@ export class ControladorAuth {
     })
   }
 
-  @Implement(contrato.auth.yo)
+  @Operacion(contrato.auth.yo)
   yo(@DeSesion() sesion: Sesion) {
     return implement(contrato.auth.yo).handler(async () => this.auth.describir(sesion))
   }

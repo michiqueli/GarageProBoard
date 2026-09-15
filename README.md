@@ -68,18 +68,23 @@ de `apps/web`.
 
 ## Cómo se trabaja acá
 
-Cuatro reglas que ya están metidas en el código y conviene conocer antes de tocarlo.
+Cinco reglas que ya están metidas en el código y conviene conocer antes de tocarlo.
 
 **La plata nunca es un número de punto flotante.** `numeric(18,4)` en la base, string
 en la API, `decimal.js` para operar. Cuatro decimales porque los precios unitarios de
 repuestos los necesitan. Un float en una factura es un error de auditoría esperando
 fecha.
 
-**Ninguna consulta sale sin tenant.** Todo acceso a datos de un cliente pasa por
-`conTenant()`. Fuera de ahí la consulta revienta con un mensaje explícito, porque el
-aislamiento no puede depender de que nadie se olvide un `WHERE`. Si agregás una tabla
-con `tenant_id`, sumala a `TABLAS_CON_TENANT` — hay un test que lo verifica y va a
-fallar si no.
+**Ninguna consulta sale sin tenant.** Los controladores leen datos con
+`DatosDelTenant.transaccion()`, que toma el tenant de la sesión del pedido: no hay
+parámetro que equivocar. Fuera de un pedido con sesión revienta con un mensaje
+explícito, porque el aislamiento no puede depender de que nadie se olvide un `WHERE`.
+Si agregás una tabla con `tenant_id`, sumala a `TABLAS_CON_TENANT` — hay un test que lo
+verifica y va a fallar si no.
+
+**Quién puede usar cada ruta lo dice el contrato.** Se arma con `publico`, `conSesion` o
+`conPermiso('crear', 'Vehiculo')`, y se implementa con `@Operacion()`. La API lo aplica,
+Swagger documenta el 401 y el 403, y una ruta que no lo declara no deja arrancar la API.
 
 **Responsive desde el diseño, no como parche.** El gerente mira facturación del
 celular y el asesor consulta una orden desde una tablet en la playa de entrega. Los

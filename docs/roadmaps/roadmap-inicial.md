@@ -33,10 +33,12 @@ Sin esto no hay pantalla que mostrar a nadie.
       de reuso. 14 tests de integración.
 - ✅ Semillas: catálogos y una concesionaria de ejemplo con dos razones sociales
 - ⬜ Al crear un usuario desde la aplicación, sembrar su config y su mapa de atajos
-- ⬜ Resolución del tenant desde el token y `conTenant()` como interceptor de Nest,
-      para que ninguna consulta pueda salir sin tenant por olvido
-- ✅ Roles y permisos con CASL, compartidos entre API y front (falta aplicarlos en
-      las pantallas y como guardia por operación)
+- ✅ Resolución del tenant desde el token: un interceptor deja la sesión en el contexto
+      del pedido y `DatosDelTenant.transaccion()` la toma sola, sin parámetro de tenant
+- ✅ Roles y permisos con CASL, compartidos entre API y front
+- ✅ Permiso por operación **declarado en el contrato** y aplicado por una guardia
+      única, con las reglas leídas de la base en cada pedido. Una ruta sin acceso
+      declarado no deja arrancar la API. 28 tests nuevos.
 - ✅ Elección de sucursal al entrar, y cambio de sucursal sin volver a autenticarse
 - ⬜ Semilla de datos: provincias, condiciones de IVA y tipos de comprobante desde
       los web services de AFIP, no escritos a mano
@@ -57,7 +59,8 @@ Sin esto no hay pantalla que mostrar a nadie.
 - ✅ Login sólo con correo y contraseña: el tenant sale del usuario
 - ⬜ Auditoría automática de altas, modificaciones y bajas
 - ⬜ Pantalla de configuración: sucursal predeterminada, tema, densidad y teclas
-- ⬜ Aplicar CASL en las pantallas y como guardia por operación
+- ⬜ Aplicar CASL en las pantallas: menú y botones según los permisos, leyendo la
+      misma declaración del contrato que aplica la API
 
 **Criterio de terminado:** un usuario entra, elige sucursal, y lo que ve depende de
 sus permisos.
