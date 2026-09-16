@@ -49,3 +49,28 @@ export function borrarRefresco(respuesta: FastifyReply): void {
 export function leerRefresco(pedido: FastifyRequest, delCuerpo?: string): string | null {
   return delCuerpo ?? pedido.cookies?.[COOKIE_REFRESCO] ?? null
 }
+
+/**
+ * La cookie que identifica a la computadora. Dura dos años y no es secreta: no da acceso a
+ * nada, sólo dice «éste es el mismo navegador que la vez anterior» para que el registro de
+ * ingresos pueda nombrar la PC.
+ */
+export const COOKIE_DISPOSITIVO = 'gpb_dispositivo'
+
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+
+export function ponerDispositivo(respuesta: FastifyReply, id: string): void {
+  respuesta.setCookie(COOKIE_DISPOSITIVO, id, {
+    httpOnly: true,
+    sameSite: 'strict',
+    secure: process.env.NODE_ENV === 'production',
+    path: '/api/auth',
+    maxAge: 2 * 365 * 24 * 60 * 60,
+  })
+}
+
+/** El id de la computadora, si la cookie tiene uno bien formado. Uno inventado se ignora. */
+export function leerDispositivo(pedido: FastifyRequest): string | undefined {
+  const valor = pedido.cookies?.[COOKIE_DISPOSITIVO]
+  return valor && UUID.test(valor) ? valor : undefined
+}

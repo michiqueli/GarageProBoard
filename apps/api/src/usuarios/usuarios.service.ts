@@ -3,6 +3,7 @@ import { atajosParaSembrar, faltaParaAsignar, type Habilidades, type ReglaPermis
 import { and, asc, type Db, eq, inArray, isNull } from '@gpb/db'
 import {
   auditoria,
+  aviso,
   empresa,
   rol,
   sucursal,
@@ -39,6 +40,13 @@ interface DatosUsuario {
   rolIds: string[]
   sucursalIds: string[]
 }
+
+/** «16/9/26, 10:32», en la hora de la concesionaria y no en la del servidor. */
+const FECHA_AVISO = new Intl.DateTimeFormat('es-AR', {
+  dateStyle: 'short',
+  timeStyle: 'short',
+  timeZone: 'America/Argentina/Buenos_Aires',
+})
 
 /** Doce bytes al azar: dieciséis caracteres que nadie va a adivinar ni recordar. */
 function generarPassword(): string {
@@ -196,6 +204,30 @@ export class ServicioUsuarios {
         await tx.delete(usuarioRol).where(eq(usuarioRol.usuarioId, id))
         await tx.delete(usuarioSucursal).where(eq(usuarioSucursal.usuarioId, id))
         await this.asignar(tx, sesion, id, entrada)
+
+        // Que se entere por el sistema y no cuando algo deja de andar.
+        const cambio = (antes: string[], despues: string[]) =>
+          [...antes].sort().join() !== [...despues].sort().join()
+        if (cambio(antes.rolIds, entrada.rolIds)) {
+          const nombres = (await this.completar(tx, [modificado], sesion, habilidades))[0]?.roles
+          await this.avisar(
+            tx,
+            sesion,
+            id,
+            (autor, fecha) =>
+              `${autor} te cambió los roles el ${fecha}. Ahora tenés: ${
+                nombres?.map((r) => r.nombre).join(', ') || 'ningún rol'
+              }.`,
+          )
+        }
+        if (cambio(antes.sucursalIds, entrada.sucursalIds)) {
+          await this.avisar(
+            tx,
+            sesion,
+            id,
+            (autor, fecha) => `${autor} te cambió las sucursales a las que entrás el ${fecha}.`,
+          )
+        }
       }
 
       // La guardia ya lo deja afuera en el próximo pedido; esto además le corta la
@@ -236,6 +268,14 @@ export class ServicioUsuarios {
         .where(eq(usuario.id, id))
       // Quien se la olvidó no tiene sesiones que cuidar; quien se la robó, sí.
       await this.cerrarSesiones(tx, id, 'contraseña regenerada')
+      await this.avisar(
+        tx,
+        sesion,
+        id,
+        (autor, fecha) =>
+          `Tu contraseña la cambió ${autor} el ${fecha}. Si no lo pediste, avisale a quien ` +
+          'administra el sistema.',
+      )
 
       // Sin la contraseña ni su hash: la auditoría dice que pasó, no cuál es.
       await this.auditar(tx, sesion, id, 'modificacion', null, { password: 'regenerada' }, ip)
@@ -294,6 +334,30 @@ export class ServicioUsuarios {
   }
 
   // ── piezas ──────────────────────────────────────────────────────────────────
+
+  /**
+   * Le deja un aviso al usuario afectado, con quién hizo el cambio y cuándo. Lo ve apenas
+   * vuelve a entrar.
+   */
+  private async avisar(
+    tx: Db,
+    sesion: Sesion,
+    usuarioId: string,
+    texto: (autor: string, fecha: string) => string,
+  ) {
+    const [autor] = await tx
+      .select({ nombre: usuario.nombre, apellido: usuario.apellido })
+      .from(usuario)
+      .where(eq(usuario.id, sesion.usuarioId))
+      .limit(1)
+    const quien = autor ? `${autor.nombre} ${autor.apellido}` : 'Alguien'
+
+    await tx.insert(aviso).values({
+      tenantId: sesion.tenantId,
+      usuarioId,
+      texto: texto(quien, FECHA_AVISO.format(new Date())),
+    })
+  }
 
   private async buscar(tx: Db, id: string) {
     const [encontrado] = await tx.select().from(usuario).where(eq(usuario.id, id)).limit(1)

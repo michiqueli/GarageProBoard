@@ -30,6 +30,7 @@ const SESION = {
   sucursalActiva: { id: 's1', nombre: 'Casa Central', empresaId: 'e1', razonSocial: 'Litoral SAS' },
   sucursales: [{ id: 's1', nombre: 'Casa Central', empresaId: 'e1', razonSocial: 'Litoral SAS' }],
   modulos: [],
+  avisos: [],
   habilidades: [],
   atajos: {},
   config: {

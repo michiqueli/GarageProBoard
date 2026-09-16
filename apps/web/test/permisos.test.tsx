@@ -24,6 +24,7 @@ import {
 
 const listarVehiculos = vi.fn()
 const renovar = vi.fn()
+const leerAvisos = vi.fn()
 
 vi.mock('../src/sesion/cliente.ts', () => ({
   api: {
@@ -31,6 +32,7 @@ vi.mock('../src/sesion/cliente.ts', () => ({
       iniciar: vi.fn(),
       cerrar: vi.fn().mockResolvedValue({}),
       cambiarSucursal: vi.fn(),
+      leerAvisos: (...a: unknown[]) => leerAvisos(...a),
     },
     vehiculos: { listar: (...a: unknown[]) => listarVehiculos(...a) },
   },
@@ -216,5 +218,25 @@ describe('un módulo que la concesionaria no tiene', () => {
 
     expect(await screen.findByRole('heading', { name: 'Vehículos', level: 1 })).toBeDefined()
     expect(router.state.location.pathname).toBe('/vehiculos')
+  })
+})
+
+describe('los avisos', () => {
+  it('aparecen al entrar y se van con «Entendido»', async () => {
+    leerAvisos.mockResolvedValue({ leidos: 1 })
+    entraComo({
+      ...SESION,
+      avisos: [
+        { id: 'a1', texto: 'Tu contraseña la cambió Juan Pérez el 16/9/26, 10:32.', creadoEn: '' },
+      ],
+    })
+    await montarApp('/vehiculos')
+
+    const avisos = await screen.findByRole('alert', { name: 'Avisos' })
+    expect(avisos.textContent).toContain('Tu contraseña la cambió Juan Pérez')
+
+    await userEvent.click(screen.getByRole('button', { name: 'Entendido' }))
+    expect(screen.queryByRole('alert', { name: 'Avisos' })).toBeNull()
+    expect(leerAvisos).toHaveBeenCalledWith({ ids: ['a1'] })
   })
 })

@@ -151,6 +151,7 @@ export function Shell({
         </header>
 
         <main className="grid gap-3 px-4 pt-3.5 pb-14">
+          <Avisos />
           {veredicto === 'permitido' ? (
             children
           ) : veredicto === 'modulo-apagado' ? (
@@ -212,6 +213,51 @@ function Nav({ secciones }: { secciones: Seccion[] }) {
         )
       })}
     </nav>
+  )
+}
+
+/**
+ * Lo que le pasó a quien está usando el sistema mientras no estaba: «Tu contraseña la
+ * cambió Juan Pérez el 16/9 a las 10:32».
+ *
+ * Va arriba de cualquier pantalla y no en una sección aparte, porque lo que importa es que
+ * lo vea al entrar, no que lo encuentre si lo busca. Queda hasta que dice «Entendido».
+ */
+function Avisos() {
+  const avisos = usarSesion((e) => e.datos?.avisos ?? [])
+
+  async function entendido() {
+    const ids = avisos.map((a) => a.id)
+    // Se sacan de la pantalla aunque falle el pedido: el aviso ya se leyó, y si no llegó
+    // a marcarse, vuelve a aparecer la próxima vez que entre, que es lo correcto.
+    const { datos, actualizarDatos } = usarSesion.getState()
+    if (datos) actualizarDatos({ ...datos, avisos: [] })
+    await api.auth.leerAvisos({ ids }).catch(() => undefined)
+  }
+
+  if (avisos.length === 0) return null
+
+  return (
+    <section
+      role="alert"
+      aria-label="Avisos"
+      className="grid gap-2 rounded-base border border-atencion bg-superficie px-3 py-2.5"
+    >
+      <ul className="grid gap-1">
+        {avisos.map((a) => (
+          <li key={a.id} className="text-dato">
+            {a.texto}
+          </li>
+        ))}
+      </ul>
+      <button
+        type="button"
+        onClick={entendido}
+        className="h-campo w-fit rounded-base border border-borde px-3 text-dato text-texto-suave hover:bg-superficie-2 hover:text-texto"
+      >
+        Entendido
+      </button>
+    </section>
   )
 }
 

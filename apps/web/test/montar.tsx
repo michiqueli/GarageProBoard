@@ -57,6 +57,7 @@ const BASE: DatosSesion = {
   sucursalActiva: CENTRAL,
   sucursales: [CENTRAL],
   modulos: [...MODULOS],
+  avisos: [],
   habilidades: GERENTE,
   atajos: {},
   config: {

@@ -120,3 +120,25 @@ export const auditoria = pgTable(
     check('auditoria_accion_valida', sql`${t.accion} in ('alta', 'modificacion', 'baja')`),
   ],
 )
+
+/**
+ * Algo que le pasó a un usuario y tiene que saber la próxima vez que entre: «Tu contraseña
+ * la cambió Juan Pérez el 16/09 a las 10:32».
+ *
+ * Es la otra mitad de dejar que el administrador de sistema modifique a cualquiera: si lo
+ * hace mal, el afectado se entera por el sistema y no cuando algo deja de andar.
+ */
+export const aviso = pgTable(
+  'aviso',
+  {
+    id: pk(),
+    tenantId: tenantId().references(() => tenant.id),
+    usuarioId: uuid()
+      .notNull()
+      .references(() => usuario.id),
+    texto: text().notNull(),
+    creadoEn: creadoEn(),
+    leidoEn: timestamp({ withTimezone: true }),
+  },
+  (t) => [index('aviso_usuario_idx').on(t.usuarioId, t.leidoEn)],
+)

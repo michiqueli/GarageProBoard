@@ -15,6 +15,8 @@ export interface DatosSesion {
   sucursales: Sucursal[]
   /** Los módulos que la concesionaria tiene prendidos. Se miran antes que los permisos. */
   modulos: Modulo[]
+  /** Lo que le pasó y todavía no leyó: «Tu contraseña la cambió Juan Pérez». */
+  avisos: Array<{ id: string; texto: string; creadoEn: string }>
   /** Reglas de CASL ya resueltas contra este usuario, tal como las manda la API. */
   habilidades: ReglaPermiso[]
   atajos: Record<string, string>

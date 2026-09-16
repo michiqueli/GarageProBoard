@@ -62,6 +62,11 @@ export const sesionSalida = z.object({
    * permisos: lo que no está contratado no se muestra, ni siquiera atenuado.
    */
   modulos: z.array(z.enum(MODULOS)),
+  /**
+   * Lo que le pasó a este usuario y todavía no leyó: «Tu contraseña la cambió Juan Pérez».
+   * La aplicación lo muestra apenas entra, hasta que lo marca como leído.
+   */
+  avisos: z.array(z.object({ id: z.uuid(), texto: z.string(), creadoEn: z.iso.datetime() })),
   /** Reglas de CASL, ya resueltas contra este usuario. */
   habilidades: z.array(reglaPermiso),
   /** Sólo aquello en lo que el usuario se apartó del valor por omisión. */
@@ -170,4 +175,16 @@ export const contratoAuth = {
       description: 'Lo mismo que devuelve el inicio de sesión, sin emitir credenciales nuevas.',
     })
     .output(sesionSalida.omit({ access: true, refresh: true, expiraEn: true })),
+
+  leerAvisos: conSesion
+    .route({
+      method: 'POST',
+      path: '/auth/avisos/leidos',
+      tags: [TAG],
+      operationId: 'marcarAvisosLeidos',
+      summary: 'Marcar avisos como leídos',
+      description: 'Sólo los propios: los de otro usuario se ignoran.',
+    })
+    .input(z.object({ ids: z.array(z.uuid()).min(1) }))
+    .output(z.object({ leidos: z.number().int() })),
 }

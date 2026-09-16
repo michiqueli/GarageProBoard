@@ -43,6 +43,13 @@
       "when": 1789566374986,
       "tag": "0005_chunky_molecule_man",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1789579613752,
+      "tag": "0006_clear_greymalkin",
+      "breakpoints": true
     }
   ]
 }

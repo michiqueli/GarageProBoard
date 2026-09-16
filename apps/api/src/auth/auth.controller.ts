@@ -4,7 +4,13 @@ import { implement } from '@orpc/nest'
 import type { FastifyReply, FastifyRequest } from 'fastify'
 import { Operacion } from '../comun/operacion.ts'
 import { ErrorAuth, ServicioAuth, type Sesion } from './auth.service.ts'
-import { borrarRefresco, leerRefresco, ponerRefresco } from './cookie.ts'
+import {
+  borrarRefresco,
+  leerDispositivo,
+  leerRefresco,
+  ponerDispositivo,
+  ponerRefresco,
+} from './cookie.ts'
 import { DeSesion } from './guard.ts'
 
 /**
@@ -16,14 +22,17 @@ import { DeSesion } from './guard.ts'
  * malicioso que llame a `/auth/refrescar` leería el token nuevo del JSON y se lo
  * llevaría igual.
  */
-function entregar<T extends { refresh?: string | undefined }>(
+function entregar<T extends { refresh?: string | undefined; dispositivoId?: string | null }>(
   respuesta: FastifyReply,
-  sesion: T,
+  { dispositivoId, ...sesion }: T,
   modo: 'cookie' | 'cuerpo',
-): T {
+) {
   if (modo === 'cuerpo') return sesion
 
   if (sesion.refresh) ponerRefresco(respuesta, sesion.refresh)
+  // Se vuelve a poner en cada ingreso: así la cookie de dos años se renueva sola mientras
+  // la computadora se siga usando.
+  if (dispositivoId) ponerDispositivo(respuesta, dispositivoId)
   return { ...sesion, refresh: undefined }
 }
 
@@ -41,6 +50,8 @@ export class ControladorAuth {
           sucursalId: input.sucursalId,
           agente: pedido.headers['user-agent'],
           ip: pedido.ip,
+          dispositivoId: leerDispositivo(pedido),
+          registrarDispositivo: input.entrega === 'cookie',
         })
         return entregar(respuesta, sesion, input.entrega)
       } catch (error) {
@@ -104,6 +115,13 @@ export class ControladorAuth {
         throw error
       }
     })
+  }
+
+  @Operacion(contrato.auth.leerAvisos)
+  leerAvisos(@DeSesion() sesion: Sesion) {
+    return implement(contrato.auth.leerAvisos).handler(async ({ input }) => ({
+      leidos: await this.auth.leerAvisos(sesion, input.ids),
+    }))
   }
 
   @Operacion(contrato.auth.yo)

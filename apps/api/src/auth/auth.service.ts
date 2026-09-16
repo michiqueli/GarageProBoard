@@ -1,6 +1,8 @@
 import { ROLES_PREDEFINIDOS } from '@gpb/core'
-import { and, conTenant, type Db, eq, isNull, modulosVigentes, sql } from '@gpb/db'
+import { and, asc, conTenant, type Db, eq, inArray, isNull, modulosVigentes, sql } from '@gpb/db'
 import {
+  aviso,
+  dispositivo,
   empresa,
   sesion,
   sucursal,
@@ -55,6 +57,10 @@ export class ServicioAuth {
     sucursalId?: string | undefined
     agente?: string | undefined
     ip?: string | undefined
+    /** El de la cookie, si la hay. */
+    dispositivoId?: string | undefined
+    /** Si se reconoce la computadora: sí en un navegador, no en una app sin cookies. */
+    registrarDispositivo?: boolean | undefined
   }) {
     const encontrado = await this.buscarPorCorreo(entrada.email)
 
@@ -74,6 +80,8 @@ export class ServicioAuth {
       familia: crypto.randomUUID(),
       agente: entrada.agente,
       ip: entrada.ip,
+      dispositivoId: entrada.dispositivoId,
+      registrarDispositivo: entrada.registrarDispositivo ?? false,
     })
   }
 
@@ -113,6 +121,9 @@ export class ServicioAuth {
           familia: actual.familia,
           agente: actual.agente ?? undefined,
           ip: actual.ip ?? undefined,
+          // La renovación es la misma computadora que el ingreso: la hereda, no la busca.
+          dispositivoId: actual.dispositivoId ?? undefined,
+          registrarDispositivo: false,
         },
         tx,
       )
@@ -192,6 +203,8 @@ export class ServicioAuth {
       familia: string
       agente?: string | undefined
       ip?: string | undefined
+      dispositivoId?: string | undefined
+      registrarDispositivo: boolean
     },
     txExistente?: Db,
   ) {
@@ -215,6 +228,8 @@ export class ServicioAuth {
         throw new ErrorAuth('SIN_ACCESO')
       }
 
+      const dispositivoId = await this.resolverDispositivo(tx, datos)
+
       const refresh = generarRefresco(datos.tenantId)
       const diasRefresco = 30
 
@@ -229,6 +244,7 @@ export class ServicioAuth {
           expiraEn: new Date(Date.now() + diasRefresco * 24 * 60 * 60 * 1000),
           agente: datos.agente ?? null,
           ip: datos.ip ?? null,
+          dispositivoId,
         })
         .returning()
 
@@ -255,10 +271,55 @@ export class ServicioAuth {
         refresh,
         expiraEn: new Date(Date.now() + minutosAcceso * 60 * 1000).toISOString(),
         ...payload,
+        /** Para que el controlador deje la cookie. No viaja en la respuesta. */
+        dispositivoId,
       }
     }
 
     return txExistente ? trabajo(txExistente) : conTenant(this.db, datos.tenantId, trabajo)
+  }
+
+  /**
+   * La computadora de este ingreso: la de la cookie si existe en esta concesionaria, o una
+   * nueva. Una cookie de otra concesionaria —la misma PC usada por dos clientes— no se
+   * encuentra, por RLS, y cuenta como computadora nueva para ésta.
+   */
+  private async resolverDispositivo(
+    tx: Db,
+    datos: {
+      tenantId: string
+      agente?: string | undefined
+      dispositivoId?: string | undefined
+      registrarDispositivo: boolean
+    },
+  ): Promise<string | null> {
+    if (datos.dispositivoId) {
+      const actualizados = await tx
+        .update(dispositivo)
+        .set({ ultimoUsoEn: new Date(), ...(datos.agente ? { agente: datos.agente } : {}) })
+        .where(eq(dispositivo.id, datos.dispositivoId))
+        .returning({ id: dispositivo.id })
+      if (actualizados[0]) return actualizados[0].id
+    }
+    if (!datos.registrarDispositivo) return null
+
+    const [nuevo] = await tx
+      .insert(dispositivo)
+      .values({ tenantId: datos.tenantId, agente: datos.agente ?? null })
+      .returning({ id: dispositivo.id })
+    return nuevo?.id ?? null
+  }
+
+  /** Marca como leídos los avisos propios. Los ids de otro usuario no coinciden y se ignoran. */
+  async leerAvisos(s: Sesion, ids: string[]): Promise<number> {
+    return conTenant(this.db, s.tenantId, async (tx) => {
+      const leidos = await tx
+        .update(aviso)
+        .set({ leidoEn: new Date() })
+        .where(and(eq(aviso.usuarioId, s.usuarioId), inArray(aviso.id, ids), isNull(aviso.leidoEn)))
+        .returning({ id: aviso.id })
+      return leidos.length
+    })
   }
 
   private async sucursalesDe(tx: Db, usuarioId: string) {
@@ -303,12 +364,19 @@ export class ServicioAuth {
       .where(eq(usuarioConfig.usuarioId, usuarioId))
       .limit(1)
 
+    const pendientes = await tx
+      .select({ id: aviso.id, texto: aviso.texto, creadoEn: aviso.creadoEn })
+      .from(aviso)
+      .where(and(eq(aviso.usuarioId, usuarioId), isNull(aviso.leidoEn)))
+      .orderBy(asc(aviso.creadoEn))
+
     return {
       usuario: { id: u.id, email: u.email, nombre: u.nombre, apellido: u.apellido },
       tenant: { id: t.id, nombre: t.nombre, slug: t.slug },
       sucursalActiva: activa,
       sucursales: disponibles,
       modulos: await modulosVigentes(tx),
+      avisos: pendientes.map((a) => ({ ...a, creadoEn: a.creadoEn.toISOString() })),
       habilidades,
       atajos: Object.fromEntries(guardados.map((a) => [a.accion, a.tecla])),
       config: {

@@ -27,6 +27,8 @@ export const TABLAS_CON_TENANT = [
   'auditoria',
   'sesion',
   'tenant_modulo',
+  'dispositivo',
+  'aviso',
 ] as const
 
 /**

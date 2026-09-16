@@ -6,6 +6,30 @@ import { sucursal } from './organizacion.ts'
 import { tenant } from './tenant.ts'
 
 /**
+ * Una computadora —más precisamente, un navegador— desde la que se entra al sistema.
+ *
+ * Existe porque la IP no alcanza: todas las PC de una concesionaria salen a internet por
+ * el mismo router, y el servidor ve la misma dirección para el gerente y para el cajero.
+ * Cada navegador recibe la primera vez un identificador propio en una cookie, y cada
+ * inicio de sesión queda asociado a él. Así el registro dice «entró el gerente desde la
+ * PC del mostrador», y no sólo desde qué IP.
+ *
+ * No es una medida de seguridad —quien borra las cookies aparece como computadora
+ * nueva— sino de trazabilidad: una computadora nueva en la cuenta del gerente es lo que
+ * hay que mirar.
+ */
+export const dispositivo = pgTable('dispositivo', {
+  id: pk(),
+  tenantId: tenantId().references(() => tenant.id),
+  /** Lo pone la concesionaria: «PC del mostrador». Sin nombre, se muestra el navegador. */
+  nombre: text(),
+  /** El navegador y el sistema operativo, tal como los informa. */
+  agente: text(),
+  creadoEn: creadoEn(),
+  ultimoUsoEn: timestamp({ withTimezone: true }).notNull().default(sql`now()`),
+})
+
+/**
  * Sesión abierta: un token de refresco vivo.
  *
  * Existe porque el token de refresco **rota**: cada uso emite uno nuevo y anula el
@@ -38,6 +62,9 @@ export const sesion = pgTable(
      * unidad que se anula cuando se detecta un reuso.
      */
     familia: uuid().notNull(),
+
+    /** Desde qué computadora. Sin cookie —una app, una integración— queda vacío. */
+    dispositivoId: uuid().references(() => dispositivo.id),
 
     /** La sucursal elegida al entrar. Viaja en el token para acotar los permisos. */
     sucursalId: uuid().references(() => sucursal.id),
