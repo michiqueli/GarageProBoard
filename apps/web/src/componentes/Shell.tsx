@@ -1,141 +1,41 @@
-import { Link, type LinkProps } from '@tanstack/react-router'
+import { type Acceso, permite } from '@garagepro/contracts'
+import { describirPermiso } from '@garagepro/core'
+import { Link } from '@tanstack/react-router'
 import type { ReactNode } from 'react'
+import { PRINCIPALES, SECUNDARIAS, type Seccion, visibles } from '../navegacion.tsx'
 import { usarSesion } from '../sesion/almacen.ts'
 import { api } from '../sesion/cliente.ts'
+import { useHabilidades } from '../sesion/permisos.ts'
 import { useAtajo, useTeclado } from '../teclado/index.ts'
 import { BarraEstado } from './BarraEstado.tsx'
 import { Tecla } from './Tecla.tsx'
-
-interface Seccion {
-  id: string
-  etiqueta: string
-  icono: ReactNode
-  /**
-   * La ruta, tipada contra el árbol real: un destino que no existe no compila.
-   * Las secciones sin ruta todavía no están construidas y se muestran atenuadas.
-   */
-  to?: LinkProps['to']
-}
-
-const trazo = { fill: 'none', stroke: 'currentColor', strokeWidth: 1.5 } as const
-
-const PRINCIPALES: Seccion[] = [
-  {
-    id: 'tablero',
-    etiqueta: 'Tablero',
-    icono: (
-      <svg viewBox="0 0 16 16" {...trazo} aria-hidden="true">
-        <rect x="2" y="2" width="5" height="5" />
-        <rect x="9" y="2" width="5" height="5" />
-        <rect x="2" y="9" width="5" height="5" />
-        <rect x="9" y="9" width="5" height="5" />
-      </svg>
-    ),
-  },
-  {
-    id: 'ordenes',
-    etiqueta: 'Órdenes de trabajo',
-    to: '/ordenes',
-    icono: (
-      <svg viewBox="0 0 16 16" {...trazo} aria-hidden="true">
-        <path d="M3 2h7l3 3v9H3z" />
-        <path d="M5.5 8h5M5.5 11h3" />
-      </svg>
-    ),
-  },
-  {
-    id: 'vehiculos',
-    etiqueta: 'Vehículos',
-    to: '/vehiculos',
-    icono: (
-      <svg viewBox="0 0 16 16" {...trazo} aria-hidden="true">
-        <path d="M2 10h12M3.5 10V7l1.5-3h6l1.5 3v3" />
-        <circle cx="5" cy="12" r="1.2" />
-        <circle cx="11" cy="12" r="1.2" />
-      </svg>
-    ),
-  },
-  {
-    id: 'clientes',
-    etiqueta: 'Clientes',
-    icono: (
-      <svg viewBox="0 0 16 16" {...trazo} aria-hidden="true">
-        <circle cx="8" cy="5.5" r="2.5" />
-        <path d="M3 13.5c0-2.5 2.2-4 5-4s5 1.5 5 4" />
-      </svg>
-    ),
-  },
-  {
-    id: 'repuestos',
-    etiqueta: 'Repuestos',
-    icono: (
-      <svg viewBox="0 0 16 16" {...trazo} aria-hidden="true">
-        <path d="M8 2l5 2.5v6L8 13 3 10.5v-6z" />
-        <path d="M8 7.5L13 5M8 7.5v5.2M8 7.5L3 5" />
-      </svg>
-    ),
-  },
-  {
-    id: 'caja',
-    etiqueta: 'Caja',
-    icono: (
-      <svg viewBox="0 0 16 16" {...trazo} aria-hidden="true">
-        <rect x="2" y="4" width="12" height="8" rx="1" />
-        <path d="M2 7h12" />
-      </svg>
-    ),
-  },
-  {
-    id: 'entregas',
-    etiqueta: 'Entregas',
-    icono: (
-      <svg viewBox="0 0 16 16" {...trazo} aria-hidden="true">
-        <path d="M2 8l4 4 8-8" />
-      </svg>
-    ),
-  },
-]
-
-const SECUNDARIAS: Seccion[] = [
-  {
-    id: 'ayuda',
-    etiqueta: 'Ayuda',
-    icono: (
-      <svg viewBox="0 0 16 16" {...trazo} aria-hidden="true">
-        <circle cx="8" cy="8" r="6" />
-        <path d="M6.5 6.2a1.6 1.6 0 113 .8c-.5.5-1.5.7-1.5 1.7M8 11.5v.01" />
-      </svg>
-    ),
-  },
-  {
-    id: 'configuracion',
-    etiqueta: 'Configuración',
-    icono: (
-      <svg viewBox="0 0 16 16" {...trazo} aria-hidden="true">
-        <circle cx="8" cy="8" r="2.2" />
-        <path d="M8 1.6v1.8M8 12.6v1.8M14.4 8h-1.8M3.4 8H1.6M12.5 3.5l-1.3 1.3M4.8 11.2l-1.3 1.3M12.5 12.5l-1.3-1.3M4.8 4.8L3.5 3.5" />
-      </svg>
-    ),
-  },
-]
 
 /**
  * El armazón de la aplicación: navegación, encabezado y barra de estado.
  *
  * La sección activa sale de la URL y no de una prop: el enlace se marca solo cuando su
  * ruta coincide, así que no hay forma de que el menú diga una pantalla y se vea otra.
+ *
+ * **`requiere` es obligatorio y por eso no se olvida.** Es el equivalente de `@Operacion`
+ * en la API: una pantalla nueva no compila hasta decir qué permiso pide, y con eso sola
+ * queda cubierta. Lo que declare es lo mismo que aplica el servidor —
+ * `accesoDeRuta(contrato.vehiculos.listar)` — así que no hay dos reglas que mantener.
  */
 export function Shell({
   titulo,
+  requiere,
   acciones,
   children,
 }: {
   titulo: string
+  requiere: Acceso
   acciones?: ReactNode | undefined
   children: ReactNode
 }) {
   const { teclaDe } = useTeclado()
   const datos = usarSesion((e) => e.datos)
+  const habilidades = useHabilidades()
+  const puede = permite(habilidades, requiere)
   const variasSucursales = (datos?.sucursales.length ?? 0) > 1
 
   /**
@@ -171,9 +71,9 @@ export function Shell({
           {datos?.tenant.nombre ?? '—'}
         </p>
 
-        <Nav secciones={PRINCIPALES} />
+        <Nav secciones={visibles(PRINCIPALES, habilidades)} />
         <div className="mx-2 my-3 h-px bg-borde-suave" />
-        <Nav secciones={SECUNDARIAS} />
+        <Nav secciones={visibles(SECUNDARIAS, habilidades)} />
 
         <div className="mt-auto grid gap-2 rounded-base border border-borde p-2">
           <div className="flex items-center gap-2.5">
@@ -244,10 +144,14 @@ export function Shell({
             )}
           </span>
 
-          {acciones}
+          {/* Sin permiso no hay verbo: el botón de alta de una pantalla que no se
+              puede ni ver sería una promesa falsa, y además registraría su atajo. */}
+          {puede && acciones}
         </header>
 
-        <main className="grid gap-3 px-4 pt-3.5 pb-14">{children}</main>
+        <main className="grid gap-3 px-4 pt-3.5 pb-14">
+          {puede ? children : <SinPermiso acceso={requiere} />}
+        </main>
       </div>
 
       <BarraEstado />
@@ -301,5 +205,34 @@ function Nav({ secciones }: { secciones: Seccion[] }) {
         )
       })}
     </nav>
+  )
+}
+
+/**
+ * Lo que se ve en lugar de la pantalla cuando el permiso falta.
+ *
+ * Va adentro del armazón, con el menú y la barra: quien llegó acá por un enlace viejo o
+ * un favorito tiene que poder seguir trabajando, no quedarse en una página muerta. Y
+ * dice qué permiso falta y a quién pedírselo, con las mismas palabras que usa la API
+ * cuando rechaza la operación.
+ */
+function SinPermiso({ acceso }: { acceso: Acceso }) {
+  const que =
+    typeof acceso === 'string' ? 'esta pantalla' : describirPermiso(acceso.accion, acceso.sujeto)
+
+  return (
+    <section className="grid justify-items-center gap-2 rounded-base border border-borde bg-superficie px-4 py-10 text-center">
+      <h2 className="font-display text-dato font-semibold">No tenés permiso para {que}</h2>
+      <p className="max-w-sm text-dato text-texto-suave">
+        Pedíselo a quien administra los usuarios de la concesionaria. Mientras tanto, desde el menú
+        llegás a lo que sí tenés habilitado.
+      </p>
+      <Link
+        to="/"
+        className="mt-1 flex h-campo items-center rounded-base border border-marca bg-marca-suave px-3 font-semibold text-dato text-marca"
+      >
+        Ir al inicio
+      </Link>
+    </section>
   )
 }

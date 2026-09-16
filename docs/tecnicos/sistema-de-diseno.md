@@ -360,6 +360,63 @@ Para el vehículo, el cliente, la orden. Encabezado con la identidad y el estado
 debajo las secciones. El historial va en orden cronológico inverso: lo último primero,
 porque es lo que se consulta.
 
+### Buscador del sistema
+
+Un campo en la barra lateral que busca **el sistema**: pantallas, acciones y
+configuraciones. Escribir «mercado pago» lleva a la configuración de Mercado Pago;
+escribir «certificados», a los certificados de AFIP. Lo que resuelve es la pregunta más
+frecuente de cualquier sistema grande: *¿dónde estaba esto?*
+
+**No se confunde con el buscador del encabezado**, y por eso cada uno dice qué busca:
+
+| | Busca | Ejemplo |
+| --- | --- | --- |
+| Encabezado, `F3` | **Datos** | Una patente, un chasis, un cliente |
+| Barra lateral, `F10` | **El sistema** | Una pantalla, una configuración, una acción |
+
+**Es la misma cosa que la paleta.** El campo es la puerta visible y `F10` el atajo; no
+son dos índices ni dos búsquedas. Quien no sabe que existe la tecla lo encuentra igual,
+que es todo el punto de que esté a la vista.
+
+#### El índice
+
+Cada entrada declara su título, **dónde vive** y sus palabras clave:
+
+    Mercado Pago · Contable → Configuración
+    claves: mp, mercadopago, cobros, medios de pago, pasarela
+
+    Certificados de AFIP · Contable → Configuración
+    claves: afip, arca, certificado digital, factura electrónica, csr, clave fiscal
+
+Las palabras clave son el trabajo de verdad: **nadie busca con el nombre que le pusimos
+a la pantalla.** El que busca «factura electrónica» tiene que llegar a los certificados
+aunque la pantalla se llame de otra forma.
+
+**Una pantalla nueva se registra en el índice igual que se registra en el menú.** Si no
+está, no existe para quien la busca.
+
+El resultado muestra la miga —«Contable → Configuración»— porque enseña el mapa: quien
+busca dos veces, la tercera va directo por el menú.
+
+#### Qué aparece y qué no
+
+Los mismos tres estados del menú, por los mismos motivos:
+
+- **Sin permiso, o con el módulo apagado**: no aparece. No es para este usuario, o no es
+  de esta concesionaria.
+- **Sin construir**: aparece atenuada, no navega, y dice dónde va a estar. La pregunta
+  «¿dónde va a estar Mercado Pago?» se contesta igual antes de que la pantalla exista, y
+  es mejor respuesta que el silencio.
+- **Lista**: `Enter` y ya está.
+
+#### Reglas de la coincidencia y del teclado
+
+- Sin acentos ni mayúsculas, y **por palabras sueltas en cualquier orden**: «pago
+  mercado» encuentra lo mismo que «mercado pago».
+- El primer resultado viene seleccionado; `↑` `↓` recorren, `Enter` abre, `Esc` cierra y
+  devuelve el foco a donde estaba.
+- Nunca hace falta el mouse, como todo lo demás.
+
 ### Estados vacíos, cargando y con error
 
 - **Vacío**: decir qué es esto y ofrecer la acción. «Todavía no hay órdenes en esta

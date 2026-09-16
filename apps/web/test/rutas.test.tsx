@@ -83,8 +83,12 @@ describe('sin sesión', () => {
 
     await entrarConCorreo()
 
-    expect(await screen.findByRole('heading', { name: 'Vehículos', level: 1 })).toBeDefined()
-    expect(router.state.location.pathname).toBe('/vehiculos')
+    // Al inicio, que es la primera pantalla que este usuario puede ver — no al sitio
+    // ajeno que traía la dirección.
+    expect(
+      await screen.findByRole('heading', { name: 'Órdenes de trabajo', level: 1 }),
+    ).toBeDefined()
+    expect(router.state.location.pathname).toBe('/ordenes')
   })
 
   it('una dirección que no existe lo dice, y ofrece la salida', async () => {
@@ -123,8 +127,10 @@ describe('al recargar la página', () => {
     conCookie(SESION)
     const router = await montarApp('/entrar')
 
-    expect(await screen.findByRole('heading', { name: 'Vehículos', level: 1 })).toBeDefined()
-    expect(router.state.location.pathname).toBe('/vehiculos')
+    expect(
+      await screen.findByRole('heading', { name: 'Órdenes de trabajo', level: 1 }),
+    ).toBeDefined()
+    expect(router.state.location.pathname).toBe('/ordenes')
   })
 })
 

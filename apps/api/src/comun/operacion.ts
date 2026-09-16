@@ -1,4 +1,4 @@
-import type { Acceso, MetaRuta } from '@garagepro/contracts'
+import { type Acceso, accesoDeRuta, type RutaDelContrato } from '@garagepro/contracts'
 import { Inject, Injectable, type OnModuleInit, SetMetadata, type Type } from '@nestjs/common'
 import { PATH_METADATA } from '@nestjs/common/constants'
 import { DiscoveryService } from '@nestjs/core'
@@ -6,9 +6,7 @@ import { Implement } from '@orpc/nest'
 
 export const ACCESO = 'garagepro:acceso'
 
-type ContratoDeRuta = Parameters<typeof Implement>[0] & {
-  '~orpc': { meta: MetaRuta; route: { method?: string; path?: string } }
-}
+type ContratoDeRuta = Parameters<typeof Implement>[0] & RutaDelContrato
 
 /**
  * Implementa una ruta del contrato **con el acceso que el contrato declara**.
@@ -21,17 +19,10 @@ type ContratoDeRuta = Parameters<typeof Implement>[0] & {
  * controlador**, antes de que la API atienda un solo pedido.
  */
 export function Operacion<T extends ContratoDeRuta>(contrato: T): ReturnType<typeof Implement<T>> {
-  const { meta, route } = contrato['~orpc']
-
-  if (meta.acceso === undefined) {
-    throw new Error(
-      `La ruta ${route.method ?? ''} ${route.path ?? ''} no declara quién puede usarla. ` +
-        'Armala con publico, conSesion o conPermiso() de @garagepro/contracts.',
-    )
-  }
+  const acceso = accesoDeRuta(contrato)
 
   const implementar = Implement(contrato)
-  const marcar = SetMetadata(ACCESO, meta.acceso)
+  const marcar = SetMetadata(ACCESO, acceso)
 
   // Con la misma firma que `Implement`, y no con `applyDecorators`: la de oRPC es
   // genérica y verifica que el método devuelva la implementación de *este* contrato.

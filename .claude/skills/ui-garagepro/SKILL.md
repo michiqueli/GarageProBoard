@@ -58,6 +58,13 @@ varones no distingue rojo de verde, y en un taller son casi todos varones.
 teclado, foco siempre visible, `Tab` en orden visual. Si un flujo obliga a agarrar el
 mouse, ese flujo está roto.
 
+**9. Toda pantalla nueva se registra en el índice del buscador.** La barra lateral tiene
+un campo que busca el sistema —pantallas, acciones y configuraciones—, y es la misma cosa
+que la paleta de `F10`. Se registra con sus **palabras clave**, no sólo con su nombre:
+nadie busca «Certificados» cuando lo que tiene en la cabeza es «factura electrónica». Si
+no está en el índice, no existe para quien la busca. Es distinto del buscador del
+encabezado (`F3`), que busca datos: patente, chasis, cliente.
+
 ## Mapa global de teclas
 
 Se registra en **un solo lugar** (`apps/web/src/teclado/`). Si cada pantalla escucha

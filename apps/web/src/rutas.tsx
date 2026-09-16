@@ -13,14 +13,17 @@ import {
 } from '@tanstack/react-router'
 import { useEffect } from 'react'
 import { z } from 'zod'
+import { Shell } from './componentes/Shell.tsx'
 import { useCacheDeSesion } from './ganchos/useCacheDeSesion.ts'
 import { useTema } from './ganchos/useTema.ts'
 import { PantallaLogin } from './modulos/auth/PantallaLogin.tsx'
 import { PantallaSucursal } from './modulos/auth/PantallaSucursal.tsx'
 import { PantallaOrdenes } from './modulos/ordenes/PantallaOrdenes.tsx'
 import { PantallaVehiculos } from './modulos/vehiculos/PantallaVehiculos.tsx'
+import { primeraPantalla } from './navegacion.tsx'
 import { usarSesion } from './sesion/almacen.ts'
 import { renovar } from './sesion/cliente.ts'
+import { habilidadesActuales } from './sesion/permisos.ts'
 import { ProveedorTeclado } from './teclado/index.ts'
 
 /**
@@ -114,13 +117,23 @@ const conSesion = createRoute({
   component: ConSesion,
 })
 
+/**
+ * El inicio manda a la primera pantalla que este usuario pueda ver.
+ *
+ * No es siempre la misma: el gerente cae en Vehículos y el repuestero caería en una
+ * pantalla que no puede ver. Mandar a todos al mismo lado significaba recibir a algunos
+ * con un «no tenés permiso» apenas entran.
+ *
+ * Cuando exista el tablero, el destino de quien puede verlo se cambia acá.
+ */
 const rutaInicio = createRoute({
   getParentRoute: () => conSesion,
   path: '/',
-  // No hay tablero todavía. Cuando lo haya, es acá donde se cambia el destino.
   beforeLoad: () => {
-    throw redirect({ to: '/vehiculos', replace: true })
+    const destino = primeraPantalla(habilidadesActuales())
+    if (destino) throw redirect({ to: destino, replace: true })
   },
+  component: SinPantallas,
 })
 
 const rutaOrdenes = createRoute({
@@ -260,5 +273,28 @@ function NoEncontrada() {
         </Link>
       </main>
     </div>
+  )
+}
+
+/**
+ * Entró, pero no hay ni una pantalla para mostrarle.
+ *
+ * Pasa con un usuario recién creado al que todavía no le asignaron rol. Sin esto
+ * quedaría mirando una página en blanco y concluiría que el sistema está roto, que es
+ * justo lo contrario de lo que pasa: el sistema está cerrado, como corresponde.
+ */
+function SinPantallas() {
+  return (
+    <Shell titulo="Inicio" requiere="sesion">
+      <section className="grid justify-items-center gap-2 rounded-base border border-borde bg-superficie px-4 py-10 text-center">
+        <h2 className="font-display text-dato font-semibold">
+          Todavía no tenés ninguna pantalla habilitada
+        </h2>
+        <p className="max-w-sm text-dato text-texto-suave">
+          Tu usuario está bien, le falta el rol. Pedile a quien administra los usuarios de la
+          concesionaria que te asigne uno.
+        </p>
+      </section>
+    </Shell>
   )
 }

@@ -1,3 +1,4 @@
+import type { ReglaPermiso } from '@garagepro/core'
 import { create } from 'zustand'
 
 export interface Sucursal {
@@ -12,7 +13,8 @@ export interface DatosSesion {
   tenant: { id: string; nombre: string; slug: string }
   sucursalActiva: Sucursal
   sucursales: Sucursal[]
-  habilidades: unknown[]
+  /** Reglas de CASL ya resueltas contra este usuario, tal como las manda la API. */
+  habilidades: ReglaPermiso[]
   atajos: Record<string, string>
   config: {
     tema: 'claro' | 'oscuro' | 'sistema'

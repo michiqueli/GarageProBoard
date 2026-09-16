@@ -1,3 +1,4 @@
+import { accesoDeRuta, contrato } from '@garagepro/contracts'
 import { ORPCError } from '@orpc/client'
 import { useQuery } from '@tanstack/react-query'
 import { getRouteApi } from '@tanstack/react-router'
@@ -7,6 +8,7 @@ import { Shell } from '../../componentes/Shell.tsx'
 import { ES_ESCRITORIO, useMedia } from '../../ganchos/useMedia.ts'
 import { usarSesion } from '../../sesion/almacen.ts'
 import { api } from '../../sesion/cliente.ts'
+import { usePuedeUsar } from '../../sesion/permisos.ts'
 
 // Por id y no importando la ruta: `rutas.tsx` importa esta pantalla, y el camino
 // inverso armaría un ciclo. El id igual está tipado — uno que no existe no compila.
@@ -38,21 +40,32 @@ export function PantallaVehiculos() {
   const tenant = usarSesion((e) => e.datos?.tenant.nombre)
   const tenantId = usarSesion((e) => e.datos?.tenant.id)
 
+  // Los dos permisos salen del mismo contrato que aplica la API: el listado decide si
+  // la pantalla se dibuja, el alta si aparece el botón. Nada de repetir la regla acá.
+  const puedeVer = usePuedeUsar(contrato.vehiculos.listar)
+  const puedeCrear = usePuedeUsar(contrato.vehiculos.crear)
+
   const consulta = useQuery({
     // El tenant va en la clave aunque la caché ya se limpie al cambiar de usuario:
     // dos defensas para el mismo problema, porque el costo es una palabra y el error
     // se ve como una fuga de datos.
     queryKey: ['vehiculos', tenantId, buscar],
     queryFn: () => api.vehiculos.listar({ pagina: 1, porPagina: 50, buscar: buscar || undefined }),
+    // Sin permiso no se pide: el 403 ya lo sabemos de antemano y el `Shell` va a mostrar
+    // el aviso en lugar del listado.
+    enabled: puedeVer,
   })
 
   return (
     <Shell
       titulo="Vehículos"
+      requiere={accesoDeRuta(contrato.vehiculos.listar)}
       acciones={
-        <Boton accion="global.nuevo" onClick={() => {}}>
-          Nuevo vehículo
-        </Boton>
+        puedeCrear ? (
+          <Boton accion="global.nuevo" onClick={() => {}}>
+            Nuevo vehículo
+          </Boton>
+        ) : undefined
       }
     >
       <section className="overflow-hidden rounded-base border border-borde bg-superficie">

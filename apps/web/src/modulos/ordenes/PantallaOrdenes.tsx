@@ -4,6 +4,7 @@ import { Boton } from '../../componentes/Boton.tsx'
 import { EstadoOT } from '../../componentes/EstadoOT.tsx'
 import { Shell } from '../../componentes/Shell.tsx'
 import { ES_ESCRITORIO, useMedia } from '../../ganchos/useMedia.ts'
+import { usePuede } from '../../sesion/permisos.ts'
 import { useAtajo } from '../../teclado/index.ts'
 import { ORDENES, type OrdenListada } from './datos-de-ejemplo.ts'
 
@@ -13,18 +14,32 @@ export function PantallaOrdenes() {
   const [seleccionada, setSeleccionada] = useState(ORDENES[0]?.numero ?? '')
   const esEscritorio = useMedia(ES_ESCRITORIO)
 
-  useAtajo('ordenes.cerrar', () => {
-    // Abre la confirmación, nunca ejecuta: F4 está pegada a F3 y alguien le va a errar.
-    window.alert(`Cerrar la orden ${seleccionada}\n\n(la confirmación va acá)`)
-  })
+  // Todavía sin contrato: cuando exista la ruta de OT, estos permisos van a salir de
+  // ahí, como los de vehículos. La acción y el sujeto son los mismos que va a declarar.
+  const puedeCerrar = usePuede('editar', 'Orden')
+  const puedeCrear = usePuede('crear', 'Orden')
+
+  // Sin permiso para cerrar, F4 no se registra: la barra de estado la muestra atenuada
+  // en vez de anunciar un verbo que no va a hacer nada.
+  useAtajo(
+    'ordenes.cerrar',
+    () => {
+      // Abre la confirmación, nunca ejecuta: F4 está pegada a F3 y alguien le va a errar.
+      window.alert(`Cerrar la orden ${seleccionada}\n\n(la confirmación va acá)`)
+    },
+    puedeCerrar,
+  )
 
   return (
     <Shell
       titulo="Órdenes de trabajo"
+      requiere={{ accion: 'ver', sujeto: 'Orden' }}
       acciones={
-        <Boton accion="ordenes.cerrar" variante="principal" onClick={() => {}}>
-          Cerrar la orden
-        </Boton>
+        puedeCerrar ? (
+          <Boton accion="ordenes.cerrar" variante="principal" onClick={() => {}}>
+            Cerrar la orden
+          </Boton>
+        ) : undefined
       }
     >
       <section className="grid grid-cols-[repeat(auto-fit,minmax(10.5rem,1fr))] gap-2.5">
@@ -45,11 +60,13 @@ export function PantallaOrdenes() {
           <span className="rounded-full border border-atencion px-2 py-px text-[10.5px] font-semibold text-atencion">
             datos de ejemplo
           </span>
-          <span className="ml-auto">
-            <Boton accion="global.nuevo" onClick={() => {}}>
-              Nueva orden
-            </Boton>
-          </span>
+          {puedeCrear && (
+            <span className="ml-auto">
+              <Boton accion="global.nuevo" onClick={() => {}}>
+                Nueva orden
+              </Boton>
+            </span>
+          )}
         </header>
 
         {/*

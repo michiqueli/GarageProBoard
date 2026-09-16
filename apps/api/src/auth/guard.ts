@@ -1,3 +1,4 @@
+import { permite } from '@garagepro/contracts'
 import {
   type AccionPermiso,
   construirHabilidades,
@@ -89,7 +90,7 @@ export class GuardiaAcceso implements CanActivate {
 
     if (acceso === 'sesion') return true
 
-    if (habilidades.cannot(acceso.accion, acceso.sujeto)) {
+    if (!permite(habilidades, acceso)) {
       throw this.sinPermiso(acceso.accion, acceso.sujeto)
     }
     return true

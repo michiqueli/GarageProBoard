@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import { conSesion, publico } from './acceso.ts'
+import { conSesion, publico, reglaPermiso } from './acceso.ts'
 
 const TAG = 'Sesión'
 
@@ -57,7 +57,7 @@ export const sesionSalida = z.object({
   sucursales: z.array(sucursalSalida),
 
   /** Reglas de CASL, ya resueltas contra este usuario. */
-  habilidades: z.array(z.unknown()),
+  habilidades: z.array(reglaPermiso),
   /** Sólo aquello en lo que el usuario se apartó del valor por omisión. */
   atajos: z.record(z.string(), z.string()),
   config: configSalida,

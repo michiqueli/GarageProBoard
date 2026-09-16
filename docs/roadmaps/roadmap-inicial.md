@@ -1,6 +1,6 @@
 # Roadmap inicial
 
-Estado al 15/09/2026. Los hitos están ordenados por dependencia, no por deseo: cada
+Estado al 16/09/2026. Los hitos están ordenados por dependencia, no por deseo: cada
 uno necesita el anterior. Lo que no está acá no está decidido todavía.
 
 Leyenda: ✅ hecho · 🔨 en curso · ⬜ pendiente
@@ -59,11 +59,46 @@ Sin esto no hay pantalla que mostrar a nadie.
 - ✅ Login sólo con correo y contraseña: el tenant sale del usuario
 - ⬜ Auditoría automática de altas, modificaciones y bajas
 - ⬜ Pantalla de configuración: sucursal predeterminada, tema, densidad y teclas
-- ⬜ Aplicar CASL en las pantallas: menú y botones según los permisos, leyendo la
-      misma declaración del contrato que aplica la API
+- ✅ CASL aplicado **en las pantallas**: el menú esconde lo que el usuario no puede
+      ver, los botones con atajo no se dibujan sin permiso —y así tampoco registran su
+      tecla—, el inicio lleva a la primera pantalla que le toque, y una pantalla sin
+      permiso dice qué falta sin sacarlo del sistema. Todo leyendo la misma declaración
+      del contrato que aplica la API, con `accesoDeRuta()` y `permite()` compartidos.
+      10 tests nuevos
 
 **Criterio de terminado:** un usuario entra, elige sucursal, y lo que ve depende de
 sus permisos.
+
+---
+
+## Hito 1.5 — Módulos activables y back-office ⬜
+
+Lleva medio número porque no estaba en el plan y entra antes que las pantallas del
+núcleo: cada pantalla que se escriba sin el filtro de módulo es una más para revisar
+después. El mapa, la configuración por módulo y quién puede tocarla, en
+[módulos del sistema](../tecnicos/modulos-del-sistema.md).
+
+- ✅ Mapa de módulos cerrado: núcleo, contable, servicios, repuestos, cartera, ventas
+      y rrhh, con el flag colgando de la pantalla y no de la entidad
+- ⬜ Dependencias declaradas entre módulos, y el back-office que impide apagar el piso
+      de uno prendido
+- ⬜ Acción `configurar` en el catálogo de permisos: entrar a un módulo no es poder
+      tocar sus credenciales
+- ⬜ Pantalla de configuración **adentro de cada módulo**, más un índice que las liste
+- ⬜ **Buscador del sistema en la barra lateral**, la misma cosa que la paleta de `F10`:
+      «mercado pago» lleva a su configuración y «certificados» a los de AFIP. Con
+      palabras clave por entrada, y filtrado por permiso y por módulo como el menú
+- ⬜ Módulos contratados por tenant en el esquema, con su flag y su vigencia
+- ⬜ El contrato declara a qué módulo pertenece cada ruta, al lado del permiso
+- ⬜ La API rechaza la operación de un módulo apagado, antes de mirar permisos
+- ⬜ El menú y las rutas filtran por módulo **y** por permiso, con mensajes distintos
+- ⬜ Back-office aparte —posiblemente en otro dominio— para dar de alta tenants y
+      manejar sus módulos, planes y estado de cuenta
+- ⬜ Exportación al darse de baja: el acceso se apaga, el registro se conserva — un
+      comprobante fiscal se guarda diez años y la obligación es nuestra
+
+**Criterio de terminado:** se le apaga un módulo a una concesionaria de prueba y
+desaparece de su sistema, sin tocar código y sin que se pierda un dato.
 
 ---
 
@@ -104,13 +139,21 @@ y el PDF valida contra el QR.
 
 ## Hito 4 — Taller: la orden de trabajo ⬜
 
-El corazón del producto y lo que el nombre promete.
+El corazón del producto y lo que el nombre promete. **La base no se arranca de cero:**
+sale de GarageTick, la aplicación anterior del autor, relevada con una concesionaria de
+verdad. Qué se trae y qué cambia ahora que el DMS es nuestro, en
+[control de tiempos de taller](../tecnicos/taller-control-de-tiempos.md).
 
 - ⬜ Turnos y agenda
 - ⬜ Apertura de OT con los cuatro roles (titular, quien trae, quien autoriza,
       quien paga)
 - ⬜ Operaciones con tiempos de referencia por terminal
-- ⬜ Fichaje de mecánicos: tiempo real contra tiempo de referencia
+- ⬜ Fichaje de mecánicos por QR: dos escaneos, tres segundos, sin login. Tiempo real
+      contra tiempo de referencia
+- ⬜ QR firmado impreso en la propia OT, con fallback numérico
+- ⬜ Esperas con motivo: sin eso no se explica por qué un auto estuvo seis días
+- ⬜ Auto-cierre de fin de turno, también al arrancar el servidor
+- ⬜ Correcciones de tiempo con auditoría y motivo obligatorio
 - ⬜ Repuestos consumidos, con descuento de stock
 - ⬜ Presupuesto, autorización y cierre
 - ⬜ Facturación de la OT
@@ -142,6 +185,11 @@ Cosas que sabemos que faltan, para que no se descubran de golpe:
 - **Recargar antes de elegir sucursal entra a la primera.** Si alguien recarga la página
   justo en «¿A qué sucursal entrás?», la sesión recuperada no sabe que faltaba elegir.
   Cerrarlo del todo requiere que el servidor recuerde que la elección está pendiente.
+
+- **En teléfono no hay menú.** La barra lateral está oculta por debajo de `md` y no hay
+  todavía una puerta que la reemplace: en un teléfono se llega a las pantallas por la URL
+  y nada más. Cuando entre el buscador del sistema hay que resolver las dos cosas juntas,
+  porque comparten el lugar.
 
 - **Backups de Postgres antes del primer cliente en producción.** Vamos a guardar
   comprobantes fiscales de terceros con obligación legal de conservación. `pgBackRest`

@@ -76,14 +76,20 @@ export function describirPermiso(accion: AccionPermiso, sujeto: Sujeto): string 
   return `${VERBOS[accion]} ${SUSTANTIVOS[sujeto]}`
 }
 
-/** Lo que se guarda en `rol.habilidades`: el formato crudo que CASL entiende. */
+/**
+ * Lo que se guarda en `rol.habilidades`: el formato crudo que CASL entiende.
+ *
+ * Los opcionales dicen `| undefined` a propósito. Con `exactOptionalPropertyTypes`, un
+ * `conditions?: Record<...>` promete que si la clave está, tiene valor — y una regla
+ * que llega de la base, o de zod, puede traerla en `undefined`.
+ */
 export interface ReglaPermiso {
   action: AccionPermiso | AccionPermiso[]
   subject: Sujeto | Sujeto[]
-  conditions?: Record<string, unknown>
-  fields?: string[]
-  inverted?: boolean
-  reason?: string
+  conditions?: Record<string, unknown> | undefined
+  fields?: string[] | undefined
+  inverted?: boolean | undefined
+  reason?: string | undefined
 }
 
 export function construirHabilidades(reglas: readonly ReglaPermiso[]): Habilidades {

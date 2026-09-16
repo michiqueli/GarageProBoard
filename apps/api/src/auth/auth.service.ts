@@ -308,7 +308,7 @@ export class ServicioAuth {
       tenant: { id: t.id, nombre: t.nombre, slug: t.slug },
       sucursalActiva: activa,
       sucursales: disponibles,
-      habilidades: habilidades as unknown[],
+      habilidades,
       atajos: Object.fromEntries(guardados.map((a) => [a.accion, a.tecla])),
       config: {
         tema: (config?.tema ?? 'sistema') as 'claro' | 'oscuro' | 'sistema',

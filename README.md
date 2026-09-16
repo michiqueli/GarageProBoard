@@ -85,6 +85,9 @@ verifica y va a fallar si no.
 **Quién puede usar cada ruta lo dice el contrato.** Se arma con `publico`, `conSesion` o
 `conPermiso('crear', 'Vehiculo')`, y se implementa con `@Operacion()`. La API lo aplica,
 Swagger documenta el 401 y el 403, y una ruta que no lo declara no deja arrancar la API.
+La pantalla lee **esa misma declaración** con `usePuedeUsar(contrato.vehiculos.crear)`, y
+toda pantalla dice qué permiso pide en su `Shell`: el botón aparece exactamente cuando la
+API lo va a aceptar. Ojo con la asimetría — el front oculta, la API decide.
 
 **Responsive desde el diseño, no como parche.** El gerente mira facturación del
 celular y el asesor consulta una orden desde una tablet en la playa de entrega. Los
