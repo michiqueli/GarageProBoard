@@ -3,6 +3,7 @@ import { z } from 'zod'
 import { conPermiso, publico } from './acceso.ts'
 import { contratoAuditoria } from './auditoria.ts'
 import { contratoAuth } from './auth.ts'
+import { contratoClientes } from './clientes.ts'
 import { chasis, dominio, paginado, problema } from './comunes.ts'
 import { contratoOrganizacion } from './organizacion.ts'
 import { contratoPadron } from './padron.ts'
@@ -11,6 +12,7 @@ import { contratoUsuarios } from './usuarios.ts'
 export * from './acceso.ts'
 export * from './auditoria.ts'
 export * from './auth.ts'
+export * from './clientes.ts'
 export * from './comunes.ts'
 export * from './organizacion.ts'
 export * from './padron.ts'
@@ -39,6 +41,7 @@ export const contrato = {
   usuarios: contratoUsuarios,
   organizacion: contratoOrganizacion,
   padron: contratoPadron,
+  clientes: contratoClientes,
 
   salud: publico
     .route({

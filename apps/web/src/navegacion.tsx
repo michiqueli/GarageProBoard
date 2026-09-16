@@ -79,6 +79,7 @@ export const PRINCIPALES: Seccion[] = [
   {
     id: 'clientes',
     etiqueta: 'Clientes',
+    to: '/clientes',
     requiere: { modulo: 'nucleo', accion: 'ver', sujeto: 'Cliente' },
     icono: (
       <svg viewBox="0 0 16 16" {...trazo} aria-hidden="true">

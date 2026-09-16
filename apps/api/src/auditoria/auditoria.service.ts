@@ -84,7 +84,50 @@ export function sobreQue(tabla: string, antes: Foto, despues: Foto): string {
   if (tabla === 'punto_venta') {
     return `el punto de venta ${String(dato('numero')).padStart(4, '0')}`
   }
+  if (tabla === 'cliente') return `el cliente ${String(dato('razonSocial'))}`
   return tabla
+}
+
+/** Los campos de un cliente, como se llaman en la pantalla. */
+const CAMPOS_CLIENTE: Record<string, string> = {
+  razonSocial: 'nombre o razón social',
+  condicionIva: 'condición frente al IVA',
+  domicilio: 'domicilio',
+  localidad: 'localidad',
+  codigoPostal: 'código postal',
+  provinciaCodigo: 'provincia',
+  email: 'correo',
+  telefono: 'teléfono',
+  numeroIibb: 'número de Ingresos Brutos',
+  condicionIibb: 'condición en Ingresos Brutos',
+  observaciones: 'observaciones',
+}
+
+function describirCliente(accion: string, antes: Foto, despues: Foto): string {
+  if (accion === 'alta') {
+    // Si la identidad ya existía, el alta pisó sus datos: se dice, y se dice qué cambió.
+    if (!despues?.yaExistia) return 'Lo dio de alta'
+    return juntar([
+      'lo dio de alta sobre una identidad fiscal que ya existía',
+      ...cambiosDe(antes, despues),
+    ])
+  }
+  const partes: string[] = []
+  if (antes?.activo !== despues?.activo) {
+    partes.push(despues?.activo ? 'lo volvió a activar' : 'lo desactivó')
+  }
+  return juntar([...partes, ...cambiosDe(antes, despues)])
+}
+
+function cambiosDe(antes: Foto, despues: Foto): string[] {
+  const partes: string[] = []
+  for (const [clave, etiqueta] of Object.entries(CAMPOS_CLIENTE)) {
+    if (!(clave in (antes ?? {}))) continue
+    const a = antes?.[clave] ?? null
+    const d = despues?.[clave] ?? null
+    if (a !== d) partes.push(`${etiqueta}: «${a ?? 'vacío'}» → «${d ?? 'vacío'}»`)
+  }
+  return partes
 }
 
 /** Qué cambió en una empresa, sucursal o punto de venta. Masculino y femenino, como se dice. */
@@ -131,6 +174,7 @@ export function describirCambio(
   if (tabla === 'empresa' || tabla === 'sucursal' || tabla === 'punto_venta') {
     return describirOrganizacion(tabla, accion, antes, despues)
   }
+  if (tabla === 'cliente') return describirCliente(accion, antes, despues)
   if (tabla === 'dispositivo') {
     return `Nombre: «${antes?.nombre ?? 'sin nombre'}» → «${despues?.nombre ?? 'sin nombre'}»`
   }

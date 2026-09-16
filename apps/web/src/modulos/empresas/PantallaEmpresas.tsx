@@ -5,6 +5,8 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { type FormEvent, type ReactNode, useEffect, useRef, useState } from 'react'
 import { Boton } from '../../componentes/Boton.tsx'
 import { Campo } from '../../componentes/Campo.tsx'
+import { ResultadoPadron } from '../../componentes/ResultadoPadron.tsx'
+import { Selector } from '../../componentes/Selector.tsx'
 import { Shell } from '../../componentes/Shell.tsx'
 import { usarSesion } from '../../sesion/almacen.ts'
 import { api } from '../../sesion/cliente.ts'
@@ -630,41 +632,6 @@ function FormPuntoVenta({
   )
 }
 
-function Selector<T extends string | number>({
-  etiqueta,
-  valor,
-  opciones,
-  vacio,
-  onChange,
-}: {
-  etiqueta: string
-  valor: T | null
-  opciones: Array<{ valor: T; texto: string }>
-  vacio?: string
-  onChange: (valor: T | null) => void
-}) {
-  return (
-    <label className="grid gap-1">
-      <span className="text-etiqueta font-medium text-texto-suave">{etiqueta}</span>
-      <select
-        value={valor === null ? '' : String(valor)}
-        onChange={(e) => {
-          const elegida = opciones.find((o) => String(o.valor) === e.target.value)
-          onChange(elegida ? elegida.valor : null)
-        }}
-        className="h-campo rounded-base border border-borde bg-superficie-2 px-2 text-dato text-texto"
-      >
-        {vacio !== undefined && <option value="">{vacio}</option>}
-        {opciones.map((o) => (
-          <option key={String(o.valor)} value={String(o.valor)}>
-            {o.texto}
-          </option>
-        ))}
-      </select>
-    </label>
-  )
-}
-
 function Enlace({ onClick, children }: { onClick: () => void; children: ReactNode }) {
   return (
     <button type="button" onClick={onClick} className="text-etiqueta text-marca hover:underline">
@@ -678,50 +645,6 @@ function Esqueleto() {
     <div className="grid gap-2">
       {[0, 1].map((i) => (
         <div key={i} className="h-24 animate-pulse rounded-base bg-superficie-2" />
-      ))}
-    </div>
-  )
-}
-
-/**
- * Lo que contestó AFIP, con lo que hay que mirar antes de guardar: si la condición frente
- * al IVA es una deducción, si es un CUIL o si está inactivo.
- */
-function ResultadoPadron({
-  consulta,
-}: {
-  consulta: {
-    isError: boolean
-    error: unknown
-    data?: Awaited<ReturnType<typeof api.padron.consultar>> | undefined
-  }
-}) {
-  if (consulta.isError) {
-    return (
-      <p role="alert" className="text-etiqueta text-critico">
-        {mensajeDe(consulta.error)}
-      </p>
-    )
-  }
-  const c = consulta.data
-  if (!c) return null
-
-  const avisos = [
-    c.tipoClave === 'CUIL' &&
-      'Es un CUIL, no un CUIT: una persona sin inscripción en AFIP no puede facturar.',
-    !c.activo && 'AFIP lo informa inactivo.',
-    c.condicionIva.fuente === 'inferida' && c.condicionIva.motivo,
-  ].filter((a): a is string => Boolean(a))
-
-  return (
-    <div role="status" className="grid gap-0.5 text-etiqueta">
-      <span className="text-ok">
-        Datos completados con lo que informa AFIP. Revisalos antes de guardar.
-      </span>
-      {avisos.map((a) => (
-        <span key={a} className="text-atencion">
-          {a}
-        </span>
       ))}
     </div>
   )
