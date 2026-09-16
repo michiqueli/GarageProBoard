@@ -141,8 +141,9 @@ Así la grilla no puede romper, sin querer, lo que no sabe mostrar.
 Los permisos se leen de la base en cada pedido, así que la API aplica el rol modificado en
 el próximo pedido de cada usuario que lo tiene, sin volver a entrar. A cada uno le llega un
 aviso: «Martín Gutiérrez cambió el rol Mecánico: ahora podés ver clientes». El menú y los
-botones de la pantalla se actualizan cuando se renueva la sesión (a lo sumo quince minutos):
-hasta entonces puede ver algo que ya no puede usar, y la API se lo dice.
+botones de la pantalla se actualizan cuando la sesión renueva el acceso —vence a los quince
+minutos y se renueva en el primer pedido que sigue— o al recargar la página. Hasta entonces
+puede ver algo que ya no puede usar, y la API se lo dice.
 
 ## Preguntas abiertas
 
