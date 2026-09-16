@@ -22,7 +22,9 @@ export function BarraEstado() {
   )
 
   return (
-    <footer className="fixed inset-x-0 bottom-0 z-30 flex h-8 flex-wrap items-center gap-x-4 border-t border-borde bg-superficie px-4 text-etiqueta text-texto-suave">
+    // Una sola línea siempre: si se partiera en dos, crecería hacia abajo fuera de la
+    // pantalla. Lo que no entra en una pantalla angosta se recorre de costado.
+    <footer className="fixed inset-x-0 bottom-0 z-30 flex h-barra-estado items-center gap-x-4 overflow-x-auto border-t border-borde bg-superficie px-4 text-etiqueta whitespace-nowrap text-texto-suave">
       {visibles.map((d) => {
         const disponible = activas.has(d.accion)
         const esVerbo = d.ambito !== 'global'

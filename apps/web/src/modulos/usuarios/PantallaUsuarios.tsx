@@ -5,6 +5,7 @@ import { type FormEvent, useEffect, useRef, useState } from 'react'
 import { confirmar } from '../../componentes/avisos.ts'
 import { Boton } from '../../componentes/Boton.tsx'
 import { Campo } from '../../componentes/Campo.tsx'
+import { IconoEditar } from '../../componentes/iconos.tsx'
 import { Shell } from '../../componentes/Shell.tsx'
 import { ES_ESCRITORIO, useMedia } from '../../ganchos/useMedia.ts'
 import { usarSesion } from '../../sesion/almacen.ts'
@@ -220,13 +221,9 @@ function AccionFila({
     )
   }
   return (
-    <button
-      type="button"
-      onClick={onEditar}
-      className="h-campo rounded-base border border-borde px-2.5 text-dato text-texto-suave hover:bg-superficie-2 hover:text-texto"
-    >
+    <Boton tamano="chico" icono={<IconoEditar />} onClick={onEditar}>
       Modificar
-    </button>
+    </Boton>
   )
 }
 

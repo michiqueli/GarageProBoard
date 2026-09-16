@@ -30,7 +30,7 @@ export function Notificaciones() {
   const resto = notificaciones.filter((n) => n.tipo !== 'error')
 
   return (
-    <div className="pointer-events-none fixed inset-x-4 bottom-11 z-50 flex flex-col items-stretch gap-2 md:left-auto md:w-96">
+    <div className="pointer-events-none fixed inset-x-4 bottom-[calc(var(--spacing-barra-estado)+0.75rem)] z-50 flex flex-col items-stretch gap-2 md:left-auto md:w-96">
       <ol aria-label="Notificaciones" aria-live="polite" className="flex flex-col gap-2">
         {resto.map((n) => (
           <Tarjeta key={n.id} notificacion={n} />

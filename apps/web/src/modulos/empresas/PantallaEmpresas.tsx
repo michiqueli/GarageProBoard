@@ -431,7 +431,7 @@ function FormEmpresa({
             type="button"
             onClick={consultarPadron}
             disabled={padron.isPending}
-            className="h-campo w-fit rounded-base border border-borde px-3 text-dato text-texto-suave hover:bg-superficie-2 hover:text-texto disabled:opacity-50"
+            className={`w-fit ${clasesBoton()}`}
           >
             {padron.isPending ? 'Consultando a AFIP…' : 'Completar con los datos de AFIP'}
           </button>

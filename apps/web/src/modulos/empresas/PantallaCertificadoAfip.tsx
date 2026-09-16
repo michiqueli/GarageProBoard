@@ -5,8 +5,9 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { getRouteApi, Link } from '@tanstack/react-router'
 import { type FormEvent, type ReactNode, useState } from 'react'
 import { confirmar } from '../../componentes/avisos.ts'
-import { Boton } from '../../componentes/Boton.tsx'
+import { Boton, clasesBoton } from '../../componentes/Boton.tsx'
 import { Campo } from '../../componentes/Campo.tsx'
+import { IconoDescargar } from '../../componentes/iconos.tsx'
 import { Shell } from '../../componentes/Shell.tsx'
 import { usarSesion } from '../../sesion/almacen.ts'
 import { api } from '../../sesion/cliente.ts'
@@ -383,15 +384,16 @@ function PasoPedido({ estado, alTerminar }: { estado: Estado; alTerminar: (e: Es
         <span>
           Pedido <b>{pendiente.alias}</b>, generado el {fecha(pendiente.creadoEn)}.
         </span>
-        <button
-          type="button"
+        <Boton
+          tamano="chico"
+          icono={<IconoDescargar />}
           onClick={() => descargar(`${pendiente.alias}.csr`, pendiente.pedido)}
-          className="text-marca hover:underline"
         >
           Descargar el pedido (.csr)
-        </button>
-        <button
-          type="button"
+        </Boton>
+        <Boton
+          tamano="chico"
+          variante="sutil"
           onClick={async () => {
             if (
               await confirmar({
@@ -406,10 +408,9 @@ function PasoPedido({ estado, alTerminar }: { estado: Estado; alTerminar: (e: Es
               setOtro(true)
             }
           }}
-          className="text-etiqueta text-texto-suave hover:underline"
         >
           Generar otro
-        </button>
+        </Boton>
       </div>
     )
   }
@@ -429,11 +430,7 @@ function PasoPedido({ estado, alTerminar }: { estado: Estado; alTerminar: (e: Es
           onChange={(e) => setAlias(e.target.value)}
           ayuda="Letras, números o guiones, sin espacios"
         />
-        <button
-          type="submit"
-          disabled={pedir.isPending}
-          className="h-campo rounded-base border border-marca bg-marca-suave px-3 text-dato font-semibold text-marca disabled:opacity-40"
-        >
+        <button type="submit" disabled={pedir.isPending} className={clasesBoton('principal')}>
           {pedir.isPending ? 'Generando…' : 'Generar y descargar el pedido'}
         </button>
       </div>

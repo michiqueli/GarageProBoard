@@ -56,3 +56,12 @@ export function IconoTransferir() {
     </svg>
   )
 }
+
+export function IconoDescargar() {
+  return (
+    <svg {...trazo} aria-hidden="true">
+      <path d="M8 2.5v8M4.5 7L8 10.5 11.5 7" />
+      <path d="M3 13.5h10" />
+    </svg>
+  )
+}

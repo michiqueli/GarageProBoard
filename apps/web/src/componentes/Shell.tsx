@@ -64,7 +64,10 @@ export function Shell({
 
   return (
     <div className="grid min-h-dvh grid-cols-1 md:grid-cols-[13rem_1fr]">
-      <aside className="hidden flex-col gap-0.5 border-r border-borde bg-superficie p-2.5 md:flex">
+      {/* Pegado a la pantalla y con la altura justa hasta la barra de teclas: con una
+          pantalla larga, el usuario y «Salir» no se van al fondo de la página ni quedan
+          tapados. Si el menú no entra, scrollea él solo. */}
+      <aside className="hidden flex-col gap-0.5 overflow-y-auto border-r border-borde bg-superficie p-2.5 md:sticky md:top-0 md:flex md:h-[calc(100dvh-var(--spacing-barra-estado))] md:self-start">
         <div className="flex items-center gap-2.5 px-2 pt-1 pb-4">
           <span className="size-4 rotate-45 rounded-[3px] bg-marca" />
           <b className="font-display text-base font-bold tracking-tight">GarageProBoard</b>
@@ -131,7 +134,7 @@ export function Shell({
           {puede && acciones}
         </header>
 
-        <main className="grid gap-3 px-4 pt-3.5 pb-14">
+        <main className="grid gap-3 px-4 pt-3.5 pb-[calc(var(--spacing-barra-estado)+1.5rem)]">
           <Avisos />
           {veredicto === 'permitido' ? (
             children

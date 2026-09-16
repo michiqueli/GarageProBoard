@@ -35,6 +35,8 @@
   --spacing-fila-comoda: 2.5rem;
   --spacing-campo: 2rem; /* 32px — alto de campo y de botón */
   --spacing-tactil: 2.75rem; /* 44px — piso de taller: dedo con guantes */
+  /* La barra de teclas de abajo. Lo que flota o se pega a la pantalla la descuenta. */
+  --spacing-barra-estado: 2rem;
 
   --radius-base: 4px;
 
