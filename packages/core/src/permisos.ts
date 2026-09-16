@@ -89,6 +89,53 @@ export function describirPermiso(accion: AccionPermiso, sujeto: Sujeto): string 
 }
 
 /**
+ * Si estas habilidades alcanzan para hacer **siempre** esta acción sobre este sujeto: sin
+ * condiciones y sin campos que la recorten.
+ *
+ * CASL devuelve primero la regla que manda. Si esa regla es una prohibición, no alcanza;
+ * si tiene condiciones —«edita las órdenes que tiene asignadas»—, tampoco, porque no
+ * cubre a quien las edita todas.
+ */
+function cubreSiempre(habilidades: Habilidades, accion: AccionPermiso, sujeto: Sujeto): boolean {
+  const [manda] = habilidades.rulesFor(accion, sujeto)
+  if (!manda || manda.conditions || manda.fields) return false
+  return !manda.inverted
+}
+
+/**
+ * Lo que estas reglas dan y quien tiene estas habilidades **no** tiene: la respuesta a
+ * «¿puede asignar este rol?».
+ *
+ * La regla es que **nadie da lo que no tiene**. Quien reparte roles y genera contraseñas
+ * puede entrar como el usuario que acaba de crear: asignar un permiso es, en la práctica,
+ * tenerlo. Sin esto, el administrador de usuarios se crearía un gerente.
+ *
+ * Las prohibiciones del rol (`inverted`) no dan nada y no se cuentan. Devuelve las
+ * frases ya escritas —«ver legajos de empleados»— para decirle a quien intenta qué le
+ * falta.
+ */
+export function permisosQueNoTiene(
+  habilidades: Habilidades,
+  reglas: readonly ReglaPermiso[],
+): string[] {
+  const faltan = new Set<string>()
+
+  for (const regla of reglas) {
+    if (regla.inverted) continue
+    const acciones = Array.isArray(regla.action) ? regla.action : [regla.action]
+    const sujetos = Array.isArray(regla.subject) ? regla.subject : [regla.subject]
+
+    for (const accion of acciones) {
+      for (const sujeto of sujetos) {
+        if (!cubreSiempre(habilidades, accion, sujeto)) faltan.add(describirPermiso(accion, sujeto))
+      }
+    }
+  }
+
+  return [...faltan]
+}
+
+/**
  * Lo que se guarda en `rol.habilidades`: el formato crudo que CASL entiende.
  *
  * Los opcionales dicen `| undefined` a propósito. Con `exactOptionalPropertyTypes`, un
@@ -183,6 +230,16 @@ export const ROLES_PREDEFINIDOS: RolPredefinido[] = [
       { action: ['ver', 'crear', 'editar'], subject: ['Comprobante', 'Cliente', 'Proveedor'] },
       { action: 'anular', subject: 'Comprobante' },
       { action: 'ver', subject: ['Orden', 'Vehiculo', 'Empresa'] },
+    ],
+  },
+  {
+    nombre: 'Administrador de usuarios',
+    descripcion:
+      'Da de alta usuarios y les asigna roles y sucursales. Sólo puede repartir los permisos ' +
+      'que ya tiene: se combina con los roles que va a asignar.',
+    habilidades: [
+      { action: ['ver', 'crear', 'editar'], subject: 'Usuario' },
+      { action: 'ver', subject: 'Empresa' },
     ],
   },
 ]

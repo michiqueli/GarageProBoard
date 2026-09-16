@@ -3,10 +3,12 @@ import { z } from 'zod'
 import { conPermiso, publico } from './acceso.ts'
 import { contratoAuth } from './auth.ts'
 import { chasis, dominio, paginado, problema } from './comunes.ts'
+import { contratoUsuarios } from './usuarios.ts'
 
 export * from './acceso.ts'
 export * from './auth.ts'
 export * from './comunes.ts'
+export * from './usuarios.ts'
 
 export const vehiculoSalida = z.object({
   id: z.uuid(),
@@ -27,6 +29,7 @@ export const vehiculoSalida = z.object({
  */
 export const contrato = {
   auth: contratoAuth,
+  usuarios: contratoUsuarios,
 
   salud: publico
     .route({

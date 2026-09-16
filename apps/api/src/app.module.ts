@@ -5,6 +5,8 @@ import { LoggerModule } from 'nestjs-pino'
 import { ModuloAuth } from './auth/auth.module.ts'
 import { ModuloBase } from './comun/base.module.ts'
 import { ControladorSalud } from './salud/salud.controller.ts'
+import { ControladorUsuarios } from './usuarios/usuarios.controller.ts'
+import { ServicioUsuarios } from './usuarios/usuarios.service.ts'
 import { ControladorVehiculos } from './vehiculos/vehiculos.controller.ts'
 
 @Module({
@@ -28,6 +30,7 @@ import { ControladorVehiculos } from './vehiculos/vehiculos.controller.ts'
     ModuloBase,
     ModuloAuth,
   ],
-  controllers: [ControladorSalud, ControladorVehiculos],
+  controllers: [ControladorSalud, ControladorVehiculos, ControladorUsuarios],
+  providers: [ServicioUsuarios],
 })
 export class ModuloPrincipal {}

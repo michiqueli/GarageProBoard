@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest'
 import {
   construirHabilidades,
   describirPermiso,
+  permisosQueNoTiene,
   ROLES_PREDEFINIDOS,
   resolverCondiciones,
 } from '../src/permisos.ts'
@@ -76,6 +77,61 @@ describe('los roles predefinidos', () => {
 
   it('el repuestero no tiene nada que hacer con el parque de vehículos', () => {
     expect(habilidadesDe('Repuestero').can('ver', 'Vehiculo')).toBe(false)
+  })
+})
+
+describe('nadie da lo que no tiene', () => {
+  const rol = (nombre: string) => {
+    const encontrado = ROLES_PREDEFINIDOS.find((r) => r.nombre === nombre)
+    if (!encontrado) throw new Error(`No existe el rol ${nombre}`)
+    return encontrado.habilidades
+  }
+
+  it('el gerente puede asignar cualquier rol', () => {
+    const gerente = habilidadesDe('Gerente')
+    for (const r of ROLES_PREDEFINIDOS) {
+      expect(permisosQueNoTiene(gerente, r.habilidades), r.nombre).toEqual([])
+    }
+  })
+
+  it('el administrador de usuarios solo no puede crear un gerente, y dice qué le falta', () => {
+    const admin = habilidadesDe('Administrador de usuarios')
+    expect(permisosQueNoTiene(admin, rol('Gerente'))).toEqual(['administrar todo el sistema'])
+  })
+
+  it('tampoco puede crear un mecánico si no ve órdenes: lo podría usar para verlas', () => {
+    const admin = habilidadesDe('Administrador de usuarios')
+    expect(permisosQueNoTiene(admin, rol('Mecánico'))).toContain('ver órdenes de trabajo')
+  })
+
+  it('combinado con el rol que reparte, sí puede', () => {
+    const adminYAsesor = construirHabilidades([
+      ...rol('Administrador de usuarios'),
+      ...rol('Asesor de servicios'),
+    ])
+    expect(permisosQueNoTiene(adminYAsesor, rol('Asesor de servicios'))).toEqual([])
+  })
+
+  it('una prohibición le gana: el asesor no da permiso para ver legajos', () => {
+    const asesor = habilidadesDe('Asesor de servicios')
+    expect(permisosQueNoTiene(asesor, [{ action: 'ver', subject: 'Empleado' }])).toEqual([
+      'ver legajos de empleados',
+    ])
+  })
+
+  it('un permiso con condición no alcanza para dar el permiso entero', () => {
+    // El mecánico edita sus órdenes, no todas: no puede dar «editar órdenes».
+    const mecanico = habilidadesDe('Mecánico')
+    expect(permisosQueNoTiene(mecanico, [{ action: 'editar', subject: 'Orden' }])).toEqual([
+      'modificar órdenes de trabajo',
+    ])
+  })
+
+  it('las prohibiciones del rol que se asigna no cuentan: no dan nada', () => {
+    const asesor = habilidadesDe('Asesor de servicios')
+    expect(
+      permisosQueNoTiene(asesor, [{ action: 'ver', subject: 'Empleado', inverted: true }]),
+    ).toEqual([])
   })
 })
 
