@@ -110,8 +110,13 @@ descubrimiento sin ocupar lugar:
 
     F1 Ayuda   F2 Guardar   F3 Buscar   F4 Facturar   Esc Cancelar
 
-Las teclas que en ese momento no aplican se muestran atenuadas, no se esconden: que
-desaparezcan y reaparezcan hace que la barra se lea distinta en cada pantalla.
+**Las principales siempre; el resto, sólo cuando se puede usar.** F1 Ayuda, F2 Guardar,
+F3 Buscar, Esc Cancelar y el verbo de la pantalla (F4) están siempre, atenuadas si ahora
+no aplican: son el lugar fijo donde mirar. Las demás aparecen sólo cuando funcionan. Al
+principio se mostraban todas, y con el catálogo creciendo las apagadas tapaban a las
+útiles. Qué es principal se marca en el catálogo con `principal: true`. Si aun así no entra, la barra pasa a dos filas y
+publica su altura en `--spacing-barra-estado`, que descuentan el menú, el contenido y las
+notificaciones.
 
 ### Todo esto es configurable por usuario
 

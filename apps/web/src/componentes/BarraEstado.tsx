@@ -1,4 +1,5 @@
 import { CATALOGO } from '@gpb/core'
+import { useLayoutEffect, useRef } from 'react'
 import { useTeclado } from '../teclado/index.ts'
 import { Tecla } from './Tecla.tsx'
 
@@ -7,9 +8,11 @@ import { Tecla } from './Tecla.tsx'
  * conoce de los sistemas de caracteres, y resuelve el descubrimiento sin ocupar lugar:
  * el atajo se aprende usándolo, no leyendo un manual.
  *
- * Las que no aplican van atenuadas y **no se esconden**: si aparecieran y
- * desaparecieran, la barra se leería distinta en cada pantalla y dejaría de ser un
- * lugar fijo donde mirar.
+ * **Las principales siempre, el resto sólo si funciona acá.** Guardar, buscar, cancelar,
+ * la ayuda y el verbo de la pantalla están siempre en el mismo lugar —atenuadas si ahora
+ * no aplican—: son el lugar fijo donde mirar. Las demás aparecen cuando se pueden
+ * apretar; con el catálogo creciendo, una lista larga de teclas apagadas tapaba las
+ * pocas que servían.
  *
  * La pantalla sale del teclado, que a su vez lo toma de la ruta: la barra no puede
  * anunciar el F4 de una pantalla distinta de la que efectivamente dispara.
@@ -18,16 +21,41 @@ export function BarraEstado() {
   const { mapa, pantalla, activas } = useTeclado()
 
   const visibles = CATALOGO.filter(
-    (d) => mapa[d.accion] && (d.ambito === 'global' || d.ambito === pantalla),
+    (d) =>
+      mapa[d.accion] &&
+      (d.principal || activas.has(d.accion)) &&
+      (d.ambito === 'global' || d.ambito === pantalla),
   )
 
+  const barra = useRef<HTMLElement>(null)
+
+  // Si las teclas no entran en una fila, pasan a dos. Lo que se apoya sobre la barra —el
+  // menú lateral, el final del contenido, las notificaciones— descuenta
+  // `--spacing-barra-estado`, así que la barra publica su altura real: una fila en una
+  // pantalla ancha, dos en una notebook, sin que nada quede tapado.
+  useLayoutEffect(() => {
+    const elemento = barra.current
+    if (!elemento || typeof ResizeObserver === 'undefined') return
+    const raiz = document.documentElement
+    const publicar = () =>
+      raiz.style.setProperty('--spacing-barra-estado', `${elemento.offsetHeight}px`)
+    publicar()
+    const observador = new ResizeObserver(publicar)
+    observador.observe(elemento)
+    return () => {
+      observador.disconnect()
+      raiz.style.removeProperty('--spacing-barra-estado')
+    }
+  }, [])
+
   return (
-    // Una sola línea siempre: si se partiera en dos, crecería hacia abajo fuera de la
-    // pantalla. Lo que no entra en una pantalla angosta se recorre de costado.
-    <footer className="fixed inset-x-0 bottom-0 z-30 flex h-barra-estado items-center gap-x-4 overflow-x-auto border-t border-borde bg-superficie px-4 text-etiqueta whitespace-nowrap text-texto-suave">
+    <footer
+      ref={barra}
+      className="fixed inset-x-0 bottom-0 z-30 flex min-h-8 flex-wrap items-center gap-x-4 gap-y-0.5 border-t border-borde bg-superficie px-4 py-1 text-etiqueta whitespace-nowrap text-texto-suave"
+    >
       {visibles.map((d) => {
         const disponible = activas.has(d.accion)
-        const esVerbo = d.ambito !== 'global'
+        const esVerbo = d.ambito !== 'global' && disponible
 
         return (
           <span
@@ -35,10 +63,10 @@ export function BarraEstado() {
             className={[
               'inline-flex items-center gap-1.5',
               disponible ? '' : 'opacity-40',
-              esVerbo && disponible ? 'font-semibold text-marca' : '',
+              esVerbo ? 'font-semibold text-marca' : '',
             ].join(' ')}
           >
-            <Tecla tecla={mapa[d.accion] ?? ''} tono={esVerbo && disponible ? 'marca' : 'normal'} />
+            <Tecla tecla={mapa[d.accion] ?? ''} tono={esVerbo ? 'marca' : 'normal'} />
             {d.etiqueta}
           </span>
         )

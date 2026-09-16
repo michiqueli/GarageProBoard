@@ -54,6 +54,12 @@ export interface DefinicionAccion {
    */
   reasignable: boolean
   descripcion?: string
+  /**
+   * Las que la barra de estado muestra siempre, aunque en esa pantalla no hagan nada
+   * (atenuadas): guardar, buscar, cancelar, la ayuda y el verbo de cada pantalla. Son el
+   * lugar fijo donde mirar. El resto aparece sólo cuando se puede usar.
+   */
+  principal?: boolean
 }
 
 /**
@@ -63,6 +69,7 @@ export interface DefinicionAccion {
 const GLOBALES: readonly DefinicionAccion[] = [
   {
     accion: 'global.ayuda',
+    principal: true,
     ambito: 'global',
     etiqueta: 'Ayuda',
     porOmision: 'F1',
@@ -70,6 +77,7 @@ const GLOBALES: readonly DefinicionAccion[] = [
   },
   {
     accion: 'global.guardar',
+    principal: true,
     ambito: 'global',
     etiqueta: 'Guardar',
     porOmision: 'F2',
@@ -77,6 +85,7 @@ const GLOBALES: readonly DefinicionAccion[] = [
   },
   {
     accion: 'global.buscar',
+    principal: true,
     ambito: 'global',
     etiqueta: 'Buscar',
     porOmision: 'F3',
@@ -147,6 +156,7 @@ const GLOBALES: readonly DefinicionAccion[] = [
   },
   {
     accion: 'global.cancelar',
+    principal: true,
     ambito: 'global',
     etiqueta: 'Cancelar',
     porOmision: 'Escape',
@@ -161,6 +171,7 @@ const GLOBALES: readonly DefinicionAccion[] = [
 const POR_PANTALLA: readonly DefinicionAccion[] = [
   {
     accion: 'ordenes.cerrar',
+    principal: true,
     ambito: 'ordenes',
     etiqueta: 'Cerrar la orden',
     porOmision: 'F4',
@@ -184,6 +195,7 @@ const POR_PANTALLA: readonly DefinicionAccion[] = [
 
   {
     accion: 'entregas.entregar',
+    principal: true,
     ambito: 'entregas',
     etiqueta: 'Entregar el vehículo',
     porOmision: 'F4',
@@ -199,6 +211,7 @@ const POR_PANTALLA: readonly DefinicionAccion[] = [
 
   {
     accion: 'repuestos.despachar',
+    principal: true,
     ambito: 'repuestos',
     etiqueta: 'Despachar',
     porOmision: 'F4',
@@ -214,6 +227,7 @@ const POR_PANTALLA: readonly DefinicionAccion[] = [
 
   {
     accion: 'caja.facturar',
+    principal: true,
     ambito: 'caja',
     etiqueta: 'Facturar',
     porOmision: 'F4',
@@ -230,6 +244,7 @@ const POR_PANTALLA: readonly DefinicionAccion[] = [
 
   {
     accion: 'clientes.consultarPadron',
+    principal: true,
     ambito: 'clientes',
     etiqueta: 'Consultar el padrón por CUIT',
     porOmision: 'F4',
@@ -238,6 +253,7 @@ const POR_PANTALLA: readonly DefinicionAccion[] = [
 
   {
     accion: 'vehiculos.transferir',
+    principal: true,
     ambito: 'vehiculos',
     etiqueta: 'Transferir titularidad',
     porOmision: 'F4',

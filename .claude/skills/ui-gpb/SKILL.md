@@ -29,8 +29,8 @@ interfaz 14px, radio 4px, escala de espaciado de 4px. Casi nada de sombras: un b
 objeto separado, nada resalta. La referencia es Linear, no una landing page.
 
 **3. El atajo se muestra, y sale del mapa del usuario.** La tecla va escrita en el
-botón y la barra de estado lista siempre las teclas activas del contexto (las que no
-aplican, atenuadas, no escondidas). Pero **nunca se escribe `F2` a mano**: los atajos
+botón y la barra de estado muestra siempre las principales (F1, F2, F3, Esc y el verbo
+F4, atenuadas si no aplican) y el resto sólo cuando funciona en ese contexto. Pero **nunca se escribe `F2` a mano**: los atajos
 son configurables por usuario, así que todo sale del mapa resuelto.
 
     <Boton accion="global.guardar">Guardar</Boton>

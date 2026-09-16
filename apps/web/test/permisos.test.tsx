@@ -105,10 +105,11 @@ describe('el botón con atajo', () => {
     await screen.findByRole('heading', { name: 'Vehículos', level: 1 })
     expect(screen.queryByRole('button', { name: /Nuevo vehículo/ })).toBeNull()
 
-    // La barra de estado anuncia la tecla igual — es un lugar fijo donde mirar — pero
-    // atenuada: sin manejador montado, `Ins` no dispara nada.
-    const nuevo = screen.getByText('Nuevo').closest('span')
-    expect(nuevo?.className).toContain('opacity-40')
+    // Ni en la barra de estado: `Ins` no es de las principales, y sólo aparece cuando se
+    // puede apretar.
+    expect(screen.queryByText('Nuevo')).toBeNull()
+    // Buscar sí es principal: está siempre en su lugar.
+    expect(screen.getAllByText('Buscar').length).toBeGreaterThan(0)
   })
 })
 
