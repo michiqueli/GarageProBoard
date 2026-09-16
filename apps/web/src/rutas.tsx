@@ -19,6 +19,7 @@ import { useTema } from './ganchos/useTema.ts'
 import { PantallaLogin } from './modulos/auth/PantallaLogin.tsx'
 import { PantallaSucursal } from './modulos/auth/PantallaSucursal.tsx'
 import { PantallaOrdenes } from './modulos/ordenes/PantallaOrdenes.tsx'
+import { PantallaUsuarios } from './modulos/usuarios/PantallaUsuarios.tsx'
 import { PantallaVehiculos } from './modulos/vehiculos/PantallaVehiculos.tsx'
 import { primeraPantalla } from './navegacion.tsx'
 import { usarSesion } from './sesion/almacen.ts'
@@ -155,10 +156,16 @@ const rutaVehiculos = createRoute({
   component: PantallaVehiculos,
 })
 
+const rutaUsuarios = createRoute({
+  getParentRoute: () => conSesion,
+  path: 'usuarios',
+  component: PantallaUsuarios,
+})
+
 const arbol = raiz.addChildren([
   rutaEntrar,
   rutaSucursal,
-  conSesion.addChildren([rutaInicio, rutaOrdenes, rutaVehiculos]),
+  conSesion.addChildren([rutaInicio, rutaOrdenes, rutaVehiculos, rutaUsuarios]),
 ])
 
 /**

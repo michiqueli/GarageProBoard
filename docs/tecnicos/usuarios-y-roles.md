@@ -1,8 +1,8 @@
 # Usuarios y roles
 
-Estado: **decidido, sin construir**. Se anotó el 16/09/2026 para cuando se haga la
-pantalla de usuarios. Lo que ya existe —roles predefinidos, permisos declarados en el
-contrato, reglas leídas en cada pedido— está en el README y en `packages/core/src/permisos.ts`.
+Estado: **usuarios construidos; edición de roles pendiente**. Desde el 16/09/2026 hay
+alta, modificación, baja y contraseña nueva, en la API y en la pantalla, con las dos reglas
+de abajo aplicadas por el servidor. Crear, clonar y editar roles todavía no.
 
 ## Quién da de alta a los usuarios
 
@@ -54,6 +54,41 @@ gerente. Si el único gerente se va, ese problema se resuelve desde el back-offi
 auditoría, y no abriendo un camino dentro de la aplicación.
 
 Toda alta, baja y cambio de rol va a `auditoria`: quién, a quién y qué cambió.
+
+## Lo que salió al construirlo
+
+### El administrador de usuarios solo no puede repartir casi nada
+
+Es la consecuencia directa de «nadie da lo que no tiene», y es correcta: quien crea un
+mecánico genera su contraseña y puede entrar como él, así que asignar «ver órdenes» es,
+en la práctica, verlas.
+
+Por eso el rol predefinido **se combina** con los roles que esa persona va a repartir. La
+de sistemas que da de alta mecánicos y asesores tiene «Administrador de usuarios» +
+«Mecánico» + «Asesor de servicios». El gerente no necesita nada más: `administrar all`
+cubre todo.
+
+La pantalla lo dice en cada rol que no se puede asignar —«te falta ver órdenes de
+trabajo»— en vez de dejar descubrirlo con un rechazo.
+
+### Tocar a alguien con más permisos también es escalar
+
+La regla escrita al principio era «nadie toca sus propios roles». Al construirlo
+apareció el hueco: generarle una contraseña nueva al gerente es quedarse con su cuenta, y
+darlo de baja es dejar la concesionaria sin quien la administra. La regla completa es
+**nadie modifica a un usuario que tiene algún permiso que él no tiene**, y la pantalla
+muestra a esos usuarios como «Tiene más permisos», sin botón.
+
+### Qué hace cada operación
+
+| | |
+| --- | --- |
+| Alta | Genera la contraseña (se muestra una vez), las preferencias y el mapa de teclas |
+| Baja | No borra. Deja de entrar en el próximo pedido y se anulan sus sesiones |
+| Contraseña nueva | Se muestra una vez y cierra todas sus sesiones |
+| Sobre sí mismo | Puede corregir su nombre; roles, sucursales y estado, no |
+
+Todo va a `auditoria`, sin la contraseña ni su hash.
 
 ## Preguntas abiertas
 

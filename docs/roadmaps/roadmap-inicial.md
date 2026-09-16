@@ -112,9 +112,11 @@ desaparece de su sistema, sin tocar código y sin que se pierda un dato.
 Las entidades ya están modeladas; falta poder operarlas.
 
 - ⬜ ABM de empresas, sucursales y puntos de venta
-- ⬜ ABM de usuarios y roles, con el rol predefinido «Administrador de usuarios» y las
-      dos reglas que impiden que se convierta en gerente: nadie da lo que no tiene, y
-      nadie toca sus propios roles. En [usuarios y roles](../tecnicos/usuarios-y-roles.md)
+- ✅ ABM de usuarios, con el rol predefinido «Administrador de usuarios» y las reglas
+      que impiden que se convierta en gerente: nadie da lo que no tiene, y nadie modifica a
+      quien tiene más permisos. En [usuarios y roles](../tecnicos/usuarios-y-roles.md)
+- ⬜ Crear, clonar y editar roles, con la misma regla
+- ⬜ Registrar Usuarios en el índice del buscador del sistema cuando exista
 - ⬜ ABM de entidades comerciales con consulta al padrón de AFIP por CUIT
 - 🔨 ABM de vehículos: listado y alta contra la API; falta edición y titularidad
 - ⬜ Búsqueda única: por patente, por chasis, por cliente, por CUIT

@@ -123,6 +123,20 @@ export const PRINCIPALES: Seccion[] = [
 
 export const SECUNDARIAS: Seccion[] = [
   {
+    id: 'usuarios',
+    etiqueta: 'Usuarios',
+    to: '/usuarios',
+    requiere: { modulo: 'nucleo', accion: 'ver', sujeto: 'Usuario' },
+    icono: (
+      <svg viewBox="0 0 16 16" {...trazo} aria-hidden="true">
+        <circle cx="6" cy="5.5" r="2.2" />
+        <path d="M2 13c0-2.2 1.8-3.6 4-3.6s4 1.4 4 3.6" />
+        <circle cx="11.5" cy="6" r="1.7" />
+        <path d="M11 9.6c1.8 0 3 1.1 3 2.9" />
+      </svg>
+    ),
+  },
+  {
     id: 'ayuda',
     etiqueta: 'Ayuda',
     icono: (
