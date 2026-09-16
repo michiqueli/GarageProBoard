@@ -7,6 +7,10 @@
     ".": {
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js"
+    },
+    "./backoffice": {
+      "types": "./dist/backoffice.d.ts",
+      "import": "./dist/backoffice.js"
     }
   },
   "scripts": {
