@@ -12,7 +12,8 @@
   "scripts": {
     "test": "vitest run --passWithNoTests",
     "typecheck": "tsc --noEmit -p tsconfig.test.json",
-    "build": "tsc -p tsconfig.json"
+    "build": "tsc -p tsconfig.json",
+    "probar-factura": "tsc -p tsconfig.json && node scripts/probar-factura.mjs"
   },
   "dependencies": {
     "@arcasdk/core": "2.0.2",

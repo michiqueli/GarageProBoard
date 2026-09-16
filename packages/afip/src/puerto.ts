@@ -31,7 +31,10 @@ export interface SolicitudComprobante {
   puntoVenta: number
   tipoComprobante: number
   numero: number
+  /** AAAA-MM-DD. */
   fecha: string
+  /** 1 productos, 2 servicios, 3 productos y servicios. */
+  concepto: 1 | 2 | 3
   /** Documento del receptor: 80 CUIT, 86 CUIL, 96 DNI, 99 sin identificar. */
   tipoDocReceptor: number
   numeroDocReceptor: string
@@ -42,19 +45,57 @@ export interface SolicitudComprobante {
   importeTotal: string
   importeExento: string
   alicuotas: RenglonIva[]
+  /** Obligatorio si el concepto incluye servicios. AAAA-MM-DD. */
+  servicio?: { desde: string; hasta: string; vencimientoPago: string } | undefined
 }
 
 export interface ComprobanteAutorizado {
   cae: string
+  /** AAAA-MM-DD. */
   vencimientoCae: string
   numero: number
+  /** Avisos de AFIP en un comprobante aprobado. Se guardan: alguien los tiene que leer. */
+  observaciones: Array<{ codigo: number; mensaje: string }>
   /** Lo que AFIP devolvió tal cual, para poder auditar un rechazo meses después. */
   respuestaCruda: unknown
+}
+
+/** AFIP rechazó el comprobante: el número no se usó y se puede volver a intentar. */
+export class ComprobanteRechazado extends Error {
+  constructor(
+    readonly errores: Array<{ codigo: number; mensaje: string }>,
+    readonly observaciones: Array<{ codigo: number; mensaje: string }>,
+    readonly respuestaCruda: unknown,
+  ) {
+    super(
+      `AFIP rechazó el comprobante: ${[...errores, ...observaciones].map((e) => `${e.codigo} ${e.mensaje}`).join('; ')}`,
+    )
+  }
+}
+
+/**
+ * AFIP no contestó. **No se sabe** si el comprobante quedó autorizado: antes de reintentar
+ * hay que preguntar por el último número, o se emite dos veces.
+ */
+export class FacturacionNoDisponible extends Error {
+  constructor(causa: unknown) {
+    super('El servicio de facturación de AFIP no está disponible', { cause: causa })
+  }
+}
+
+export interface PuntoVentaAfip {
+  numero: number
+  /** «CAE - Ri Iva», «CAE - Monotributo»: con qué régimen se dio de alta. */
+  tipoEmision: string
+  bloqueado: boolean
+  dadoDeBaja: boolean
 }
 
 export interface ServicioFiscal {
   autorizar(cred: Credenciales, solicitud: SolicitudComprobante): Promise<ComprobanteAutorizado>
   ultimoAutorizado(cred: Credenciales, puntoVenta: number, tipo: number): Promise<number>
+  /** Los puntos de venta habilitados para web services de ese CUIT. */
+  puntosDeVenta(cred: Credenciales): Promise<PuntoVentaAfip[]>
   condicionesIvaReceptor(
     cred: Credenciales,
   ): Promise<Array<{ codigo: number; descripcion: string }>>

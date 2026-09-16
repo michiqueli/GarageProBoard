@@ -144,7 +144,8 @@ Las entidades ya están modeladas; falta poder operarlas.
 
 La barrera de entrada más alta. Nada se vende sin esto.
 
-- ⬜ Adaptador de `@arcasdk/core` detrás del puerto `ServicioFiscal`
+- ✅ Adaptador de `@arcasdk/core` detrás del puerto `ServicioFiscal`: comprobante armado
+      desde el precio final con el IVA cerrado al centavo, rechazos interpretados y QR
 - ⬜ Asistente de certificados por razón social: el sistema genera la clave y el pedido,
       guía los pasos en ARCA y verifica el certificado contra AFIP antes de aceptarlo. Ver
       [certificados de AFIP](../tecnicos/afip-certificados.md)
@@ -154,7 +155,8 @@ La barrera de entrada más alta. Nada se vende sin esto.
 - ⬜ Matriz emisor × receptor como tabla de reglas
 - ⬜ PDF del comprobante con QR y código de barras
 - ⬜ Cola de reintentos en BullMQ para cuando AFIP no responde
-- ⬜ Circuito completo probado en homologación
+- 🔨 Circuito probado contra AFIP: una Factura B real en producción (16/09/2026, punto de
+      venta 8). Falta hacerlo desde la aplicación, con numeración, comprobante guardado y PDF
 
 **Criterio de terminado:** se emite una factura A y una B en homologación, con CAE,
 y el PDF valida contra el QR.

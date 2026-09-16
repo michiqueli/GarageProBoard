@@ -65,6 +65,27 @@ sigue activo hasta que el nuevo pasa la prueba.
 La pantalla vive en la configuración del módulo contable y pide `configurar Comprobante`.
 Cada paso queda en la auditoría: quién generó el pedido, quién subió el certificado, cuándo.
 
+## Lo que salió al probar contra AFIP
+
+El 16/09/2026 se emitió una Factura B real de $1 en producción, con el certificado de
+GarageProBoard y el punto de venta 8 de ese CUIT: `packages/afip/scripts/probar-factura.mjs`,
+que sin `--emitir` sólo verifica y muestra lo que mandaría. Tres cosas que no estaban
+escritas:
+
+- **El servidor de facturación de producción usa una clave Diffie-Hellman que OpenSSL 3
+  rechaza** («dh key too small»): la conexión se corta antes de hablar con AFIP. El SDK
+  trae la opción `useHttpsAgent`, que baja el nivel de seguridad TLS sólo para esas
+  conexiones. El padrón no lo necesita; la facturación sí.
+- **El SDK no lanza error cuando AFIP rechaza**: devuelve el CAE vacío y los motivos en la
+  respuesta. `interpretarRespuestaCae()` lo resuelve explícito —aprobado es resultado A
+  *con* CAE— y el adaptador lanza `ComprobanteRechazado`. Sin eso, un rechazo podía pasar
+  por una factura sin CAE.
+- **Los puntos de venta de un CUIT pueden estar en uso por otro sistema.** El CUIT de prueba
+  tenía el punto de venta 6 con más de dos mil facturas B de otro sistema. La numeración es
+  de AFIP por punto de venta y tipo: el número a usar **se le pregunta a AFIP** antes de
+  emitir, y la secuencia local sirve para ordenar y bloquear, no para decidir. El asistente
+  tiene que sugerir un punto de venta nuevo para GarageProBoard en vez de reusar uno.
+
 ## Dónde se guarda
 
 **En Postgres, cifrado. No en un almacén de archivos.**
