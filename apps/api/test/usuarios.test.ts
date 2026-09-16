@@ -3,12 +3,12 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import { type ApiDePrueba, CLAVE, levantarApi, sembrarConcesionaria } from './fixture.ts'
 
 /**
- * Usuarios, por el camino completo. Lo que importa acá no es el alta en sí sino las dos
- * reglas que impiden que quien administra usuarios termine con más permisos de los que
- * tiene:
+ * Usuarios, por el camino completo. Lo que importa acá no es el alta en sí sino las
+ * reglas sobre quién puede darle qué a quién:
  *
- * - **Nadie da lo que no tiene.**
- * - **Nadie se toca a sí mismo, ni toca a quien tiene más.**
+ * - **Quien administra usuarios** —gerente, administrador de sistema— asigna cualquier
+ *   rol y modifica a cualquiera, menos a sí mismo.
+ * - **Quien sólo da de alta usuarios** no da lo que no tiene, ni toca a quien tiene más.
  */
 
 let api: ApiDePrueba
@@ -24,9 +24,17 @@ beforeAll(async () => {
     email: 'gerente@usuarios.test',
     sucursales: ['Casa Central', 'Rafaela'],
     otros: [
-      { email: 'sistemas@usuarios.test', rol: 'Administrador de usuarios' },
+      { email: 'sistemas@usuarios.test', rol: 'Administrador de sistema' },
+      { email: 'altas@usuarios.test', rol: 'Encargado de altas' },
       { email: 'mecanico@usuarios.test', rol: 'Mecánico' },
       { email: 'asesor@usuarios.test', rol: 'Asesor de servicios' },
+    ],
+    // Un rol armado por la concesionaria: da de alta usuarios, pero no los administra.
+    rolesPropios: [
+      {
+        nombre: 'Encargado de altas',
+        habilidades: [{ action: ['ver', 'crear', 'editar'], subject: 'Usuario' }],
+      },
     ],
   })
 }, 180_000)
@@ -142,19 +150,56 @@ describe('el gerente administra usuarios', () => {
   })
 })
 
-describe('nadie da lo que no tiene', () => {
-  it('las opciones dicen qué roles no puede asignar y por qué', async () => {
+describe('el administrador de sistema puede todo, menos tocarse a sí mismo', () => {
+  it('ve todos los roles como asignables', async () => {
     const { access } = await entrar('sistemas@usuarios.test')
+    const { roles } = (await pedir(access, 'GET', '/usuarios/opciones')).json()
+    expect(roles.every((r: { leFalta: string[] }) => r.leFalta.length === 0)).toBe(true)
+  })
+
+  it('crea un gerente, y le puede generar una contraseña nueva', async () => {
+    const { access } = await entrar('sistemas@usuarios.test')
+    const creado = await pedir(
+      access,
+      'POST',
+      '/usuarios',
+      nuevo('gerente2@usuarios.test', ['Gerente']),
+    )
+    expect(creado.statusCode).toBe(201)
+
+    const r = await pedir(access, 'POST', `/usuarios/${creado.json().usuario.id}/password`)
+    expect(r.statusCode).toBe(200)
+  })
+
+  it('pero no se pone roles a sí mismo', async () => {
+    const { access } = await entrar('sistemas@usuarios.test')
+    const yo = await idDe(access, 'sistemas@usuarios.test')
+
+    const r = await pedir(access, 'PUT', `/usuarios/${yo}`, {
+      nombre: 'Prueba',
+      apellido: 'Sistemas',
+      rolIds: [rolId('Administrador de sistema'), rolId('Gerente')],
+      sucursalIds: [centralId()],
+      activo: true,
+    })
+    expect(r.statusCode).toBe(403)
+    expect(r.json().code).toBe('ES_USTED')
+  })
+})
+
+describe('quien sólo da de alta usuarios no da lo que no tiene', () => {
+  it('las opciones dicen qué roles no puede asignar y por qué', async () => {
+    const { access } = await entrar('altas@usuarios.test')
     const { roles } = (await pedir(access, 'GET', '/usuarios/opciones')).json()
 
     const gerente = roles.find((r: { nombre: string }) => r.nombre === 'Gerente')
-    const propio = roles.find((r: { nombre: string }) => r.nombre === 'Administrador de usuarios')
+    const propio = roles.find((r: { nombre: string }) => r.nombre === 'Encargado de altas')
     expect(gerente.leFalta).toEqual(['administrar todo el sistema'])
     expect(propio.leFalta).toEqual([])
   })
 
-  it('el administrador de usuarios no puede crear un gerente', async () => {
-    const { access } = await entrar('sistemas@usuarios.test')
+  it('no puede crear un gerente', async () => {
+    const { access } = await entrar('altas@usuarios.test')
     const r = await pedir(access, 'POST', '/usuarios', nuevo('intruso@usuarios.test', ['Gerente']))
 
     expect(r.statusCode).toBe(403)
@@ -165,37 +210,22 @@ describe('nadie da lo que no tiene', () => {
   })
 
   it('ni un mecánico: con esa cuenta vería las órdenes que él no ve', async () => {
-    const { access } = await entrar('sistemas@usuarios.test')
+    const { access } = await entrar('altas@usuarios.test')
     const r = await pedir(access, 'POST', '/usuarios', nuevo('otro@usuarios.test', ['Mecánico']))
     expect(r.json().code).toBe('ROL_NO_OTORGABLE')
   })
 
   it('pero sí un usuario con su mismo rol, o sin rol', async () => {
-    const { access } = await entrar('sistemas@usuarios.test')
+    const { access } = await entrar('altas@usuarios.test')
     const r = await pedir(access, 'POST', '/usuarios', nuevo('ayudante@usuarios.test', []))
     expect(r.statusCode).toBe(201)
   })
 })
 
-describe('nadie se toca a sí mismo, ni toca a quien tiene más', () => {
-  it('no puede sacarse ni ponerse roles', async () => {
-    const { access } = await entrar('sistemas@usuarios.test')
-    const yo = await idDe(access, 'sistemas@usuarios.test')
-
-    const r = await pedir(access, 'PUT', `/usuarios/${yo}`, {
-      nombre: 'Prueba',
-      apellido: 'Sistemas',
-      rolIds: [rolId('Administrador de usuarios'), rolId('Gerente')],
-      sucursalIds: [centralId()],
-      activo: true,
-    })
-    expect(r.statusCode).toBe(403)
-    expect(r.json().code).toBe('ES_USTED')
-  })
-
+describe('quien sólo da de alta usuarios no toca a quien tiene más', () => {
   it('su nombre sí lo puede corregir', async () => {
-    const { access } = await entrar('sistemas@usuarios.test')
-    const yo = await idDe(access, 'sistemas@usuarios.test')
+    const { access } = await entrar('altas@usuarios.test')
+    const yo = await idDe(access, 'altas@usuarios.test')
     const { datos } = (await pedir(access, 'GET', '/usuarios')).json()
     const actual = datos.find((u: { id: string }) => u.id === yo)
 
@@ -211,7 +241,7 @@ describe('nadie se toca a sí mismo, ni toca a quien tiene más', () => {
   })
 
   it('no le puede generar una contraseña al gerente: se quedaría con su cuenta', async () => {
-    const { access } = await entrar('sistemas@usuarios.test')
+    const { access } = await entrar('altas@usuarios.test')
     const gerente = await idDe(access, 'gerente@usuarios.test')
 
     const r = await pedir(access, 'POST', `/usuarios/${gerente}/password`)
@@ -219,8 +249,8 @@ describe('nadie se toca a sí mismo, ni toca a quien tiene más', () => {
     expect(r.json().code).toBe('USUARIO_CON_MAS_PERMISOS')
   })
 
-  it('ni darlo de baja', async () => {
-    const { access } = await entrar('sistemas@usuarios.test')
+  it('ni dar de baja a un asesor', async () => {
+    const { access } = await entrar('altas@usuarios.test')
     const asesor = await idDe(access, 'asesor@usuarios.test')
 
     const r = await pedir(access, 'PUT', `/usuarios/${asesor}`, {

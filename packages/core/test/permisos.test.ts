@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest'
 import {
   construirHabilidades,
   describirPermiso,
+  faltaParaAsignar,
   permisosQueNoTiene,
   ROLES_PREDEFINIDOS,
   resolverCondiciones,
@@ -94,22 +95,21 @@ describe('nadie da lo que no tiene', () => {
     }
   })
 
-  it('el administrador de usuarios solo no puede crear un gerente, y dice qué le falta', () => {
-    const admin = habilidadesDe('Administrador de usuarios')
-    expect(permisosQueNoTiene(admin, rol('Gerente'))).toEqual(['administrar todo el sistema'])
+  it('el administrador de sistema puede asignar cualquier rol, el de gerente incluido', () => {
+    const admin = habilidadesDe('Administrador de sistema')
+    for (const r of ROLES_PREDEFINIDOS) {
+      expect(faltaParaAsignar(admin, r.habilidades), r.nombre).toEqual([])
+    }
   })
 
-  it('tampoco puede crear un mecánico si no ve órdenes: lo podría usar para verlas', () => {
-    const admin = habilidadesDe('Administrador de usuarios')
-    expect(permisosQueNoTiene(admin, rol('Mecánico'))).toContain('ver órdenes de trabajo')
+  it('quien sólo da de alta usuarios no puede crear un gerente, y dice qué le falta', () => {
+    const altas = construirHabilidades([{ action: ['ver', 'crear', 'editar'], subject: 'Usuario' }])
+    expect(faltaParaAsignar(altas, rol('Gerente'))).toEqual(['administrar todo el sistema'])
   })
 
-  it('combinado con el rol que reparte, sí puede', () => {
-    const adminYAsesor = construirHabilidades([
-      ...rol('Administrador de usuarios'),
-      ...rol('Asesor de servicios'),
-    ])
-    expect(permisosQueNoTiene(adminYAsesor, rol('Asesor de servicios'))).toEqual([])
+  it('ni un mecánico si no ve órdenes: con esa cuenta las vería', () => {
+    const altas = construirHabilidades([{ action: ['ver', 'crear', 'editar'], subject: 'Usuario' }])
+    expect(faltaParaAsignar(altas, rol('Mecánico'))).toContain('ver órdenes de trabajo')
   })
 
   it('una prohibición le gana: el asesor no da permiso para ver legajos', () => {

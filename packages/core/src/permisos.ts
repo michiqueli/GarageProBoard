@@ -46,6 +46,7 @@ export const SUJETOS = [
   'Empresa',
   'Usuario',
   'Configuracion',
+  'Auditoria',
   'all',
 ] as const
 
@@ -81,6 +82,7 @@ const SUSTANTIVOS: Record<Sujeto, string> = {
   Empresa: 'empresas',
   Usuario: 'usuarios',
   Configuracion: 'la configuración',
+  Auditoria: 'el registro de ingresos y cambios',
   all: 'todo el sistema',
 }
 
@@ -100,6 +102,31 @@ function cubreSiempre(habilidades: Habilidades, accion: AccionPermiso, sujeto: S
   const [manda] = habilidades.rulesFor(accion, sujeto)
   if (!manda || manda.conditions || manda.fields) return false
   return !manda.inverted
+}
+
+/**
+ * Si quien tiene estas habilidades administra usuarios sin límite: asigna cualquier rol y
+ * modifica a cualquiera. Lo tienen el gerente, por `administrar all`, y el administrador
+ * de sistema.
+ *
+ * Es una decisión del producto, no un descuido: la concesionaria confía en quien tiene
+ * este rol, y lo que lo controla no es un bloqueo sino que **todo queda registrado** —
+ * desde qué computadora entró cada uno, quién cambió qué— y que el afectado se entera.
+ */
+export function administraUsuarios(habilidades: Habilidades): boolean {
+  return cubreSiempre(habilidades, 'administrar', 'Usuario')
+}
+
+/**
+ * Qué le falta a quien tiene estas habilidades para asignar estas reglas, o para modificar
+ * a alguien que las tiene. Vacío para quien administra usuarios; para el resto, la regla
+ * de siempre: nadie da lo que no tiene.
+ */
+export function faltaParaAsignar(
+  habilidades: Habilidades,
+  reglas: readonly ReglaPermiso[],
+): string[] {
+  return administraUsuarios(habilidades) ? [] : permisosQueNoTiene(habilidades, reglas)
 }
 
 /**
@@ -233,13 +260,13 @@ export const ROLES_PREDEFINIDOS: RolPredefinido[] = [
     ],
   },
   {
-    nombre: 'Administrador de usuarios',
+    nombre: 'Administrador de sistema',
     descripcion:
-      'Da de alta usuarios y les asigna roles y sucursales. Sólo puede repartir los permisos ' +
-      'que ya tiene: se combina con los roles que va a asignar.',
+      'Da de alta usuarios, les asigna cualquier rol y los modifica. No cambia sus propios ' +
+      'roles, y todo lo que hace queda registrado.',
     habilidades: [
-      { action: ['ver', 'crear', 'editar'], subject: 'Usuario' },
-      { action: 'ver', subject: 'Empresa' },
+      { action: 'administrar', subject: 'Usuario' },
+      { action: 'ver', subject: ['Empresa', 'Auditoria'] },
     ],
   },
 ]

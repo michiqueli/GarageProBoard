@@ -1,10 +1,5 @@
 import { randomBytes } from 'node:crypto'
-import {
-  atajosParaSembrar,
-  type Habilidades,
-  permisosQueNoTiene,
-  type ReglaPermiso,
-} from '@gpb/core'
+import { atajosParaSembrar, faltaParaAsignar, type Habilidades, type ReglaPermiso } from '@gpb/core'
 import { and, asc, type Db, eq, inArray, isNull } from '@gpb/db'
 import {
   auditoria,
@@ -71,6 +66,10 @@ function esEmailDuplicado(error: unknown): boolean {
  *    usuario con permisos que él no tiene: cambiarle la contraseña a un gerente es
  *    quedarse con su cuenta.
  *
+ * **La excepción es quien administra usuarios** —el gerente y el administrador de
+ * sistema—: asigna cualquier rol y modifica a cualquiera, salvo a sí mismo. Lo que lo
+ * controla no es un bloqueo sino el registro y el aviso al afectado.
+ *
  * Ver `docs/tecnicos/usuarios-y-roles.md`.
  */
 @Injectable()
@@ -101,7 +100,7 @@ export class ServicioUsuarios {
           id: r.id,
           nombre: r.nombre,
           descripcion: r.descripcion,
-          leFalta: permisosQueNoTiene(habilidades, r.habilidades as ReglaPermiso[]),
+          leFalta: faltaParaAsignar(habilidades, r.habilidades as ReglaPermiso[]),
         })),
         sucursales,
       }
@@ -268,7 +267,7 @@ export class ServicioUsuarios {
     }
 
     for (const r of roles) {
-      const leFalta = permisosQueNoTiene(habilidades, r.habilidades as ReglaPermiso[])
+      const leFalta = faltaParaAsignar(habilidades, r.habilidades as ReglaPermiso[])
       if (leFalta.length > 0) {
         throw new ErrorUsuarios('ROL_NO_OTORGABLE', { rol: r.nombre, leFalta })
       }
@@ -288,7 +287,7 @@ export class ServicioUsuarios {
       .from(usuarioRol)
       .innerJoin(rol, eq(rol.id, usuarioRol.rolId))
       .where(eq(usuarioRol.usuarioId, id))
-    return permisosQueNoTiene(
+    return faltaParaAsignar(
       habilidades,
       reglas.flatMap((r) => r.habilidades as ReglaPermiso[]),
     )
@@ -427,7 +426,7 @@ export class ServicioUsuarios {
         sucursales: sucursales
           .filter((s) => s.usuarioId === u.id)
           .map((s) => ({ id: s.id, nombre: s.nombre })),
-        editable: u.id !== sesion.usuarioId && permisosQueNoTiene(habilidades, reglas).length === 0,
+        editable: u.id !== sesion.usuarioId && faltaParaAsignar(habilidades, reglas).length === 0,
       }
     })
   }

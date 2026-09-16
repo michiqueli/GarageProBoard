@@ -1,4 +1,10 @@
-import { atajosParaSembrar, MODULOS, type Modulo, ROLES_PREDEFINIDOS } from '@gpb/core'
+import {
+  atajosParaSembrar,
+  MODULOS,
+  type Modulo,
+  type ReglaPermiso,
+  ROLES_PREDEFINIDOS,
+} from '@gpb/core'
 import { type Db, sembrarCatalogos } from '@gpb/db'
 import { levantarPostgres, type PostgresDePrueba } from '@gpb/db/pruebas'
 import {
@@ -73,6 +79,8 @@ export interface Semilla {
   modulos?: readonly Modulo[]
   /** Más usuarios, cada uno con uno de los roles predefinidos. */
   otros?: Array<{ email: string; rol: string }>
+  /** Roles armados por la concesionaria, además de los predefinidos. */
+  rolesPropios?: Array<{ nombre: string; habilidades: ReglaPermiso[] }>
 }
 
 /**
@@ -115,7 +123,7 @@ export async function sembrarConcesionaria(db: Db, s: Semilla) {
   const roles = await db
     .insert(rol)
     .values(
-      ROLES_PREDEFINIDOS.map((r) => ({
+      [...ROLES_PREDEFINIDOS, ...(s.rolesPropios ?? [])].map((r) => ({
         tenantId: t.id,
         nombre: r.nombre,
         habilidades: r.habilidades,
