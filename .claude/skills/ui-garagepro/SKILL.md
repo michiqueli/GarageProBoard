@@ -1,6 +1,6 @@
 ---
 name: ui-garagepro
-description: Sistema de diseño de GaragePro. Usar SIEMPRE al crear o modificar cualquier pantalla, componente, formulario, listado, tabla o estilo de apps/web, al tocar index.css o los tokens, y al agregar atajos de teclado. Cubre tokens, densidad, el mapa global de teclas F1-F10, el patrón de listado responsive y las reglas de redacción de la interfaz.
+description: Sistema de diseño de GaragePro. Usar SIEMPRE al crear o modificar cualquier pantalla, componente, formulario, listado, tabla o estilo de apps/web o apps/backoffice/web, al tocar los tokens, y al agregar atajos de teclado. Cubre tokens, densidad, el mapa global de teclas F1-F10, el patrón de listado responsive y las reglas de redacción de la interfaz.
 ---
 
 # Sistema de diseño de GaragePro
@@ -18,7 +18,7 @@ potencia de teclado y las teclas a la vista.
 ## Reglas que no se negocian
 
 **1. Cero valores visuales escritos a mano.** Todo color, espaciado, radio y tamaño sale
-de un token del `@theme` en `apps/web/src/index.css`. Si necesitás un valor que no
+de un token del `@theme` en `packages/ui-tokens/tokens.css`. Si necesitás un valor que no
 existe, agregás el token — no escribís `#3b82f6` ni `p-[13px]` en un componente. Va a
 haber una pasada de UX/UI con un especialista al final, y sale barata solo si cambiar un
 token mueve la aplicación entera.

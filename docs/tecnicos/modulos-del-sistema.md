@@ -164,7 +164,7 @@ vivieran juntas, el administrador del cliente se habilitaría solo el módulo qu
 
 ## Cómo está construido
 
-Lo que existe al 16/09/2026. El back-office y las pantallas de configuración todavía no;
+Lo que existe al 16/09/2026. Las pantallas de configuración todavía no;
 la acción `configurar` ya está en el catálogo de permisos y ningún rol predefinido la
 trae salvo el gerente.
 
@@ -192,3 +192,18 @@ Los módulos se leen **en cada pedido**, igual que los permisos. Una prueba de t
 que vence a medianoche se apaga en el pedido siguiente, sin esperar a que la persona
 vuelva a entrar. El front recibe la lista con la sesión y la renueva cada quince minutos:
 puede mostrar una sección un rato de más, y la API la va a rechazar igual.
+
+### El back-office
+
+Vive en `apps/backoffice` —una API y un panel— y se despliega aparte, en otro dominio.
+Es el único que escribe `tenant_modulo`.
+
+| | |
+| --- | --- |
+| Quién entra | Operadores de la tabla `operador`, creados con `pnpm db:operador`. Sin segundo factor por ahora |
+| Sesión | Cookie `httpOnly` de doce horas, verificada en cada pedido |
+| Rol de Postgres | `garagepro_backoffice`, sin BYPASSRLS. Ve todas las concesionarias sólo en `tenant` y `tenant_modulo`; no puede leer un vehículo ni un comprobante |
+| Alta | Concesionaria, módulos, razón social, sucursal, roles y gerente en una sola transacción. La contraseña del gerente se muestra una vez |
+| Módulos | Prender, apagar y vencimiento, siempre con motivo. Se rechaza lo que agrega una dependencia rota |
+| Suspender | `tenant.activo = false`: nadie entra y las sesiones caen en el próximo pedido. Los datos no se tocan |
+| Auditoría | `auditoria_backoffice`, que el propio back-office no puede corregir ni borrar |

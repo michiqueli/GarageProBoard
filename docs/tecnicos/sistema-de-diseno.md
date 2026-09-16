@@ -190,7 +190,7 @@ cómo trabaja.
 
 ## 3. Tokens
 
-Todo vive en el bloque `@theme` de Tailwind 4, en `apps/web/src/index.css`. **Ningún
+Todo vive en el bloque `@theme` de Tailwind 4, en `packages/ui-tokens/tokens.css`. **Ningún
 componente escribe un color, un espaciado o un tamaño a mano.**
 
 ### Color
@@ -444,7 +444,7 @@ Los mismos tres estados del menú, por los mismos motivos:
 ## 6. Estructura del código
 
     apps/web/src/
-      index.css              @theme: acá viven TODOS los tokens
+      index.css              importa los tokens de packages/ui-tokens
       ui/                    componentes de shadcn — no saben nada del dominio
       componentes/           componentes propios y transversales (barra de estado,
                              listado responsive, píldora de estado)

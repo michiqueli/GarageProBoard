@@ -81,7 +81,7 @@ después. El mapa, la configuración por módulo y quién puede tocarla, en
 - ✅ Mapa de módulos cerrado: núcleo, contable, servicios, repuestos, cartera, ventas
       y rrhh, con el flag colgando de la pantalla y no de la entidad
 - ✅ Dependencias declaradas entre módulos, con `dependenciasRotas()` lista para el back-office
-- ⬜ El back-office que impide apagar el piso de uno prendido
+- ✅ El back-office que impide apagar el piso de uno prendido
 - ✅ Acción `configurar` en el catálogo de permisos: entrar a un módulo no es poder
       tocar sus credenciales. Ningún rol predefinido la trae salvo el gerente
 - ⬜ Pantalla de configuración **adentro de cada módulo**, más un índice que las liste
@@ -93,8 +93,11 @@ después. El mapa, la configuración por módulo y quién puede tocarla, en
 - ✅ El contrato declara a qué módulo pertenece cada ruta, al lado del permiso
 - ✅ La API rechaza la operación de un módulo apagado, antes de mirar permisos
 - ✅ El menú y las rutas filtran por módulo **y** por permiso, con mensajes distintos
-- ⬜ Back-office aparte —posiblemente en otro dominio— para dar de alta tenants y
-      manejar sus módulos, planes y estado de cuenta
+- ✅ Back-office aparte, en `apps/backoffice`: operadores propios, alta de
+      concesionarias, módulos con vigencia, suspensión y auditoría. Con su propio rol de
+      Postgres, que no lee datos de las concesionarias
+- ⬜ Planes y estado de cuenta en el back-office
+- ⬜ Segundo factor (TOTP) para los operadores
 - ⬜ Exportación al darse de baja: el acceso se apaga, el registro se conserva — un
       comprobante fiscal se guarda diez años y la obligación es nuestra
 

@@ -1,0 +1,17 @@
+@import "tailwindcss";
+@import "@garagepro/ui-tokens/tokens.css";
+
+/*
+ * El back-office usa los tokens de siempre, con **otra marca**: el azul informativo en
+ * lugar del ámbar.
+ *
+ * Es el panel que apaga concesionarias enteras. Con dos pestañas abiertas —la de un
+ * cliente y ésta— tiene que ser evidente de un vistazo en cuál se está parado, antes de
+ * apretar nada.
+ */
+:root,
+[data-tema="oscuro"],
+[data-tema="claro"] {
+  --color-marca: var(--color-info);
+  --color-marca-suave: color-mix(in srgb, var(--color-info) 16%, transparent);
+}

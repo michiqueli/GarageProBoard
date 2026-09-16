@@ -19,7 +19,7 @@ aislamiento por Row Level Security de Postgres.
 
     pnpm infra:up          # Postgres 18 en el 5433 + Redis 8
     pnpm db:migrate        # migraciones + políticas de aislamiento
-    pnpm db:app-role       # habilita el login del rol de la aplicación
+    pnpm db:app-role       # habilita el login de los roles de la API y del back-office
 
     pnpm dev               # API en :3080, front en :5173
 
@@ -35,6 +35,17 @@ Con eso arriba:
 El spec se genera del mismo contrato que implementa la API y consume el front, así
 que no hay una segunda fuente de verdad que se desactualice.
 
+### El back-office
+
+Es otro sitio, para nosotros: da de alta concesionarias y maneja sus módulos. Corre
+aparte y con su propio rol de Postgres, así que `pnpm dev` no lo levanta.
+
+    pnpm db:operador ops@garagepro.test "Operaciones"   # muestra la contraseña una vez
+    pnpm dev:backoffice    # API en :3090, panel en :5174
+
+Necesita `DATABASE_URL_BACKOFFICE` y `BACKOFFICE_DB_PASSWORD` en el `.env` (están en
+`.env.example`). El panel se abre en <http://localhost:5174>.
+
 El Postgres del contenedor va al **5433** a propósito: el 5432 suele estar ocupado por
 una instalación nativa, y su `psql` sirve igual como cliente de línea de comandos.
 
@@ -42,9 +53,11 @@ una instalación nativa, y su `psql` sirve igual como cliente de línea de coman
 
     apps/api             NestJS 12 + Fastify
     apps/web             Vite 8 + React 19 + Tailwind 4
+    apps/backoffice/     El panel nuestro: api (NestJS, :3090) y web (Vite, :5174)
     packages/contracts   Contrato oRPC + Zod, compartido por todos los consumidores
     packages/db          Esquema Drizzle, migraciones y políticas de RLS
     packages/core        Dominio puro: plata, IVA, reglas. Sin I/O.
+    packages/ui-tokens   Los tokens de diseño, compartidos por las dos aplicaciones
     packages/afip        Puerto contra ARCA, sobre @arcasdk/core
     infra/               docker compose
     docs/                Bitácoras de sesión, roadmaps e informes técnicos
@@ -58,6 +71,8 @@ de `apps/web`.
 | Comando | Qué hace |
 | --- | --- |
 | `pnpm dev` | Levanta API (:3080) y front (:5173) |
+| `pnpm dev:backoffice` | Levanta el back-office: API (:3090) y panel (:5174) |
+| `pnpm db:operador` | Da de alta un operador del back-office |
 | `pnpm test` | Corre todos los tests |
 | `pnpm typecheck` | Chequea tipos en todo el workspace |
 | `pnpm lint` / `pnpm lint:fix` | Biome |
