@@ -1,5 +1,5 @@
 import { ROLES_PREDEFINIDOS } from '@garagepro/core'
-import { and, conTenant, type Db, eq, isNull, sql } from '@garagepro/db'
+import { and, conTenant, type Db, eq, isNull, modulosVigentes, sql } from '@garagepro/db'
 import {
   empresa,
   sesion,
@@ -308,6 +308,7 @@ export class ServicioAuth {
       tenant: { id: t.id, nombre: t.nombre, slug: t.slug },
       sucursalActiva: activa,
       sucursales: disponibles,
+      modulos: await modulosVigentes(tx),
       habilidades,
       atajos: Object.fromEntries(guardados.map((a) => [a.accion, a.tecla])),
       config: {

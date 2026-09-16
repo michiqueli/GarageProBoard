@@ -40,7 +40,7 @@ export const contrato = {
     .output(z.object({ estado: z.literal('ok'), version: z.string() })),
 
   vehiculos: {
-    listar: conPermiso('ver', 'Vehiculo')
+    listar: conPermiso('nucleo', 'ver', 'Vehiculo')
       .route({
         method: 'GET',
         path: '/vehiculos',
@@ -58,7 +58,7 @@ export const contrato = {
       )
       .output(z.object({ datos: z.array(vehiculoSalida), total: z.number().int() })),
 
-    crear: conPermiso('crear', 'Vehiculo')
+    crear: conPermiso('nucleo', 'crear', 'Vehiculo')
       .route({
         method: 'POST',
         path: '/vehiculos',

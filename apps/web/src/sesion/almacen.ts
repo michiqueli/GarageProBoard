@@ -1,4 +1,4 @@
-import type { ReglaPermiso } from '@garagepro/core'
+import type { Modulo, ReglaPermiso } from '@garagepro/core'
 import { create } from 'zustand'
 
 export interface Sucursal {
@@ -13,6 +13,8 @@ export interface DatosSesion {
   tenant: { id: string; nombre: string; slug: string }
   sucursalActiva: Sucursal
   sucursales: Sucursal[]
+  /** Los módulos que la concesionaria tiene prendidos. Se miran antes que los permisos. */
+  modulos: Modulo[]
   /** Reglas de CASL ya resueltas contra este usuario, tal como las manda la API. */
   habilidades: ReglaPermiso[]
   atajos: Record<string, string>

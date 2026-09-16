@@ -2,7 +2,14 @@ import { cleanup, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { usarSesion } from '../src/sesion/almacen.ts'
-import { montarApp, SESION, SESION_MECANICO, SESION_REPUESTERO, SESION_SIN_ROL } from './montar.tsx'
+import {
+  montarApp,
+  SESION,
+  SESION_MECANICO,
+  SESION_REPUESTERO,
+  SESION_SIN_ROL,
+  SESION_SIN_TALLER_NI_CAJA,
+} from './montar.tsx'
 
 /**
  * Lo que ve cada rol, montando la aplicación de verdad.
@@ -148,7 +155,7 @@ describe('el inicio', () => {
   })
 })
 
-describe('el verbo del módulo', () => {
+describe('el verbo de la pantalla', () => {
   it('sin permiso para cerrar la orden, F4 no hace nada', async () => {
     entraComo(SESION_MECANICO)
     await montarApp('/ordenes')
@@ -160,5 +167,54 @@ describe('el verbo del módulo', () => {
     await userEvent.keyboard('{F4}')
     expect(alerta).not.toHaveBeenCalled()
     alerta.mockRestore()
+  })
+})
+
+describe('un módulo que la concesionaria no tiene', () => {
+  it('desaparece del menú aunque el usuario pueda todo', async () => {
+    entraComo(SESION_SIN_TALLER_NI_CAJA)
+    await montarApp('/vehiculos')
+
+    await screen.findByRole('heading', { name: 'Vehículos', level: 1 })
+    // Ni atenuadas: atenuada es «todavía no está», y esto no va a estar.
+    expect(screen.queryByText('Órdenes de trabajo')).toBeNull()
+    expect(screen.queryByText('Entregas')).toBeNull()
+    expect(screen.queryByText('Caja')).toBeNull()
+    // Lo del núcleo y lo de repuestos sigue ahí.
+    expect(screen.getByRole('link', { name: 'Vehículos' })).toBeDefined()
+    expect(screen.getByText('Repuestos')).toBeDefined()
+  })
+
+  it('por un enlace viejo, avisa sin hablar de permisos', async () => {
+    entraComo(SESION_SIN_TALLER_NI_CAJA)
+    await montarApp('/ordenes')
+
+    expect(
+      await screen.findByRole('heading', {
+        name: 'Esta sección no está habilitada en la concesionaria',
+      }),
+    ).toBeDefined()
+    expect(screen.queryByText(/permiso/)).toBeNull()
+    expect(screen.getByRole('link', { name: 'Ir al inicio' })).toBeDefined()
+  })
+
+  it('tampoco registra el verbo de la pantalla', async () => {
+    entraComo(SESION_SIN_TALLER_NI_CAJA)
+    await montarApp('/ordenes')
+
+    await screen.findByRole('heading', { name: /no está habilitada/ })
+    const alerta = vi.spyOn(window, 'alert').mockImplementation(() => {})
+    await userEvent.keyboard('{F4}')
+    expect(alerta).not.toHaveBeenCalled()
+    alerta.mockRestore()
+  })
+
+  it('el inicio lo salta: el gerente cae en la primera sección contratada', async () => {
+    // Con todo contratado, el gerente cae en Órdenes. Sin servicios, en Vehículos.
+    entraComo(SESION_SIN_TALLER_NI_CAJA)
+    const router = await montarApp('/')
+
+    expect(await screen.findByRole('heading', { name: 'Vehículos', level: 1 })).toBeDefined()
+    expect(router.state.location.pathname).toBe('/vehiculos')
   })
 })

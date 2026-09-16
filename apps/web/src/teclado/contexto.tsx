@@ -1,7 +1,7 @@
 import {
   type Diferencias,
   type MapaAtajos,
-  type Modulo,
+  type Pantalla,
   resolverAtajos,
   teclaDesdeEvento,
 } from '@garagepro/core'
@@ -20,8 +20,8 @@ import { debeDisparar, debePrevenir } from './coincide.ts'
 interface Teclado {
   /** El mapa resuelto: valores por omisión más las diferencias de este usuario. */
   mapa: MapaAtajos
-  /** El módulo de la pantalla montada, que define cuál es la acción de F4. */
-  modulo: Modulo | undefined
+  /** La pantalla montada, que define cuál es la acción de F4. */
+  pantalla: Pantalla | undefined
   /** Las acciones que ahora mismo tienen un manejador montado. */
   activas: ReadonlySet<string>
   teclaDe(accion: string): string | undefined
@@ -32,14 +32,14 @@ const Contexto = createContext<Teclado | null>(null)
 
 export function ProveedorTeclado({
   children,
-  modulo,
+  pantalla,
   diferencias = {},
 }: {
   children: ReactNode
-  modulo?: Modulo | undefined
+  pantalla?: Pantalla | undefined
   diferencias?: Diferencias | undefined
 }) {
-  const mapa = useMemo(() => resolverAtajos(diferencias, modulo), [diferencias, modulo])
+  const mapa = useMemo(() => resolverAtajos(diferencias, pantalla), [diferencias, pantalla])
 
   // Los manejadores viven en una ref para que registrar uno no vuelva a renderizar
   // el árbol entero. El Set de activas sí es estado, porque la barra de estado lo mira.
@@ -83,12 +83,12 @@ export function ProveedorTeclado({
   const valor = useMemo<Teclado>(
     () => ({
       mapa,
-      modulo,
+      pantalla,
       activas,
       teclaDe: (accion) => mapa[accion],
       registrar,
     }),
-    [mapa, modulo, activas, registrar],
+    [mapa, pantalla, activas, registrar],
   )
 
   return <Contexto.Provider value={valor}>{children}</Contexto.Provider>

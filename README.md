@@ -83,11 +83,17 @@ Si agregás una tabla con `tenant_id`, sumala a `TABLAS_CON_TENANT` — hay un t
 verifica y va a fallar si no.
 
 **Quién puede usar cada ruta lo dice el contrato.** Se arma con `publico`, `conSesion` o
-`conPermiso('crear', 'Vehiculo')`, y se implementa con `@Operacion()`. La API lo aplica,
-Swagger documenta el 401 y el 403, y una ruta que no lo declara no deja arrancar la API.
+`conPermiso('nucleo', 'crear', 'Vehiculo')` —el módulo que la concesionaria tiene que
+tener contratado y el permiso que tiene que tener la persona— y se implementa con
+`@Operacion()`. La API lo aplica, primero el módulo y después el permiso; Swagger
+documenta el 401 y los dos 403, y una ruta que no lo declara no deja arrancar la API.
 La pantalla lee **esa misma declaración** con `usePuedeUsar(contrato.vehiculos.crear)`, y
-toda pantalla dice qué permiso pide en su `Shell`: el botón aparece exactamente cuando la
-API lo va a aceptar. Ojo con la asimetría — el front oculta, la API decide.
+toda pantalla dice qué pide en su `Shell`: el botón aparece exactamente cuando la API lo
+va a aceptar. Ojo con la asimetría — el front oculta, la API decide.
+
+**Los módulos contratados no los escribe la aplicación.** Viven en `tenant_modulo`, que
+el rol de la API sólo puede leer. Si creás una concesionaria a mano, dale sus módulos:
+sin fila, el módulo está apagado.
 
 **Responsive desde el diseño, no como parche.** El gerente mira facturación del
 celular y el asesor consulta una orden desde una tablet en la playa de entrega. Los

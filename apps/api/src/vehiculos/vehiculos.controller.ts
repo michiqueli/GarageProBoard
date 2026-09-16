@@ -7,9 +7,10 @@ import { DatosDelTenant } from '../comun/datos.ts'
 import { Operacion } from '../comun/operacion.ts'
 
 /**
- * Los permisos no están acá: los declara el contrato (`conPermiso('ver', 'Vehiculo')`)
- * y los aplica la guardia antes de que el manejador corra. Y el tenant tampoco: lo pone
- * `DatosDelTenant` desde la sesión. Lo que queda en el controlador es sólo el negocio.
+ * Los permisos no están acá: los declara el contrato — el módulo y el permiso, con
+ * `conPermiso('nucleo', 'ver', 'Vehiculo')` — y los aplica la guardia antes de que el
+ * manejador corra. Y el tenant tampoco: lo pone `DatosDelTenant` desde la sesión. Lo que
+ * queda en el controlador es sólo el negocio.
  */
 @Controller()
 export class ControladorVehiculos {

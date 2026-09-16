@@ -26,6 +26,7 @@ export const TABLAS_CON_TENANT = [
   'usuario_atajo',
   'auditoria',
   'sesion',
+  'tenant_modulo',
 ] as const
 
 /**
@@ -44,3 +45,13 @@ export const ROL_APP = 'garagepro_app'
 
 /** Variable de sesión que las políticas comparan contra `tenant_id`. */
 export const VAR_TENANT = 'app.tenant_id'
+
+/**
+ * Tablas con datos de un cliente que la aplicación **lee pero no escribe**.
+ *
+ * Lo que dice qué contrató la concesionaria no lo puede cambiar la concesionaria. Las
+ * escribe el back-office, con otro rol.
+ */
+export const TABLAS_SOLO_LECTURA = ['tenant_modulo'] as const satisfies ReadonlyArray<
+  (typeof TABLAS_CON_TENANT)[number]
+>

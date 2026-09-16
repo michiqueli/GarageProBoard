@@ -29,6 +29,7 @@ const SESION = {
   tenant: { id: 't1', nombre: 'Litoral', slug: 'litoral' },
   sucursalActiva: { id: 's1', nombre: 'Casa Central', empresaId: 'e1', razonSocial: 'Litoral SAS' },
   sucursales: [{ id: 's1', nombre: 'Casa Central', empresaId: 'e1', razonSocial: 'Litoral SAS' }],
+  modulos: [],
   habilidades: [],
   atajos: {},
   config: {

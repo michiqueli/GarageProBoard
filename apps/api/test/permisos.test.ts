@@ -193,3 +193,84 @@ describe('los cambios valen desde el próximo pedido, no cuando vence el token',
     expect((await listar(access)).statusCode).toBe(200)
   })
 })
+
+describe('los módulos se miran antes que los permisos', () => {
+  beforeAll(async () => {
+    await sembrarConcesionaria(api.pg.dbDuenio, {
+      slug: 'suspendida',
+      email: 'gerente@suspendida.test',
+      otros: [{ email: 'repuestos@suspendida.test', rol: 'Repuestero' }],
+    })
+  })
+
+  function apagar(modulo: string, como: string) {
+    return api.pg.poolDuenio.query(
+      `update tenant_modulo set ${como}
+        where modulo = $1 and tenant_id = (select id from tenant where slug = 'suspendida')`,
+      [modulo],
+    )
+  }
+
+  it('suspender un módulo corta al gerente en el próximo pedido, con el mismo token', async () => {
+    const { access } = await entrar('gerente@suspendida.test')
+    expect((await listar(access)).statusCode).toBe(200)
+
+    await apagar('nucleo', 'activo = false')
+
+    const r = await listar(access)
+    expect(r.statusCode).toBe(403)
+    // No habla de permisos ni de quién administra los usuarios: no hay permiso que le
+    // sirva. Y no ofrece contratarlo.
+    expect(r.json()).toEqual({
+      defined: true,
+      code: 'MODULO_APAGADO',
+      status: 403,
+      message: 'Esta función no está habilitada para la concesionaria.',
+      data: { modulo: 'nucleo' },
+    })
+
+    await apagar('nucleo', 'activo = true')
+    expect((await listar(access)).statusCode).toBe(200)
+  })
+
+  it('a quien tampoco tiene el permiso, le dice lo del módulo', async () => {
+    // El repuestero no ve vehículos. Si además el módulo está apagado, contestarle «pedí
+    // permiso» lo mandaría a pedir algo que nadie le puede dar.
+    const { access } = await entrar('repuestos@suspendida.test')
+    await apagar('nucleo', 'activo = false')
+
+    const r = await listar(access)
+    expect(r.json().code).toBe('MODULO_APAGADO')
+
+    await apagar('nucleo', 'activo = true')
+    expect((await listar(access)).json().code).toBe('SIN_PERMISO')
+  })
+
+  it('una prueba vencida se apaga sola', async () => {
+    const { access } = await entrar('gerente@suspendida.test')
+    await apagar(
+      'nucleo',
+      `vigente_desde = now() - interval '40 days', vigente_hasta = now() - interval '10 days'`,
+    )
+
+    expect((await listar(access)).json().code).toBe('MODULO_APAGADO')
+
+    await apagar('nucleo', 'vigente_hasta = null')
+  })
+
+  it('la sesión dice qué módulos están prendidos, y lo que sólo pide sesión sigue andando', async () => {
+    const { access } = await entrar('gerente@suspendida.test')
+    await apagar('contable', 'activo = false')
+
+    const r = await app.inject({
+      method: 'GET',
+      url: '/api/auth/yo',
+      headers: { authorization: `Bearer ${access}` },
+    })
+    expect(r.statusCode).toBe(200)
+    expect(r.json().modulos).not.toContain('contable')
+    expect(r.json().modulos).toContain('nucleo')
+
+    await apagar('contable', 'activo = true')
+  })
+})

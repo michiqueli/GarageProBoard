@@ -1,4 +1,4 @@
-import type { Modulo } from '@garagepro/core'
+import type { Pantalla } from '@garagepro/core'
 import {
   createRootRouteWithContext,
   createRoute,
@@ -23,7 +23,7 @@ import { PantallaVehiculos } from './modulos/vehiculos/PantallaVehiculos.tsx'
 import { primeraPantalla } from './navegacion.tsx'
 import { usarSesion } from './sesion/almacen.ts'
 import { renovar } from './sesion/cliente.ts'
-import { habilidadesActuales } from './sesion/permisos.ts'
+import { autorizacionActual } from './sesion/permisos.ts'
 import { ProveedorTeclado } from './teclado/index.ts'
 
 /**
@@ -41,8 +41,8 @@ declare module '@tanstack/react-router' {
     router: ReturnType<typeof crearRouter>
   }
   interface StaticDataRouteOption {
-    /** Qué módulo define la acción de F4 y las teclas propias de la pantalla. */
-    modulo?: Modulo
+    /** Qué pantalla es, para la acción de F4 y sus teclas propias. */
+    pantalla?: Pantalla
   }
 }
 
@@ -130,7 +130,7 @@ const rutaInicio = createRoute({
   getParentRoute: () => conSesion,
   path: '/',
   beforeLoad: () => {
-    const destino = primeraPantalla(habilidadesActuales())
+    const destino = primeraPantalla(autorizacionActual())
     if (destino) throw redirect({ to: destino, replace: true })
   },
   component: SinPantallas,
@@ -139,14 +139,14 @@ const rutaInicio = createRoute({
 const rutaOrdenes = createRoute({
   getParentRoute: () => conSesion,
   path: 'ordenes',
-  staticData: { modulo: 'ordenes' },
+  staticData: { pantalla: 'ordenes' },
   component: PantallaOrdenes,
 })
 
 const rutaVehiculos = createRoute({
   getParentRoute: () => conSesion,
   path: 'vehiculos',
-  staticData: { modulo: 'vehiculos' },
+  staticData: { pantalla: 'vehiculos' },
   // Un parámetro mal formado se descarta en vez de romper la pantalla: la URL la puede
   // escribir cualquiera, y un enlace viejo pegado en un chat no merece un error.
   validateSearch: z.object({
@@ -227,16 +227,16 @@ function Raiz() {
   return <Outlet />
 }
 
-/** El proveedor del teclado, con el módulo que declara la ruta más profunda. */
+/** El proveedor del teclado, con la pantalla que declara la ruta más profunda. */
 function ConSesion() {
   const atajos = usarSesion((e) => e.datos?.atajos)
-  const modulo = useMatches({
+  const pantalla = useMatches({
     select: (coincidencias) =>
-      coincidencias.findLast((c) => c.staticData.modulo)?.staticData.modulo,
+      coincidencias.findLast((c) => c.staticData.pantalla)?.staticData.pantalla,
   })
 
   return (
-    <ProveedorTeclado modulo={modulo} diferencias={atajos}>
+    <ProveedorTeclado pantalla={pantalla} diferencias={atajos}>
       <Outlet />
     </ProveedorTeclado>
   )

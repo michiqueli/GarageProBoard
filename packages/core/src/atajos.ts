@@ -15,8 +15,8 @@
  *                                    → …
  */
 
-/** Módulos con acciones propias. Crece a medida que se construyen. */
-export const MODULOS = [
+/** Pantallas con acciones propias. Crece a medida que se construyen. */
+export const PANTALLAS = [
   'ordenes',
   'entregas',
   'repuestos',
@@ -25,10 +25,10 @@ export const MODULOS = [
   'vehiculos',
 ] as const
 
-export type Modulo = (typeof MODULOS)[number]
+export type Pantalla = (typeof PANTALLAS)[number]
 
 /** `global` son las que funcionan en todas las pantallas. */
-export type Ambito = 'global' | Modulo
+export type Ambito = 'global' | Pantalla
 
 export const ETIQUETA_AMBITO: Readonly<Record<Ambito, string>> = {
   global: 'Generales',
@@ -155,10 +155,10 @@ const GLOBALES: readonly DefinicionAccion[] = [
 ]
 
 /**
- * Las de cada módulo. La primera de cada grupo es el **verbo de la pantalla** y por eso
+ * Las de cada pantalla. La primera de cada grupo es el **verbo de la pantalla** y por eso
  * todas arrancan en F4: nunca coexisten, porque o estás en taller o estás en entregas.
  */
-const POR_MODULO: readonly DefinicionAccion[] = [
+const POR_PANTALLA: readonly DefinicionAccion[] = [
   {
     accion: 'ordenes.cerrar',
     ambito: 'ordenes',
@@ -252,7 +252,7 @@ const POR_MODULO: readonly DefinicionAccion[] = [
   },
 ]
 
-export const CATALOGO: readonly DefinicionAccion[] = [...GLOBALES, ...POR_MODULO]
+export const CATALOGO: readonly DefinicionAccion[] = [...GLOBALES, ...POR_PANTALLA]
 
 const POR_ACCION = new Map(CATALOGO.map((d) => [d.accion, d]))
 
@@ -262,7 +262,7 @@ export function catalogoPorAmbito(): Array<{
   etiqueta: string
   acciones: readonly DefinicionAccion[]
 }> {
-  const ambitos: Ambito[] = ['global', ...MODULOS]
+  const ambitos: Ambito[] = ['global', ...PANTALLAS]
 
   return ambitos.map((ambito) => ({
     ambito,
@@ -298,16 +298,16 @@ export type MapaAtajos = Readonly<Record<string, string>>
 export type Diferencias = Readonly<Record<string, string>>
 
 /**
- * Arma el mapa que rige en una pantalla: las globales más las del módulo.
+ * Arma el mapa que rige en una pantalla: las globales más las de esa pantalla.
  *
  * Resolver en lugar de copiar el mapa al crear cada usuario es lo que hace que una
- * acción agregada en un módulo futuro le funcione a los usuarios que ya existen.
+ * acción agregada en una pantalla futura le funcione a los usuarios que ya existen.
  */
-export function resolverAtajos(diferencias: Diferencias = {}, modulo?: Modulo): MapaAtajos {
+export function resolverAtajos(diferencias: Diferencias = {}, pantalla?: Pantalla): MapaAtajos {
   const mapa: Record<string, string> = {}
 
   for (const definicion of CATALOGO) {
-    if (definicion.ambito !== 'global' && definicion.ambito !== modulo) continue
+    if (definicion.ambito !== 'global' && definicion.ambito !== pantalla) continue
 
     const elegida = diferencias[definicion.accion]
     mapa[definicion.accion] = elegida && definicion.reasignable ? elegida : definicion.porOmision
@@ -380,12 +380,12 @@ export function validarAtajos(diferencias: Diferencias): ProblemaAtajo[] {
     }
   }
 
-  // Los choques se buscan módulo por módulo sobre el mapa ya resuelto. Dos módulos
-  // pueden compartir una tecla porque nunca están en pantalla a la vez, pero una del
-  // módulo sí choca con una global — incluso con el valor por omisión de una global
+  // Los choques se buscan pantalla por pantalla sobre el mapa ya resuelto. Dos pantallas
+  // pueden compartir una tecla porque nunca están abiertas a la vez, pero una de la
+  // pantalla sí choca con una global — incluso con el valor por omisión de una global
   // que el usuario ni tocó.
-  for (const modulo of MODULOS) {
-    const mapa = resolverAtajos(diferencias, modulo)
+  for (const pantalla of PANTALLAS) {
+    const mapa = resolverAtajos(diferencias, pantalla)
     const usadaPor = new Map<string, string>()
 
     for (const [accion, tecla] of Object.entries(mapa)) {

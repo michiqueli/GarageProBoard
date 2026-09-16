@@ -1,5 +1,4 @@
-import { type Acceso, permite } from '@garagepro/contracts'
-import type { Habilidades } from '@garagepro/core'
+import { type Acceso, type Autorizacion, permite } from '@garagepro/contracts'
 import type { LinkProps } from '@tanstack/react-router'
 import type { ReactNode } from 'react'
 
@@ -17,9 +16,8 @@ import type { ReactNode } from 'react'
  *   para que el menú tenga desde ahora su forma definitiva.
  * - *Sin permiso*: **no se muestra**. No es que falte: es que no es para este usuario,
  *   y ofrecerla atenuada sería invitarlo a preguntar por algo que no le corresponde.
- *
- * Cuando los módulos se activen por tenant va a haber un cuarto caso — *no contratado* —
- * que tampoco se muestra, pero por otro motivo y con otro mensaje.
+ * - *Módulo no contratado*: tampoco se muestra, y se mira antes que el permiso. No es de
+ *   esta concesionaria, y ni siquiera el gerente la ve.
  */
 export interface Seccion {
   id: string
@@ -31,9 +29,9 @@ export interface Seccion {
    */
   to?: LinkProps['to']
   /**
-   * Qué permiso hace falta para verla. Sin esto, la sección es de todos: el tablero es
-   * el inicio de cualquiera, y Ayuda y Configuración tienen adentro cosas personales
-   * —las teclas rápidas, el tema— que no dependen de ningún rol.
+   * Qué módulo y qué permiso hacen falta para verla. Sin esto, la sección es de todos:
+   * el tablero es el inicio de cualquiera, y Ayuda y Configuración tienen adentro cosas
+   * personales —las teclas rápidas, el tema— que no dependen de ningún rol.
    */
   requiere?: Acceso
 }
@@ -57,7 +55,7 @@ export const PRINCIPALES: Seccion[] = [
     id: 'ordenes',
     etiqueta: 'Órdenes de trabajo',
     to: '/ordenes',
-    requiere: { accion: 'ver', sujeto: 'Orden' },
+    requiere: { modulo: 'servicios', accion: 'ver', sujeto: 'Orden' },
     icono: (
       <svg viewBox="0 0 16 16" {...trazo} aria-hidden="true">
         <path d="M3 2h7l3 3v9H3z" />
@@ -69,7 +67,7 @@ export const PRINCIPALES: Seccion[] = [
     id: 'vehiculos',
     etiqueta: 'Vehículos',
     to: '/vehiculos',
-    requiere: { accion: 'ver', sujeto: 'Vehiculo' },
+    requiere: { modulo: 'nucleo', accion: 'ver', sujeto: 'Vehiculo' },
     icono: (
       <svg viewBox="0 0 16 16" {...trazo} aria-hidden="true">
         <path d="M2 10h12M3.5 10V7l1.5-3h6l1.5 3v3" />
@@ -81,7 +79,7 @@ export const PRINCIPALES: Seccion[] = [
   {
     id: 'clientes',
     etiqueta: 'Clientes',
-    requiere: { accion: 'ver', sujeto: 'Cliente' },
+    requiere: { modulo: 'nucleo', accion: 'ver', sujeto: 'Cliente' },
     icono: (
       <svg viewBox="0 0 16 16" {...trazo} aria-hidden="true">
         <circle cx="8" cy="5.5" r="2.5" />
@@ -92,7 +90,7 @@ export const PRINCIPALES: Seccion[] = [
   {
     id: 'repuestos',
     etiqueta: 'Repuestos',
-    requiere: { accion: 'ver', sujeto: 'Repuesto' },
+    requiere: { modulo: 'repuestos', accion: 'ver', sujeto: 'Repuesto' },
     icono: (
       <svg viewBox="0 0 16 16" {...trazo} aria-hidden="true">
         <path d="M8 2l5 2.5v6L8 13 3 10.5v-6z" />
@@ -103,7 +101,7 @@ export const PRINCIPALES: Seccion[] = [
   {
     id: 'caja',
     etiqueta: 'Caja',
-    requiere: { accion: 'ver', sujeto: 'Comprobante' },
+    requiere: { modulo: 'contable', accion: 'ver', sujeto: 'Comprobante' },
     icono: (
       <svg viewBox="0 0 16 16" {...trazo} aria-hidden="true">
         <rect x="2" y="4" width="12" height="8" rx="1" />
@@ -114,7 +112,7 @@ export const PRINCIPALES: Seccion[] = [
   {
     id: 'entregas',
     etiqueta: 'Entregas',
-    requiere: { accion: 'ver', sujeto: 'Orden' },
+    requiere: { modulo: 'servicios', accion: 'ver', sujeto: 'Orden' },
     icono: (
       <svg viewBox="0 0 16 16" {...trazo} aria-hidden="true">
         <path d="M2 8l4 4 8-8" />
@@ -147,8 +145,8 @@ export const SECUNDARIAS: Seccion[] = [
 ]
 
 /** Las que este usuario puede ver. Las demás no existen para él. */
-export function visibles(secciones: Seccion[], habilidades: Habilidades): Seccion[] {
-  return secciones.filter((s) => !s.requiere || permite(habilidades, s.requiere))
+export function visibles(secciones: Seccion[], autorizacion: Autorizacion): Seccion[] {
+  return secciones.filter((s) => !s.requiere || permite(autorizacion, s.requiere))
 }
 
 /**
@@ -158,6 +156,6 @@ export function visibles(secciones: Seccion[], habilidades: Habilidades): Seccio
  * el destino depende de quién entra. Es la primera sección construida que le toque, en
  * el orden del menú, que es el orden en que pensamos el trabajo del día.
  */
-export function primeraPantalla(habilidades: Habilidades): LinkProps['to'] | undefined {
-  return visibles(PRINCIPALES, habilidades).find((s) => s.to)?.to
+export function primeraPantalla(autorizacion: Autorizacion): LinkProps['to'] | undefined {
+  return visibles(PRINCIPALES, autorizacion).find((s) => s.to)?.to
 }

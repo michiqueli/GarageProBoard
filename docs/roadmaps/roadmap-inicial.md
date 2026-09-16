@@ -80,18 +80,19 @@ después. El mapa, la configuración por módulo y quién puede tocarla, en
 
 - ✅ Mapa de módulos cerrado: núcleo, contable, servicios, repuestos, cartera, ventas
       y rrhh, con el flag colgando de la pantalla y no de la entidad
-- ⬜ Dependencias declaradas entre módulos, y el back-office que impide apagar el piso
-      de uno prendido
+- ✅ Dependencias declaradas entre módulos, con `dependenciasRotas()` lista para el back-office
+- ⬜ El back-office que impide apagar el piso de uno prendido
 - ⬜ Acción `configurar` en el catálogo de permisos: entrar a un módulo no es poder
       tocar sus credenciales
 - ⬜ Pantalla de configuración **adentro de cada módulo**, más un índice que las liste
 - ⬜ **Buscador del sistema en la barra lateral**, la misma cosa que la paleta de `F10`:
       «mercado pago» lleva a su configuración y «certificados» a los de AFIP. Con
       palabras clave por entrada, y filtrado por permiso y por módulo como el menú
-- ⬜ Módulos contratados por tenant en el esquema, con su flag y su vigencia
-- ⬜ El contrato declara a qué módulo pertenece cada ruta, al lado del permiso
-- ⬜ La API rechaza la operación de un módulo apagado, antes de mirar permisos
-- ⬜ El menú y las rutas filtran por módulo **y** por permiso, con mensajes distintos
+- ✅ Módulos contratados por tenant en el esquema, con su flag y su vigencia — y el rol
+      de la API sin permiso para escribirlos
+- ✅ El contrato declara a qué módulo pertenece cada ruta, al lado del permiso
+- ✅ La API rechaza la operación de un módulo apagado, antes de mirar permisos
+- ✅ El menú y las rutas filtran por módulo **y** por permiso, con mensajes distintos
 - ⬜ Back-office aparte —posiblemente en otro dominio— para dar de alta tenants y
       manejar sus módulos, planes y estado de cuenta
 - ⬜ Exportación al darse de baja: el acceso se apaga, el registro se conserva — un
@@ -107,6 +108,9 @@ desaparece de su sistema, sin tocar código y sin que se pierda un dato.
 Las entidades ya están modeladas; falta poder operarlas.
 
 - ⬜ ABM de empresas, sucursales y puntos de venta
+- ⬜ ABM de usuarios y roles, con el rol predefinido «Administrador de usuarios» y las
+      dos reglas que impiden que se convierta en gerente: nadie da lo que no tiene, y
+      nadie toca sus propios roles. En [usuarios y roles](../tecnicos/usuarios-y-roles.md)
 - ⬜ ABM de entidades comerciales con consulta al padrón de AFIP por CUIT
 - 🔨 ABM de vehículos: listado y alta contra la API; falta edición y titularidad
 - ⬜ Búsqueda única: por patente, por chasis, por cliente, por CUIT

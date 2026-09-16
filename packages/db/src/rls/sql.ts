@@ -1,4 +1,4 @@
-import { ROL_APP, TABLAS_CON_TENANT, VAR_TENANT } from './tablas.ts'
+import { ROL_APP, TABLAS_CON_TENANT, TABLAS_SOLO_LECTURA, VAR_TENANT } from './tablas.ts'
 
 /**
  * DDL del aislamiento multi-tenant. Es idempotente y se aplica al final de cada
@@ -27,7 +27,13 @@ grant usage on schema public to ${ROL_APP};
 grant select, insert, update, delete on all tables in schema public to ${ROL_APP};
 grant usage, select on all sequences in schema public to ${ROL_APP};
 alter default privileges in schema public
-  grant select, insert, update, delete on tables to ${ROL_APP};`)
+  grant select, insert, update, delete on tables to ${ROL_APP};
+
+-- Los módulos contratados los lee la aplicación y los escribe sólo el back-office.
+-- RLS no alcanza: filtra qué filas ve cada concesionaria, pero dentro de las suyas la
+-- dejaría escribir, y el administrador de un cliente se habilitaría solo lo que no
+-- pagó. Va después del grant general, que en cada corrida lo vuelve a dar.
+revoke insert, update, delete on ${TABLAS_SOLO_LECTURA.join(', ')} from ${ROL_APP};`)
 
   partes.push(`
 -- El tenant de la sesión, con el chequeo explícito.

@@ -1,4 +1,4 @@
-import type { ReglaPermiso } from '@garagepro/core'
+import { MODULOS, type ReglaPermiso } from '@garagepro/core'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { createMemoryHistory, RouterProvider } from '@tanstack/react-router'
 import { render } from '@testing-library/react'
@@ -56,6 +56,7 @@ const BASE: DatosSesion = {
   tenant: { id: 't1', nombre: 'Litoral', slug: 'litoral' },
   sucursalActiva: CENTRAL,
   sucursales: [CENTRAL],
+  modulos: [...MODULOS],
   habilidades: GERENTE,
   atajos: {},
   config: {
@@ -85,6 +86,15 @@ export const SESION_MECANICO = { ...SESION, habilidades: MECANICO }
 
 /** No ve vehículos: el caso que revela un permiso mal aplicado. */
 export const SESION_REPUESTERO = { ...SESION, habilidades: REPUESTERO }
+
+/**
+ * El gerente, que puede todo, en una concesionaria que factura con otro sistema y tiene
+ * el taller suspendido: sin contable y sin servicios.
+ */
+export const SESION_SIN_TALLER_NI_CAJA = {
+  ...SESION,
+  modulos: MODULOS.filter((m) => m !== 'contable' && m !== 'servicios'),
+}
 
 /** Recién creado, sin rol asignado: entra y no tiene ni una pantalla. */
 export const SESION_SIN_ROL = { ...SESION, habilidades: [] }

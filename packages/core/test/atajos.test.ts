@@ -3,8 +3,8 @@ import {
   atajosParaSembrar,
   CATALOGO,
   catalogoPorAmbito,
-  MODULOS,
   mostrarTecla,
+  PANTALLAS,
   resolverAtajos,
   TECLAS_PROHIBIDAS,
   teclaDesdeEvento,
@@ -12,7 +12,7 @@ import {
 } from '../src/atajos.ts'
 
 describe('catálogo por omisión', () => {
-  it('no tiene choques en ningún módulo', () => {
+  it('no tiene choques en ninguna pantalla', () => {
     // Éste es el test que importa de todos: si alguien agrega una acción nueva y le
     // pone una tecla que ya usa una global, se entera acá y no en producción.
     expect(validarAtajos({})).toEqual([])
@@ -28,14 +28,14 @@ describe('catálogo por omisión', () => {
     expect(enConflicto).toEqual([])
   })
 
-  it('todos los módulos tienen su verbo en F4', () => {
-    // El verbo de la pantalla comparte tecla entre módulos a propósito: nunca
+  it('todas las pantallas tienen su verbo en F4', () => {
+    // El verbo de la pantalla comparte tecla entre pantallas a propósito: nunca
     // coexisten, y así el operador aprende una sola posición.
-    for (const modulo of MODULOS) {
-      const delModulo = CATALOGO.filter((d) => d.ambito === modulo)
+    for (const pantalla of PANTALLAS) {
+      const deLaPantalla = CATALOGO.filter((d) => d.ambito === pantalla)
       expect(
-        delModulo.some((d) => d.porOmision === 'F4'),
-        `${modulo} sin verbo en F4`,
+        deLaPantalla.some((d) => d.porOmision === 'F4'),
+        `${pantalla} sin verbo en F4`,
       ).toBe(true)
     }
   })
@@ -54,7 +54,7 @@ describe('resolución del mapa', () => {
     expect(resolverAtajos({}, 'caja')['caja.facturar']).toBe('F4')
   })
 
-  it('sólo trae las acciones del módulo pedido', () => {
+  it('sólo trae las acciones de la pantalla pedida', () => {
     const mapa = resolverAtajos({}, 'entregas')
     expect(mapa['entregas.entregar']).toBe('F4')
     expect(mapa['caja.facturar']).toBeUndefined()
@@ -100,7 +100,7 @@ describe('validación', () => {
     expect(problemas.some((p) => /Imprimir/.test(p.motivo))).toBe(true)
   })
 
-  it('permite que dos módulos compartan una tecla', () => {
+  it('permite que dos pantallas compartan una tecla', () => {
     const problemas = validarAtajos({
       'caja.cobrar': 'Alt+K',
       'entregas.checklist': 'Alt+K',

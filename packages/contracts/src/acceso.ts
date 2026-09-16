@@ -2,6 +2,8 @@ import {
   ACCIONES_PERMISO,
   type AccionPermiso,
   type Habilidades,
+  MODULOS,
+  type Modulo,
   SUJETOS,
   type Sujeto,
 } from '@garagepro/core'
@@ -17,12 +19,17 @@ import { z } from 'zod'
  *
  * - `publico`: sin sesión. El login, el refresco, el chequeo de vida.
  * - `sesion`: alcanza con estar adentro. Datos de la propia sesión.
- * - `{ accion, sujeto }`: el permiso de CASL que habilita la operación.
+ * - `{ modulo, accion, sujeto }`: el módulo que la concesionaria tiene que tener
+ *   contratado y el permiso de CASL que habilita la operación. Van juntos porque toda
+ *   operación con permiso es de algún módulo: declararla sin módulo no compila.
  *
  * Una ruta sin acceso declarado no deja arrancar la API: cerrado por omisión, como el
  * resto del sistema.
  */
-export type Acceso = 'publico' | 'sesion' | { accion: AccionPermiso; sujeto: Sujeto }
+export type Acceso =
+  | 'publico'
+  | 'sesion'
+  | { modulo: Modulo; accion: AccionPermiso; sujeto: Sujeto }
 
 export interface MetaRuta {
   acceso?: Acceso
@@ -33,6 +40,8 @@ const base = oc.$meta<MetaRuta>({})
 const ERRORES_DE_SESION = {
   NO_AUTENTICADO: { status: 401, message: 'Falta iniciar sesión' },
 } as const
+
+export const errorModuloApagado = z.object({ modulo: z.enum(MODULOS) })
 
 export const errorSinPermiso = z.object({
   accion: z.enum(ACCIONES_PERMISO),
@@ -45,10 +54,19 @@ export const publico = base.meta({ acceso: 'publico' })
 /** Rutas que sólo piden estar adentro, sin un permiso en particular. */
 export const conSesion = base.meta({ acceso: 'sesion' }).errors(ERRORES_DE_SESION)
 
-/** Rutas que piden un permiso: el 403 queda documentado junto con el 401. */
-export function conPermiso(accion: AccionPermiso, sujeto: Sujeto) {
-  return base.meta({ acceso: { accion, sujeto } }).errors({
+/**
+ * Rutas de un módulo que piden un permiso. Los dos 403 quedan documentados junto con el
+ * 401, y son dos códigos distintos a propósito: a quien no tiene el módulo no hay
+ * permiso que le sirva, y el mensaje no puede mandarlo a pedir uno.
+ */
+export function conPermiso(modulo: Modulo, accion: AccionPermiso, sujeto: Sujeto) {
+  return base.meta({ acceso: { modulo, accion, sujeto } }).errors({
     ...ERRORES_DE_SESION,
+    MODULO_APAGADO: {
+      status: 403,
+      message: 'Esta función no está habilitada para la concesionaria',
+      data: errorModuloApagado,
+    },
     SIN_PERMISO: {
       status: 403,
       message: 'Tu usuario no tiene permiso para esta operación',
@@ -103,18 +121,40 @@ export function nombreDeRuta(ruta: RutaDelContrato): string {
   return `${method ?? ''} ${path ?? ''}`.trim()
 }
 
+/** Lo que una sesión trae para decidir: qué contrató la concesionaria y qué puede la persona. */
+export interface Autorizacion {
+  modulos: readonly Modulo[]
+  habilidades: Habilidades
+}
+
 /**
- * Si estas habilidades alcanzan para un acceso declarado.
+ * Por qué sí o por qué no. Los dos «no» se muestran distinto y por eso no es un booleano:
+ * al que le falta el módulo no se le habla de permisos.
+ */
+export type Veredicto = 'permitido' | 'modulo-apagado' | 'sin-permiso'
+
+/**
+ * Qué pasa con un acceso declarado, para esta sesión.
  *
  * Es **la misma función de los dos lados**: la API la usa para decidir si ejecuta la
  * operación y el front para decidir si dibuja el botón. Dos implementaciones de la
  * misma regla se desincronizan, y el síntoma es un botón que al apretarlo contesta
  * «no tenés permiso».
  *
+ * **Primero el módulo, después el permiso.** El gerente puede todo, pero no puede
+ * facturar en una concesionaria que no contrató contable.
+ *
  * Da por hecho que hay sesión: `publico` y `sesion` ya se verificaron antes de llegar
  * acá. Y ocultar no es proteger — el front oculta, la API decide.
  */
-export function permite(habilidades: Habilidades, acceso: Acceso): boolean {
-  if (acceso === 'publico' || acceso === 'sesion') return true
-  return habilidades.can(acceso.accion, acceso.sujeto)
+export function evaluarAcceso(autorizacion: Autorizacion, acceso: Acceso): Veredicto {
+  if (acceso === 'publico' || acceso === 'sesion') return 'permitido'
+  if (!autorizacion.modulos.includes(acceso.modulo)) return 'modulo-apagado'
+  if (!autorizacion.habilidades.can(acceso.accion, acceso.sujeto)) return 'sin-permiso'
+  return 'permitido'
+}
+
+/** Si alcanza, sin importar por qué no. Para decidir si se dibuja algo. */
+export function permite(autorizacion: Autorizacion, acceso: Acceso): boolean {
+  return evaluarAcceso(autorizacion, acceso) === 'permitido'
 }

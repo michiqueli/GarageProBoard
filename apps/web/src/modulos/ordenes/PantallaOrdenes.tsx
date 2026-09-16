@@ -16,8 +16,8 @@ export function PantallaOrdenes() {
 
   // Todavía sin contrato: cuando exista la ruta de OT, estos permisos van a salir de
   // ahí, como los de vehículos. La acción y el sujeto son los mismos que va a declarar.
-  const puedeCerrar = usePuede('editar', 'Orden')
-  const puedeCrear = usePuede('crear', 'Orden')
+  const puedeCerrar = usePuede({ modulo: 'servicios', accion: 'editar', sujeto: 'Orden' })
+  const puedeCrear = usePuede({ modulo: 'servicios', accion: 'crear', sujeto: 'Orden' })
 
   // Sin permiso para cerrar, F4 no se registra: la barra de estado la muestra atenuada
   // en vez de anunciar un verbo que no va a hacer nada.
@@ -33,7 +33,7 @@ export function PantallaOrdenes() {
   return (
     <Shell
       titulo="Órdenes de trabajo"
-      requiere={{ accion: 'ver', sujeto: 'Orden' }}
+      requiere={{ modulo: 'servicios', accion: 'ver', sujeto: 'Orden' }}
       acciones={
         puedeCerrar ? (
           <Boton accion="ordenes.cerrar" variante="principal" onClick={() => {}}>

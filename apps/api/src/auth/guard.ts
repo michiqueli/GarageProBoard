@@ -1,11 +1,12 @@
-import { permite } from '@garagepro/contracts'
+import { evaluarAcceso } from '@garagepro/contracts'
 import {
   type AccionPermiso,
   construirHabilidades,
   describirPermiso,
+  type Modulo,
   type Sujeto,
 } from '@garagepro/core'
-import { conTenant, type Db } from '@garagepro/db'
+import { conTenant, type Db, modulosVigentes } from '@garagepro/db'
 import {
   type CanActivate,
   createParamDecorator,
@@ -31,7 +32,7 @@ import type { ClaimsAcceso } from './tokens.ts'
  */
 function rechazo(
   status: 401 | 403,
-  code: 'NO_AUTENTICADO' | 'SIN_PERMISO',
+  code: 'NO_AUTENTICADO' | 'MODULO_APAGADO' | 'SIN_PERMISO',
   message: string,
   data?: unknown,
 ): HttpException {
@@ -42,7 +43,8 @@ function rechazo(
 }
 
 /**
- * La única guardia del sistema: quién es, si sigue habilitado, y si puede hacer esto.
+ * La única guardia del sistema: quién es, si sigue habilitado, si la concesionaria tiene
+ * el módulo, y si la persona puede hacer esto.
  *
  * Es una sola y no tres encadenadas porque el orden importa — sin sesión no hay
  * permisos que evaluar — y el orden entre guardias globales depende de cómo se
@@ -75,8 +77,14 @@ export class GuardiaAcceso implements CanActivate {
     // token ahorraría esta consulta, pero un usuario dado de baja o al que le sacaron un
     // rol seguiría pudiendo todo hasta que venza — quince minutos para vaciar una caja.
     // La consulta va por clave primaria y cuesta menos que eso.
-    const reglas = await conTenant(this.db, sesion.tenantId, (tx) => reglasDelUsuario(tx, sesion))
-    if (!reglas) {
+    //
+    // Los módulos, por lo mismo: un módulo suspendido o un período de prueba que venció
+    // se apagan en el próximo pedido, no cuando la persona vuelve a entrar.
+    const leido = await conTenant(this.db, sesion.tenantId, async (tx) => {
+      const reglas = await reglasDelUsuario(tx, sesion)
+      return reglas && { reglas, modulos: await modulosVigentes(tx) }
+    })
+    if (!leido) {
       throw rechazo(
         401,
         'NO_AUTENTICADO',
@@ -84,16 +92,21 @@ export class GuardiaAcceso implements CanActivate {
       )
     }
 
-    const habilidades = construirHabilidades(reglas)
+    const habilidades = construirHabilidades(leido.reglas)
     pedido.sesion = sesion
     pedido.habilidades = habilidades
 
     if (acceso === 'sesion') return true
 
-    if (!permite(habilidades, acceso)) {
-      throw this.sinPermiso(acceso.accion, acceso.sujeto)
+    // Primero el módulo: a quien no lo tiene no se le habla de permisos.
+    switch (evaluarAcceso({ modulos: leido.modulos, habilidades }, acceso)) {
+      case 'modulo-apagado':
+        throw this.moduloApagado(acceso.modulo)
+      case 'sin-permiso':
+        throw this.sinPermiso(acceso.accion, acceso.sujeto)
+      case 'permitido':
+        return true
     }
-    return true
   }
 
   private async autenticar(encabezado: string | undefined): Promise<Sesion> {
@@ -112,6 +125,19 @@ export class GuardiaAcceso implements CanActivate {
     } catch {
       throw rechazo(401, 'NO_AUTENTICADO', 'La sesión expiró')
     }
+  }
+
+  /**
+   * No dice qué módulo ni ofrece contratarlo: lo que la concesionaria no tiene no se le
+   * muestra, ni en el menú ni en un error. El `modulo` va en los datos para quien integra.
+   */
+  private moduloApagado(modulo: Modulo): HttpException {
+    return rechazo(
+      403,
+      'MODULO_APAGADO',
+      'Esta función no está habilitada para la concesionaria.',
+      { modulo },
+    )
   }
 
   /** Dice qué falta y a quién pedírselo: «Formato inválido» no le sirve a nadie. */

@@ -1,3 +1,4 @@
+import { MODULOS } from '@garagepro/core'
 import { z } from 'zod'
 import { conSesion, publico, reglaPermiso } from './acceso.ts'
 
@@ -56,6 +57,11 @@ export const sesionSalida = z.object({
   sucursalActiva: sucursalSalida,
   sucursales: z.array(sucursalSalida),
 
+  /**
+   * Los módulos que la concesionaria tiene prendidos hoy. Se evalúan antes que los
+   * permisos: lo que no está contratado no se muestra, ni siquiera atenuado.
+   */
+  modulos: z.array(z.enum(MODULOS)),
   /** Reglas de CASL, ya resueltas contra este usuario. */
   habilidades: z.array(reglaPermiso),
   /** Sólo aquello en lo que el usuario se apartó del valor por omisión. */

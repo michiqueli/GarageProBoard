@@ -1,11 +1,11 @@
-import { type Acceso, permite } from '@garagepro/contracts'
+import type { Acceso } from '@garagepro/contracts'
 import { describirPermiso } from '@garagepro/core'
 import { Link } from '@tanstack/react-router'
 import type { ReactNode } from 'react'
 import { PRINCIPALES, SECUNDARIAS, type Seccion, visibles } from '../navegacion.tsx'
 import { usarSesion } from '../sesion/almacen.ts'
 import { api } from '../sesion/cliente.ts'
-import { useHabilidades } from '../sesion/permisos.ts'
+import { useAutorizacion, useVeredicto } from '../sesion/permisos.ts'
 import { useAtajo, useTeclado } from '../teclado/index.ts'
 import { BarraEstado } from './BarraEstado.tsx'
 import { Tecla } from './Tecla.tsx'
@@ -17,9 +17,9 @@ import { Tecla } from './Tecla.tsx'
  * ruta coincide, así que no hay forma de que el menú diga una pantalla y se vea otra.
  *
  * **`requiere` es obligatorio y por eso no se olvida.** Es el equivalente de `@Operacion`
- * en la API: una pantalla nueva no compila hasta decir qué permiso pide, y con eso sola
- * queda cubierta. Lo que declare es lo mismo que aplica el servidor —
- * `accesoDeRuta(contrato.vehiculos.listar)` — así que no hay dos reglas que mantener.
+ * en la API: una pantalla nueva no compila hasta decir de qué módulo es y qué permiso
+ * pide, y con eso sola queda cubierta. Lo que declare es lo mismo que aplica el
+ * servidor — `accesoDeRuta(contrato.vehiculos.listar)` — así que no hay dos reglas.
  */
 export function Shell({
   titulo,
@@ -34,8 +34,9 @@ export function Shell({
 }) {
   const { teclaDe } = useTeclado()
   const datos = usarSesion((e) => e.datos)
-  const habilidades = useHabilidades()
-  const puede = permite(habilidades, requiere)
+  const autorizacion = useAutorizacion()
+  const veredicto = useVeredicto(requiere)
+  const puede = veredicto === 'permitido'
   const variasSucursales = (datos?.sucursales.length ?? 0) > 1
 
   /**
@@ -71,9 +72,9 @@ export function Shell({
           {datos?.tenant.nombre ?? '—'}
         </p>
 
-        <Nav secciones={visibles(PRINCIPALES, habilidades)} />
+        <Nav secciones={visibles(PRINCIPALES, autorizacion)} />
         <div className="mx-2 my-3 h-px bg-borde-suave" />
-        <Nav secciones={visibles(SECUNDARIAS, habilidades)} />
+        <Nav secciones={visibles(SECUNDARIAS, autorizacion)} />
 
         <div className="mt-auto grid gap-2 rounded-base border border-borde p-2">
           <div className="flex items-center gap-2.5">
@@ -150,7 +151,13 @@ export function Shell({
         </header>
 
         <main className="grid gap-3 px-4 pt-3.5 pb-14">
-          {puede ? children : <SinPermiso acceso={requiere} />}
+          {veredicto === 'permitido' ? (
+            children
+          ) : veredicto === 'modulo-apagado' ? (
+            <NoHabilitada />
+          ) : (
+            <SinPermiso acceso={requiere} />
+          )}
         </main>
       </div>
 
@@ -205,6 +212,32 @@ function Nav({ secciones }: { secciones: Seccion[] }) {
         )
       })}
     </nav>
+  )
+}
+
+/**
+ * Lo que se ve en lugar de la pantalla cuando la concesionaria no tiene el módulo.
+ *
+ * Llega acá sólo quien tenía un enlace guardado: en el menú la sección ni aparece. Por
+ * eso no habla de permisos — no hay a quién pedírselo — y no ofrece contratar nada: lo
+ * que no es de esta concesionaria no se le muestra, tampoco en un aviso.
+ */
+function NoHabilitada() {
+  return (
+    <section className="grid justify-items-center gap-2 rounded-base border border-borde bg-superficie px-4 py-10 text-center">
+      <h2 className="font-display text-dato font-semibold">
+        Esta sección no está habilitada en la concesionaria
+      </h2>
+      <p className="max-w-sm text-dato text-texto-suave">
+        Puede ser un enlace guardado de antes. Desde el menú llegás a todo lo que está habilitado.
+      </p>
+      <Link
+        to="/"
+        className="mt-1 flex h-campo items-center rounded-base border border-marca bg-marca-suave px-3 font-semibold text-dato text-marca"
+      >
+        Ir al inicio
+      </Link>
+    </section>
   )
 }
 

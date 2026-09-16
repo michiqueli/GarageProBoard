@@ -25,6 +25,7 @@ export {
   sql,
 } from 'drizzle-orm'
 export type { Pool } from 'pg'
+export * from './modulos.ts'
 export * from './rls/index.ts'
 export * as schema from './schema/index.ts'
 

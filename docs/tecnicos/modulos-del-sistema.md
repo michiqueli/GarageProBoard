@@ -1,7 +1,8 @@
 # Módulos del sistema
 
-Estado: **borrador**. El mapa de abajo es la propuesta del 16/09/2026 y tiene preguntas
-abiertas marcadas como tales. Lo que sí está decidido es lo de la primera sección.
+Estado: **decidido y en construcción**. El mapa se cerró el 16/09/2026. Lo construido
+hasta ahora —la tabla, el contrato, la API y el menú— está al final, en
+[cómo está construido](#cómo-está-construido).
 
 ## La decisión: los módulos se prenden y se apagan, desde el día cero
 
@@ -160,3 +161,33 @@ Son dos cosas distintas y se guardan separadas:
 
 Es la decisión 14 de GarageTick (`setting` vs `feature`), y el motivo es el mismo: si
 vivieran juntas, el administrador del cliente se habilitaría solo el módulo que no pagó.
+
+## Cómo está construido
+
+Lo que existe al 16/09/2026. El back-office, la acción `configurar` y las pantallas de
+configuración todavía no.
+
+| Pieza | Dónde | Qué hace |
+| --- | --- | --- |
+| Catálogo y dependencias | `packages/core/src/modulos.ts` | `MODULOS`, `DEPENDENCIAS` y `dependenciasRotas()`, que va a usar el back-office antes de guardar |
+| Contratación | tabla `tenant_modulo` | Una fila por módulo: la llave `activo` y el período `vigente_desde` / `vigente_hasta`. **Sin fila, apagado** |
+| Qué está prendido hoy | `modulosVigentes()` en `packages/db` | Una sola definición de «vigente», para la API y el back-office |
+| Declaración | `conPermiso(modulo, accion, sujeto)` en el contrato | No hay forma de declarar un permiso sin su módulo |
+| Evaluación | `evaluarAcceso()` en el contrato | Devuelve `permitido`, `modulo-apagado` o `sin-permiso`. La usan la API y el front |
+| Aplicación | la guardia de la API | 403 `MODULO_APAGADO` antes de mirar permisos, en cada pedido |
+| Pantalla | `Shell`, menú e inicio | La sección no aparece; por un enlace viejo, un aviso que no habla de permisos |
+
+### La aplicación no puede habilitarse un módulo
+
+`tenant_modulo` está detrás de RLS como toda tabla con `tenant_id`, pero eso no alcanza:
+RLS decide qué filas ve cada concesionaria, y dentro de las suyas la dejaría escribir.
+Por eso el rol de la API **no tiene permiso de escritura** sobre esa tabla
+(`TABLAS_SOLO_LECTURA`). Una inyección de SQL, o un bug en una pantalla de
+administración, no puede terminar en un cliente que se prendió solo lo que no pagó.
+
+### La vigencia es de la base, no de la sesión
+
+Los módulos se leen **en cada pedido**, igual que los permisos. Una prueba de treinta días
+que vence a medianoche se apaga en el pedido siguiente, sin esperar a que la persona
+vuelva a entrar. El front recibe la lista con la sesión y la renueva cada quince minutos:
+puede mostrar una sección un rato de más, y la API la va a rechazar igual.

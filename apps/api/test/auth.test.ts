@@ -1,4 +1,4 @@
-import { atajosParaSembrar, ROLES_PREDEFINIDOS } from '@garagepro/core'
+import { atajosParaSembrar, MODULOS, ROLES_PREDEFINIDOS } from '@garagepro/core'
 import { type Db, sembrarCatalogos } from '@garagepro/db'
 import { levantarPostgres, type PostgresDePrueba } from '@garagepro/db/pruebas'
 import {
@@ -7,6 +7,7 @@ import {
   sesion,
   sucursal,
   tenant,
+  tenantModulo,
   usuario,
   usuarioAtajo,
   usuarioConfig,
@@ -83,6 +84,7 @@ describe('inicio de sesión', () => {
     expect(s.tenant.slug).toBe('litoral')
     expect(s.sucursalActiva.nombre).toBe('Casa Central')
     expect(s.sucursales).toHaveLength(2)
+    expect(s.modulos).toEqual([...MODULOS])
     expect(s.habilidades).toEqual([{ action: 'administrar', subject: 'all' }])
     // El mapa completo, sembrado al crear el usuario.
     expect(Object.keys(s.atajos).length).toBe(atajosParaSembrar().length)
@@ -364,6 +366,7 @@ async function sembrarConcesionaria(
 ) {
   const [t] = await db.insert(tenant).values({ nombre: slug, slug }).returning()
   if (!t) throw new Error('sin tenant')
+  await db.insert(tenantModulo).values(MODULOS.map((modulo) => ({ tenantId: t.id, modulo })))
 
   const [e] = await db
     .insert(empresa)

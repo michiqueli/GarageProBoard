@@ -9,7 +9,7 @@ import { conAncho } from './preparar.ts'
 
 /**
  * La pantalla de OT tal como la monta la aplicación: por su dirección, con una sesión
- * ya abierta. El módulo del teclado lo pone la ruta, así que se prueba también que la
+ * ya abierta. La pantalla del teclado la pone la ruta, así que se prueba también que la
  * ruta lo declare bien.
  */
 async function montarOrdenes() {
@@ -37,13 +37,13 @@ describe('la pantalla se monta', () => {
   it('la barra de estado anuncia las teclas del contexto', async () => {
     await montarOrdenes()
 
-    // Las globales, más la del módulo activo.
+    // Las globales, más la de la pantalla activa.
     expect(screen.getAllByText('F2').length).toBeGreaterThan(0)
     expect(screen.getAllByText('F4').length).toBeGreaterThan(0)
     expect(screen.getAllByText('Cerrar la orden').length).toBeGreaterThan(0)
   })
 
-  it('no muestra teclas de otros módulos', async () => {
+  it('no muestra teclas de otras pantallas', async () => {
     await montarOrdenes()
     expect(screen.queryByText('Facturar')).toBeNull()
     expect(screen.queryByText('Entregar el vehículo')).toBeNull()

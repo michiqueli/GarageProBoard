@@ -1,4 +1,4 @@
-import { atajosParaSembrar, ROLES_PREDEFINIDOS } from '@garagepro/core'
+import { atajosParaSembrar, MODULOS, type Modulo, ROLES_PREDEFINIDOS } from '@garagepro/core'
 import { type Db, sembrarCatalogos } from '@garagepro/db'
 import { levantarPostgres, type PostgresDePrueba } from '@garagepro/db/pruebas'
 import {
@@ -6,6 +6,7 @@ import {
   rol,
   sucursal,
   tenant,
+  tenantModulo,
   usuario,
   usuarioAtajo,
   usuarioConfig,
@@ -68,13 +69,15 @@ export interface Semilla {
   email: string
   sucursales?: string[]
   vehiculos?: Array<{ chasis: string; dominio: string | null }>
+  /** Los que tiene contratados. Por omisión, todos. */
+  modulos?: readonly Modulo[]
   /** Más usuarios, cada uno con uno de los roles predefinidos. */
   otros?: Array<{ email: string; rol: string }>
 }
 
 /**
- * Una concesionaria mínima pero completa: empresa, sucursales, los roles predefinidos,
- * usuarios y vehículos.
+ * Una concesionaria mínima pero completa: módulos, empresa, sucursales, los roles
+ * predefinidos, usuarios y vehículos.
  *
  * Se siembran **todos** los roles y no sólo el de gerente: los permisos se prueban con
  * las mismas reglas que recibe una concesionaria nueva, no con unas escritas para el
@@ -86,6 +89,11 @@ export async function sembrarConcesionaria(db: Db, s: Semilla) {
   const [t] = await db.insert(tenant).values({ nombre: s.slug, slug: s.slug }).returning()
   if (!t) throw new Error('sin tenant')
   const tenantId = t.id
+
+  const modulos = s.modulos ?? MODULOS
+  if (modulos.length) {
+    await db.insert(tenantModulo).values(modulos.map((modulo) => ({ tenantId, modulo })))
+  }
 
   const [e] = await db
     .insert(empresa)

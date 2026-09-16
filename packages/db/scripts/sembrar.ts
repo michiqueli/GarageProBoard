@@ -1,4 +1,4 @@
-import { atajosParaSembrar, ROLES_PREDEFINIDOS } from '@garagepro/core'
+import { atajosParaSembrar, MODULOS, type Modulo, ROLES_PREDEFINIDOS } from '@garagepro/core'
 import argon2 from 'argon2'
 import { and, eq } from 'drizzle-orm'
 import { crearDb, crearPool, type Db } from '../src/index.ts'
@@ -8,6 +8,7 @@ import {
   rol,
   sucursal,
   tenant,
+  tenantModulo,
   usuario,
   usuarioAtajo,
   usuarioConfig,
@@ -87,6 +88,8 @@ interface UsuarioEjemplo {
 interface Concesionaria {
   slug: string
   nombre: string
+  /** Los que tiene contratados. */
+  modulos: readonly Modulo[]
   empresas: Boca[]
   /** El primero es el gerente, que es quien administra; los demás muestran los permisos. */
   usuarios: UsuarioEjemplo[]
@@ -108,6 +111,7 @@ const EJEMPLOS: Concesionaria[] = [
   {
     slug: 'litoral',
     nombre: 'Grupo Automotores del Litoral',
+    modulos: MODULOS,
     empresas: [
       {
         nombre: 'Automotores Litoral SAS',
@@ -135,6 +139,9 @@ const EJEMPLOS: Concesionaria[] = [
   {
     slug: 'norte',
     nombre: 'Automotores del Norte SA',
+    // Sin contable: factura con otro sistema. Entrar como cada una muestra que la Caja
+    // desaparece del menú aunque el gerente pueda todo.
+    modulos: ['nucleo', 'servicios', 'repuestos'],
     empresas: [
       { nombre: 'Automotores del Norte SA', cuit: '30655443321', sucursales: ['Salta Centro'] },
     ],
@@ -178,6 +185,8 @@ async function sembrarConcesionaria(db: Db, ej: Concesionaria): Promise<void> {
 
   const [t] = await db.insert(tenant).values({ nombre: ej.nombre, slug: ej.slug }).returning()
   if (!t) throw new Error('No se pudo crear el tenant.')
+
+  await db.insert(tenantModulo).values(ej.modulos.map((modulo) => ({ tenantId: t.id, modulo })))
 
   const sucursalesCreadas: Array<{ id: string }> = []
 

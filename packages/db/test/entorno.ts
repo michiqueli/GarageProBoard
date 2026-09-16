@@ -50,6 +50,12 @@ export const SQLSTATE = {
   SIN_TENANT: 'P0001',
   /** new row violates row-level security policy. */
   VIOLA_RLS: '42501',
+  /**
+   * insufficient_privilege. Es el mismo código que el de RLS: se distinguen por el caso.
+   * Un insert en el propio tenant no viola ninguna política, y un update o un delete que
+   * RLS filtrara no fallaría, devolvería cero filas.
+   */
+  SIN_PRIVILEGIO: '42501',
 } as const
 
 const SIN_ERROR = Symbol('sin-error')

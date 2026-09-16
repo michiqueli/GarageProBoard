@@ -11,14 +11,14 @@ import { Tecla } from './Tecla.tsx'
  * desaparecieran, la barra se leería distinta en cada pantalla y dejaría de ser un
  * lugar fijo donde mirar.
  *
- * El módulo sale del teclado, que a su vez lo toma de la ruta: la barra no puede
- * anunciar el F4 de un módulo distinto del que efectivamente dispara.
+ * La pantalla sale del teclado, que a su vez lo toma de la ruta: la barra no puede
+ * anunciar el F4 de una pantalla distinta de la que efectivamente dispara.
  */
 export function BarraEstado() {
-  const { mapa, modulo, activas } = useTeclado()
+  const { mapa, pantalla, activas } = useTeclado()
 
   const visibles = CATALOGO.filter(
-    (d) => mapa[d.accion] && (d.ambito === 'global' || d.ambito === modulo),
+    (d) => mapa[d.accion] && (d.ambito === 'global' || d.ambito === pantalla),
   )
 
   return (

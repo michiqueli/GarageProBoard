@@ -210,12 +210,12 @@ describe('al salir', () => {
 })
 
 describe('la navegación', () => {
-  it('el menú cambia la dirección, marca la sección y cambia el F4 del módulo', async () => {
+  it('el menú cambia la dirección, marca la sección y cambia el F4 de la pantalla', async () => {
     conCookie(SESION)
     const router = await montarApp('/vehiculos')
     await screen.findByRole('heading', { name: 'Vehículos', level: 1 })
 
-    // En vehículos no hay «cerrar la orden»: F4 es de cada módulo.
+    // En vehículos no hay «cerrar la orden»: F4 es de cada pantalla.
     expect(screen.queryByText('Cerrar la orden')).toBeNull()
 
     await userEvent.click(screen.getByRole('link', { name: 'Órdenes de trabajo' }))
