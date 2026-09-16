@@ -1,9 +1,9 @@
 ---
-name: ui-garagepro
-description: Sistema de diseño de GaragePro. Usar SIEMPRE al crear o modificar cualquier pantalla, componente, formulario, listado, tabla o estilo de apps/web o apps/backoffice/web, al tocar los tokens, y al agregar atajos de teclado. Cubre tokens, densidad, el mapa global de teclas F1-F10, el patrón de listado responsive y las reglas de redacción de la interfaz.
+name: ui-gpb
+description: Sistema de diseño de GarageProBoard. Usar SIEMPRE al crear o modificar cualquier pantalla, componente, formulario, listado, tabla o estilo de apps/web o apps/backoffice/web, al tocar los tokens, y al agregar atajos de teclado. Cubre tokens, densidad, el mapa global de teclas F1-F10, el patrón de listado responsive y las reglas de redacción de la interfaz.
 ---
 
-# Sistema de diseño de GaragePro
+# Sistema de diseño de GarageProBoard
 
 Antes de escribir UI, leé `docs/tecnicos/sistema-de-diseno.md`. Ese documento es la
 fuente de verdad; esto es el resumen operativo con lo que no se negocia.
@@ -48,7 +48,7 @@ tabla rota, no una versión móvil.
 
 **6. Los importes**: alineados a la derecha, dos decimales siempre,
 `font-variant-numeric: tabular-nums`. Nunca un `number` de JavaScript — son strings
-decimales y se operan con `decimal.js` desde `@garagepro/core`.
+decimales y se operan con `decimal.js` desde `@gpb/core`.
 
 **7. Estado en forma y color, nunca solo color.** Píldora llena = alguien tiene que
 hacer algo. Contorneada = en curso normal. Sin píldora = cerrado. Uno de cada doce

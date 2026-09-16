@@ -1,4 +1,4 @@
-import { MODULOS } from '@garagepro/core'
+import { MODULOS } from '@gpb/core'
 import { oc } from '@orpc/contract'
 import { z } from 'zod'
 import { cuit } from './comunes.ts'
@@ -7,7 +7,7 @@ import { cuit } from './comunes.ts'
  * El contrato del back-office: lo que usamos nosotros para dar de alta concesionarias y
  * manejar lo que contrataron.
  *
- * Vive en un archivo y una entrada del paquete aparte (`@garagepro/contracts/backoffice`)
+ * Vive en un archivo y una entrada del paquete aparte (`@gpb/contracts/backoffice`)
  * y **no** adentro de `contrato`: la aplicación de los clientes no tiene por qué cargar,
  * ni siquiera en tipos, las rutas que apagan concesionarias.
  *

@@ -3,7 +3,7 @@
 **GarageTick** es la aplicación anterior del autor: control de tiempos de OT para el
 taller de una concesionaria, con fichaje por QR. Está relevada **con una concesionaria
 de verdad** y por eso vale más que todo lo que venimos razonando sin piloto: es la única
-parte de GaragePro que se apoya en observación directa y no en conocimiento general del
+parte de GarageProBoard que se apoya en observación directa y no en conocimiento general del
 dominio.
 
 La copia está en `GarageTick/`, con sus documentos completos (relevamiento,
@@ -33,7 +33,7 @@ obligatorias, «¿está seguro?», y cualquier pantalla intermedia entre los dos
 
 > **Si una interacción del kiosco no es un escaneo, es un bug de diseño.**
 
-Ojo con la tentación de GaragePro: el resto del sistema es denso, con teclas de función
+Ojo con la tentación de GarageProBoard: el resto del sistema es denso, con teclas de función
 y mucha información en pantalla. **El kiosco es al revés** — es la excepción del taller
 que ya está escrita en el sistema de diseño: objetivos grandes, el mecánico tiene
 guantes y está a dos metros.
@@ -110,7 +110,7 @@ Acá está la ganancia, y es grande:
   distinción que importa: **recepción no es administración**. Abre órdenes e imprime
   etiquetas, pero no da de alta mecánicos ni corrige tiempos — que es justo lo que el
   sistema existe para evitar.
-- **Vuelve a haber red entre el lector y la API**, ahora de verdad: GaragePro es SaaS, no
+- **Vuelve a haber red entre el lector y la API**, ahora de verdad: GarageProBoard es SaaS, no
   una PC en el taller. La caché local del kiosco y la cola offline dejan de ser un lujo.
   El fondo de un taller no tiene wifi.
 - **Identificadores en inglés → castellano**, con un atajo inesperado: GarageTick arrancó

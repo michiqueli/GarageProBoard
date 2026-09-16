@@ -1,4 +1,4 @@
-import type { Pantalla } from '@garagepro/core'
+import type { Pantalla } from '@gpb/core'
 import {
   createRootRouteWithContext,
   createRoute,

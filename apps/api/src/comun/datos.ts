@@ -1,4 +1,4 @@
-import { conTenant, type Db } from '@garagepro/db'
+import { conTenant, type Db } from '@gpb/db'
 import { Inject, Injectable } from '@nestjs/common'
 import { contextoDelPedido, type Sesion } from './contexto.ts'
 import { DB } from './simbolos.ts'

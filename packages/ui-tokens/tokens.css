@@ -1,5 +1,5 @@
 /*
- * Tokens de GaragePro. Fuente de verdad: docs/tecnicos/sistema-de-diseno.md
+ * Tokens de GarageProBoard. Fuente de verdad: docs/tecnicos/sistema-de-diseno.md
  *
  * Viven en un paquete y no adentro de una aplicación porque los usan dos: la de las
  * concesionarias y el back-office. Copiarlos sería tener dos lugares donde cambiar un
@@ -51,7 +51,7 @@
 
   /* La marca es lo único que cambia por tenant: la concesionaria sube su color.
      Éste es el valor por omisión, a propósito sobrio — hay tres marcas apiladas
-     (GaragePro, la concesionaria y la terminal que representa) y la nuestra es la
+     (GarageProBoard, la concesionaria y la terminal que representa) y la nuestra es la
      que tiene que hacerse a un lado. */
   --color-marca: #f0a621;
   --color-marca-suave: #f0a62124;

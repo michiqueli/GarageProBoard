@@ -1,4 +1,4 @@
-import { ETIQUETA_MODULO, type Modulo } from '@garagepro/core'
+import { ETIQUETA_MODULO, type Modulo } from '@gpb/core'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link, useParams } from '@tanstack/react-router'
 import { type FormEvent, useState } from 'react'

@@ -12,7 +12,7 @@ import type { FastifyReply, FastifyRequest } from 'fastify'
  * La diferencia práctica entre esto y `localStorage` es robar una sesión por diez
  * minutos o robarla por treinta días.
  */
-export const COOKIE_REFRESCO = 'gt_refresco'
+export const COOKIE_REFRESCO = 'gpb_refresco'
 
 const DIAS = 30
 

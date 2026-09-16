@@ -1,4 +1,4 @@
-# GaragePro
+# GarageProBoard
 
 Sistema de gestión integral para concesionarias argentinas: órdenes de trabajo,
 tiempos de taller, repuestos, garantías, facturación electrónica, RRHH y ventas.
@@ -40,7 +40,7 @@ que no hay una segunda fuente de verdad que se desactualice.
 Es otro sitio, para nosotros: da de alta concesionarias y maneja sus módulos. Corre
 aparte y con su propio rol de Postgres, así que `pnpm dev` no lo levanta.
 
-    pnpm db:operador ops@garagepro.test "Operaciones"   # muestra la contraseña una vez
+    pnpm db:operador ops@gpb.test "Operaciones"   # muestra la contraseña una vez
     pnpm dev:backoffice    # API en :3090, panel en :5174
 
 Necesita `DATABASE_URL_BACKOFFICE` y `BACKOFFICE_DB_PASSWORD` en el `.env` (están en
@@ -134,5 +134,5 @@ Arrancá por [el modelo del núcleo](docs/tecnicos/nucleo-modelo-datos.md), segu
 [el sistema de diseño](docs/tecnicos/sistema-de-diseno.md) y mirá
 [el roadmap](docs/roadmaps/roadmap-inicial.md).
 
-La carpeta `.claude/skills/` también se versiona: la skill `ui-garagepro` hace que
+La carpeta `.claude/skills/` también se versiona: la skill `ui-gpb` hace que
 cualquier cambio de interfaz siga el sistema de diseño sin que haya que recordarlo.

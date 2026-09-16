@@ -1,6 +1,6 @@
 import 'reflect-metadata'
-import { sembrarCatalogos } from '@garagepro/db'
-import { levantarPostgres, type PostgresDePrueba } from '@garagepro/db/pruebas'
+import { sembrarCatalogos } from '@gpb/db'
+import { levantarPostgres, type PostgresDePrueba } from '@gpb/db/pruebas'
 import { FastifyAdapter, type NestFastifyApplication } from '@nestjs/platform-fastify'
 import { Test } from '@nestjs/testing'
 import argon2 from 'argon2'
@@ -25,8 +25,8 @@ beforeAll(async () => {
   const hash = await argon2.hash(CLAVE, { type: argon2.argon2id })
   await pg.poolDuenio.query(
     `insert into operador (email, hash_password, nombre) values
-       ('ops@garagepro.test', $1, 'Operaciones'),
-       ('baja@garagepro.test', $1, 'Dado de baja')`,
+       ('ops@gpb.test', $1, 'Operaciones'),
+       ('baja@gpb.test', $1, 'Dado de baja')`,
     [hash],
   )
 
@@ -46,16 +46,16 @@ afterAll(async () => {
   await pg?.cerrar()
 })
 
-async function entrar(email = 'ops@garagepro.test'): Promise<string> {
+async function entrar(email = 'ops@gpb.test'): Promise<string> {
   const r = await app.inject({
     method: 'POST',
     url: '/api/auth/iniciar',
     payload: { email, password: CLAVE },
   })
   expect(r.statusCode, `no pudo entrar ${email}`).toBe(200)
-  const cookie = r.cookies.find((c) => c.name === 'bo_sesion')
+  const cookie = r.cookies.find((c) => c.name === 'gpb_bo_sesion')
   if (!cookie) throw new Error('sin cookie de sesión')
-  return `bo_sesion=${cookie.value}`
+  return `gpb_bo_sesion=${cookie.value}`
 }
 
 function pedir(cookie: string, method: 'GET' | 'POST' | 'PUT', url: string, payload?: object) {
@@ -86,7 +86,7 @@ describe('la sesión del operador', () => {
     const r = await app.inject({
       method: 'POST',
       url: '/api/auth/iniciar',
-      payload: { email: 'ops@garagepro.test', password: 'otra' },
+      payload: { email: 'ops@gpb.test', password: 'otra' },
     })
     expect(r.statusCode).toBe(401)
     expect(r.json().code).toBe('CREDENCIALES_INVALIDAS')
@@ -96,9 +96,9 @@ describe('la sesión del operador', () => {
     const r = await app.inject({
       method: 'POST',
       url: '/api/auth/iniciar',
-      payload: { email: 'ops@garagepro.test', password: CLAVE },
+      payload: { email: 'ops@gpb.test', password: CLAVE },
     })
-    const cookie = r.cookies.find((c) => c.name === 'bo_sesion')
+    const cookie = r.cookies.find((c) => c.name === 'gpb_bo_sesion')
     expect(cookie?.httpOnly).toBe(true)
     expect(cookie?.sameSite).toBe('Strict')
     // Y el token no aparece en el cuerpo.
@@ -121,10 +121,8 @@ describe('la sesión del operador', () => {
   })
 
   it('dar de baja a un operador le corta la sesión en el acto', async () => {
-    const cookie = await entrar('baja@garagepro.test')
-    await pg.poolDuenio.query(
-      `update operador set activo = false where email = 'baja@garagepro.test'`,
-    )
+    const cookie = await entrar('baja@gpb.test')
+    await pg.poolDuenio.query(`update operador set activo = false where email = 'baja@gpb.test'`)
     expect((await pedir(cookie, 'GET', '/auth/yo')).statusCode).toBe(401)
   })
 })

@@ -1,4 +1,4 @@
-import { CATALOGO } from '@garagepro/core'
+import { CATALOGO } from '@gpb/core'
 import { useTeclado } from '../teclado/index.ts'
 import { Tecla } from './Tecla.tsx'
 

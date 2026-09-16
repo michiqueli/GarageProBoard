@@ -6,7 +6,7 @@ hasta ahora —la tabla, el contrato, la API y el menú— está al final, en
 
 ## La decisión: los módulos se prenden y se apagan, desde el día cero
 
-GaragePro se vende por partes. Una concesionaria contrata taller y repuestos y no quiere
+GarageProBoard se vende por partes. Una concesionaria contrata taller y repuestos y no quiere
 ventas de 0km; otra suma garantías en marzo. **Cada módulo se activa y se desactiva por
 tenant**, y eso no es una función para agregar cuando haya clientes: es cómo se cobra el
 producto.
@@ -202,7 +202,7 @@ Es el único que escribe `tenant_modulo`.
 | --- | --- |
 | Quién entra | Operadores de la tabla `operador`, creados con `pnpm db:operador`. Sin segundo factor por ahora |
 | Sesión | Cookie `httpOnly` de doce horas, verificada en cada pedido |
-| Rol de Postgres | `garagepro_backoffice`, sin BYPASSRLS. Ve todas las concesionarias sólo en `tenant` y `tenant_modulo`; no puede leer un vehículo ni un comprobante |
+| Rol de Postgres | `gpb_backoffice`, sin BYPASSRLS. Ve todas las concesionarias sólo en `tenant` y `tenant_modulo`; no puede leer un vehículo ni un comprobante |
 | Alta | Concesionaria, módulos, razón social, sucursal, roles y gerente en una sola transacción. La contraseña del gerente se muestra una vez |
 | Módulos | Prender, apagar y vencimiento, siempre con motivo. Se rechaza lo que agrega una dependencia rota |
 | Suspender | `tenant.activo = false`: nadie entra y las sesiones caen en el próximo pedido. Los datos no se tocan |

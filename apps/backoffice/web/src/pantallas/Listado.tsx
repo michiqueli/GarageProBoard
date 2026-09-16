@@ -1,4 +1,4 @@
-import { ETIQUETA_MODULO } from '@garagepro/core'
+import { ETIQUETA_MODULO } from '@gpb/core'
 import { useQuery } from '@tanstack/react-query'
 import { Link } from '@tanstack/react-router'
 import { api, mensajeDe } from '../cliente.ts'

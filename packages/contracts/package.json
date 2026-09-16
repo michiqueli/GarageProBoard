@@ -1,5 +1,5 @@
 {
-  "name": "@garagepro/contracts",
+  "name": "@gpb/contracts",
   "version": "0.0.0",
   "private": true,
   "type": "module",
@@ -18,7 +18,7 @@
     "build": "tsc -p tsconfig.json"
   },
   "dependencies": {
-    "@garagepro/core": "workspace:*",
+    "@gpb/core": "workspace:*",
     "@orpc/contract": "1.15.0",
     "zod": "4.6.2"
   },

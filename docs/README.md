@@ -1,4 +1,4 @@
-# Documentación de GaragePro
+# Documentación de GarageProBoard
 
 Todo lo que decidimos queda escrito acá y versionado con el código. La regla es
 simple: si una decisión costó una conversación, se escribe. Dentro de seis meses

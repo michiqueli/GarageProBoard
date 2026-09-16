@@ -32,7 +32,7 @@ beforeAll(async () => {
 
   const { rows } = await e.poolDuenio.query<{ id: string }>(`
     insert into operador (email, hash_password, nombre)
-    values ('ops@garagepro.test', 'hash', 'Operaciones') returning id
+    values ('ops@gpb.test', 'hash', 'Operaciones') returning id
   `)
   operadorId = rows[0]?.id ?? ''
 

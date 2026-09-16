@@ -6,7 +6,7 @@ import {
   type Modulo,
   SUJETOS,
   type Sujeto,
-} from '@garagepro/core'
+} from '@gpb/core'
 import { oc } from '@orpc/contract'
 import { z } from 'zod'
 
@@ -109,7 +109,7 @@ export function accesoDeRuta(ruta: RutaDelContrato): Acceso {
   if (acceso === undefined) {
     throw new Error(
       `La ruta ${nombreDeRuta(ruta)} no declara quién puede usarla. ` +
-        'Armala con publico, conSesion o conPermiso() de @garagepro/contracts.',
+        'Armala con publico, conSesion o conPermiso() de @gpb/contracts.',
     )
   }
   return acceso

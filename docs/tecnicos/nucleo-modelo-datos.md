@@ -247,7 +247,7 @@ Dos detalles que no son cosméticos:
 - **El `(select ...)`** hace que la función se evalúe una vez por consulta en lugar de
   una vez por fila. Sobre una tabla de órdenes con años de historia, se nota.
 
-**El rol de conexión.** La API se conecta como `garagepro_app`: sin `BYPASSRLS`, sin
+**El rol de conexión.** La API se conecta como `gpb_app`: sin `BYPASSRLS`, sin
 ser superusuario y sin ser dueño de ninguna tabla. Usar el rol dueño anularía el
 aislamiento entero sin que ningún test lo notara, porque las consultas seguirían
 andando.

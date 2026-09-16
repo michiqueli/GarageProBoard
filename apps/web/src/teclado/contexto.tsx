@@ -4,7 +4,7 @@ import {
   type Pantalla,
   resolverAtajos,
   teclaDesdeEvento,
-} from '@garagepro/core'
+} from '@gpb/core'
 import {
   createContext,
   type ReactNode,

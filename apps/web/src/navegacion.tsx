@@ -1,4 +1,4 @@
-import { type Acceso, type Autorizacion, permite } from '@garagepro/contracts'
+import { type Acceso, type Autorizacion, permite } from '@gpb/contracts'
 import type { LinkProps } from '@tanstack/react-router'
 import type { ReactNode } from 'react'
 

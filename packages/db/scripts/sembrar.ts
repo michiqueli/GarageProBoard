@@ -1,4 +1,4 @@
-import { atajosParaSembrar, MODULOS, type Modulo, ROLES_PREDEFINIDOS } from '@garagepro/core'
+import { atajosParaSembrar, MODULOS, type Modulo, ROLES_PREDEFINIDOS } from '@gpb/core'
 import argon2 from 'argon2'
 import { and, eq } from 'drizzle-orm'
 import { crearDb, crearPool, type Db } from '../src/index.ts'
@@ -176,7 +176,7 @@ async function sembrarEjemplos(db: Db): Promise<void> {
       console.log(`    ${u.email.padEnd(24)} ${u.rol.padEnd(12)} ${e.nombre}`)
     }
   }
-  console.log(`    contraseña: ${process.env.ADMIN_PASSWORD ?? 'garagepro'}`)
+  console.log(`    contraseña: ${process.env.ADMIN_PASSWORD ?? 'garageproboard'}`)
   console.log('')
 }
 
@@ -269,7 +269,7 @@ async function sembrarUsuarios(db: Db, ej: Concesionaria): Promise<void> {
       .values({
         tenantId: t.id,
         email: datos.email,
-        hashPassword: await argon2.hash(process.env.ADMIN_PASSWORD ?? 'garagepro', {
+        hashPassword: await argon2.hash(process.env.ADMIN_PASSWORD ?? 'garageproboard', {
           type: argon2.argon2id,
         }),
         nombre: datos.nombre,

@@ -116,7 +116,7 @@ function ConOperador() {
         <div className="mx-auto flex max-w-5xl flex-wrap items-center gap-3 px-4 py-2.5">
           <Link to="/" className="flex items-center gap-2.5">
             <span className="size-3.5 rotate-45 rounded-[3px] bg-marca" />
-            <b className="font-display text-base font-bold tracking-tight">GaragePro</b>
+            <b className="font-display text-base font-bold tracking-tight">GarageProBoard</b>
             <span className="rounded-base border border-marca px-1.5 font-mono text-etiqueta text-marca uppercase">
               Back-office
             </span>

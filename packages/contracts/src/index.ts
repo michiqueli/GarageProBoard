@@ -96,6 +96,6 @@ export type Contrato = typeof contrato
  *
  * Se exporta desde acá para que el front no tenga que depender de `@orpc/contract`
  * directamente: el paquete de contratos es la única frontera con esa librería, igual
- * que `@garagepro/db` lo es con drizzle.
+ * que `@gpb/db` lo es con drizzle.
  */
 export type ClienteApi = ContractRouterClient<typeof contrato>

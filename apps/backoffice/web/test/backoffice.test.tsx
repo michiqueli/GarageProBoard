@@ -27,7 +27,7 @@ vi.mock('../src/cliente.ts', async (original) => ({
   api,
 }))
 
-const OPERADOR = { id: 'o1', email: 'ops@garagepro.test', nombre: 'Operaciones' }
+const OPERADOR = { id: 'o1', email: 'ops@gpb.test', nombre: 'Operaciones' }
 
 const LITORAL = {
   id: '11111111-1111-4111-8111-111111111111',
@@ -111,7 +111,7 @@ describe('la sesión', () => {
     )
     await montar('/entrar')
 
-    await userEvent.type(await screen.findByLabelText('Correo'), 'ops@garagepro.test')
+    await userEvent.type(await screen.findByLabelText('Correo'), 'ops@gpb.test')
     await userEvent.type(screen.getByLabelText('Contraseña'), 'mal{Enter}')
 
     expect(await screen.findByRole('alert')).toHaveProperty(

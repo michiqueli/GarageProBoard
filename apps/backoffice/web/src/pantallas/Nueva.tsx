@@ -4,7 +4,7 @@ import {
   ETIQUETA_MODULO,
   MODULOS,
   type Modulo,
-} from '@garagepro/core'
+} from '@gpb/core'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { Link } from '@tanstack/react-router'
 import { type FormEvent, useState } from 'react'

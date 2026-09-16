@@ -1,4 +1,4 @@
-import { MODULOS, type ReglaPermiso } from '@garagepro/core'
+import { MODULOS, type ReglaPermiso } from '@gpb/core'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { createMemoryHistory, RouterProvider } from '@tanstack/react-router'
 import { render } from '@testing-library/react'

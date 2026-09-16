@@ -67,7 +67,7 @@ describe('pantalla de inicio de sesión', () => {
     montar(<PantallaLogin />)
 
     await userEvent.type(screen.getByLabelText('Correo'), 'admin@litoral.test')
-    await userEvent.type(screen.getByLabelText('Contraseña'), 'garagepro')
+    await userEvent.type(screen.getByLabelText('Contraseña'), 'garageproboard')
     await userEvent.click(screen.getByRole('button', { name: 'Entrar' }))
 
     await waitFor(() => {
@@ -75,7 +75,7 @@ describe('pantalla de inicio de sesión', () => {
     })
     expect(iniciar).toHaveBeenCalledWith({
       email: 'admin@litoral.test',
-      password: 'garagepro',
+      password: 'garageproboard',
     })
   })
 
@@ -103,7 +103,7 @@ describe('pantalla de inicio de sesión', () => {
     montar(<PantallaLogin />)
 
     await userEvent.type(screen.getByLabelText('Correo'), 'admin@litoral.test')
-    await userEvent.type(screen.getByLabelText('Contraseña'), 'garagepro')
+    await userEvent.type(screen.getByLabelText('Contraseña'), 'garageproboard')
     await userEvent.click(screen.getByRole('button', { name: 'Entrar' }))
 
     const aviso = await screen.findByRole('alert')

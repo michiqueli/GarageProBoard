@@ -1,4 +1,4 @@
-import { crearDb, crearPool, type Db, type Pool } from '@garagepro/db'
+import { crearDb, crearPool, type Db, type Pool } from '@gpb/db'
 import { Global, Inject, Module, type OnApplicationShutdown } from '@nestjs/common'
 import { DatosDelTenant } from './datos.ts'
 import { DB, POOL } from './simbolos.ts'

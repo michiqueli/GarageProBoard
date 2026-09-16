@@ -2,13 +2,13 @@ import {
   type AccesoBackoffice,
   accesoDeRutaBackoffice,
   type RutaBackoffice,
-} from '@garagepro/contracts/backoffice'
+} from '@gpb/contracts/backoffice'
 import { Inject, Injectable, type OnModuleInit, SetMetadata, type Type } from '@nestjs/common'
 import { PATH_METADATA } from '@nestjs/common/constants'
 import { DiscoveryService } from '@nestjs/core'
 import { Implement } from '@orpc/nest'
 
-const ACCESO = 'garagepro:backoffice:acceso'
+const ACCESO = 'gpb:backoffice:acceso'
 
 type ContratoDeRuta = Parameters<typeof Implement>[0] & RutaBackoffice
 

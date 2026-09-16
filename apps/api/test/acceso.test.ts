@@ -1,6 +1,6 @@
 import 'reflect-metadata'
-import { publico } from '@garagepro/contracts'
-import { construirHabilidades } from '@garagepro/core'
+import { publico } from '@gpb/contracts'
+import { construirHabilidades } from '@gpb/core'
 import { Controller, Get, type Type } from '@nestjs/common'
 import { DiscoveryModule } from '@nestjs/core'
 import { FastifyAdapter } from '@nestjs/platform-fastify'

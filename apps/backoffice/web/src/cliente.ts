@@ -1,4 +1,4 @@
-import { contratoBackoffice } from '@garagepro/contracts/backoffice'
+import { contratoBackoffice } from '@gpb/contracts/backoffice'
 import { createORPCClient, ORPCError } from '@orpc/client'
 import type { ContractRouterClient } from '@orpc/contract'
 import { OpenAPILink } from '@orpc/openapi-client/fetch'

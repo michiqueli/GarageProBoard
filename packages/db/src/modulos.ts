@@ -1,4 +1,4 @@
-import { MODULOS, type Modulo } from '@garagepro/core'
+import { MODULOS, type Modulo } from '@gpb/core'
 import { and, eq, gt, isNull, lte, or, type SQL, sql } from 'drizzle-orm'
 import type { Db } from './index.ts'
 import { tenantModulo } from './schema/index.ts'

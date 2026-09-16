@@ -1,4 +1,4 @@
-import { MODULOS } from '@garagepro/core'
+import { MODULOS } from '@gpb/core'
 import { z } from 'zod'
 import { conSesion, publico, reglaPermiso } from './acceso.ts'
 

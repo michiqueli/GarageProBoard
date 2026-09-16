@@ -1,10 +1,10 @@
-import { type Acceso, accesoDeRuta, type RutaDelContrato } from '@garagepro/contracts'
+import { type Acceso, accesoDeRuta, type RutaDelContrato } from '@gpb/contracts'
 import { Inject, Injectable, type OnModuleInit, SetMetadata, type Type } from '@nestjs/common'
 import { PATH_METADATA } from '@nestjs/common/constants'
 import { DiscoveryService } from '@nestjs/core'
 import { Implement } from '@orpc/nest'
 
-export const ACCESO = 'garagepro:acceso'
+export const ACCESO = 'gpb:acceso'
 
 type ContratoDeRuta = Parameters<typeof Implement>[0] & RutaDelContrato
 

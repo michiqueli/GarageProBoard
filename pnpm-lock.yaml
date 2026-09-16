@@ -35,16 +35,16 @@ importers:
       '@fastify/static':
         specifier: 10.1.3
         version: 10.1.3
-      '@garagepro/afip':
+      '@gpb/afip':
         specifier: workspace:*
         version: link:../../packages/afip
-      '@garagepro/contracts':
+      '@gpb/contracts':
         specifier: workspace:*
         version: link:../../packages/contracts
-      '@garagepro/core':
+      '@gpb/core':
         specifier: workspace:*
         version: link:../../packages/core
-      '@garagepro/db':
+      '@gpb/db':
         specifier: workspace:*
         version: link:../../packages/db
       '@nestjs/common':
@@ -132,13 +132,13 @@ importers:
       '@fastify/cookie':
         specifier: 11.1.2
         version: 11.1.2
-      '@garagepro/contracts':
+      '@gpb/contracts':
         specifier: workspace:*
         version: link:../../../packages/contracts
-      '@garagepro/core':
+      '@gpb/core':
         specifier: workspace:*
         version: link:../../../packages/core
-      '@garagepro/db':
+      '@gpb/db':
         specifier: workspace:*
         version: link:../../../packages/db
       '@nestjs/common':
@@ -190,13 +190,13 @@ importers:
 
   apps/backoffice/web:
     dependencies:
-      '@garagepro/contracts':
+      '@gpb/contracts':
         specifier: workspace:*
         version: link:../../../packages/contracts
-      '@garagepro/core':
+      '@gpb/core':
         specifier: workspace:*
         version: link:../../../packages/core
-      '@garagepro/ui-tokens':
+      '@gpb/ui-tokens':
         specifier: workspace:*
         version: link:../../../packages/ui-tokens
       '@orpc/client':
@@ -260,13 +260,13 @@ importers:
 
   apps/web:
     dependencies:
-      '@garagepro/contracts':
+      '@gpb/contracts':
         specifier: workspace:*
         version: link:../../packages/contracts
-      '@garagepro/core':
+      '@gpb/core':
         specifier: workspace:*
         version: link:../../packages/core
-      '@garagepro/ui-tokens':
+      '@gpb/ui-tokens':
         specifier: workspace:*
         version: link:../../packages/ui-tokens
       '@orpc/client':
@@ -358,7 +358,7 @@ importers:
 
   packages/contracts:
     dependencies:
-      '@garagepro/core':
+      '@gpb/core':
         specifier: workspace:*
         version: link:../core
       '@orpc/contract':
@@ -399,7 +399,7 @@ importers:
 
   packages/db:
     dependencies:
-      '@garagepro/core':
+      '@gpb/core':
         specifier: workspace:*
         version: link:../core
       '@testcontainers/postgresql':

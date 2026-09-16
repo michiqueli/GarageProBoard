@@ -1,4 +1,4 @@
-import { type ClienteApi, contrato } from '@garagepro/contracts'
+import { type ClienteApi, contrato } from '@gpb/contracts'
 import { createORPCClient } from '@orpc/client'
 import { OpenAPILink } from '@orpc/openapi-client/fetch'
 import { tokens, usarSesion } from './almacen.ts'

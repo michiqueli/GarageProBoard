@@ -1,6 +1,6 @@
 import { createHash, randomBytes } from 'node:crypto'
-import { and, type Db, eq, gt, isNull, sql } from '@garagepro/db'
-import { operador, sesionOperador } from '@garagepro/db/schema'
+import { and, type Db, eq, gt, isNull, sql } from '@gpb/db'
+import { operador, sesionOperador } from '@gpb/db/schema'
 import { Inject, Injectable } from '@nestjs/common'
 import argon2 from 'argon2'
 import { DB } from '../comun/simbolos.ts'

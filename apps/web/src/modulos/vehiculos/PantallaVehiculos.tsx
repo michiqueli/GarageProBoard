@@ -1,4 +1,4 @@
-import { accesoDeRuta, contrato } from '@garagepro/contracts'
+import { accesoDeRuta, contrato } from '@gpb/contracts'
 import { ORPCError } from '@orpc/client'
 import { useQuery } from '@tanstack/react-query'
 import { getRouteApi } from '@tanstack/react-router'

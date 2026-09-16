@@ -1,12 +1,12 @@
-import { evaluarAcceso } from '@garagepro/contracts'
+import { evaluarAcceso } from '@gpb/contracts'
 import {
   type AccionPermiso,
   construirHabilidades,
   describirPermiso,
   type Modulo,
   type Sujeto,
-} from '@garagepro/core'
-import { conTenant, type Db, modulosVigentes } from '@garagepro/db'
+} from '@gpb/core'
+import { conTenant, type Db, modulosVigentes } from '@gpb/db'
 import {
   type CanActivate,
   createParamDecorator,

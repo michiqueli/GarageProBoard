@@ -27,7 +27,7 @@ export function PantallaEntrar() {
     <main className="mx-auto grid min-h-dvh max-w-sm content-center gap-5 p-4">
       <div className="flex items-center gap-2.5">
         <span className="size-4 rotate-45 rounded-[3px] bg-marca" />
-        <b className="font-display text-xl font-bold tracking-tight">GaragePro</b>
+        <b className="font-display text-xl font-bold tracking-tight">GarageProBoard</b>
         <span className="rounded-base border border-marca px-1.5 font-mono text-etiqueta text-marca uppercase">
           Back-office
         </span>
@@ -62,7 +62,7 @@ export function PantallaEntrar() {
       </form>
 
       <p className="text-etiqueta text-texto-tenue">
-        Sólo para el equipo de GaragePro. Los usuarios se crean con{' '}
+        Sólo para el equipo de GarageProBoard. Los usuarios se crean con{' '}
         <code className="font-mono">pnpm db:operador</code>.
       </p>
     </main>

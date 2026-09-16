@@ -1,6 +1,6 @@
-import { atajosParaSembrar, MODULOS, type Modulo, ROLES_PREDEFINIDOS } from '@garagepro/core'
-import { type Db, sembrarCatalogos } from '@garagepro/db'
-import { levantarPostgres, type PostgresDePrueba } from '@garagepro/db/pruebas'
+import { atajosParaSembrar, MODULOS, type Modulo, ROLES_PREDEFINIDOS } from '@gpb/core'
+import { type Db, sembrarCatalogos } from '@gpb/db'
+import { levantarPostgres, type PostgresDePrueba } from '@gpb/db/pruebas'
 import {
   empresa,
   rol,
@@ -13,7 +13,7 @@ import {
   usuarioRol,
   usuarioSucursal,
   vehiculo,
-} from '@garagepro/db/schema'
+} from '@gpb/db/schema'
 import { FastifyAdapter, type NestFastifyApplication } from '@nestjs/platform-fastify'
 import { Test } from '@nestjs/testing'
 import argon2 from 'argon2'

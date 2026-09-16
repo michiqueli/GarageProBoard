@@ -6,18 +6,8 @@ import {
   MODULOS,
   type Modulo,
   ROLES_PREDEFINIDOS,
-} from '@garagepro/core'
-import {
-  and,
-  asc,
-  condicionVigente,
-  conTenant,
-  type Db,
-  desc,
-  enOrden,
-  eq,
-  sql,
-} from '@garagepro/db'
+} from '@gpb/core'
+import { and, asc, condicionVigente, conTenant, type Db, desc, enOrden, eq, sql } from '@gpb/db'
 import {
   auditoriaBackoffice,
   condicionIva,
@@ -32,7 +22,7 @@ import {
   usuarioConfig,
   usuarioRol,
   usuarioSucursal,
-} from '@garagepro/db/schema'
+} from '@gpb/db/schema'
 import { Inject, Injectable } from '@nestjs/common'
 import argon2 from 'argon2'
 import type { Operador } from '../auth/auth.service.ts'

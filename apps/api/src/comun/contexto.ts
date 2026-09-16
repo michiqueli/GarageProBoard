@@ -1,5 +1,5 @@
 import { AsyncLocalStorage } from 'node:async_hooks'
-import type { Habilidades } from '@garagepro/core'
+import type { Habilidades } from '@gpb/core'
 import {
   type CallHandler,
   type ExecutionContext,

@@ -1,9 +1,9 @@
-import { crearDb, crearPool, type Db, type Pool } from '@garagepro/db'
+import { crearDb, crearPool, type Db, type Pool } from '@gpb/db'
 import { Global, Inject, Module, type OnApplicationShutdown } from '@nestjs/common'
 import { DB, POOL } from './simbolos.ts'
 
 /**
- * El back-office se conecta con `DATABASE_URL_BACKOFFICE`: el rol `garagepro_backoffice`,
+ * El back-office se conecta con `DATABASE_URL_BACKOFFICE`: el rol `gpb_backoffice`,
  * que ve todas las concesionarias pero sólo en `tenant` y `tenant_modulo`, y que no puede
  * leer un vehículo ni un comprobante.
  *

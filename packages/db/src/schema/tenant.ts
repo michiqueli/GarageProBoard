@@ -1,4 +1,4 @@
-import { MODULOS } from '@garagepro/core'
+import { MODULOS } from '@gpb/core'
 import { sql } from 'drizzle-orm'
 import {
   boolean,

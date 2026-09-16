@@ -1,4 +1,4 @@
-import { contratoBackoffice } from '@garagepro/contracts/backoffice'
+import { contratoBackoffice } from '@gpb/contracts/backoffice'
 import { Controller, Inject, Req } from '@nestjs/common'
 import { implement } from '@orpc/nest'
 import type { FastifyRequest } from 'fastify'

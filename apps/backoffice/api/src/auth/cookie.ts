@@ -8,7 +8,7 @@ import type { FastifyReply, FastifyRequest } from 'fastify'
  * Otro nombre que la de los clientes: si algún día los dos corren bajo el mismo dominio
  * en un entorno de pruebas, no se pisan.
  */
-export const COOKIE_SESION = 'bo_sesion'
+export const COOKIE_SESION = 'gpb_bo_sesion'
 
 export const HORAS_SESION = 12
 

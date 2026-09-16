@@ -36,9 +36,9 @@ export interface PostgresDePrueba {
 
 export async function levantarPostgres(): Promise<PostgresDePrueba> {
   const contenedor = await new PostgreSqlContainer('postgres:18-alpine')
-    .withDatabase('garagepro_test')
-    .withUsername('garagepro')
-    .withPassword('garagepro')
+    .withDatabase('gpb_test')
+    .withUsername('gpb')
+    .withPassword('gpb')
     .start()
 
   const urlDuenio = contenedor.getConnectionUri()
@@ -52,14 +52,11 @@ export async function levantarPostgres(): Promise<PostgresDePrueba> {
     `alter role ${ROL_BACKOFFICE} with login password '${PASSWORD_BACKOFFICE}'`,
   )
 
-  const urlApp = urlDuenio.replace('garagepro:garagepro@', `${ROL_APP}:${PASSWORD_APP}@`)
+  const urlApp = urlDuenio.replace('gpb:gpb@', `${ROL_APP}:${PASSWORD_APP}@`)
   const poolApp = crearPool(urlApp)
   const dbApp = crearDb(poolApp)
 
-  const urlBackoffice = urlDuenio.replace(
-    'garagepro:garagepro@',
-    `${ROL_BACKOFFICE}:${PASSWORD_BACKOFFICE}@`,
-  )
+  const urlBackoffice = urlDuenio.replace('gpb:gpb@', `${ROL_BACKOFFICE}:${PASSWORD_BACKOFFICE}@`)
   const poolBackoffice = crearPool(urlBackoffice)
   const dbBackoffice = crearDb(poolBackoffice)
 

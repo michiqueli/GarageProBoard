@@ -41,7 +41,7 @@ export const TABLAS_CATALOGO = [
 ] as const
 
 /** El rol con el que se conecta la API: sin BYPASSRLS y sin ser dueño de nada. */
-export const ROL_APP = 'garagepro_app'
+export const ROL_APP = 'gpb_app'
 
 /** Variable de sesión que las políticas comparan contra `tenant_id`. */
 export const VAR_TENANT = 'app.tenant_id'
@@ -57,7 +57,7 @@ export const TABLAS_SOLO_LECTURA = ['tenant_modulo'] as const satisfies Readonly
 >
 
 /** El rol con el que se conecta el back-office. Otro rol, otras credenciales, otro proceso. */
-export const ROL_BACKOFFICE = 'garagepro_backoffice'
+export const ROL_BACKOFFICE = 'gpb_backoffice'
 
 /**
  * Las tablas del back-office. El rol de la API no tiene **ningún** permiso sobre ellas.

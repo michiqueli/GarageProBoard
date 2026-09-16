@@ -18,7 +18,7 @@ import { GuardiaAcceso } from './guard.ts'
         if (!secreto || secreto.length < 32) {
           throw new Error('Falta JWT_SECRET, o tiene menos de 32 caracteres.')
         }
-        return { secret: secreto, signOptions: { issuer: 'garagepro' } }
+        return { secret: secreto, signOptions: { issuer: 'gpb' } }
       },
     }),
   ],

@@ -21,7 +21,7 @@ Monorepo, entorno reproducible y aislamiento multi-tenant probado.
 - ✅ Contrato oRPC compartido
 - ✅ Documento OpenAPI y Swagger UI generados desde el contrato
 - ✅ Catálogo de acciones con atajo configurable y sus tablas (`usuario_config`,
-  `usuario_atajo`), con 26 tests en `@garagepro/core`
+  `usuario_atajo`), con 26 tests en `@gpb/core`
 
 ---
 
@@ -43,7 +43,7 @@ Sin esto no hay pantalla que mostrar a nadie.
 - ⬜ Semilla de datos: provincias, condiciones de IVA y tipos de comprobante desde
       los web services de AFIP, no escritos a mano
 - ✅ **Sistema de diseño escrito** (`docs/tecnicos/sistema-de-diseno.md`) y skill
-      `ui-garagepro` que lo aplica sola. Falta implementar los tokens en
+      `ui-gpb` que lo aplica sola. Falta implementar los tokens en
       `index.css` y el registro de atajos en `apps/web/src/teclado/`.
 - ✅ Tokens del `@theme` en `index.css`, con tema claro y oscuro
 - ✅ Registro único de atajos en `apps/web/src/teclado/` + barra de estado, leyendo

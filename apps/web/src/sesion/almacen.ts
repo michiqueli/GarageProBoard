@@ -1,4 +1,4 @@
-import type { Modulo, ReglaPermiso } from '@garagepro/core'
+import type { Modulo, ReglaPermiso } from '@gpb/core'
 import { create } from 'zustand'
 
 export interface Sucursal {

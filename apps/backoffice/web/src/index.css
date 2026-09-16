@@ -1,5 +1,5 @@
 @import "tailwindcss";
-@import "@garagepro/ui-tokens/tokens.css";
+@import "@gpb/ui-tokens/tokens.css";
 
 /*
  * El back-office usa los tokens de siempre, con **otra marca**: el azul informativo en

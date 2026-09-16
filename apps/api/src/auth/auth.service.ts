@@ -1,5 +1,5 @@
-import { ROLES_PREDEFINIDOS } from '@garagepro/core'
-import { and, conTenant, type Db, eq, isNull, modulosVigentes, sql } from '@garagepro/db'
+import { ROLES_PREDEFINIDOS } from '@gpb/core'
+import { and, conTenant, type Db, eq, isNull, modulosVigentes, sql } from '@gpb/db'
 import {
   empresa,
   sesion,
@@ -9,7 +9,7 @@ import {
   usuarioAtajo,
   usuarioConfig,
   usuarioSucursal,
-} from '@garagepro/db/schema'
+} from '@gpb/db/schema'
 import { Inject, Injectable } from '@nestjs/common'
 import { JwtService } from '@nestjs/jwt'
 import argon2 from 'argon2'

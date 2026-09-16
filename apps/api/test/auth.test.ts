@@ -1,6 +1,6 @@
-import { atajosParaSembrar, MODULOS, ROLES_PREDEFINIDOS } from '@garagepro/core'
-import { type Db, sembrarCatalogos } from '@garagepro/db'
-import { levantarPostgres, type PostgresDePrueba } from '@garagepro/db/pruebas'
+import { atajosParaSembrar, MODULOS, ROLES_PREDEFINIDOS } from '@gpb/core'
+import { type Db, sembrarCatalogos } from '@gpb/db'
+import { levantarPostgres, type PostgresDePrueba } from '@gpb/db/pruebas'
 import {
   empresa,
   rol,
@@ -13,7 +13,7 @@ import {
   usuarioConfig,
   usuarioRol,
   usuarioSucursal,
-} from '@garagepro/db/schema'
+} from '@gpb/db/schema'
 import { FastifyAdapter, type NestFastifyApplication } from '@nestjs/platform-fastify'
 import { Test } from '@nestjs/testing'
 import argon2 from 'argon2'
@@ -248,7 +248,7 @@ describe('entrega del refresco en un navegador', () => {
 
   it('lo manda en una cookie que el JavaScript no puede leer', async () => {
     const r = await iniciarEnNavegador('admin@litoral.test')
-    const galleta = r.cookies.find((c) => c.name === 'gt_refresco')
+    const galleta = r.cookies.find((c) => c.name === 'gpb_refresco')
 
     expect(galleta).toBeDefined()
     expect(galleta?.httpOnly, 'sin httpOnly, un XSS se lleva 30 días de sesión').toBe(true)
@@ -259,12 +259,12 @@ describe('entrega del refresco en un navegador', () => {
 
   it('refresca leyendo la cookie, sin nada en el cuerpo', async () => {
     const inicio = await iniciarEnNavegador('admin@litoral.test')
-    const galleta = inicio.cookies.find((c) => c.name === 'gt_refresco')
+    const galleta = inicio.cookies.find((c) => c.name === 'gpb_refresco')
 
     const r = await app.inject({
       method: 'POST',
       url: '/api/auth/refrescar',
-      cookies: { gt_refresco: String(galleta?.value) },
+      cookies: { gpb_refresco: String(galleta?.value) },
       payload: {},
     })
 
@@ -272,7 +272,7 @@ describe('entrega del refresco en un navegador', () => {
     expect(r.json().access).toBeTruthy()
     expect(r.json().refresh).toBeUndefined()
     // Y el nuevo vuelve por el mismo camino.
-    expect(r.cookies.find((c) => c.name === 'gt_refresco')?.value).not.toBe(galleta?.value)
+    expect(r.cookies.find((c) => c.name === 'gpb_refresco')?.value).not.toBe(galleta?.value)
   })
 
   it('sin cookie ni cuerpo, no hay refresco posible', async () => {
@@ -282,17 +282,17 @@ describe('entrega del refresco en un navegador', () => {
 
   it('cerrar sesión le saca la cookie al navegador', async () => {
     const inicio = await iniciarEnNavegador('admin@litoral.test')
-    const galleta = inicio.cookies.find((c) => c.name === 'gt_refresco')
+    const galleta = inicio.cookies.find((c) => c.name === 'gpb_refresco')
 
     const r = await app.inject({
       method: 'POST',
       url: '/api/auth/cerrar',
-      cookies: { gt_refresco: String(galleta?.value) },
+      cookies: { gpb_refresco: String(galleta?.value) },
       payload: {},
     })
 
     expect(r.json().cerrada).toBe(true)
-    const borrada = r.cookies.find((c) => c.name === 'gt_refresco')
+    const borrada = r.cookies.find((c) => c.name === 'gpb_refresco')
     expect(borrada?.value).toBe('')
   })
 })

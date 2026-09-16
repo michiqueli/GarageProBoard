@@ -1,5 +1,5 @@
 {
-  "name": "@garagepro/db",
+  "name": "@gpb/db",
   "version": "0.0.0",
   "private": true,
   "type": "module",
@@ -36,7 +36,7 @@
   "dependencies": {
     "drizzle-orm": "0.45.2",
     "pg": "8.23.0",
-    "@garagepro/core": "workspace:*",
+    "@gpb/core": "workspace:*",
     "@testcontainers/postgresql": "12.1.0"
   },
   "devDependencies": {

@@ -53,7 +53,7 @@ export function PantallaLogin() {
       <main className="relative w-full max-w-sm">
         <div className="mb-7 flex items-center gap-3">
           <span className="size-5 rotate-45 rounded-[3px] bg-marca" />
-          <span className="font-display text-xl font-bold tracking-tight">GaragePro</span>
+          <span className="font-display text-xl font-bold tracking-tight">GarageProBoard</span>
         </div>
 
         <form

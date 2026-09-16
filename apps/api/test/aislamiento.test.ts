@@ -5,7 +5,7 @@ import { type ApiDePrueba, CLAVE, levantarApi, sembrarConcesionaria } from './fi
 /**
  * El test que sostiene el producto entero.
  *
- * GaragePro es una sola instalación con todas las concesionarias adentro. Si un día se
+ * GarageProBoard es una sola instalación con todas las concesionarias adentro. Si un día se
  * cruzan los datos, no es un bug: es el fin del negocio. Nadie le confía la facturación
  * de sus clientes a un sistema donde el competidor de al lado pudo ver algo.
  *

@@ -1,5 +1,5 @@
-import { contrato } from '@garagepro/contracts'
-import { type Db, sql } from '@garagepro/db'
+import { contrato } from '@gpb/contracts'
+import { type Db, sql } from '@gpb/db'
 import { Controller, Inject } from '@nestjs/common'
 import { implement } from '@orpc/nest'
 import { Operacion } from '../comun/operacion.ts'

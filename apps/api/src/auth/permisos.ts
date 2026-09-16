@@ -1,6 +1,6 @@
-import { type ReglaPermiso, resolverCondiciones } from '@garagepro/core'
-import { type Db, eq } from '@garagepro/db'
-import { rol, tenant, usuario, usuarioRol } from '@garagepro/db/schema'
+import { type ReglaPermiso, resolverCondiciones } from '@gpb/core'
+import { type Db, eq } from '@gpb/db'
+import { rol, tenant, usuario, usuarioRol } from '@gpb/db/schema'
 
 /**
  * Las reglas de CASL de un usuario, ya resueltas contra quién es y dónde está.

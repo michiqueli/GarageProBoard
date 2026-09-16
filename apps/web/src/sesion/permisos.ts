@@ -6,8 +6,8 @@ import {
   permite,
   type RutaDelContrato,
   type Veredicto,
-} from '@garagepro/contracts'
-import { construirHabilidades, type Modulo, type ReglaPermiso } from '@garagepro/core'
+} from '@gpb/contracts'
+import { construirHabilidades, type Modulo, type ReglaPermiso } from '@gpb/core'
 import { useMemo } from 'react'
 import { usarSesion } from './almacen.ts'
 

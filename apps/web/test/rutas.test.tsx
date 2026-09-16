@@ -38,7 +38,7 @@ function conCookie(sesion: typeof SESION) {
 
 async function entrarConCorreo() {
   await userEvent.type(await screen.findByLabelText('Correo'), 'admin@litoral.test')
-  await userEvent.type(screen.getByLabelText('Contraseña'), 'garagepro')
+  await userEvent.type(screen.getByLabelText('Contraseña'), 'garageproboard')
   await userEvent.click(screen.getByRole('button', { name: 'Entrar' }))
 }
 

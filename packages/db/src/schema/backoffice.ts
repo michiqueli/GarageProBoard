@@ -22,7 +22,7 @@ import { tenant } from './tenant.ts'
  */
 
 /**
- * Alguien de GaragePro que administra concesionarias.
+ * Alguien de GarageProBoard que administra concesionarias.
  *
  * Es una tabla aparte y no un usuario de una concesionaria interna: un operador no
  * pertenece a ningún tenant, y mezclarlo con los usuarios de los clientes obligaría a
