@@ -1,5 +1,5 @@
 import { type Db, eq, sql } from '@gpb/db'
-import { auditoria, dispositivo } from '@gpb/db/schema'
+import { auditoria, dispositivo, rol, sucursal } from '@gpb/db/schema'
 import { Inject, Injectable } from '@nestjs/common'
 import { DatosDelTenant } from '../comun/datos.ts'
 
@@ -11,33 +11,108 @@ export class ErrorAuditoria extends Error {
 
 type Foto = Record<string, unknown> | null
 
+/** Para traducir ids a nombres: roles y sucursales de la concesionaria. */
+export interface Nombres {
+  roles: ReadonlyMap<string, string>
+  sucursales: ReadonlyMap<string, string>
+}
+
+/** «el rol Mecánico», «los roles Mecánico y Cajero». */
+function enumerar(singular: string, plural: string, nombres: string[]): string {
+  if (nombres.length === 1) return `${singular} ${nombres[0]}`
+  return `${plural} ${nombres.slice(0, -1).join(', ')} y ${nombres.at(-1)}`
+}
+
+/** Lo que se agregó y lo que se quitó de una lista, en palabras. */
+function diferencia(
+  antes: unknown,
+  despues: unknown,
+  nombres: ReadonlyMap<string, string>,
+  singular: string,
+  plural: string,
+): string[] {
+  const a = new Set(Array.isArray(antes) ? (antes as string[]) : [])
+  const d = new Set(Array.isArray(despues) ? (despues as string[]) : [])
+  // Un rol borrado después no tiene nombre: se dice, en vez de mostrar un id.
+  const nombre = (id: string) => nombres.get(id) ?? 'uno que ya no existe'
+
+  const agregados = [...d].filter((x) => !a.has(x)).map(nombre)
+  const quitados = [...a].filter((x) => !d.has(x)).map(nombre)
+  return [
+    ...(agregados.length ? [`le agregó ${enumerar(singular, plural, agregados)}`] : []),
+    ...(quitados.length ? [`le quitó ${enumerar(singular, plural, quitados)}`] : []),
+  ]
+}
+
+function juntar(partes: string[]): string {
+  if (partes.length === 0) return 'Sin cambios'
+  const frase =
+    partes.length === 1 ? (partes[0] ?? '') : `${partes.slice(0, -1).join(', ')} y ${partes.at(-1)}`
+  return frase.charAt(0).toUpperCase() + frase.slice(1)
+}
+
 /**
- * Qué cambió entre dos fotos de la auditoría, en palabras: «roles, sucursales».
+ * Qué cambió, contado como lo contaría una persona: «Le agregó el rol Administrador de
+ * sistema y le quitó el rol Repuestero».
  *
  * Se arma al leer y no al escribir: la auditoría guarda los datos tal cual, y cómo se
- * cuentan puede mejorar sin reescribir la historia.
+ * cuentan puede mejorar sin reescribir la historia. Los nombres de roles y sucursales son
+ * los de hoy.
  */
-function describirCambio(tabla: string, accion: string, antes: Foto, despues: Foto): string {
-  if (accion === 'alta') return 'alta'
-  if (despues?.password === 'regenerada') return 'contraseña nueva'
-
+export function describirCambio(
+  tabla: string,
+  accion: string,
+  antes: Foto,
+  despues: Foto,
+  nombres: Nombres,
+): string {
   if (tabla === 'dispositivo') {
-    return `nombre: «${antes?.nombre ?? 'sin nombre'}» → «${despues?.nombre ?? 'sin nombre'}»`
+    return `Nombre: «${antes?.nombre ?? 'sin nombre'}» → «${despues?.nombre ?? 'sin nombre'}»`
+  }
+  if (despues?.password === 'regenerada') return 'Le generó una contraseña nueva'
+
+  if (accion === 'alta') {
+    const roles = Array.isArray(despues?.rolIds) ? (despues.rolIds as string[]) : []
+    const sucursales = Array.isArray(despues?.sucursalIds) ? (despues.sucursalIds as string[]) : []
+    const conRoles = roles.length
+      ? `con ${enumerar(
+          'el rol',
+          'los roles',
+          roles.map((id) => nombres.roles.get(id) ?? 'uno que ya no existe'),
+        )}`
+      : 'sin rol'
+    const donde = sucursales.map((id) => nombres.sucursales.get(id) ?? 'una que ya no existe')
+    return `Lo dio de alta ${conRoles}${donde.length ? `, en ${donde.join(', ')}` : ''}`
   }
 
-  const nombres: Record<string, string> = {
-    nombre: 'nombre',
-    apellido: 'apellido',
-    email: 'correo',
-    activo: accion === 'baja' ? 'dado de baja' : 'estado',
-    rolIds: 'roles',
-    sucursalIds: 'sucursales',
+  const partes: string[] = []
+  if (antes?.activo !== despues?.activo) {
+    partes.push(despues?.activo ? 'lo volvió a habilitar' : 'lo dio de baja')
   }
-  const igual = (a: unknown, b: unknown) =>
-    Array.isArray(a) && Array.isArray(b) ? [...a].sort().join() === [...b].sort().join() : a === b
+  partes.push(...diferencia(antes?.rolIds, despues?.rolIds, nombres.roles, 'el rol', 'los roles'))
+  partes.push(
+    ...diferencia(
+      antes?.sucursalIds,
+      despues?.sucursalIds,
+      nombres.sucursales,
+      'la sucursal',
+      'las sucursales',
+    ).map((parte) =>
+      parte.replace('le agregó', 'le dio acceso a').replace('le quitó', 'le sacó el acceso a'),
+    ),
+  )
+  for (const [clave, etiqueta] of [
+    ['nombre', 'nombre'],
+    ['apellido', 'apellido'],
+  ] as const) {
+    if (antes?.[clave] !== despues?.[clave]) {
+      partes.push(
+        `${etiqueta}: «${String(antes?.[clave] ?? '')}» → «${String(despues?.[clave] ?? '')}»`,
+      )
+    }
+  }
 
-  const cambiados = Object.keys(nombres).filter((k) => !igual(antes?.[k], despues?.[k]))
-  return cambiados.map((k) => nombres[k]).join(', ') || 'sin cambios'
+  return juntar(partes)
 }
 
 /**
@@ -117,6 +192,20 @@ export class ServicioAuditoria {
 
   cambios(entrada: { pagina: number; porPagina: number }) {
     return this.datos.transaccion(async (tx) => {
+      const nombres: Nombres = {
+        roles: new Map(
+          (await tx.select({ id: rol.id, nombre: rol.nombre }).from(rol)).map((r) => [
+            r.id,
+            r.nombre,
+          ]),
+        ),
+        sucursales: new Map(
+          (await tx.select({ id: sucursal.id, nombre: sucursal.nombre }).from(sucursal)).map(
+            (r) => [r.id, r.nombre],
+          ),
+        ),
+      }
+
       const { rows } = await tx.execute<{
         fecha: Date
         autor: string | null
@@ -154,7 +243,7 @@ export class ServicioAuditoria {
                 ? `la computadora ${r.sobre_dispositivo ?? 'sin datos'}`
                 : r.tabla,
           accion: r.accion,
-          detalle: describirCambio(r.tabla, r.accion, r.datos_antes, r.datos_despues),
+          detalle: describirCambio(r.tabla, r.accion, r.datos_antes, r.datos_despues, nombres),
           ip: r.ip,
         })),
         total: Number(rows[0]?.total ?? 0),

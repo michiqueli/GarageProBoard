@@ -156,8 +156,6 @@ function Cambios() {
     queryFn: () => api.auditoria.cambios({ pagina: 1, porPagina: 100 }),
   })
 
-  const ACCION = { alta: 'Alta', modificacion: 'Modificación', baja: 'Baja' } as const
-
   return (
     <Listado
       consulta={consulta}
@@ -173,9 +171,9 @@ function Cambios() {
           <span key="s" className="text-texto-suave">
             {c.sobre}
           </span>,
-          <span key="d">
-            {ACCION[c.accion]}: {c.detalle}
-          </span>,
+          // El detalle ya dice qué pasó —«Lo dio de baja», «Le agregó el rol…»—: anteponerle
+          // «Modificación» sólo lo alarga.
+          <span key="d">{c.detalle}</span>,
           <span key="i" className="font-mono text-etiqueta text-texto-suave">
             {c.ip ?? '—'}
           </span>,

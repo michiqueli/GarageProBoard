@@ -21,6 +21,7 @@ beforeAll(async () => {
       { email: 'sistemas@auditoria.test', rol: 'Administrador de sistema' },
       { email: 'mecanico@auditoria.test', rol: 'Mecánico' },
       { email: 'asesor@auditoria.test', rol: 'Asesor de servicios' },
+      { email: 'recepcion@auditoria.test', rol: 'Asesor de servicios' },
     ],
   })
 }, 180_000)
@@ -119,8 +120,32 @@ describe('los cambios', () => {
       autor: 'Prueba Administrador de sistema',
       sobre: 'el usuario mecanico@auditoria.test',
       accion: 'modificacion',
-      detalle: 'contraseña nueva',
+      detalle: 'Le generó una contraseña nueva',
     })
+  })
+})
+
+describe('los cambios, contados en palabras', () => {
+  it('dicen qué rol se agregó y cuál se quitó, con su nombre', async () => {
+    const gerente = await entrar('gerente@auditoria.test')
+    const { datos: usuarios } = (await pedir(gerente.access, 'GET', '/usuarios')).json()
+    const asesor = usuarios.find((u: { email: string }) => u.email === 'recepcion@auditoria.test')
+    const { roles } = (await pedir(gerente.access, 'GET', '/usuarios/opciones')).json()
+    const idDe = (nombre: string) => roles.find((r: { nombre: string }) => r.nombre === nombre).id
+
+    await pedir(gerente.access, 'PUT', `/usuarios/${asesor.id}`, {
+      nombre: asesor.nombre,
+      apellido: 'Asesora',
+      rolIds: [idDe('Cajero'), idDe('Mecánico')],
+      sucursalIds: asesor.sucursales.map((s: { id: string }) => s.id),
+      activo: false,
+    })
+
+    const { datos } = (await pedir(gerente.access, 'GET', '/auditoria/cambios')).json()
+    expect(datos[0].detalle).toBe(
+      'Lo dio de baja, le agregó los roles Cajero y Mecánico, le quitó el rol Asesor de ' +
+        'servicios y apellido: «Asesor de servicios» → «Asesora»',
+    )
   })
 })
 
@@ -137,7 +162,7 @@ describe('las computadoras', () => {
     const { datos } = (await pedir(gerente.access, 'GET', '/auditoria/cambios')).json()
     expect(datos[0]).toMatchObject({
       sobre: 'la computadora PC de gerencia',
-      detalle: 'nombre: «sin nombre» → «PC de gerencia»',
+      detalle: 'Nombre: «sin nombre» → «PC de gerencia»',
     })
   })
 
