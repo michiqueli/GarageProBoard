@@ -1,5 +1,5 @@
 import { type Db, eq, sql } from '@gpb/db'
-import { auditoria, dispositivo, rol, sucursal } from '@gpb/db/schema'
+import { auditoria, condicionIva, dispositivo, provincia, rol, sucursal } from '@gpb/db/schema'
 import { Inject, Injectable } from '@nestjs/common'
 import { DatosDelTenant } from '../comun/datos.ts'
 
@@ -11,10 +11,53 @@ export class ErrorAuditoria extends Error {
 
 type Foto = Record<string, unknown> | null
 
-/** Para traducir ids a nombres: roles y sucursales de la concesionaria. */
+/**
+ * Para traducir ids y códigos a nombres: roles y sucursales de la concesionaria, y los
+ * catálogos de AFIP. «provincia: «vacío» → «12»» no le dice nada a quien audita.
+ */
 export interface Nombres {
   roles: ReadonlyMap<string, string>
   sucursales: ReadonlyMap<string, string>
+  condicionesIva: ReadonlyMap<number, string>
+  provincias: ReadonlyMap<number, string>
+}
+
+/** Los valores fijos que la base guarda como código, dichos como en la pantalla. */
+const VALORES: Record<string, Record<string, string>> = {
+  condicionIibb: {
+    local: 'Contribuyente local',
+    convenio: 'Convenio Multilateral',
+    exento: 'Exento',
+    no_inscripto: 'No inscripto',
+  },
+  uso: { facturacion: 'Facturación', remito: 'Remitos', otro: 'Otro' },
+}
+
+/** Un valor como lo lee una persona. Un código que ya no está en el catálogo se muestra tal cual. */
+function legible(clave: string, valor: unknown, nombres: Nombres): string {
+  if (valor === null || valor === undefined || valor === '') return 'vacío'
+  if (clave === 'condicionIva') return nombres.condicionesIva.get(Number(valor)) ?? String(valor)
+  if (clave === 'provinciaCodigo') return nombres.provincias.get(Number(valor)) ?? String(valor)
+  return VALORES[clave]?.[String(valor)] ?? String(valor)
+}
+
+/** «domicilio: «Ruta 34 km 3» → «Ruta 34 km 3,5»», por cada campo que cambió. */
+function cambiosDe(
+  campos: Record<string, string>,
+  antes: Foto,
+  despues: Foto,
+  nombres: Nombres,
+): string[] {
+  const partes: string[] = []
+  for (const [clave, etiqueta] of Object.entries(campos)) {
+    if (!(clave in (antes ?? {}))) continue
+    const a = antes?.[clave] ?? null
+    const d = despues?.[clave] ?? null
+    if (a !== d) {
+      partes.push(`${etiqueta}: «${legible(clave, a, nombres)}» → «${legible(clave, d, nombres)}»`)
+    }
+  }
+  return partes
 }
 
 /** «el rol Mecánico», «los roles Mecánico y Cajero». */
@@ -103,35 +146,30 @@ const CAMPOS_CLIENTE: Record<string, string> = {
   observaciones: 'observaciones',
 }
 
-function describirCliente(accion: string, antes: Foto, despues: Foto): string {
+function describirCliente(accion: string, antes: Foto, despues: Foto, nombres: Nombres): string {
   if (accion === 'alta') {
     // Si la identidad ya existía, el alta pisó sus datos: se dice, y se dice qué cambió.
     if (!despues?.yaExistia) return 'Lo dio de alta'
     return juntar([
       'lo dio de alta sobre una identidad fiscal que ya existía',
-      ...cambiosDe(antes, despues),
+      ...cambiosDe(CAMPOS_CLIENTE, antes, despues, nombres),
     ])
   }
   const partes: string[] = []
   if (antes?.activo !== despues?.activo) {
     partes.push(despues?.activo ? 'lo volvió a activar' : 'lo desactivó')
   }
-  return juntar([...partes, ...cambiosDe(antes, despues)])
-}
-
-function cambiosDe(antes: Foto, despues: Foto): string[] {
-  const partes: string[] = []
-  for (const [clave, etiqueta] of Object.entries(CAMPOS_CLIENTE)) {
-    if (!(clave in (antes ?? {}))) continue
-    const a = antes?.[clave] ?? null
-    const d = despues?.[clave] ?? null
-    if (a !== d) partes.push(`${etiqueta}: «${a ?? 'vacío'}» → «${d ?? 'vacío'}»`)
-  }
-  return partes
+  return juntar([...partes, ...cambiosDe(CAMPOS_CLIENTE, antes, despues, nombres)])
 }
 
 /** Qué cambió en una empresa, sucursal o punto de venta. Masculino y femenino, como se dice. */
-function describirOrganizacion(tabla: string, accion: string, antes: Foto, despues: Foto): string {
+function describirOrganizacion(
+  tabla: string,
+  accion: string,
+  antes: Foto,
+  despues: Foto,
+  nombres: Nombres,
+): string {
   const la = tabla === 'punto_venta' ? 'lo' : 'la'
   if (accion === 'alta') return `${la === 'lo' ? 'Lo' : 'La'} dio de alta`
 
@@ -153,15 +191,7 @@ function describirOrganizacion(tabla: string, accion: string, antes: Foto, despu
         : 'la sacó de Convenio Multilateral',
     )
   }
-  for (const [clave, etiqueta] of Object.entries(CAMPOS_ORGANIZACION)) {
-    const a = antes?.[clave] ?? null
-    const d = despues?.[clave] ?? null
-    if (a !== d && (clave in (antes ?? {}) || clave in (despues ?? {}))) {
-      partes.push(`${etiqueta}: «${a ?? 'vacío'}» → «${d ?? 'vacío'}»`)
-    }
-  }
-
-  return juntar(partes)
+  return juntar([...partes, ...cambiosDe(CAMPOS_ORGANIZACION, antes, despues, nombres)])
 }
 
 export function describirCambio(
@@ -172,9 +202,9 @@ export function describirCambio(
   nombres: Nombres,
 ): string {
   if (tabla === 'empresa' || tabla === 'sucursal' || tabla === 'punto_venta') {
-    return describirOrganizacion(tabla, accion, antes, despues)
+    return describirOrganizacion(tabla, accion, antes, despues, nombres)
   }
-  if (tabla === 'cliente') return describirCliente(accion, antes, despues)
+  if (tabla === 'cliente') return describirCliente(accion, antes, despues, nombres)
   if (tabla === 'dispositivo') {
     return `Nombre: «${antes?.nombre ?? 'sin nombre'}» → «${despues?.nombre ?? 'sin nombre'}»`
   }
@@ -312,6 +342,18 @@ export class ServicioAuditoria {
           (await tx.select({ id: sucursal.id, nombre: sucursal.nombre }).from(sucursal)).map(
             (r) => [r.id, r.nombre],
           ),
+        ),
+        condicionesIva: new Map(
+          (
+            await tx
+              .select({ codigo: condicionIva.codigo, descripcion: condicionIva.descripcion })
+              .from(condicionIva)
+          ).map((c) => [c.codigo, c.descripcion]),
+        ),
+        provincias: new Map(
+          (
+            await tx.select({ codigo: provincia.codigo, nombre: provincia.nombre }).from(provincia)
+          ).map((p) => [p.codigo, p.nombre]),
         ),
       }
 

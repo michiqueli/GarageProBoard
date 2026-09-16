@@ -208,6 +208,29 @@ describe('el buscador', () => {
   })
 })
 
+describe('la auditoría', () => {
+  it('cuenta los cambios con los nombres de los catálogos, no con sus códigos', async () => {
+    const access = await entrar('gerente@clientes.test')
+    const { datos } = (await pedir(access, 'GET', '/clientes?buscar=Transportes')).json()
+
+    const r = await pedir(access, 'PUT', `/clientes/${datos[0].id}`, {
+      ...TRANSPORTES,
+      condicionIva: 6,
+      provinciaCodigo: null,
+      condicionIibb: 'convenio',
+      activo: true,
+    })
+    expect(r.statusCode).toBe(200)
+
+    const { datos: cambios } = (await pedir(access, 'GET', '/auditoria/cambios')).json()
+    expect(cambios[0].detalle).toBe(
+      'Condición frente al IVA: «IVA Responsable Inscripto» → «Responsable Monotributo», ' +
+        'provincia: «Santa Fe» → «vacío» y ' +
+        'condición en Ingresos Brutos: «Contribuyente local» → «Convenio Multilateral»',
+    )
+  })
+})
+
 describe('la baja', () => {
   it('desactiva, no borra: sale del listado pero sigue estando', async () => {
     const access = await entrar('gerente@clientes.test')
