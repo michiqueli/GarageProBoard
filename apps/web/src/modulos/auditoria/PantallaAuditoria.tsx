@@ -347,7 +347,7 @@ function Listado({
         {filas.map((f) => (
           <tr key={f.clave} className="hover:bg-superficie-2">
             {f.celdas.map((c, i) => (
-              <td key={columnas[i]} className="h-fila border-b border-borde-suave px-3">
+              <td key={columnas[i]} className="h-fila border-b border-borde-suave px-3 py-1">
                 {c}
               </td>
             ))}

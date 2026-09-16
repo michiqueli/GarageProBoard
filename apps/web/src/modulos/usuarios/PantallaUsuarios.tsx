@@ -149,7 +149,7 @@ export function PantallaUsuarios() {
                   <td className="h-fila border-b border-borde-suave px-3 font-mono text-etiqueta text-texto-suave">
                     {u.ultimoAcceso ? FECHA.format(new Date(u.ultimoAcceso)) : 'Nunca'}
                   </td>
-                  <td className="h-fila border-b border-borde-suave px-3 text-right">
+                  <td className="h-fila border-b border-borde-suave px-3 py-1 text-right">
                     <AccionFila
                       usuario={u}
                       puedeEditar={puedeEditar}
@@ -179,7 +179,7 @@ export function PantallaUsuarios() {
                   {u.roles.map((r) => r.nombre).join(', ') || 'Sin rol'} ·{' '}
                   {u.sucursales.map((s) => s.nombre).join(', ')}
                 </span>
-                <div>
+                <div className="mt-1.5">
                   <AccionFila
                     usuario={u}
                     puedeEditar={puedeEditar}

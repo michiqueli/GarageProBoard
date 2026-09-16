@@ -202,7 +202,7 @@ export function PantallaClientes() {
                     <td className="h-fila border-b border-borde-suave px-3 text-etiqueta text-texto-suave">
                       {[c.telefono, c.email].filter(Boolean).join(' · ') || '—'}
                     </td>
-                    <td className="h-fila border-b border-borde-suave px-3 text-right">
+                    <td className="h-fila border-b border-borde-suave px-3 py-1 text-right">
                       {puedeEditar && (
                         <Boton
                           tamano="chico"
