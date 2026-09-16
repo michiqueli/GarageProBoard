@@ -71,7 +71,7 @@ afterEach(cleanup)
 
 async function buscar(texto: string) {
   await userEvent.keyboard('{F3}')
-  const campo = screen.getByRole('searchbox', { name: 'Buscar en todo el sistema' })
+  const campo = screen.getByRole('searchbox', { name: 'Buscar patente, chasis o cliente' })
   expect(document.activeElement).toBe(campo)
   await userEvent.type(campo, texto)
   return screen.findByRole('region', { name: `Resultados para ${texto}` })
@@ -119,7 +119,7 @@ describe('el buscador del encabezado', () => {
 
     expect(screen.queryByRole('region', { name: /Resultados para/ })).toBeNull()
     expect(document.activeElement).toBe(
-      screen.getByRole('searchbox', { name: 'Buscar en todo el sistema' }),
+      screen.getByRole('searchbox', { name: 'Buscar patente, chasis o cliente' }),
     )
   })
 
@@ -162,6 +162,6 @@ describe('con los permisos de cada uno', () => {
     await montarApp('/')
     await screen.findByRole('heading', { name: /Todavía no tenés ninguna pantalla/ })
 
-    expect(screen.queryByRole('searchbox', { name: 'Buscar en todo el sistema' })).toBeNull()
+    expect(screen.queryByRole('searchbox', { name: 'Buscar patente, chasis o cliente' })).toBeNull()
   })
 })

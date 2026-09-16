@@ -321,6 +321,6 @@ describe('la ficha', () => {
     await montarApp(`/vehiculos/${ID}`)
 
     expect((await screen.findByRole('alert')).textContent).toMatch(/buscalo desde el listado/)
-    expect(screen.getByRole('link', { name: '← Todos los vehículos' })).toBeDefined()
+    expect(screen.getByRole('link', { name: 'Todos los vehículos' })).toBeDefined()
   })
 })

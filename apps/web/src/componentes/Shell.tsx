@@ -9,6 +9,7 @@ import { useAutorizacion, useVeredicto } from '../sesion/permisos.ts'
 import { useAtajo, useTeclado } from '../teclado/index.ts'
 import { BarraEstado } from './BarraEstado.tsx'
 import { BuscadorGlobal } from './BuscadorGlobal.tsx'
+import { BuscadorSistema } from './BuscadorSistema.tsx'
 import { Tecla } from './Tecla.tsx'
 
 /**
@@ -75,6 +76,8 @@ export function Shell({
         <p className="truncate px-2 pb-3 font-mono text-[10.5px] tracking-[0.1em] text-texto-tenue uppercase">
           {datos?.tenant.nombre ?? '—'}
         </p>
+
+        <BuscadorSistema />
 
         <Nav secciones={visibles(PRINCIPALES, autorizacion)} />
         <div className="mx-2 my-3 h-px bg-borde-suave" />

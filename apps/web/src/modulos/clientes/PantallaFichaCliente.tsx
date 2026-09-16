@@ -3,9 +3,9 @@ import { ORPCError } from '@orpc/client'
 import { useQuery } from '@tanstack/react-query'
 import { getRouteApi, Link } from '@tanstack/react-router'
 import { type ReactNode, useState } from 'react'
-import { Boton } from '../../componentes/Boton.tsx'
+import { Boton, clasesBoton } from '../../componentes/Boton.tsx'
 import { BotonCopiar } from '../../componentes/Copiar.tsx'
-import { IconoEditar } from '../../componentes/iconos.tsx'
+import { IconoEditar, IconoVolver } from '../../componentes/iconos.tsx'
 import { Patente } from '../../componentes/Patente.tsx'
 import { Shell } from '../../componentes/Shell.tsx'
 import { usarSesion } from '../../sesion/almacen.ts'
@@ -56,8 +56,10 @@ export function PantallaFichaCliente() {
 
   return (
     <Shell titulo={c?.razonSocial ?? 'Cliente'} requiere={accesoDeRuta(contrato.clientes.ficha)}>
-      <Link to="/clientes" className="w-fit text-etiqueta text-marca hover:underline">
-        ← Todos los clientes
+      {/* Un enlace con forma de botón: sigue abriéndose en otra pestaña con el clic del medio. */}
+      <Link to="/clientes" className={`w-fit ${clasesBoton('normal', 'chico')}`}>
+        <IconoVolver />
+        Todos los clientes
       </Link>
 
       {consulta.isPending && <div className="h-40 animate-pulse rounded-base bg-superficie-2" />}

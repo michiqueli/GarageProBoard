@@ -7,7 +7,7 @@ import { type FormEvent, type ReactNode, useState } from 'react'
 import { confirmar } from '../../componentes/avisos.ts'
 import { Boton, clasesBoton } from '../../componentes/Boton.tsx'
 import { Campo } from '../../componentes/Campo.tsx'
-import { IconoDescargar } from '../../componentes/iconos.tsx'
+import { IconoDescargar, IconoVolver } from '../../componentes/iconos.tsx'
 import { Shell } from '../../componentes/Shell.tsx'
 import { usarSesion } from '../../sesion/almacen.ts'
 import { api } from '../../sesion/cliente.ts'
@@ -131,8 +131,10 @@ export function PantallaCertificadoAfip() {
 
   return (
     <Shell titulo="Certificado de AFIP" requiere={accesoDeRuta(contrato.certificados.estado)}>
-      <Link to="/empresas" className="w-fit text-etiqueta text-marca hover:underline">
-        ← Empresas y sucursales
+      {/* Un enlace con forma de botón: sigue abriéndose en otra pestaña con el clic del medio. */}
+      <Link to="/empresas" className={`w-fit ${clasesBoton('normal', 'chico')}`}>
+        <IconoVolver />
+        Empresas y sucursales
       </Link>
 
       {consulta.isPending && <div className="h-40 animate-pulse rounded-base bg-superficie-2" />}

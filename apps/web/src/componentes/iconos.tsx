@@ -82,3 +82,11 @@ export function IconoListo() {
     </svg>
   )
 }
+
+export function IconoVolver() {
+  return (
+    <svg {...trazo} aria-hidden="true">
+      <path d="M13 8H3.5M7.5 4L3.5 8l4 4" />
+    </svg>
+  )
+}

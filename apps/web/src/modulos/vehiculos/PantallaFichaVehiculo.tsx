@@ -4,10 +4,10 @@ import { ORPCError } from '@orpc/client'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { getRouteApi, Link } from '@tanstack/react-router'
 import { type FormEvent, type ReactNode, useRef, useState } from 'react'
-import { Boton } from '../../componentes/Boton.tsx'
+import { Boton, clasesBoton } from '../../componentes/Boton.tsx'
 import { Campo } from '../../componentes/Campo.tsx'
 import { BotonCopiar, copiarConAviso } from '../../componentes/Copiar.tsx'
-import { IconoEditar, IconoTransferir } from '../../componentes/iconos.tsx'
+import { IconoEditar, IconoTransferir, IconoVolver } from '../../componentes/iconos.tsx'
 import { Patente } from '../../componentes/Patente.tsx'
 import { type ClienteElegido, SelectorCliente } from '../../componentes/SelectorCliente.tsx'
 import { Shell } from '../../componentes/Shell.tsx'
@@ -101,8 +101,10 @@ export function PantallaFichaVehiculo() {
         ) : undefined
       }
     >
-      <Link to="/vehiculos" className="w-fit text-etiqueta text-marca hover:underline">
-        ← Todos los vehículos
+      {/* Un enlace con forma de botón: sigue abriéndose en otra pestaña con el clic del medio. */}
+      <Link to="/vehiculos" className={`w-fit ${clasesBoton('normal', 'chico')}`}>
+        <IconoVolver />
+        Todos los vehículos
       </Link>
 
       {consulta.isPending && <div className="h-40 animate-pulse rounded-base bg-superficie-2" />}

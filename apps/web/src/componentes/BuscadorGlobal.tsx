@@ -157,7 +157,7 @@ export function BuscadorGlobal() {
             setAbierto(true)
           }}
           onFocus={() => setAbierto(true)}
-          aria-label="Buscar en todo el sistema"
+          aria-label="Buscar patente, chasis o cliente"
           aria-controls="buscador-global-resultados"
           placeholder={
             puedeVehiculos && puedeClientes
