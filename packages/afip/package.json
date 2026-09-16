@@ -7,6 +7,10 @@
     ".": {
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js"
+    },
+    "./pruebas": {
+      "types": "./dist/pruebas.d.ts",
+      "import": "./dist/pruebas.js"
     }
   },
   "scripts": {
@@ -17,12 +21,14 @@
   },
   "dependencies": {
     "@arcasdk/core": "2.0.2",
-    "decimal.js": "10.6.0"
+    "@peculiar/x509": "2.1.0",
+    "decimal.js": "10.6.0",
+    "reflect-metadata": "0.2.2"
   },
   "devDependencies": {
+    "@types/node": "24.13.4",
     "typescript": "7.0.2",
-    "vitest": "5.0.0",
-    "@types/node": "24.13.4"
+    "vitest": "5.0.0"
   },
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts"

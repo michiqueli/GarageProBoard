@@ -1,3 +1,4 @@
+export * from './certificados.ts'
 export * from './comprobante.ts'
 export * from './facturacion-arca.ts'
 export * from './padron.ts'

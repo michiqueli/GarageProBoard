@@ -1,3 +1,4 @@
+import { randomBytes } from 'node:crypto'
 import {
   atajosParaSembrar,
   cuitValido,
@@ -61,6 +62,7 @@ export async function levantarApi(
   process.env.DATABASE_URL_APP = pg.urlApp
   process.env.JWT_SECRET = 'secreto-de-prueba-con-mas-de-32-caracteres'
   process.env.NODE_ENV = 'test'
+  process.env.SECRETOS_MASTER_KEY = randomBytes(32).toString('base64')
 
   await sembrarCatalogos(pg.dbDuenio)
 

@@ -5,6 +5,8 @@ import { LoggerModule } from 'nestjs-pino'
 import { ControladorAuditoria } from './auditoria/auditoria.controller.ts'
 import { ServicioAuditoria } from './auditoria/auditoria.service.ts'
 import { ModuloAuth } from './auth/auth.module.ts'
+import { ControladorCertificados } from './certificados/certificados.controller.ts'
+import { ServicioCertificados } from './certificados/certificados.service.ts'
 import { ControladorClientes } from './clientes/clientes.controller.ts'
 import { ServicioClientes } from './clientes/clientes.service.ts'
 import { ModuloBase } from './comun/base.module.ts'
@@ -49,6 +51,7 @@ import { ServicioVehiculos } from './vehiculos/vehiculos.service.ts'
     ControladorOrganizacion,
     ControladorClientes,
     ControladorRoles,
+    ControladorCertificados,
   ],
   providers: [
     ServicioUsuarios,
@@ -57,6 +60,7 @@ import { ServicioVehiculos } from './vehiculos/vehiculos.service.ts'
     ServicioClientes,
     ServicioVehiculos,
     ServicioRoles,
+    ServicioCertificados,
   ],
 })
 export class ModuloPrincipal {}

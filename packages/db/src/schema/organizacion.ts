@@ -11,6 +11,7 @@ import {
   primaryKey,
   smallint,
   text,
+  timestamp,
   unique,
   uniqueIndex,
   uuid,
@@ -154,4 +155,57 @@ export const comprobanteSecuencia = pgTable(
     actualizadoEn: actualizadoEn(),
   },
   (t) => [primaryKey({ columns: [t.puntoVentaId, t.tipoComprobante] })],
+)
+
+/**
+ * El certificado con el que una razón social factura. Ver `docs/tecnicos/afip-certificados.md`.
+ *
+ * Una fila por pedido. El ciclo: `pendiente` al generar el pedido; se le carga el
+ * certificado que devuelve ARCA; pasa a `activo` recién cuando la prueba contra AFIP sale
+ * bien, y el que estaba activo queda `reemplazado`. Así renovar no corta la facturación.
+ * Un pedido que se abandona por otro queda `descartado`. Vencido no es un estado: se
+ * deduce de `vigente_hasta`, sin que nadie tenga que acordarse de marcarlo.
+ *
+ * La clave privada se guarda **cifrada** con la clave maestra (AES-256-GCM): un respaldo de
+ * la base que se filtra no alcanza para facturar con el CUIT de nadie.
+ */
+export const certificadoAfip = pgTable(
+  'certificado_afip',
+  {
+    id: pk(),
+    tenantId: tenantId().references(() => tenant.id),
+    empresaId: uuid()
+      .notNull()
+      .references(() => empresa.id),
+    estado: text().notNull().default('pendiente'),
+    /** El nombre del computador en ARCA. */
+    alias: text().notNull(),
+    /** El CSR que se carga en ARCA. No es secreto. */
+    pedido: text().notNull(),
+    clavePrivadaCifrada: text().notNull(),
+    certificado: text(),
+    entorno: text(),
+    vigenteDesde: timestamp({ withTimezone: true }),
+    vigenteHasta: timestamp({ withTimezone: true }),
+    creadoEn: creadoEn(),
+    actualizadoEn: actualizadoEn(),
+  },
+  (t) => [
+    index('certificado_afip_empresa_idx').on(t.empresaId),
+    uniqueIndex('certificado_afip_activo_uq').on(t.empresaId).where(sql`estado = 'activo'`),
+    uniqueIndex('certificado_afip_pendiente_uq').on(t.empresaId).where(sql`estado = 'pendiente'`),
+    check(
+      'certificado_afip_estado_valido',
+      sql`${t.estado} in ('pendiente', 'activo', 'reemplazado', 'descartado')`,
+    ),
+    check(
+      'certificado_afip_entorno_valido',
+      sql`${t.entorno} is null or ${t.entorno} in ('produccion', 'homologacion')`,
+    ),
+    // Sin certificado no hay con qué facturar: no puede estar activo.
+    check(
+      'certificado_afip_activo_completo',
+      sql`${t.estado} <> 'activo' or (${t.certificado} is not null and ${t.entorno} is not null and ${t.vigenteHasta} is not null)`,
+    ),
+  ],
 )

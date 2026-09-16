@@ -136,6 +136,9 @@ export function sobreQue(tabla: string, antes: Foto, despues: Foto): string {
     return `el punto de venta ${String(dato('numero')).padStart(4, '0')}`
   }
   if (tabla === 'cliente') return `el cliente ${String(dato('razonSocial'))}`
+  if (tabla === 'certificado_afip') {
+    return `el certificado de AFIP de ${String(dato('empresa'))}`
+  }
   if (tabla === 'rol') return `el rol ${String(dato('nombre'))}`
   if (tabla === 'vehiculo' || tabla === 'titularidad') {
     return `el vehículo ${String(dato('dominio') ?? dato('chasis'))}`
@@ -228,6 +231,21 @@ function describirCliente(accion: string, antes: Foto, despues: Foto, nombres: N
   return juntar([...partes, ...cambiosDe(CAMPOS_CLIENTE, antes, despues, nombres)])
 }
 
+/** Cada paso del certificado de AFIP. Nunca guarda ni muestra la clave. */
+function describirCertificado(despues: Foto): string {
+  const entorno = despues?.entorno === 'produccion' ? 'de producción' : 'de homologación'
+  if (despues?.evento === 'pedido') {
+    return `Generó el pedido de certificado para el computador «${String(despues.alias)}»`
+  }
+  if (despues?.evento === 'certificado') {
+    return `Cargó el certificado ${entorno}, vigente hasta el ${fecha(despues.vigenteHasta)}`
+  }
+  if (despues?.evento === 'activado') {
+    return `Lo probó contra AFIP y quedó activo: se factura con el computador «${String(despues.alias)}»`
+  }
+  return 'Lo modificó'
+}
+
 /** Qué cambió en una empresa, sucursal o punto de venta. Masculino y femenino, como se dice. */
 function describirOrganizacion(
   tabla: string,
@@ -271,6 +289,7 @@ export function describirCambio(
     return describirOrganizacion(tabla, accion, antes, despues, nombres)
   }
   if (tabla === 'cliente') return describirCliente(accion, antes, despues, nombres)
+  if (tabla === 'certificado_afip') return describirCertificado(despues)
   if (tabla === 'rol') return describirRol(accion, antes, despues)
   if (tabla === 'vehiculo' || tabla === 'titularidad') {
     return describirVehiculo(tabla, accion, antes, despues, nombres)

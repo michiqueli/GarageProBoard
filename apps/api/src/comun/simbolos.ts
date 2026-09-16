@@ -7,3 +7,5 @@
  */
 export const POOL = Symbol('POOL')
 export const DB = Symbol('DB')
+/** `(entorno) => ServicioFiscal`: la facturación de AFIP, una por entorno. */
+export const FISCAL = Symbol('FISCAL')
