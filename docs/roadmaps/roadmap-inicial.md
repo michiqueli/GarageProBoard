@@ -127,7 +127,8 @@ Las entidades ya están modeladas; falta poder operarlas.
       con el módulo de repuestos
 - ✅ ABM de vehículos: alta con marca, modelo y titular, edición sin tocar el chasis, y
       transferencia de titular que cierra la anterior sin borrarla
-- ⬜ Búsqueda única: por patente, por chasis, por cliente, por CUIT
+- ✅ Búsqueda única en el encabezado (`F3`): por patente, por chasis, por cliente, por CUIT,
+      cada grupo según los permisos de quien busca
 - 🔨 Ficha del vehículo con su historia: titulares anteriores con sus fechas y los cambios
       contados en palabras. Faltan las órdenes de trabajo, que llegan con el Hito 4
 - ✅ **Patrón de listado responsive** resuelto en la pantalla de OT: tabla densa en

@@ -8,6 +8,7 @@ import { api } from '../sesion/cliente.ts'
 import { useAutorizacion, useVeredicto } from '../sesion/permisos.ts'
 import { useAtajo, useTeclado } from '../teclado/index.ts'
 import { BarraEstado } from './BarraEstado.tsx'
+import { BuscadorGlobal } from './BuscadorGlobal.tsx'
 import { Tecla } from './Tecla.tsx'
 
 /**
@@ -116,27 +117,7 @@ export function Shell({
         <header className="flex flex-wrap items-center gap-3 border-b border-borde bg-superficie px-4 py-2.5">
           <h1 className="font-display text-lg font-semibold tracking-tight">{titulo}</h1>
 
-          <label className="ml-auto flex h-campo min-w-56 items-center gap-2 rounded-base border border-borde bg-superficie-2 px-2.5">
-            <svg
-              width="13"
-              height="13"
-              viewBox="0 0 16 16"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="1.6"
-              className="shrink-0 text-texto-tenue"
-              aria-hidden="true"
-            >
-              <circle cx="7" cy="7" r="4.5" />
-              <path d="M10.5 10.5L14 14" />
-            </svg>
-            <input
-              type="search"
-              placeholder="Patente, chasis o cliente"
-              className="min-w-0 flex-1 bg-transparent text-dato outline-none placeholder:text-texto-tenue"
-            />
-            {teclaDe('global.buscar') && <Tecla tecla={teclaDe('global.buscar') ?? ''} />}
-          </label>
+          <BuscadorGlobal />
 
           <span className="flex h-campo items-center gap-2 rounded-base border border-borde px-2.5 text-dato">
             {datos?.sucursalActiva.nombre ?? ''}
