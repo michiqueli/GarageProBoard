@@ -82,8 +82,8 @@ después. El mapa, la configuración por módulo y quién puede tocarla, en
       y rrhh, con el flag colgando de la pantalla y no de la entidad
 - ✅ Dependencias declaradas entre módulos, con `dependenciasRotas()` lista para el back-office
 - ⬜ El back-office que impide apagar el piso de uno prendido
-- ⬜ Acción `configurar` en el catálogo de permisos: entrar a un módulo no es poder
-      tocar sus credenciales
+- ✅ Acción `configurar` en el catálogo de permisos: entrar a un módulo no es poder
+      tocar sus credenciales. Ningún rol predefinido la trae salvo el gerente
 - ⬜ Pantalla de configuración **adentro de cada módulo**, más un índice que las liste
 - ⬜ **Buscador del sistema en la barra lateral**, la misma cosa que la paleta de `F10`:
       «mercado pago» lleva a su configuración y «certificados» a los de AFIP. Con

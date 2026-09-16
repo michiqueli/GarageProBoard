@@ -164,8 +164,9 @@ vivieran juntas, el administrador del cliente se habilitaría solo el módulo qu
 
 ## Cómo está construido
 
-Lo que existe al 16/09/2026. El back-office, la acción `configurar` y las pantallas de
-configuración todavía no.
+Lo que existe al 16/09/2026. El back-office y las pantallas de configuración todavía no;
+la acción `configurar` ya está en el catálogo de permisos y ningún rol predefinido la
+trae salvo el gerente.
 
 | Pieza | Dónde | Qué hace |
 | --- | --- | --- |

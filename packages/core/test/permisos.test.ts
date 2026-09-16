@@ -58,6 +58,22 @@ describe('los roles predefinidos', () => {
     expect(cajero.can('anular', 'Comprobante')).toBe(false)
   })
 
+  it('trabajar en un módulo no es poder configurarlo', () => {
+    // La configuración guarda credenciales: el que edita órdenes no toca los motivos de
+    // espera del taller, y el que emite comprobantes no toca los certificados de AFIP.
+    expect(habilidadesDe('Asesor de servicios').can('configurar', 'Orden')).toBe(false)
+    expect(habilidadesDe('Administrativo').can('configurar', 'Comprobante')).toBe(false)
+    expect(habilidadesDe('Cajero').can('configurar', 'Comprobante')).toBe(false)
+    expect(habilidadesDe('Gerente').can('configurar', 'Comprobante')).toBe(true)
+  })
+
+  it('ningún rol predefinido trae configurar, salvo el gerente por administrar todo', () => {
+    for (const rol of ROLES_PREDEFINIDOS) {
+      const acciones = rol.habilidades.flatMap((r) => r.action)
+      expect(acciones, rol.nombre).not.toContain('configurar')
+    }
+  })
+
   it('el repuestero no tiene nada que hacer con el parque de vehículos', () => {
     expect(habilidadesDe('Repuestero').can('ver', 'Vehiculo')).toBe(false)
   })
@@ -67,5 +83,6 @@ describe('cómo se dice un permiso', () => {
   it('en castellano y en plural, como lo diría alguien del mostrador', () => {
     expect(describirPermiso('crear', 'Vehiculo')).toBe('dar de alta vehículos')
     expect(describirPermiso('ver', 'Orden')).toBe('ver órdenes de trabajo')
+    expect(describirPermiso('configurar', 'Comprobante')).toBe('configurar comprobantes')
   })
 })

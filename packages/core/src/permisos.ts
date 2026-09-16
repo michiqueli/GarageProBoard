@@ -19,6 +19,17 @@ export const ACCIONES_PERMISO = [
   'editar',
   'anular',
   'facturar',
+  /**
+   * Tocar la configuración del módulo al que pertenece el sujeto: `configurar Comprobante`
+   * es el engranaje de contable, `configurar Orden` el de servicios.
+   *
+   * Es una acción aparte y no parte de `editar` porque ahí viven **credenciales**: la
+   * cuenta de Mercado Pago, los certificados de AFIP. Quien las toca puede facturar con
+   * el CUIT de la empresa o mandar la cobranza a otra cuenta. Poder trabajar en un módulo
+   * no es poder configurarlo, y ningún rol predefinido la trae salvo el gerente, que la
+   * tiene por `administrar all`.
+   */
+  'configurar',
   'administrar',
 ] as const
 
@@ -55,6 +66,7 @@ const VERBOS: Record<AccionPermiso, string> = {
   editar: 'modificar',
   anular: 'anular',
   facturar: 'facturar',
+  configurar: 'configurar',
   administrar: 'administrar',
 }
 
