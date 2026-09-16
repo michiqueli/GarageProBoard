@@ -86,6 +86,16 @@ const SUSTANTIVOS: Record<Sujeto, string> = {
   all: 'todo el sistema',
 }
 
+/** «dar de alta», para la casilla de una acción. */
+export function nombreAccion(accion: AccionPermiso): string {
+  return VERBOS[accion]
+}
+
+/** «órdenes de trabajo», para la fila de un sujeto. */
+export function nombreSujeto(sujeto: Sujeto): string {
+  return SUSTANTIVOS[sujeto]
+}
+
 export function describirPermiso(accion: AccionPermiso, sujeto: Sujeto): string {
   return `${VERBOS[accion]} ${SUSTANTIVOS[sujeto]}`
 }

@@ -118,7 +118,8 @@ Las entidades ya están modeladas; falta poder operarlas.
       quien tiene más permisos. En [usuarios y roles](../tecnicos/usuarios-y-roles.md)
 - ✅ Administrador de sistema: asigna cualquier rol y modifica a cualquiera, con cada
       ingreso asociado a su computadora, aviso al afectado y pantalla de Auditoría
-- ⬜ Crear, clonar y editar roles
+- ✅ Crear, clonar y editar roles: con casillas, conservando las reglas con condiciones, sin
+      que nadie edite el suyo ni el que puede todo
 - ⬜ Registrar Usuarios en el índice del buscador del sistema cuando exista
 - ✅ Consulta al padrón de AFIP por CUIT: constancia de inscripción y A13 de respaldo,
       condición frente al IVA informada o deducida, probada contra AFIP

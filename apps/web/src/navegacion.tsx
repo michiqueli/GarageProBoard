@@ -150,6 +150,18 @@ export const SECUNDARIAS: Seccion[] = [
     ),
   },
   {
+    id: 'roles',
+    etiqueta: 'Roles',
+    to: '/roles',
+    requiere: { modulo: 'nucleo', accion: 'ver', sujeto: 'Usuario' },
+    icono: (
+      <svg viewBox="0 0 16 16" {...trazo} aria-hidden="true">
+        <path d="M8 1.8l5 2v4c0 3-2.2 5.3-5 6.4-2.8-1.1-5-3.4-5-6.4v-4z" />
+        <path d="M5.8 8l1.6 1.6 3-3.2" />
+      </svg>
+    ),
+  },
+  {
     id: 'auditoria',
     etiqueta: 'Auditoría',
     to: '/auditoria',

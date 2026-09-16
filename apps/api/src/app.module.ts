@@ -11,6 +11,8 @@ import { ModuloBase } from './comun/base.module.ts'
 import { ControladorOrganizacion } from './organizacion/organizacion.controller.ts'
 import { ServicioOrganizacion } from './organizacion/organizacion.service.ts'
 import { ModuloPadron } from './padron/padron.module.ts'
+import { ControladorRoles } from './roles/roles.controller.ts'
+import { ServicioRoles } from './roles/roles.service.ts'
 import { ControladorSalud } from './salud/salud.controller.ts'
 import { ControladorUsuarios } from './usuarios/usuarios.controller.ts'
 import { ServicioUsuarios } from './usuarios/usuarios.service.ts'
@@ -46,6 +48,7 @@ import { ServicioVehiculos } from './vehiculos/vehiculos.service.ts'
     ControladorAuditoria,
     ControladorOrganizacion,
     ControladorClientes,
+    ControladorRoles,
   ],
   providers: [
     ServicioUsuarios,
@@ -53,6 +56,7 @@ import { ServicioVehiculos } from './vehiculos/vehiculos.service.ts'
     ServicioOrganizacion,
     ServicioClientes,
     ServicioVehiculos,
+    ServicioRoles,
   ],
 })
 export class ModuloPrincipal {}

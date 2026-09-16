@@ -1,8 +1,8 @@
 # Usuarios y roles
 
-Estado: **usuarios construidos; edición de roles pendiente**. Desde el 16/09/2026 hay
-alta, modificación, baja y contraseña nueva, en la API y en la pantalla, con las dos reglas
-de abajo aplicadas por el servidor. Crear, clonar y editar roles todavía no.
+Estado: **construido**. Desde el 16/09/2026 hay alta, modificación, baja y contraseña nueva
+de usuarios, y crear, clonar y modificar roles, en la API y en la pantalla, con las reglas
+de abajo aplicadas por el servidor.
 
 ## Quién da de alta a los usuarios
 
@@ -110,6 +110,39 @@ muestra a esos usuarios como «Tiene más permisos», sin botón.
 | Sobre sí mismo | Puede corregir su nombre; roles, sucursales y estado, no |
 
 Todo va a `auditoria`, sin la contraseña ni su hash.
+
+## Roles: crear, clonar y modificar
+
+### Casillas, y lo que no cabe en ellas
+
+Un rol se edita con una casilla por permiso, y sólo los que tienen sentido: `ACCIONES_POR_SUJETO`
+en `core` dice que un vehículo se ve, se da de alta y se modifica, pero no se factura.
+
+Hay reglas que una casilla no puede expresar: «edita **sus** órdenes» (una condición), «no
+ve legajos» (una prohibición). `separarReglas()` las aparta como **especiales**: la pantalla
+las muestra en palabras y la API las conserva tal cual al guardar. Clonar un rol las copia.
+Así la grilla no puede romper, sin querer, lo que no sabe mostrar.
+
+### Quién, y qué no
+
+- Ver roles pide `ver Usuario`; crearlos y modificarlos, `administrar Usuario`.
+- **Nadie modifica un rol que tiene él mismo.** Es la firma de dos de los propios roles,
+  aplicada a lo que esos roles dan: sin esto, el administrador de sistema se agregaba
+  permisos editando el suyo.
+- **El rol que puede todo (`administrar all`) no se modifica desde la aplicación**, ni
+  siquiera por el gerente. Sacarle un permiso puede dejar a la concesionaria sin nadie que
+  lo arregle. Se clona: el clon arranca con todas las casillas marcadas.
+- Vale «nadie da lo que no tiene», con la misma `faltaParaAsignar()` que al asignar. Con
+  los roles de hoy no se alcanza nunca —quien puede editar roles administra usuarios, y a
+  ése la regla no lo limita—, pero queda del lado del servidor por si eso cambia.
+
+### El cambio vale en el acto, y se avisa
+
+Los permisos se leen de la base en cada pedido, así que la API aplica el rol modificado en
+el próximo pedido de cada usuario que lo tiene, sin volver a entrar. A cada uno le llega un
+aviso: «Martín Gutiérrez cambió el rol Mecánico: ahora podés ver clientes». El menú y los
+botones de la pantalla se actualizan cuando se renueva la sesión (a lo sumo quince minutos):
+hasta entonces puede ver algo que ya no puede usar, y la API se lo dice.
 
 ## Preguntas abiertas
 

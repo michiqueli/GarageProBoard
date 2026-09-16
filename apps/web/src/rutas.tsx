@@ -23,6 +23,7 @@ import { PantallaClientes } from './modulos/clientes/PantallaClientes.tsx'
 import { PantallaFichaCliente } from './modulos/clientes/PantallaFichaCliente.tsx'
 import { PantallaEmpresas } from './modulos/empresas/PantallaEmpresas.tsx'
 import { PantallaOrdenes } from './modulos/ordenes/PantallaOrdenes.tsx'
+import { PantallaRoles } from './modulos/roles/PantallaRoles.tsx'
 import { PantallaUsuarios } from './modulos/usuarios/PantallaUsuarios.tsx'
 import { PantallaFichaVehiculo } from './modulos/vehiculos/PantallaFichaVehiculo.tsx'
 import { PantallaVehiculos } from './modulos/vehiculos/PantallaVehiculos.tsx'
@@ -191,6 +192,12 @@ const rutaUsuarios = createRoute({
   component: PantallaUsuarios,
 })
 
+const rutaRoles = createRoute({
+  getParentRoute: () => conSesion,
+  path: 'roles',
+  component: PantallaRoles,
+})
+
 const rutaAuditoria = createRoute({
   getParentRoute: () => conSesion,
   path: 'auditoria',
@@ -214,6 +221,7 @@ const arbol = raiz.addChildren([
     rutaClientes,
     rutaFichaCliente,
     rutaUsuarios,
+    rutaRoles,
     rutaAuditoria,
     rutaEmpresas,
   ]),

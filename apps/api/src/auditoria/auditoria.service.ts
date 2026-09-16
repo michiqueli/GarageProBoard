@@ -1,3 +1,4 @@
+import { diferenciaDePermisos, type Permiso } from '@gpb/core'
 import { type Db, eq, sql } from '@gpb/db'
 import { auditoria, condicionIva, dispositivo, provincia, rol, sucursal } from '@gpb/db/schema'
 import { Inject, Injectable } from '@nestjs/common'
@@ -135,10 +136,29 @@ export function sobreQue(tabla: string, antes: Foto, despues: Foto): string {
     return `el punto de venta ${String(dato('numero')).padStart(4, '0')}`
   }
   if (tabla === 'cliente') return `el cliente ${String(dato('razonSocial'))}`
+  if (tabla === 'rol') return `el rol ${String(dato('nombre'))}`
   if (tabla === 'vehiculo' || tabla === 'titularidad') {
     return `el vehículo ${String(dato('dominio') ?? dato('chasis'))}`
   }
   return tabla
+}
+
+/** «Lo creó a partir de Mecánico», «Le agregó ver clientes y le quitó anular comprobantes». */
+function describirRol(accion: string, antes: Foto, despues: Foto): string {
+  if (accion === 'alta') {
+    return despues?.basadoEn ? `Lo creó a partir de ${String(despues.basadoEn)}` : 'Lo creó'
+  }
+  const permisos = (f: Foto) => (Array.isArray(f?.permisos) ? (f.permisos as Permiso[]) : [])
+  const { agregados, quitados } = diferenciaDePermisos(permisos(antes), permisos(despues))
+  const lista = (frases: string[]) =>
+    frases.length <= 1 ? (frases[0] ?? '') : `${frases.slice(0, -1).join(', ')} y ${frases.at(-1)}`
+  return juntar([
+    ...(antes?.nombre !== despues?.nombre
+      ? [`nombre: «${String(antes?.nombre)}» → «${String(despues?.nombre)}»`]
+      : []),
+    ...(agregados.length ? [`le agregó ${lista(agregados)}`] : []),
+    ...(quitados.length ? [`le quitó ${lista(quitados)}`] : []),
+  ])
 }
 
 /** Los campos de un vehículo, como se llaman en la pantalla. */
@@ -251,6 +271,7 @@ export function describirCambio(
     return describirOrganizacion(tabla, accion, antes, despues, nombres)
   }
   if (tabla === 'cliente') return describirCliente(accion, antes, despues, nombres)
+  if (tabla === 'rol') return describirRol(accion, antes, despues)
   if (tabla === 'vehiculo' || tabla === 'titularidad') {
     return describirVehiculo(tabla, accion, antes, despues, nombres)
   }
