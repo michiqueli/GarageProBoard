@@ -7,6 +7,8 @@ export interface EntornoPrueba {
   dbDuenio: Db
   poolApp: Pool
   dbApp: Db
+  poolBackoffice: Pool
+  dbBackoffice: Db
   cerrar: () => Promise<void>
 }
 
@@ -17,6 +19,8 @@ export async function levantarEntorno(): Promise<EntornoPrueba> {
     dbDuenio: pg.dbDuenio,
     poolApp: pg.poolApp,
     dbApp: pg.dbApp,
+    poolBackoffice: pg.poolBackoffice,
+    dbBackoffice: pg.dbBackoffice,
     cerrar: pg.cerrar,
   }
 }

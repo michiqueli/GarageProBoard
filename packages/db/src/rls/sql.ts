@@ -1,4 +1,13 @@
-import { ROL_APP, TABLAS_CON_TENANT, TABLAS_SOLO_LECTURA, VAR_TENANT } from './tablas.ts'
+import {
+  PERMISOS_BACKOFFICE,
+  ROL_APP,
+  ROL_BACKOFFICE,
+  TABLAS_BACKOFFICE,
+  TABLAS_BACKOFFICE_GLOBALES,
+  TABLAS_CON_TENANT,
+  TABLAS_SOLO_LECTURA,
+  VAR_TENANT,
+} from './tablas.ts'
 
 /**
  * DDL del aislamiento multi-tenant. Es idempotente y se aplica al final de cada
@@ -33,7 +42,10 @@ alter default privileges in schema public
 -- RLS no alcanza: filtra qué filas ve cada concesionaria, pero dentro de las suyas la
 -- dejaría escribir, y el administrador de un cliente se habilitaría solo lo que no
 -- pagó. Va después del grant general, que en cada corrida lo vuelve a dar.
-revoke insert, update, delete on ${TABLAS_SOLO_LECTURA.join(', ')} from ${ROL_APP};`)
+revoke insert, update, delete on ${TABLAS_SOLO_LECTURA.join(', ')} from ${ROL_APP};
+
+-- Las tablas del back-office no existen para la API: ni leerlas puede.
+revoke all on ${TABLAS_BACKOFFICE.join(', ')} from ${ROL_APP};`)
 
   partes.push(`
 -- El tenant de la sesión, con el chequeo explícito.
@@ -96,17 +108,59 @@ grant execute on function autenticar_usuario(text) to ${ROL_APP};
 -- función SECURITY DEFINER es superficie de ataque, así que las que sobran se borran.
 drop function if exists tenant_por_slug(text);`)
 
+  partes.push(ddlBackoffice())
+
+  const globales: readonly string[] = TABLAS_BACKOFFICE_GLOBALES
+
   // El propio tenant se filtra por su clave primaria, no por una columna tenant_id.
-  partes.push(politica('tenant', 'id'))
+  partes.push(politica('tenant', 'id', ROL_APP))
 
   for (const tabla of TABLAS_CON_TENANT) {
-    partes.push(politica(tabla, 'tenant_id'))
+    partes.push(politica(tabla, 'tenant_id', globales.includes(tabla) ? ROL_APP : undefined))
+  }
+
+  for (const tabla of TABLAS_BACKOFFICE_GLOBALES) {
+    partes.push(`
+drop policy if exists backoffice_global on "${tabla}";
+create policy backoffice_global on "${tabla}" to ${ROL_BACKOFFICE}
+  using (true)
+  with check (true);`)
   }
 
   return partes.join('\n')
 }
 
-function politica(tabla: string, columna: string): string {
+/**
+ * El rol del back-office, **desde cero en cada corrida**: primero se le saca todo y
+ * después se le da exactamente lo de `PERMISOS_BACKOFFICE`. Así, sacar una línea de esa
+ * lista le saca el permiso, en vez de dejarlo puesto de la corrida anterior.
+ *
+ * Sin BYPASSRLS. Para dar de alta la empresa y el gerente de una concesionaria usa
+ * `conTenant()` como la API, y las políticas de siempre lo contienen. Sólo `tenant` y
+ * `tenant_modulo` tienen una política que le muestra todas las concesionarias.
+ */
+function ddlBackoffice(): string {
+  const grants = Object.entries(PERMISOS_BACKOFFICE)
+    .map(([tabla, permisos]) => `grant ${permisos.join(', ')} on "${tabla}" to ${ROL_BACKOFFICE};`)
+    .join('\n')
+
+  return `
+do $$
+begin
+  if not exists (select 1 from pg_roles where rolname = '${ROL_BACKOFFICE}') then
+    create role ${ROL_BACKOFFICE} nologin nobypassrls;
+  end if;
+end
+$$;
+
+grant usage on schema public to ${ROL_BACKOFFICE};
+revoke all on all tables in schema public from ${ROL_BACKOFFICE};
+${grants}
+grant usage, select on all sequences in schema public to ${ROL_BACKOFFICE};
+grant execute on function app_tenant_id() to ${ROL_BACKOFFICE};`
+}
+
+function politica(tabla: string, columna: string, soloPara?: string): string {
   // El `(select ...)` no es decorativo: envuelta en un subselect, la función se
   // evalúa una vez por consulta en lugar de una vez por fila. Sobre una tabla de
   // órdenes con años de historia, esa diferencia se nota.
@@ -115,7 +169,7 @@ function politica(tabla: string, columna: string): string {
 alter table "${tabla}" enable row level security;
 alter table "${tabla}" force  row level security;
 drop policy if exists aislamiento_tenant on "${tabla}";
-create policy aislamiento_tenant on "${tabla}"
+create policy aislamiento_tenant on "${tabla}"${soloPara ? ` to ${soloPara}` : ''}
   using      (${condicion})
   with check (${condicion});`
 }

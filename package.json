@@ -17,6 +17,7 @@
     "db:generate": "pnpm --filter @garagepro/db generate",
     "db:migrate": "pnpm --filter @garagepro/db migrate",
     "db:studio": "pnpm --filter @garagepro/db studio",
+    "db:operador": "pnpm --filter @garagepro/db operador",
     "infra:up": "docker compose -f infra/docker-compose.yml up -d",
     "infra:down": "docker compose -f infra/docker-compose.yml down",
     "infra:logs": "docker compose -f infra/docker-compose.yml logs -f",
