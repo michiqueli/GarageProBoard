@@ -13,6 +13,7 @@ coverage/
 *.crt
 *.p12
 secretos/
+para_sacar_codigo/
 
 # editores / SO
 .idea/
@@ -28,3 +29,6 @@ pnpm-debug.log*
 
 # artefactos de compilacion incremental de TypeScript
 *.tsbuildinfo
+
+# Código de otros proyectos para leer, no para versionar: puede traer sus propias credenciales
+referencias/

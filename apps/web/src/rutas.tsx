@@ -19,6 +19,7 @@ import { useTema } from './ganchos/useTema.ts'
 import { PantallaAuditoria } from './modulos/auditoria/PantallaAuditoria.tsx'
 import { PantallaLogin } from './modulos/auth/PantallaLogin.tsx'
 import { PantallaSucursal } from './modulos/auth/PantallaSucursal.tsx'
+import { PantallaEmpresas } from './modulos/empresas/PantallaEmpresas.tsx'
 import { PantallaOrdenes } from './modulos/ordenes/PantallaOrdenes.tsx'
 import { PantallaUsuarios } from './modulos/usuarios/PantallaUsuarios.tsx'
 import { PantallaVehiculos } from './modulos/vehiculos/PantallaVehiculos.tsx'
@@ -169,10 +170,23 @@ const rutaAuditoria = createRoute({
   component: PantallaAuditoria,
 })
 
+const rutaEmpresas = createRoute({
+  getParentRoute: () => conSesion,
+  path: 'empresas',
+  component: PantallaEmpresas,
+})
+
 const arbol = raiz.addChildren([
   rutaEntrar,
   rutaSucursal,
-  conSesion.addChildren([rutaInicio, rutaOrdenes, rutaVehiculos, rutaUsuarios, rutaAuditoria]),
+  conSesion.addChildren([
+    rutaInicio,
+    rutaOrdenes,
+    rutaVehiculos,
+    rutaUsuarios,
+    rutaAuditoria,
+    rutaEmpresas,
+  ]),
 ])
 
 /**

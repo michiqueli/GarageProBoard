@@ -111,7 +111,8 @@ desaparece de su sistema, sin tocar código y sin que se pierda un dato.
 
 Las entidades ya están modeladas; falta poder operarlas.
 
-- ⬜ ABM de empresas, sucursales y puntos de venta
+- ✅ ABM de empresas, sucursales y puntos de venta: una SAS por sucursal, CUIT con
+      dígito verificador, número de punto de venta único por CUIT, nada se borra
 - ✅ ABM de usuarios, con el rol predefinido «Administrador de usuarios» y las reglas
       que impiden que se convierta en gerente: nadie da lo que no tiene, y nadie modifica a
       quien tiene más permisos. En [usuarios y roles](../tecnicos/usuarios-y-roles.md)
