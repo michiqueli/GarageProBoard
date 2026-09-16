@@ -10,11 +10,11 @@ import {
   useRef,
   useState,
 } from 'react'
-import { formatearDominio } from '../modulos/vehiculos/datos-vehiculo.tsx'
 import { usarSesion } from '../sesion/almacen.ts'
 import { api } from '../sesion/cliente.ts'
 import { usePuedeUsar } from '../sesion/permisos.ts'
 import { useAtajo, useTeclado } from '../teclado/index.ts'
+import { Patente } from './Patente.tsx'
 import { Tecla } from './Tecla.tsx'
 
 const POR_GRUPO = 5
@@ -208,11 +208,9 @@ export function BuscadorGlobal() {
                     to="/vehiculos/$id"
                     params={{ id: v.id }}
                     onClick={elegido}
-                    className="flex items-baseline gap-2 px-3 py-1.5 text-dato hover:bg-superficie-2 focus-visible:bg-superficie-2 focus-visible:outline-none"
+                    className="flex items-center gap-2 px-3 py-1.5 text-dato hover:bg-superficie-2 focus-visible:bg-superficie-2 focus-visible:outline-none"
                   >
-                    <span className="w-24 shrink-0 font-mono">
-                      {v.dominio ? formatearDominio(v.dominio) : 'sin patente'}
-                    </span>
+                    <Patente dominio={v.dominio} />
                     <span className="truncate">
                       {[v.marca && `${v.marca} ${v.modelo ?? ''}`.trim(), v.titular?.razonSocial]
                         .filter(Boolean)

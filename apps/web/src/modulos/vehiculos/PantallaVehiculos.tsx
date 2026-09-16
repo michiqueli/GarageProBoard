@@ -5,6 +5,7 @@ import { getRouteApi, Link } from '@tanstack/react-router'
 import { type FormEvent, useEffect, useRef, useState } from 'react'
 import { Boton } from '../../componentes/Boton.tsx'
 import { Campo } from '../../componentes/Campo.tsx'
+import { Patente } from '../../componentes/Patente.tsx'
 import { type ClienteElegido, SelectorCliente } from '../../componentes/SelectorCliente.tsx'
 import { Shell } from '../../componentes/Shell.tsx'
 import { ES_ESCRITORIO, useMedia } from '../../ganchos/useMedia.ts'
@@ -15,7 +16,6 @@ import {
   CamposVehiculo,
   DATOS_VACIOS,
   type Datos,
-  formatearDominio,
   hoy,
   paraEnviar,
   problemas,
@@ -135,7 +135,7 @@ export function PantallaVehiculos() {
               <tbody>
                 {datos.map((v) => (
                   <tr key={v.id} className="hover:bg-superficie-2">
-                    <td className="h-fila border-b border-borde-suave px-3 font-mono">
+                    <td className="h-fila border-b border-borde-suave px-3 py-1">
                       <EnlaceFicha vehiculo={v} />
                     </td>
                     <td className="h-fila border-b border-borde-suave px-3">
@@ -161,10 +161,8 @@ export function PantallaVehiculos() {
           <ul className="divide-y divide-borde-suave">
             {datos.map((v) => (
               <li key={v.id} className="grid gap-0.5 px-3 py-2.5">
-                <div className="flex items-baseline gap-2">
-                  <span className="font-mono text-dato font-semibold">
-                    <EnlaceFicha vehiculo={v} />
-                  </span>
+                <div className="flex items-center gap-2">
+                  <EnlaceFicha vehiculo={v} />
                   <span className="ml-auto text-etiqueta text-texto-suave">
                     {[nombreVehiculo(v), v.anio].filter(Boolean).join(' · ') || '—'}
                   </span>
@@ -186,15 +184,15 @@ export function nombreVehiculo(v: { marca: string | null; modelo: string | null 
   return v.marca ? `${v.marca} ${v.modelo ?? ''}`.trim() : null
 }
 
-/** La patente lleva a la ficha. Sin patente, el chasis hace de nombre. */
+/** La chapa lleva a la ficha. */
 function EnlaceFicha({ vehiculo }: { vehiculo: Vehiculo }) {
   return (
     <Link
       to="/vehiculos/$id"
       params={{ id: vehiculo.id }}
-      className="text-marca hover:underline focus-visible:underline"
+      className="inline-flex rounded-[3px] transition-opacity hover:opacity-80 focus-visible:outline-2 focus-visible:outline-offset-2"
     >
-      {vehiculo.dominio ? formatearDominio(vehiculo.dominio) : <SinPatente />}
+      <Patente dominio={vehiculo.dominio} />
     </Link>
   )
 }
@@ -326,10 +324,6 @@ function mensajeDeError(error: Error): string {
 }
 
 /** Un 0km existe con chasis desde que la terminal lo factura, y sin chapa por semanas. */
-export function SinPatente() {
-  return <span className="text-etiqueta italic">sin patentar</span>
-}
-
 function SinTitular() {
   return <span className="text-etiqueta text-texto-tenue">sin titular</span>
 }

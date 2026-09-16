@@ -144,7 +144,7 @@ describe('el listado', () => {
     expect(within(fila).getByText('Toyota Hilux')).toBeDefined()
     expect(within(fila).getByText('Gómez, Ana')).toBeDefined()
     // El 0km: sin patente y sin titular, dicho con palabras.
-    expect(screen.getByText('sin patentar')).toBeDefined()
+    expect(screen.getByText('SIN PATENTAR')).toBeDefined()
     expect(screen.getByText('sin titular')).toBeDefined()
   })
 })

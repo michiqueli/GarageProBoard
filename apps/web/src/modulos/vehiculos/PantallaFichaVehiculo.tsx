@@ -7,6 +7,7 @@ import { type FormEvent, type ReactNode, useRef, useState } from 'react'
 import { Boton } from '../../componentes/Boton.tsx'
 import { Campo } from '../../componentes/Campo.tsx'
 import { IconoEditar, IconoTransferir } from '../../componentes/iconos.tsx'
+import { Patente } from '../../componentes/Patente.tsx'
 import { type ClienteElegido, SelectorCliente } from '../../componentes/SelectorCliente.tsx'
 import { Shell } from '../../componentes/Shell.tsx'
 import { usarSesion } from '../../sesion/almacen.ts'
@@ -22,7 +23,7 @@ import {
   paraEnviar,
   problemas,
 } from './datos-vehiculo.tsx'
-import { mensajeDeGuardar, nombreVehiculo, SinPatente } from './PantallaVehiculos.tsx'
+import { mensajeDeGuardar, nombreVehiculo } from './PantallaVehiculos.tsx'
 
 const ruta = getRouteApi('/con-sesion/vehiculos/$id')
 
@@ -124,7 +125,7 @@ export function PantallaFichaVehiculo() {
           >
             <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1.5 px-3 py-2.5 text-dato">
               <Dato nombre="Patente">
-                {f.dominio ? formatearDominio(f.dominio) : <SinPatente />}
+                <Patente dominio={f.dominio} tamano="grande" />
               </Dato>
               <Dato nombre="Chasis" mono>
                 {f.chasis}

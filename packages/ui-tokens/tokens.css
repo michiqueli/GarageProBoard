@@ -65,6 +65,15 @@
   --color-critico: #e0705c;
   --color-info: #5aa9e6;
 
+  /* ── Patentes ────────────────────────────────────────────────────────────
+     Los colores de la chapa real, iguales en los dos temas: una patente se reconoce por
+     cómo es en la calle, no por el tema de la pantalla. */
+  --color-patente: #fbfbf8;
+  --color-patente-tinta: #111418;
+  --color-patente-banda: #0b3a8c;
+  --color-patente-vieja: #16181a;
+  --color-patente-vieja-tinta: #f1f1ec;
+
   /* ── Lo que flota: notificaciones y diálogos ─────────────────────────────
      La única sombra del sistema. Todo lo demás se separa con un borde; lo que flota
      sobre la pantalla necesita despegarse, o se confunde con el contenido de abajo. */

@@ -5,11 +5,12 @@ import { getRouteApi, Link } from '@tanstack/react-router'
 import { type ReactNode, useState } from 'react'
 import { Boton } from '../../componentes/Boton.tsx'
 import { IconoEditar } from '../../componentes/iconos.tsx'
+import { Patente } from '../../componentes/Patente.tsx'
 import { Shell } from '../../componentes/Shell.tsx'
 import { usarSesion } from '../../sesion/almacen.ts'
 import { api } from '../../sesion/cliente.ts'
 import { usePuedeUsar } from '../../sesion/permisos.ts'
-import { formatearDominio, formatearFecha } from '../vehiculos/datos-vehiculo.tsx'
+import { formatearFecha } from '../vehiculos/datos-vehiculo.tsx'
 import { Formulario, formatearDocumento, IIBB, Marcas, nombreTipo } from './PantallaClientes.tsx'
 
 const ruta = getRouteApi('/con-sesion/clientes/$id')
@@ -186,9 +187,9 @@ function ListaVehiculos({
             <Link
               to="/vehiculos/$id"
               params={{ id: v.id }}
-              className="font-mono text-dato text-marca hover:underline focus-visible:underline"
+              className="inline-flex rounded-[3px] transition-opacity hover:opacity-80 focus-visible:outline-2 focus-visible:outline-offset-2"
             >
-              {v.dominio ? formatearDominio(v.dominio) : 'sin patentar'}
+              <Patente dominio={v.dominio} />
             </Link>
             <span className="text-dato">
               {[v.marca && `${v.marca} ${v.modelo ?? ''}`.trim(), v.anio]
