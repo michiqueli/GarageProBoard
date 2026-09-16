@@ -135,6 +135,40 @@ export class ServicioVehiculos {
     })
   }
 
+  /** Los que tiene y los que tuvo, los vigentes primero. */
+  delCliente(clienteId: string) {
+    return this.datos.transaccion(async (tx) => {
+      const filas = await tx
+        .select({
+          v: vehiculo,
+          marca: marca.nombre,
+          modelo: modelo.nombre,
+          desde: titularidad.desde,
+          hasta: titularidad.hasta,
+          titularId: entidadComercial.id,
+          titular: entidadComercial.razonSocial,
+        })
+        .from(titularidad)
+        .innerJoin(vehiculo, eq(vehiculo.id, titularidad.vehiculoId))
+        .innerJoin(entidadComercial, eq(entidadComercial.id, titularidad.clienteId))
+        .leftJoin(modelo, eq(modelo.id, vehiculo.modeloId))
+        .leftJoin(marca, eq(marca.id, modelo.marcaId))
+        .where(eq(titularidad.clienteId, clienteId))
+        .orderBy(sql`${titularidad.hasta} is null desc`, desc(titularidad.desde))
+
+      return {
+        datos: filas.map((f) => ({
+          ...aResumen(f),
+          // En los que ya no tiene no se dice quién los tiene hoy: eso es de la ficha del
+          // vehículo, y la de este cliente no tiene por qué contar la vida de otro.
+          titular: f.hasta ? null : aResumen(f).titular,
+          desde: f.desde,
+          hasta: f.hasta,
+        })),
+      }
+    })
+  }
+
   ficha(id: string) {
     return this.datos.transaccion((tx) => this.armarFicha(tx, id))
   }

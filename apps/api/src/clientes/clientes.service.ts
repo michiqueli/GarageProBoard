@@ -1,4 +1,4 @@
-import { and, asc, count, type Db, eq, ilike, or, sql } from '@gpb/db'
+import { and, asc, count, type Db, desc, eq, ilike, or, sql } from '@gpb/db'
 import {
   auditoria,
   cliente,
@@ -6,8 +6,10 @@ import {
   entidadComercial,
   proveedor,
   provincia,
+  usuario,
 } from '@gpb/db/schema'
 import { Inject, Injectable } from '@nestjs/common'
+import { cargarNombres, describirCambio } from '../auditoria/auditoria.service.ts'
 import type { Sesion } from '../comun/contexto.ts'
 import { DatosDelTenant } from '../comun/datos.ts'
 
@@ -99,6 +101,40 @@ export class ServicioClientes {
         .offset((entrada.pagina - 1) * entrada.porPagina)
 
       return { datos: filas.map(aSalida), total }
+    })
+  }
+
+  ficha(id: string) {
+    return this.datos.transaccion(async (tx) => {
+      const datos = await this.uno(tx, id)
+      const nombres = await cargarNombres(tx)
+      const cambios = await tx
+        .select({
+          fecha: auditoria.creadoEn,
+          accion: auditoria.accion,
+          antes: auditoria.datosAntes,
+          despues: auditoria.datosDespues,
+          autor: sql<string | null>`${usuario.nombre} || ' ' || ${usuario.apellido}`,
+        })
+        .from(auditoria)
+        .leftJoin(usuario, eq(usuario.id, auditoria.usuarioId))
+        .where(and(eq(auditoria.tabla, 'cliente'), eq(auditoria.registroId, id)))
+        .orderBy(desc(auditoria.creadoEn))
+
+      return {
+        ...datos,
+        historia: cambios.map((c) => ({
+          fecha: c.fecha.toISOString(),
+          autor: c.autor,
+          detalle: describirCambio(
+            'cliente',
+            c.accion,
+            c.antes as Record<string, unknown> | null,
+            c.despues as Record<string, unknown> | null,
+            nombres,
+          ),
+        })),
+      }
     })
   }
 

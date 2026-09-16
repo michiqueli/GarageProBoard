@@ -1,12 +1,13 @@
 import { ORPCError } from '@orpc/client'
-import { cleanup, screen, within } from '@testing-library/react'
+import { cleanup, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { usarSesion } from '../src/sesion/almacen.ts'
 import { montarApp, SESION, SESION_MECANICO, SESION_REPUESTERO } from './montar.tsx'
 
-const clientes = { listar: vi.fn(), crear: vi.fn(), editar: vi.fn() }
+const clientes = { listar: vi.fn(), ficha: vi.fn(), crear: vi.fn(), editar: vi.fn() }
 const catalogos = vi.fn()
+const vehiculosDelCliente = vi.fn()
 const consultarPadron = vi.fn()
 const renovar = vi.fn()
 
@@ -15,8 +16,10 @@ vi.mock('../src/sesion/cliente.ts', () => ({
     auth: { iniciar: vi.fn(), cerrar: vi.fn().mockResolvedValue({}), cambiarSucursal: vi.fn() },
     padron: { consultar: (x: unknown) => consultarPadron(x) },
     organizacion: { catalogos: () => catalogos() },
+    vehiculos: { delCliente: (x: unknown) => vehiculosDelCliente(x) },
     clientes: {
       listar: (x: unknown) => clientes.listar(x),
+      ficha: (x: unknown) => clientes.ficha(x),
       crear: (x: unknown) => clientes.crear(x),
       editar: (x: unknown) => clientes.editar(x),
     },
@@ -63,7 +66,14 @@ function entraComo(sesion: typeof SESION) {
 }
 
 beforeEach(() => {
-  for (const f of [...Object.values(clientes), catalogos, consultarPadron, renovar]) f.mockReset()
+  for (const f of [
+    ...Object.values(clientes),
+    catalogos,
+    consultarPadron,
+    renovar,
+    vehiculosDelCliente,
+  ])
+    f.mockReset()
   usarSesion.getState().limpiar()
   clientes.listar.mockResolvedValue({ datos: [TRANSPORTES, ANA], total: 2 })
   catalogos.mockResolvedValue({
@@ -185,7 +195,8 @@ describe('un cliente nuevo', () => {
     expect(clientes.crear).not.toHaveBeenCalled()
   })
 
-  it('si ya está cargado, dice a nombre de quién y lleva a buscarlo', async () => {
+  it('si ya está cargado, dice a nombre de quién y lleva a su ficha', async () => {
+    clientes.ficha.mockResolvedValue({ ...TRANSPORTES, historia: [] })
     clientes.crear.mockRejectedValue(
       new ORPCError('CLIENTE_DUPLICADO', {
         status: 409,
@@ -193,21 +204,20 @@ describe('un cliente nuevo', () => {
         data: { id: 'c1', razonSocial: 'Transportes del Sur SRL' },
       }),
     )
-    const formulario = await abrirAlta()
+    entraComo(SESION)
+    const router = await montarApp('/clientes')
+    await screen.findByText('Transportes del Sur SRL')
+    await userEvent.keyboard('{Insert}')
+    const formulario = await screen.findByRole('region', { name: 'Nuevo cliente' })
     await userEvent.type(within(formulario).getByLabelText('CUIT'), '30-71111111-1')
     await userEvent.type(within(formulario).getByLabelText('Razón social'), 'Transportes')
     await userEvent.keyboard('{F2}')
 
     const aviso = await within(formulario).findByRole('alert')
     expect(aviso.textContent).toMatch(/a nombre de Transportes del Sur SRL/)
-    await userEvent.click(within(aviso).getByRole('button', { name: 'Buscarlo en el listado' }))
+    await userEvent.click(within(aviso).getByRole('button', { name: 'Abrir su ficha' }))
 
-    expect((screen.getByRole('textbox', { name: 'Buscar' }) as HTMLInputElement).value).toBe(
-      '30711111111',
-    )
-    expect(clientes.listar).toHaveBeenLastCalledWith(
-      expect.objectContaining({ buscar: '30711111111', estado: 'todos' }),
-    )
+    await waitFor(() => expect(router.state.location.pathname).toBe('/clientes/c1'))
   })
 })
 
@@ -233,5 +243,111 @@ describe('modificar', () => {
     expect(clientes.editar).toHaveBeenCalledWith(
       expect.objectContaining({ id: 'c1', activo: false }),
     )
+  })
+})
+
+describe('la ficha', () => {
+  const HILUX = {
+    id: '0b7e3f7a-5a8e-4c1b-9d9e-2f3c4b5a6d7e',
+    chasis: '8AJFB8CD5N1234567',
+    dominio: 'AE123BC',
+    anio: 2022,
+    color: null,
+    marca: 'Toyota',
+    modelo: 'Hilux',
+  }
+
+  beforeEach(() => {
+    clientes.ficha.mockResolvedValue({
+      ...TRANSPORTES,
+      historia: [
+        { fecha: '2025-06-15T13:00:00.000Z', autor: 'Martín Gutiérrez', detalle: 'Lo dio de alta' },
+      ],
+    })
+    vehiculosDelCliente.mockResolvedValue({
+      datos: [
+        {
+          ...HILUX,
+          titular: { id: 'c1', razonSocial: 'Transportes del Sur SRL' },
+          desde: '2024-03-01',
+          hasta: null,
+        },
+        {
+          ...HILUX,
+          id: 'v2',
+          dominio: 'AB123CD',
+          marca: 'Ford',
+          modelo: 'Ranger',
+          titular: null,
+          desde: '2020-01-10',
+          hasta: '2023-05-02',
+        },
+      ],
+    })
+  })
+
+  it('se llega desde el listado, con sus datos, sus vehículos y su historia', async () => {
+    entraComo(SESION)
+    const router = await montarApp('/clientes')
+    await userEvent.click(await screen.findByRole('link', { name: 'Transportes del Sur SRL' }))
+
+    await waitFor(() => expect(router.state.location.pathname).toBe('/clientes/c1'))
+    expect(
+      await screen.findByRole('heading', { name: 'Transportes del Sur SRL', level: 1 }),
+    ).toBeDefined()
+    const datos = screen.getByRole('region', { name: 'Datos' })
+    expect(within(datos).getByText('30-71111111-1')).toBeDefined()
+    expect(within(datos).getByText('Santa Fe, Santa Fe')).toBeDefined()
+
+    const suyos = await screen.findByRole('region', { name: 'A su nombre' })
+    expect(within(suyos).getByRole('link', { name: 'AE 123 BC' })).toBeDefined()
+    expect(within(suyos).getByText('Desde el 01/03/2024')).toBeDefined()
+    const tuvo = screen.getByRole('region', { name: 'Tuvo' })
+    expect(within(tuvo).getByText('Del 10/01/2020 al 02/05/2023')).toBeDefined()
+
+    expect(
+      within(screen.getByRole('region', { name: 'Historia' })).getByText('Lo dio de alta'),
+    ).toBeDefined()
+  })
+
+  it('el repuestero ve al cliente, pero no sus vehículos: ni se piden', async () => {
+    entraComo(SESION_REPUESTERO)
+    await montarApp('/clientes/c1')
+
+    await screen.findByRole('region', { name: 'Datos' })
+    expect(screen.queryByRole('region', { name: 'Vehículos' })).toBeNull()
+    expect(vehiculosDelCliente).not.toHaveBeenCalled()
+  })
+
+  it('se modifica desde la ficha', async () => {
+    clientes.editar.mockResolvedValue(TRANSPORTES)
+    entraComo(SESION)
+    await montarApp('/clientes/c1')
+
+    const datos = await screen.findByRole('region', { name: 'Datos' })
+    await userEvent.click(within(datos).getByRole('button', { name: 'Modificar' }))
+    const formulario = await screen.findByRole('region', {
+      name: 'Modificar Transportes del Sur SRL',
+    })
+    const telefono = within(formulario).getByLabelText('Teléfono')
+    await userEvent.clear(telefono)
+    await userEvent.type(telefono, '342 555-9999')
+    await userEvent.keyboard('{F2}')
+
+    expect(clientes.editar).toHaveBeenCalledWith(
+      expect.objectContaining({ id: 'c1', telefono: '342 555-9999' }),
+    )
+  })
+
+  it('sin vehículos lo dice, y dónde se asignan', async () => {
+    vehiculosDelCliente.mockResolvedValue({ datos: [] })
+    entraComo(SESION)
+    await montarApp('/clientes/c1')
+
+    expect(
+      await screen.findByText(
+        'No tiene vehículos a su nombre. Se le asignan desde la ficha de cada vehículo.',
+      ),
+    ).toBeDefined()
   })
 })

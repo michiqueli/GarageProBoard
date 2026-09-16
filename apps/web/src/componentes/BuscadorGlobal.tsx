@@ -242,9 +242,8 @@ export function BuscadorGlobal() {
               {clientes.data?.datos.map((c) => (
                 <li key={c.id}>
                   <Link
-                    to="/clientes"
-                    // Todavía no hay ficha del cliente: se abre el listado con él solo.
-                    search={{ buscar: c.numeroDocumento }}
+                    to="/clientes/$id"
+                    params={{ id: c.id }}
                     onClick={elegido}
                     className="flex items-baseline gap-2 px-3 py-1.5 text-dato hover:bg-superficie-2 focus-visible:bg-superficie-2 focus-visible:outline-none"
                   >

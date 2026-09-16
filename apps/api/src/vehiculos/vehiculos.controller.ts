@@ -38,6 +38,11 @@ export class ControladorVehiculos {
     return implement(c.marcas).handler(() => this.servicio.marcas())
   }
 
+  @Operacion(c.delCliente)
+  delCliente() {
+    return implement(c.delCliente).handler(({ input }) => this.servicio.delCliente(input.clienteId))
+  }
+
   @Operacion(c.ficha)
   ficha() {
     return implement(c.ficha).handler(({ input, errors }) =>

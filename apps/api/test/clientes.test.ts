@@ -260,7 +260,36 @@ describe('la baja', () => {
   })
 })
 
+describe('la ficha', () => {
+  it('trae los datos y la historia contada en palabras, de la más nueva a la más vieja', async () => {
+    const access = await entrar('gerente@clientes.test')
+    const { datos } = (await pedir(access, 'GET', '/clientes?buscar=Gómez&estado=todos')).json()
+
+    const r = await pedir(access, 'GET', `/clientes/${datos[0].id}`)
+    expect(r.statusCode).toBe(200)
+    expect(r.json()).toMatchObject({ razonSocial: 'Gómez, Ana', activo: false })
+    expect(r.json().historia.map((h: { detalle: string }) => h.detalle)).toEqual([
+      'Lo desactivó',
+      'Lo dio de alta',
+    ])
+  })
+
+  it('la de un cliente de otra concesionaria no existe', async () => {
+    const access = await entrar('gerente@clientes.test')
+    const { datos } = (await pedir(access, 'GET', '/clientes?buscar=Gómez&estado=todos')).json()
+    const ajena = await entrar('gerente@otra.test')
+    expect((await pedir(ajena, 'GET', `/clientes/${datos[0].id}`)).statusCode).toBe(404)
+  })
+})
+
 describe('permisos', () => {
+  it('el repuestero ve la ficha de un cliente, pero no sus vehículos', async () => {
+    const access = await entrar('repuestero@clientes.test')
+    const { datos } = (await pedir(access, 'GET', '/clientes?buscar=Transportes')).json()
+    expect((await pedir(access, 'GET', `/clientes/${datos[0].id}`)).statusCode).toBe(200)
+    expect((await pedir(access, 'GET', `/clientes/${datos[0].id}/vehiculos`)).statusCode).toBe(403)
+  })
+
   it('el repuestero ve los clientes pero no da de alta', async () => {
     const access = await entrar('repuestero@clientes.test')
     expect((await pedir(access, 'GET', '/clientes')).statusCode).toBe(200)

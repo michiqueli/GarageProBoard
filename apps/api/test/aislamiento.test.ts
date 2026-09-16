@@ -52,6 +52,9 @@ async function entrar(email: string): Promise<string> {
     url: '/api/auth/iniciar',
     payload: { email, password: CLAVE, entrega: 'cuerpo' },
   })
+  // Si el login falla, que lo diga acá: sin esto, el síntoma es un «total» equivocado más
+  // abajo, que parece un cruce de datos y no lo es.
+  expect(r.statusCode, `no pudo entrar ${email}: ${r.body}`).toBe(200)
   return r.json().access
 }
 

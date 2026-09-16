@@ -303,6 +303,19 @@ export function describirCambio(
   return juntar(partes)
 }
 
+/** Los nombres de hoy para contar la auditoría: roles, sucursales y catálogos de AFIP. */
+export async function cargarNombres(tx: Db): Promise<Nombres> {
+  const mapa = <K, V>(filas: Array<{ k: K; v: V }>) => new Map(filas.map((f) => [f.k, f.v]))
+  return {
+    roles: mapa(await tx.select({ k: rol.id, v: rol.nombre }).from(rol)),
+    sucursales: mapa(await tx.select({ k: sucursal.id, v: sucursal.nombre }).from(sucursal)),
+    condicionesIva: mapa(
+      await tx.select({ k: condicionIva.codigo, v: condicionIva.descripcion }).from(condicionIva),
+    ),
+    provincias: mapa(await tx.select({ k: provincia.codigo, v: provincia.nombre }).from(provincia)),
+  }
+}
+
 /**
  * El registro de la concesionaria: quién entró, desde dónde, y quién cambió qué.
  *
@@ -380,31 +393,7 @@ export class ServicioAuditoria {
 
   cambios(entrada: { pagina: number; porPagina: number }) {
     return this.datos.transaccion(async (tx) => {
-      const nombres: Nombres = {
-        roles: new Map(
-          (await tx.select({ id: rol.id, nombre: rol.nombre }).from(rol)).map((r) => [
-            r.id,
-            r.nombre,
-          ]),
-        ),
-        sucursales: new Map(
-          (await tx.select({ id: sucursal.id, nombre: sucursal.nombre }).from(sucursal)).map(
-            (r) => [r.id, r.nombre],
-          ),
-        ),
-        condicionesIva: new Map(
-          (
-            await tx
-              .select({ codigo: condicionIva.codigo, descripcion: condicionIva.descripcion })
-              .from(condicionIva)
-          ).map((c) => [c.codigo, c.descripcion]),
-        ),
-        provincias: new Map(
-          (
-            await tx.select({ codigo: provincia.codigo, nombre: provincia.nombre }).from(provincia)
-          ).map((p) => [p.codigo, p.nombre]),
-        ),
-      }
+      const nombres = await cargarNombres(tx)
 
       const { rows } = await tx.execute<{
         fecha: Date

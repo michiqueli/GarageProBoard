@@ -28,6 +28,13 @@ export class ControladorClientes {
     return implement(c.listar).handler(({ input }) => this.servicio.listar(input))
   }
 
+  @Operacion(c.ficha)
+  ficha() {
+    return implement(c.ficha).handler(({ input, errors }) =>
+      this.servicio.ficha(input.id).catch((e) => traducir(e, errors)),
+    )
+  }
+
   @Operacion(c.crear)
   crear(@Req() pedido: FastifyRequest) {
     return implement(c.crear).handler(({ input, errors }) =>

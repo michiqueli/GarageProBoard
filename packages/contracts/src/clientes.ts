@@ -139,6 +139,27 @@ export const contratoClientes = {
     })
     .output(clienteSalida),
 
+  ficha: conPermiso('nucleo', 'ver', 'Cliente')
+    .route({
+      method: 'GET',
+      path: '/clientes/{id}',
+      tags: [TAG],
+      operationId: 'fichaCliente',
+      summary: 'La ficha de un cliente, con su historia',
+      description:
+        'Los vehículos van aparte, en /clientes/{id}/vehiculos: piden permiso para ver ' +
+        'vehículos, y quien atiende el mostrador de repuestos ve clientes pero no autos.',
+    })
+    .input(z.object({ id: z.uuid() }))
+    .errors(NO_ENCONTRADO)
+    .output(
+      clienteSalida.extend({
+        historia: z.array(
+          z.object({ fecha: z.string(), autor: z.string().nullable(), detalle: z.string() }),
+        ),
+      }),
+    ),
+
   editar: conPermiso('nucleo', 'editar', 'Cliente')
     .route({
       method: 'PUT',

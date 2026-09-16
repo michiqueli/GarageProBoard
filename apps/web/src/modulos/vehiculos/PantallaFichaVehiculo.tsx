@@ -152,7 +152,13 @@ export function PantallaFichaVehiculo() {
                       <span
                         className={`text-dato ${t.hasta ? 'text-texto-suave' : 'font-semibold'}`}
                       >
-                        {t.cliente.razonSocial}
+                        <Link
+                          to="/clientes/$id"
+                          params={{ id: t.cliente.id }}
+                          className="hover:text-marca hover:underline focus-visible:underline"
+                        >
+                          {t.cliente.razonSocial}
+                        </Link>
                       </span>
                       {!t.hasta && (
                         <span className="rounded-full border border-ok px-2 text-etiqueta font-semibold text-ok">

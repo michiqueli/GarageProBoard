@@ -2,7 +2,7 @@ import { accesoDeRuta, CONDICIONES_IIBB, contrato, TIPOS_DOCUMENTO } from '@gpb/
 import { cuitValido, formatearCuit, normalizarCuit } from '@gpb/core'
 import { ORPCError } from '@orpc/client'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { getRouteApi } from '@tanstack/react-router'
+import { getRouteApi, Link, useNavigate } from '@tanstack/react-router'
 import { type FormEvent, useEffect, useRef, useState } from 'react'
 import { Boton } from '../../componentes/Boton.tsx'
 import { Campo } from '../../componentes/Campo.tsx'
@@ -17,15 +17,15 @@ import { usePuedeUsar } from '../../sesion/permisos.ts'
 // Por id y no importando la ruta: `rutas.tsx` importa esta pantalla.
 const ruta = getRouteApi('/con-sesion/clientes')
 
-type Cliente = Awaited<ReturnType<typeof api.clientes.listar>>['datos'][number]
-type Catalogos = Awaited<ReturnType<typeof api.organizacion.catalogos>>
+export type Cliente = Awaited<ReturnType<typeof api.clientes.listar>>['datos'][number]
+export type Catalogos = Awaited<ReturnType<typeof api.organizacion.catalogos>>
 type TipoDocumento = 80 | 86 | 96
 type CondicionIibb = (typeof CONDICIONES_IIBB)[number]
 
 /** Qué se está editando. Uno por vez: el formulario abierto es el único lugar de F2 y Esc. */
 type Edicion = null | { cliente?: Cliente }
 
-const IIBB: Record<CondicionIibb, string> = {
+export const IIBB: Record<CondicionIibb, string> = {
   local: 'Contribuyente local',
   convenio: 'Convenio Multilateral',
   exento: 'Exento',
@@ -41,7 +41,7 @@ export function formatearDocumento(tipo: number, numero: string): string {
   return formatearCuit(numero)
 }
 
-function nombreTipo(tipo: number): string {
+export function nombreTipo(tipo: number): string {
   return TIPOS_DOCUMENTO[tipo as TipoDocumento] ?? 'Documento'
 }
 
@@ -108,11 +108,6 @@ export function PantallaClientes() {
           cliente={edicion.cliente}
           catalogos={catalogos.data}
           alTerminar={() => setEdicion(null)}
-          buscarDocumento={(numero) => {
-            setEdicion(null)
-            setConDesactivados(true)
-            setBuscar(numero)
-          }}
         />
       )}
 
@@ -190,7 +185,7 @@ export function PantallaClientes() {
                   >
                     <td className="h-fila border-b border-borde-suave px-3">
                       <span className="flex items-baseline gap-2">
-                        {c.razonSocial}
+                        <EnlaceFicha cliente={c} />
                         <Marcas cliente={c} />
                       </span>
                     </td>
@@ -230,7 +225,9 @@ export function PantallaClientes() {
                 className={`grid gap-0.5 px-3 py-2.5 ${c.activo ? '' : 'text-texto-tenue'}`}
               >
                 <div className="flex items-baseline gap-2">
-                  <span className="text-dato font-semibold">{c.razonSocial}</span>
+                  <span className="text-dato font-semibold">
+                    <EnlaceFicha cliente={c} />
+                  </span>
                   <Marcas cliente={c} />
                   {puedeEditar && (
                     <button
@@ -258,8 +255,20 @@ export function PantallaClientes() {
   )
 }
 
+function EnlaceFicha({ cliente }: { cliente: Cliente }) {
+  return (
+    <Link
+      to="/clientes/$id"
+      params={{ id: cliente.id }}
+      className="hover:text-marca hover:underline focus-visible:underline"
+    >
+      {cliente.razonSocial}
+    </Link>
+  )
+}
+
 /** Desactivado y proveedor, en palabras: el color solo no alcanza. */
-function Marcas({ cliente }: { cliente: Cliente }) {
+export function Marcas({ cliente }: { cliente: Cliente }) {
   return (
     <>
       {!cliente.activo && <span className="text-etiqueta text-texto-tenue">Desactivado</span>}
@@ -272,18 +281,17 @@ function Marcas({ cliente }: { cliente: Cliente }) {
   )
 }
 
-function Formulario({
+export function Formulario({
   cliente,
   catalogos,
   alTerminar,
-  buscarDocumento,
 }: {
   cliente: Cliente | undefined
   catalogos: Catalogos
   alTerminar: () => void
-  buscarDocumento: (numero: string) => void
 }) {
   const cache = useQueryClient()
+  const navegar = useNavigate()
   const tenantId = usarSesion((e) => e.datos?.tenant.id)
   const primerCampo = useRef<HTMLInputElement>(null)
   useEffect(() => {
@@ -376,7 +384,7 @@ function Formulario({
 
   const duplicado =
     guardar.error instanceof ORPCError && guardar.error.code === 'CLIENTE_DUPLICADO'
-      ? (guardar.error.data as { razonSocial: string } | undefined)
+      ? (guardar.error.data as { id: string; razonSocial: string } | undefined)
       : undefined
 
   const titulo = cliente ? `Modificar ${cliente.razonSocial}` : 'Nuevo cliente'
@@ -549,10 +557,13 @@ function Formulario({
           Ese documento ya está cargado como cliente, a nombre de {duplicado.razonSocial}.
           <button
             type="button"
-            onClick={() => buscarDocumento(normalizado)}
+            onClick={() => {
+              alTerminar()
+              void navegar({ to: '/clientes/$id', params: { id: duplicado.id } })
+            }}
             className="text-etiqueta text-marca hover:underline"
           >
-            Buscarlo en el listado
+            Abrir su ficha
           </button>
         </p>
       ) : (

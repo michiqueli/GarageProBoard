@@ -267,6 +267,25 @@ describe('transferir', () => {
   })
 })
 
+describe('los vehículos de un cliente', () => {
+  it('el que tiene, y el que tuvo con sus fechas', async () => {
+    const deAna = (await pedir(gerente, 'GET', `/clientes/${ana}/vehiculos`)).json()
+    expect(deAna.datos).toEqual([
+      expect.objectContaining({ chasis: HILUX.chasis, desde: '2025-06-15', hasta: null }),
+    ])
+
+    const deTransportes = (await pedir(gerente, 'GET', `/clientes/${transportes}/vehiculos`)).json()
+    expect(deTransportes.datos).toEqual([
+      expect.objectContaining({
+        chasis: HILUX.chasis,
+        desde: '2024-03-01',
+        hasta: '2025-06-15',
+        titular: null,
+      }),
+    ])
+  })
+})
+
 describe('aislamiento y permisos', () => {
   it('la ficha de un vehículo de otra concesionaria no existe', async () => {
     const id = await porChasis(HILUX.chasis)

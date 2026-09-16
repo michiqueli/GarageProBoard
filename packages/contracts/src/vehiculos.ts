@@ -136,6 +136,23 @@ export const contratoVehiculos = {
       z.object({ datos: z.array(z.object({ marca: z.string(), modelos: z.array(z.string()) })) }),
     ),
 
+  delCliente: conPermiso('nucleo', 'ver', 'Vehiculo')
+    .route({
+      method: 'GET',
+      path: '/clientes/{clienteId}/vehiculos',
+      tags: [TAG],
+      operationId: 'vehiculosDelCliente',
+      summary: 'Los vehículos de un cliente: los que tiene y los que tuvo',
+    })
+    .input(z.object({ clienteId: z.uuid() }))
+    .output(
+      z.object({
+        datos: z.array(
+          vehiculoSalida.extend({ desde: z.iso.date(), hasta: z.iso.date().nullable() }),
+        ),
+      }),
+    ),
+
   ficha: conPermiso('nucleo', 'ver', 'Vehiculo')
     .route({
       method: 'GET',
