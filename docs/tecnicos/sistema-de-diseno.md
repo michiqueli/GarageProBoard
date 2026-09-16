@@ -458,6 +458,14 @@ que el menú). Lo que **lleva a otra pantalla** sigue siendo un enlace —el nom
 cliente, la patente, «← Todos los clientes»—, y si tiene que verse como botón usa
 `clasesBoton()` sin dejar de ser un `<a>`.
 
+### Patentes y chasis
+
+Una patente se dibuja siempre con `<Patente>`, como la chapa de la calle: Mercosur, anterior, o
+la de «sin patentar» para los 0 km. **Toda patente y todo chasis a la vista llevan
+`<BotonCopiar>` al lado**: copiar el chasis para pegarlo en el buscador de repuestos o en el
+sistema de la terminal es de lo que más se hace en el mostrador. Se copia sin espacios. En
+la ficha del vehículo, además, con teclado: `Alt + C` el chasis y `Alt + P` la patente.
+
 ### Estados vacíos, cargando y con error
 
 - **Vacío**: decir qué es esto y ofrecer la acción. «Todavía no hay órdenes en esta

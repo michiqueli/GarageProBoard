@@ -65,3 +65,20 @@ export function IconoDescargar() {
     </svg>
   )
 }
+
+export function IconoCopiar() {
+  return (
+    <svg {...trazo} aria-hidden="true">
+      <rect x="5.5" y="5.5" width="8" height="8.5" rx="1" />
+      <path d="M3.5 10.5h-.5a1 1 0 0 1-1-1V3a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v.5" />
+    </svg>
+  )
+}
+
+export function IconoListo() {
+  return (
+    <svg {...trazo} aria-hidden="true">
+      <path d="M3 8.5l3.2 3L13 4.5" />
+    </svg>
+  )
+}

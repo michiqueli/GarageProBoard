@@ -4,6 +4,7 @@ import { useQuery } from '@tanstack/react-query'
 import { getRouteApi, Link } from '@tanstack/react-router'
 import { type ReactNode, useState } from 'react'
 import { Boton } from '../../componentes/Boton.tsx'
+import { BotonCopiar } from '../../componentes/Copiar.tsx'
 import { IconoEditar } from '../../componentes/iconos.tsx'
 import { Patente } from '../../componentes/Patente.tsx'
 import { Shell } from '../../componentes/Shell.tsx'
@@ -182,7 +183,7 @@ function ListaVehiculos({
         {vehiculos.map((v) => (
           <li
             key={`${v.id}-${v.desde}`}
-            className="flex flex-wrap items-baseline gap-x-3 gap-y-0.5 px-3 py-2"
+            className="flex flex-wrap items-center gap-x-3 gap-y-0.5 px-3 py-2"
           >
             <Link
               to="/vehiculos/$id"
@@ -191,6 +192,7 @@ function ListaVehiculos({
             >
               <Patente dominio={v.dominio} />
             </Link>
+            {v.dominio && <BotonCopiar valor={v.dominio} que="Patente" />}
             <span className="text-dato">
               {[v.marca && `${v.marca} ${v.modelo ?? ''}`.trim(), v.anio]
                 .filter(Boolean)

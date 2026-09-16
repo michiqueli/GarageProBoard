@@ -250,6 +250,21 @@ const POR_PANTALLA: readonly DefinicionAccion[] = [
     porOmision: 'F9',
     reasignable: true,
   },
+  {
+    accion: 'vehiculos.copiarChasis',
+    ambito: 'vehiculos',
+    etiqueta: 'Copiar chasis',
+    porOmision: 'Alt+C',
+    reasignable: true,
+    descripcion: 'Para pegarlo en el buscador de repuestos o en el sistema de la terminal.',
+  },
+  {
+    accion: 'vehiculos.copiarPatente',
+    ambito: 'vehiculos',
+    etiqueta: 'Copiar patente',
+    porOmision: 'Alt+P',
+    reasignable: true,
+  },
 ]
 
 export const CATALOGO: readonly DefinicionAccion[] = [...GLOBALES, ...POR_PANTALLA]

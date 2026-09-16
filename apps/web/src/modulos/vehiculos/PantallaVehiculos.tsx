@@ -5,6 +5,7 @@ import { getRouteApi, Link } from '@tanstack/react-router'
 import { type FormEvent, useEffect, useRef, useState } from 'react'
 import { Boton } from '../../componentes/Boton.tsx'
 import { Campo } from '../../componentes/Campo.tsx'
+import { BotonCopiar } from '../../componentes/Copiar.tsx'
 import { Patente } from '../../componentes/Patente.tsx'
 import { type ClienteElegido, SelectorCliente } from '../../componentes/SelectorCliente.tsx'
 import { Shell } from '../../componentes/Shell.tsx'
@@ -148,7 +149,10 @@ export function PantallaVehiculos() {
                       {v.titular?.razonSocial ?? <SinTitular />}
                     </td>
                     <td className="h-fila border-b border-borde-suave px-3 font-mono text-etiqueta text-texto-suave">
-                      {v.chasis}
+                      <span className="inline-flex items-center gap-1">
+                        {v.chasis}
+                        <BotonCopiar valor={v.chasis} que="Chasis" />
+                      </span>
                     </td>
                   </tr>
                 ))}
@@ -170,7 +174,10 @@ export function PantallaVehiculos() {
                 <span className="text-etiqueta text-texto-suave">
                   {v.titular?.razonSocial ?? <SinTitular />}
                 </span>
-                <span className="font-mono text-etiqueta text-texto-tenue">{v.chasis}</span>
+                <span className="inline-flex items-center gap-1 font-mono text-etiqueta text-texto-tenue">
+                  {v.chasis}
+                  <BotonCopiar valor={v.chasis} que="Chasis" />
+                </span>
               </li>
             ))}
           </ul>
@@ -184,16 +191,19 @@ export function nombreVehiculo(v: { marca: string | null; modelo: string | null 
   return v.marca ? `${v.marca} ${v.modelo ?? ''}`.trim() : null
 }
 
-/** La chapa lleva a la ficha. */
+/** La chapa lleva a la ficha, y al lado, copiarla. */
 function EnlaceFicha({ vehiculo }: { vehiculo: Vehiculo }) {
   return (
-    <Link
-      to="/vehiculos/$id"
-      params={{ id: vehiculo.id }}
-      className="inline-flex rounded-[3px] transition-opacity hover:opacity-80 focus-visible:outline-2 focus-visible:outline-offset-2"
-    >
-      <Patente dominio={vehiculo.dominio} />
-    </Link>
+    <span className="inline-flex items-center gap-1">
+      <Link
+        to="/vehiculos/$id"
+        params={{ id: vehiculo.id }}
+        className="inline-flex rounded-[3px] transition-opacity hover:opacity-80 focus-visible:outline-2 focus-visible:outline-offset-2"
+      >
+        <Patente dominio={vehiculo.dominio} />
+      </Link>
+      {vehiculo.dominio && <BotonCopiar valor={vehiculo.dominio} que="Patente" />}
+    </span>
   )
 }
 

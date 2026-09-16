@@ -6,6 +6,7 @@ import { getRouteApi, Link } from '@tanstack/react-router'
 import { type FormEvent, type ReactNode, useRef, useState } from 'react'
 import { Boton } from '../../componentes/Boton.tsx'
 import { Campo } from '../../componentes/Campo.tsx'
+import { BotonCopiar, copiarConAviso } from '../../componentes/Copiar.tsx'
 import { IconoEditar, IconoTransferir } from '../../componentes/iconos.tsx'
 import { Patente } from '../../componentes/Patente.tsx'
 import { type ClienteElegido, SelectorCliente } from '../../componentes/SelectorCliente.tsx'
@@ -13,6 +14,7 @@ import { Shell } from '../../componentes/Shell.tsx'
 import { usarSesion } from '../../sesion/almacen.ts'
 import { api } from '../../sesion/cliente.ts'
 import { usePuedeUsar } from '../../sesion/permisos.ts'
+import { useAtajo } from '../../teclado/index.ts'
 import {
   CamposVehiculo,
   COMBUSTIBLE,
@@ -54,6 +56,15 @@ export function PantallaFichaVehiculo() {
     enabled: puedeVer,
   })
   const f = consulta.data
+
+  // Copiar el chasis para pegarlo en el buscador de repuestos es de lo que más se hace en
+  // el mostrador: va con tecla, sin buscar el botón con el mouse.
+  useAtajo('vehiculos.copiarChasis', () => f && void copiarConAviso(f.chasis, 'Chasis'), Boolean(f))
+  useAtajo(
+    'vehiculos.copiarPatente',
+    () => f?.dominio && void copiarConAviso(f.dominio, 'Patente'),
+    Boolean(f?.dominio),
+  )
 
   const titulo = f
     ? [f.dominio ? formatearDominio(f.dominio) : 'Sin patentar', nombreVehiculo(f)]
@@ -125,10 +136,16 @@ export function PantallaFichaVehiculo() {
           >
             <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1.5 px-3 py-2.5 text-dato">
               <Dato nombre="Patente">
-                <Patente dominio={f.dominio} tamano="grande" />
+                <span className="inline-flex items-center gap-1.5">
+                  <Patente dominio={f.dominio} tamano="grande" />
+                  {f.dominio && <BotonCopiar valor={f.dominio} que="Patente" />}
+                </span>
               </Dato>
               <Dato nombre="Chasis" mono>
-                {f.chasis}
+                <span className="inline-flex items-center gap-1">
+                  {f.chasis}
+                  <BotonCopiar valor={f.chasis} que="Chasis" />
+                </span>
               </Dato>
               <Dato nombre="Marca y modelo">{nombreVehiculo(f)}</Dato>
               <Dato nombre="Año" mono>
