@@ -153,7 +153,7 @@ La barrera de entrada más alta. Nada se vende sin esto.
 - ⬜ WSAA: token y sign, con caché hasta el vencimiento
 - ⬜ Numeración sin huecos: `select ... for update` en la misma transacción que el CAE
 - ⬜ Matriz emisor × receptor como tabla de reglas
-- ⬜ PDF del comprobante con QR y código de barras
+- 🔨 PDF del comprobante con QR (`@gpb/pdf`: el formato de «Comprobantes en línea»; sin código de barras, que la RG 4.892 reemplazó por el QR). Falta conectarlo a la emisión y al mail
 - ⬜ Cola de reintentos en BullMQ para cuando AFIP no responde
 - 🔨 Circuito probado contra AFIP: una Factura B real en producción (16/09/2026, punto de
       venta 8). Falta hacerlo desde la aplicación, con numeración, comprobante guardado y PDF
