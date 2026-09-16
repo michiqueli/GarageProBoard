@@ -137,6 +137,18 @@ export const SECUNDARIAS: Seccion[] = [
     ),
   },
   {
+    id: 'auditoria',
+    etiqueta: 'Auditoría',
+    to: '/auditoria',
+    requiere: { modulo: 'nucleo', accion: 'ver', sujeto: 'Auditoria' },
+    icono: (
+      <svg viewBox="0 0 16 16" {...trazo} aria-hidden="true">
+        <path d="M4 2h8v12H4z" />
+        <path d="M6 5h4M6 8h4M6 11h2" />
+      </svg>
+    ),
+  },
+  {
     id: 'ayuda',
     etiqueta: 'Ayuda',
     icono: (

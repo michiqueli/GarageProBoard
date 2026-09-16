@@ -16,6 +16,7 @@ import { z } from 'zod'
 import { Shell } from './componentes/Shell.tsx'
 import { useCacheDeSesion } from './ganchos/useCacheDeSesion.ts'
 import { useTema } from './ganchos/useTema.ts'
+import { PantallaAuditoria } from './modulos/auditoria/PantallaAuditoria.tsx'
 import { PantallaLogin } from './modulos/auth/PantallaLogin.tsx'
 import { PantallaSucursal } from './modulos/auth/PantallaSucursal.tsx'
 import { PantallaOrdenes } from './modulos/ordenes/PantallaOrdenes.tsx'
@@ -162,10 +163,16 @@ const rutaUsuarios = createRoute({
   component: PantallaUsuarios,
 })
 
+const rutaAuditoria = createRoute({
+  getParentRoute: () => conSesion,
+  path: 'auditoria',
+  component: PantallaAuditoria,
+})
+
 const arbol = raiz.addChildren([
   rutaEntrar,
   rutaSucursal,
-  conSesion.addChildren([rutaInicio, rutaOrdenes, rutaVehiculos, rutaUsuarios]),
+  conSesion.addChildren([rutaInicio, rutaOrdenes, rutaVehiculos, rutaUsuarios, rutaAuditoria]),
 ])
 
 /**

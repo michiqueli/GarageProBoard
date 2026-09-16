@@ -2,6 +2,8 @@ import { Module } from '@nestjs/common'
 import { ConfigModule } from '@nestjs/config'
 import { ORPCModule } from '@orpc/nest'
 import { LoggerModule } from 'nestjs-pino'
+import { ControladorAuditoria } from './auditoria/auditoria.controller.ts'
+import { ServicioAuditoria } from './auditoria/auditoria.service.ts'
 import { ModuloAuth } from './auth/auth.module.ts'
 import { ModuloBase } from './comun/base.module.ts'
 import { ControladorSalud } from './salud/salud.controller.ts'
@@ -30,7 +32,7 @@ import { ControladorVehiculos } from './vehiculos/vehiculos.controller.ts'
     ModuloBase,
     ModuloAuth,
   ],
-  controllers: [ControladorSalud, ControladorVehiculos, ControladorUsuarios],
-  providers: [ServicioUsuarios],
+  controllers: [ControladorSalud, ControladorVehiculos, ControladorUsuarios, ControladorAuditoria],
+  providers: [ServicioUsuarios, ServicioAuditoria],
 })
 export class ModuloPrincipal {}

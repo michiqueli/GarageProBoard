@@ -57,19 +57,40 @@ Toda alta, baja y cambio de rol va a `auditoria`: quién, a quién y qué cambi�
 
 ## Lo que salió al construirlo
 
-### El administrador de usuarios solo no puede repartir casi nada
+### El administrador de sistema puede todo, y queda registrado
 
-Es la consecuencia directa de «nadie da lo que no tiene», y es correcta: quien crea un
-mecánico genera su contraseña y puede entrar como él, así que asignar «ver órdenes» es,
-en la práctica, verlas.
+La primera versión aplicaba «nadie da lo que no tiene» a todos, y la consecuencia era que
+el administrador de usuarios solo no podía asignar ni un mecánico. **Se cambió por decisión
+del producto**: la concesionaria confía en quien administra el sistema, y lo que lo
+controla no es un bloqueo sino que todo quede a la vista.
 
-Por eso el rol predefinido **se combina** con los roles que esa persona va a repartir. La
-de sistemas que da de alta mecánicos y asesores tiene «Administrador de usuarios» +
-«Mecánico» + «Asesor de servicios». El gerente no necesita nada más: `administrar all`
-cubre todo.
+- **Administrador de sistema** (`administrar Usuario`) y **gerente** (`administrar all`)
+  asignan cualquier rol y modifican a cualquier usuario. Nadie cambia sus propios roles,
+  sucursales ni estado: eso lo hace otra persona, así queda la firma de dos.
+- **Quien sólo da de alta usuarios** —un rol armado con `crear` y `editar Usuario`, sin
+  `administrar`— sigue con la regla estricta: no da lo que no tiene ni toca a quien tiene
+  más.
 
-La pantalla lo dice en cada rol que no se puede asignar —«te falta ver órdenes de
-trabajo»— en vez de dejar descubrirlo con un rechazo.
+`faltaParaAsignar()` en `core` decide cuál de las dos se aplica.
+
+### Lo que controla al administrador
+
+**La IP no alcanza.** Todas las PC de una concesionaria salen por el mismo router, y el
+servidor ve la misma dirección para todos. Por eso:
+
+1. **Cada computadora se reconoce.** La primera vez que un navegador entra recibe un
+   identificador en una cookie, y cada ingreso queda asociado a esa computadora. Se les
+   puede poner nombre —«PC del mostrador»—, y el cambio de nombre también queda
+   registrado: renombrar la PC de sistemas como «PC del gerente» es borrar huellas.
+2. **El afectado se entera.** Si otra persona le cambia la contraseña, los roles o las
+   sucursales, recibe un aviso con quién y cuándo, arriba de cualquier pantalla, apenas
+   vuelve a entrar. Y con la contraseña, además, se le cierran las sesiones.
+3. **La pantalla de Auditoría** muestra los ingresos, los cambios y las computadoras. Un
+   ingreso desde una **computadora nueva para ese usuario** va marcado: el gerente
+   entrando desde la PC de sistemas es exactamente eso.
+
+No es infalible —quien borra las cookies aparece como computadora nueva, que igual queda
+marcada— y no pretende serlo: es trazabilidad, no un candado.
 
 ### Tocar a alguien con más permisos también es escalar
 

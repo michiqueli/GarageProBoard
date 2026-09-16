@@ -115,7 +115,9 @@ Las entidades ya están modeladas; falta poder operarlas.
 - ✅ ABM de usuarios, con el rol predefinido «Administrador de usuarios» y las reglas
       que impiden que se convierta en gerente: nadie da lo que no tiene, y nadie modifica a
       quien tiene más permisos. En [usuarios y roles](../tecnicos/usuarios-y-roles.md)
-- ⬜ Crear, clonar y editar roles, con la misma regla
+- ✅ Administrador de sistema: asigna cualquier rol y modifica a cualquiera, con cada
+      ingreso asociado a su computadora, aviso al afectado y pantalla de Auditoría
+- ⬜ Crear, clonar y editar roles
 - ⬜ Registrar Usuarios en el índice del buscador del sistema cuando exista
 - ⬜ ABM de entidades comerciales con consulta al padrón de AFIP por CUIT
 - 🔨 ABM de vehículos: listado y alta contra la API; falta edición y titularidad
