@@ -1,13 +1,13 @@
 import type { ContractRouterClient } from '@orpc/contract'
 import { z } from 'zod'
-import { conPermiso, publico } from './acceso.ts'
+import { publico } from './acceso.ts'
 import { contratoAuditoria } from './auditoria.ts'
 import { contratoAuth } from './auth.ts'
 import { contratoClientes } from './clientes.ts'
-import { chasis, dominio, paginado, problema } from './comunes.ts'
 import { contratoOrganizacion } from './organizacion.ts'
 import { contratoPadron } from './padron.ts'
 import { contratoUsuarios } from './usuarios.ts'
+import { contratoVehiculos } from './vehiculos.ts'
 
 export * from './acceso.ts'
 export * from './auditoria.ts'
@@ -17,14 +17,7 @@ export * from './comunes.ts'
 export * from './organizacion.ts'
 export * from './padron.ts'
 export * from './usuarios.ts'
-
-export const vehiculoSalida = z.object({
-  id: z.uuid(),
-  chasis: z.string(),
-  dominio: z.string().nullable(),
-  anio: z.number().int().nullable(),
-  color: z.string().nullable(),
-})
+export * from './vehiculos.ts'
 
 /**
  * El contrato vive acá y no dentro de la API a propósito: es lo que hace que
@@ -54,54 +47,7 @@ export const contrato = {
     })
     .output(z.object({ estado: z.literal('ok'), version: z.string() })),
 
-  vehiculos: {
-    listar: conPermiso('nucleo', 'ver', 'Vehiculo')
-      .route({
-        method: 'GET',
-        path: '/vehiculos',
-        tags: ['Vehículos'],
-        operationId: 'listarVehiculos',
-        summary: 'Listado de vehículos',
-        description: 'El buscador acepta patente, número de chasis o nombre del cliente.',
-      })
-      .input(
-        paginado.extend({
-          // El mecánico busca por la patente que ve en el parabrisas; el
-          // administrativo, por chasis. Los dos entran por el mismo campo.
-          buscar: z.string().optional(),
-        }),
-      )
-      .output(z.object({ datos: z.array(vehiculoSalida), total: z.number().int() })),
-
-    crear: conPermiso('nucleo', 'crear', 'Vehiculo')
-      .route({
-        method: 'POST',
-        path: '/vehiculos',
-        tags: ['Vehículos'],
-        operationId: 'crearVehiculo',
-        summary: 'Alta de vehículo',
-        successStatus: 201,
-        description:
-          'El dominio puede omitirse: un 0km existe con su chasis desde que la terminal ' +
-          'lo factura y puede pasar semanas sin chapa.',
-      })
-      .input(
-        z.object({
-          chasis,
-          dominio: dominio.nullish(),
-          anio: z.number().int().min(1900).max(2100).optional(),
-          color: z.string().optional(),
-        }),
-      )
-      .errors({
-        CHASIS_DUPLICADO: {
-          status: 409,
-          message: 'Ya hay un vehículo con ese chasis',
-          data: problema,
-        },
-      })
-      .output(vehiculoSalida),
-  },
+  vehiculos: contratoVehiculos,
 }
 
 export type Contrato = typeof contrato

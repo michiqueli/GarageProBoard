@@ -31,6 +31,13 @@ const VALORES: Record<string, Record<string, string>> = {
     no_inscripto: 'No inscripto',
   },
   uso: { facturacion: 'Facturación', remito: 'Remitos', otro: 'Otro' },
+  combustible: {
+    nafta: 'Nafta',
+    diesel: 'Diésel',
+    gnc: 'GNC',
+    electrico: 'Eléctrico',
+    hibrido: 'Híbrido',
+  },
 }
 
 /** Un valor como lo lee una persona. Un código que ya no está en el catálogo se muestra tal cual. */
@@ -128,7 +135,46 @@ export function sobreQue(tabla: string, antes: Foto, despues: Foto): string {
     return `el punto de venta ${String(dato('numero')).padStart(4, '0')}`
   }
   if (tabla === 'cliente') return `el cliente ${String(dato('razonSocial'))}`
+  if (tabla === 'vehiculo' || tabla === 'titularidad') {
+    return `el vehículo ${String(dato('dominio') ?? dato('chasis'))}`
+  }
   return tabla
+}
+
+/** Los campos de un vehículo, como se llaman en la pantalla. */
+const CAMPOS_VEHICULO: Record<string, string> = {
+  dominio: 'patente',
+  marca: 'marca',
+  modelo: 'modelo',
+  anio: 'año',
+  color: 'color',
+  motor: 'motor',
+  combustible: 'combustible',
+  kilometraje: 'kilómetros',
+  observaciones: 'observaciones',
+}
+
+/** «16/09/2026», como se escribe una fecha acá. */
+function fecha(iso: unknown): string {
+  const [a, m, d] = String(iso).split('-')
+  return `${d}/${m}/${a}`
+}
+
+function describirVehiculo(
+  tabla: string,
+  accion: string,
+  antes: Foto,
+  despues: Foto,
+  nombres: Nombres,
+): string {
+  if (tabla === 'titularidad') {
+    const desde = fecha(despues?.desde)
+    return despues?.anterior
+      ? `Pasó de ${String(despues.anterior)} a ${String(despues?.cliente)}, desde el ${desde}`
+      : `Le asignó como titular a ${String(despues?.cliente)}, desde el ${desde}`
+  }
+  if (accion === 'alta') return 'Lo dio de alta'
+  return juntar(cambiosDe(CAMPOS_VEHICULO, antes, despues, nombres))
 }
 
 /** Los campos de un cliente, como se llaman en la pantalla. */
@@ -205,6 +251,9 @@ export function describirCambio(
     return describirOrganizacion(tabla, accion, antes, despues, nombres)
   }
   if (tabla === 'cliente') return describirCliente(accion, antes, despues, nombres)
+  if (tabla === 'vehiculo' || tabla === 'titularidad') {
+    return describirVehiculo(tabla, accion, antes, despues, nombres)
+  }
   if (tabla === 'dispositivo') {
     return `Nombre: «${antes?.nombre ?? 'sin nombre'}» → «${despues?.nombre ?? 'sin nombre'}»`
   }

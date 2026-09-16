@@ -1,25 +1,38 @@
 import { accesoDeRuta, contrato } from '@gpb/contracts'
 import { ORPCError } from '@orpc/client'
-import { useQuery } from '@tanstack/react-query'
-import { getRouteApi } from '@tanstack/react-router'
-import { useState } from 'react'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { getRouteApi, Link } from '@tanstack/react-router'
+import { type FormEvent, useEffect, useRef, useState } from 'react'
 import { Boton } from '../../componentes/Boton.tsx'
+import { Campo } from '../../componentes/Campo.tsx'
+import { type ClienteElegido, SelectorCliente } from '../../componentes/SelectorCliente.tsx'
 import { Shell } from '../../componentes/Shell.tsx'
 import { ES_ESCRITORIO, useMedia } from '../../ganchos/useMedia.ts'
 import { usarSesion } from '../../sesion/almacen.ts'
 import { api } from '../../sesion/cliente.ts'
 import { usePuedeUsar } from '../../sesion/permisos.ts'
+import {
+  CamposVehiculo,
+  DATOS_VACIOS,
+  type Datos,
+  formatearDominio,
+  hoy,
+  paraEnviar,
+  problemas,
+} from './datos-vehiculo.tsx'
 
 // Por id y no importando la ruta: `rutas.tsx` importa esta pantalla, y el camino
 // inverso armaría un ciclo. El id igual está tipado — uno que no existe no compila.
 const ruta = getRouteApi('/con-sesion/vehiculos')
 
+type Vehiculo = Awaited<ReturnType<typeof api.vehiculos.listar>>['datos'][number]
+
 /**
  * El parque de vehículos de la concesionaria, contra la base de verdad.
  *
- * Es la primera pantalla que consume la API: cada usuario ve solamente los suyos, y el
- * filtro no lo pone esta consulta sino Row Level Security. Si mañana alguien escribe
- * una consulta y se olvida de acotarla, no se filtran datos ajenos — revienta.
+ * Cada usuario ve solamente los suyos, y el filtro no lo pone esta consulta sino Row Level
+ * Security. Si mañana alguien escribe una consulta y se olvida de acotarla, no se filtran
+ * datos ajenos — revienta.
  */
 export function PantallaVehiculos() {
   const navegar = ruta.useNavigate()
@@ -29,6 +42,7 @@ export function PantallaVehiculos() {
   // directo de la URL, cada tecla esperaría a que el router termine de navegar y el
   // cursor saltaría al final en medio de una patente.
   const [buscar, setBuscarLocal] = useState(inicial)
+  const [dandoDeAlta, setDandoDeAlta] = useState(false)
   const esEscritorio = useMedia(ES_ESCRITORIO)
 
   function setBuscar(valor: string) {
@@ -56,18 +70,22 @@ export function PantallaVehiculos() {
     enabled: puedeVer,
   })
 
+  const datos = consulta.data?.datos ?? []
+
   return (
     <Shell
       titulo="Vehículos"
       requiere={accesoDeRuta(contrato.vehiculos.listar)}
       acciones={
-        puedeCrear ? (
-          <Boton accion="global.nuevo" onClick={() => {}}>
+        puedeCrear && !dandoDeAlta ? (
+          <Boton accion="global.nuevo" variante="principal" onClick={() => setDandoDeAlta(true)}>
             Nuevo vehículo
           </Boton>
         ) : undefined
       }
     >
+      {dandoDeAlta && <FormAlta alTerminar={() => setDandoDeAlta(false)} />}
+
       <section className="overflow-hidden rounded-base border border-borde bg-superficie">
         <header className="flex flex-wrap items-center gap-2.5 border-b border-borde px-3 py-2">
           <h2 className="font-display text-dato font-semibold">Parque de {tenant}</h2>
@@ -77,9 +95,9 @@ export function PantallaVehiculos() {
           <input
             value={buscar}
             onChange={(e) => setBuscar(e.target.value)}
-            placeholder="Patente o chasis"
+            placeholder="Patente, chasis o titular"
             aria-label="Buscar"
-            className="ml-auto h-campo w-56 rounded-base border border-borde bg-superficie-2 px-2.5 text-dato outline-none placeholder:text-texto-tenue focus-visible:border-marca"
+            className="h-campo w-full rounded-base border border-borde bg-superficie-2 px-2.5 text-dato outline-none placeholder:text-texto-tenue focus-visible:border-marca md:ml-auto md:w-64"
           />
         </header>
 
@@ -99,12 +117,12 @@ export function PantallaVehiculos() {
           </p>
         )}
 
-        {consulta.data && consulta.data.datos.length > 0 && esEscritorio && (
+        {datos.length > 0 && esEscritorio && (
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[36rem] border-collapse text-dato">
+            <table className="w-full min-w-[44rem] border-collapse text-dato">
               <thead>
                 <tr>
-                  {['Patente', 'Chasis', 'Año', 'Color'].map((c) => (
+                  {['Patente', 'Vehículo', 'Año', 'Titular', 'Chasis'].map((c) => (
                     <th
                       key={c}
                       className="border-b border-borde bg-superficie-2 px-3 py-1.5 text-left text-[10.5px] font-semibold tracking-wider text-texto-tenue uppercase"
@@ -115,18 +133,23 @@ export function PantallaVehiculos() {
                 </tr>
               </thead>
               <tbody>
-                {consulta.data.datos.map((v) => (
+                {datos.map((v) => (
                   <tr key={v.id} className="hover:bg-superficie-2">
                     <td className="h-fila border-b border-borde-suave px-3 font-mono">
-                      {v.dominio ?? <SinPatente />}
+                      <EnlaceFicha vehiculo={v} />
                     </td>
-                    <td className="h-fila border-b border-borde-suave px-3 font-mono text-etiqueta text-texto-suave">
-                      {v.chasis}
+                    <td className="h-fila border-b border-borde-suave px-3">
+                      {nombreVehiculo(v) ?? '—'}
                     </td>
                     <td className="h-fila border-b border-borde-suave px-3 font-mono">
                       {v.anio ?? '—'}
                     </td>
-                    <td className="h-fila border-b border-borde-suave px-3">{v.color ?? '—'}</td>
+                    <td className="h-fila border-b border-borde-suave px-3 text-texto-suave">
+                      {v.titular?.razonSocial ?? <SinTitular />}
+                    </td>
+                    <td className="h-fila border-b border-borde-suave px-3 font-mono text-etiqueta text-texto-suave">
+                      {v.chasis}
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -134,18 +157,21 @@ export function PantallaVehiculos() {
           </div>
         )}
 
-        {consulta.data && consulta.data.datos.length > 0 && !esEscritorio && (
+        {datos.length > 0 && !esEscritorio && (
           <ul className="divide-y divide-borde-suave">
-            {consulta.data.datos.map((v) => (
+            {datos.map((v) => (
               <li key={v.id} className="grid gap-0.5 px-3 py-2.5">
                 <div className="flex items-baseline gap-2">
                   <span className="font-mono text-dato font-semibold">
-                    {v.dominio ?? <SinPatente />}
+                    <EnlaceFicha vehiculo={v} />
                   </span>
                   <span className="ml-auto text-etiqueta text-texto-suave">
-                    {v.anio ?? '—'} · {v.color ?? '—'}
+                    {[nombreVehiculo(v), v.anio].filter(Boolean).join(' · ') || '—'}
                   </span>
                 </div>
+                <span className="text-etiqueta text-texto-suave">
+                  {v.titular?.razonSocial ?? <SinTitular />}
+                </span>
                 <span className="font-mono text-etiqueta text-texto-tenue">{v.chasis}</span>
               </li>
             ))}
@@ -154,6 +180,144 @@ export function PantallaVehiculos() {
       </section>
     </Shell>
   )
+}
+
+export function nombreVehiculo(v: { marca: string | null; modelo: string | null }) {
+  return v.marca ? `${v.marca} ${v.modelo ?? ''}`.trim() : null
+}
+
+/** La patente lleva a la ficha. Sin patente, el chasis hace de nombre. */
+function EnlaceFicha({ vehiculo }: { vehiculo: Vehiculo }) {
+  return (
+    <Link
+      to="/vehiculos/$id"
+      params={{ id: vehiculo.id }}
+      className="text-marca hover:underline focus-visible:underline"
+    >
+      {vehiculo.dominio ? formatearDominio(vehiculo.dominio) : <SinPatente />}
+    </Link>
+  )
+}
+
+function FormAlta({ alTerminar }: { alTerminar: () => void }) {
+  const cache = useQueryClient()
+  const navegar = ruta.useNavigate()
+  const primerCampo = useRef<HTMLInputElement>(null)
+  useEffect(() => {
+    primerCampo.current?.focus()
+  }, [])
+
+  const [chasis, setChasis] = useState('')
+  const [datos, setDatos] = useState<Datos>(DATOS_VACIOS)
+  const [titular, setTitular] = useState<ClienteElegido | null>(null)
+  const [desde, setDesde] = useState(hoy())
+  const [tocado, setTocado] = useState(false)
+
+  const errores = tocado ? problemas(datos) : {}
+  const chasisMal = tocado && !/^[A-HJ-NPR-Z0-9]{6,17}$/.test(chasis)
+
+  const guardar = useMutation({
+    mutationFn: () =>
+      api.vehiculos.crear({
+        chasis,
+        ...paraEnviar(datos),
+        titular: titular ? { clienteId: titular.id, desde } : null,
+      }),
+    onSuccess: async (creado) => {
+      await cache.invalidateQueries({ queryKey: ['vehiculos'] })
+      alTerminar()
+      void navegar({ to: '/vehiculos/$id', params: { id: creado.id } })
+    },
+  })
+
+  function enviar(evento: FormEvent) {
+    evento.preventDefault()
+    setTocado(true)
+    if (!/^[A-HJ-NPR-Z0-9]{6,17}$/.test(chasis) || Object.keys(problemas(datos)).length) return
+    guardar.mutate()
+  }
+
+  return (
+    <section
+      aria-label="Nuevo vehículo"
+      className="grid gap-3 rounded-base border border-borde bg-superficie p-3"
+    >
+      <h2 className="font-display text-dato font-semibold">Nuevo vehículo</h2>
+      <form id="formulario-vehiculo" onSubmit={enviar} className="grid gap-3 md:grid-cols-3">
+        <Campo
+          ref={primerCampo}
+          etiqueta="Chasis"
+          required
+          value={chasis}
+          onChange={(e) => setChasis(e.target.value.toUpperCase().replace(/\s/g, ''))}
+          aria-invalid={chasisMal}
+          ayuda={
+            chasisMal
+              ? 'De 6 a 17 letras y números, sin I, O ni Q'
+              : 'Es la identidad del vehículo: no se cambia después'
+          }
+        />
+        <CamposVehiculo
+          datos={datos}
+          cambiar={(parcial) => setDatos((d) => ({ ...d, ...parcial }))}
+          errores={errores}
+        />
+        <div className="md:col-span-2">
+          <SelectorCliente etiqueta="Titular" valor={titular} onChange={setTitular} />
+        </div>
+        {titular ? (
+          <Campo
+            etiqueta="Titular desde"
+            type="date"
+            max={hoy()}
+            required
+            value={desde}
+            onChange={(e) => setDesde(e.target.value)}
+          />
+        ) : (
+          <p className="self-end pb-2 text-etiqueta text-texto-tenue">
+            Sin titular si está en stock.
+          </p>
+        )}
+      </form>
+
+      {guardar.isError && (
+        <p role="alert" className="text-dato text-critico">
+          {mensajeDeGuardar(guardar.error)}
+        </p>
+      )}
+
+      <div className="flex gap-2">
+        <Boton
+          accion="global.guardar"
+          variante="principal"
+          deshabilitado={guardar.isPending}
+          onClick={() =>
+            (
+              document.getElementById('formulario-vehiculo') as HTMLFormElement | null
+            )?.requestSubmit()
+          }
+        >
+          Guardar
+        </Boton>
+        <Boton accion="global.cancelar" onClick={alTerminar}>
+          Cancelar
+        </Boton>
+      </div>
+    </section>
+  )
+}
+
+/** Un error al guardar dice qué hacer; la patente repetida, además, de qué vehículo es. */
+export function mensajeDeGuardar(error: unknown): string {
+  if (error instanceof ORPCError) {
+    if (error.code === 'DOMINIO_DUPLICADO') {
+      const chasis = (error.data as { chasis?: string } | undefined)?.chasis
+      return `Esa patente ya la tiene el vehículo con chasis ${chasis}. Revisá cuál de los dos está mal.`
+    }
+    return error.message
+  }
+  return 'No se pudo conectar con el servidor. Probá de nuevo en un momento.'
 }
 
 /**
@@ -167,8 +331,12 @@ function mensajeDeError(error: Error): string {
 }
 
 /** Un 0km existe con chasis desde que la terminal lo factura, y sin chapa por semanas. */
-function SinPatente() {
-  return <span className="text-etiqueta text-texto-tenue italic">sin patentar</span>
+export function SinPatente() {
+  return <span className="text-etiqueta italic">sin patentar</span>
+}
+
+function SinTitular() {
+  return <span className="text-etiqueta text-texto-tenue">sin titular</span>
 }
 
 /** Esqueletos con la forma de lo que viene, no un spinner que hace saltar la pantalla. */

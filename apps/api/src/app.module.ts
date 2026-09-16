@@ -15,6 +15,7 @@ import { ControladorSalud } from './salud/salud.controller.ts'
 import { ControladorUsuarios } from './usuarios/usuarios.controller.ts'
 import { ServicioUsuarios } from './usuarios/usuarios.service.ts'
 import { ControladorVehiculos } from './vehiculos/vehiculos.controller.ts'
+import { ServicioVehiculos } from './vehiculos/vehiculos.service.ts'
 
 @Module({
   imports: [
@@ -46,6 +47,12 @@ import { ControladorVehiculos } from './vehiculos/vehiculos.controller.ts'
     ControladorOrganizacion,
     ControladorClientes,
   ],
-  providers: [ServicioUsuarios, ServicioAuditoria, ServicioOrganizacion, ServicioClientes],
+  providers: [
+    ServicioUsuarios,
+    ServicioAuditoria,
+    ServicioOrganizacion,
+    ServicioClientes,
+    ServicioVehiculos,
+  ],
 })
 export class ModuloPrincipal {}
