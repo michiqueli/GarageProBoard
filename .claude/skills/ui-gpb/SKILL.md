@@ -123,6 +123,13 @@ El piso de taller es lo único que no sigue la regla de densidad: ahí el mecán
 guantes y usa el dedo. Objetivos táctiles de 44px mínimo. Teclado en escritorio, dedo en
 el taller — las dos son correctas en su lugar.
 
+**10. Nada se borra de una, y todo resultado se avisa.** Toda baja, desactivación o
+descarte pasa por `confirmar()` con `peligro: true`. Lo que se guarda declara
+`meta: { exito }`; los errores al guardar llegan solos a una notificación. Nada de
+`<p role="alert">` propios para eso. Las acciones de filas y tarjetas son
+`<Boton tamano="chico" icono={…}>`, no texto subrayado. Detalle en la sección
+«Notificaciones, confirmaciones y botones de acción» del sistema de diseño.
+
 ## Antes de dar por terminada una pantalla
 
 - ¿Se puede completar el flujo entero sin tocar el mouse?
@@ -131,3 +138,4 @@ el taller — las dos son correctas en su lugar.
 - ¿Hay algún color, espaciado o tamaño escrito a mano?
 - ¿La barra de estado muestra las teclas correctas de este contexto?
 - ¿Los estados vacío, cargando y con error están resueltos, o solo el caso feliz?
+- ¿Toda baja pregunta antes, y todo lo que se guarda avisa que se guardó?

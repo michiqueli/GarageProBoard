@@ -3,7 +3,7 @@ import { cleanup, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { usarSesion } from '../src/sesion/almacen.ts'
-import { montarApp, SESION, SESION_MECANICO } from './montar.tsx'
+import { confirmarDialogo, montarApp, SESION, SESION_MECANICO, textoDelError } from './montar.tsx'
 
 /**
  * La pantalla de usuarios. Las reglas las aplica la API —y las prueba allá—; lo que se
@@ -173,7 +173,7 @@ describe('el alta', () => {
     await userEvent.type(within(formulario).getByLabelText('Apellido'), 'Y')
     await userEvent.keyboard('{F2}')
 
-    expect((await within(formulario).findByRole('alert')).textContent).toBe(
+    expect(await textoDelError()).toBe(
       'No podés asignar Gerente: te falta administrar todo el sistema.',
     )
   })
@@ -207,6 +207,8 @@ describe('modificar', () => {
     )
     expect(within(formulario).getByText(/se cierran sus sesiones/)).toBeDefined()
     await userEvent.click(within(formulario).getByRole('button', { name: /Guardar cambios/ }))
+    expect(usuarios.editar).not.toHaveBeenCalled()
+    await confirmarDialogo('Dar de baja')
 
     expect(usuarios.editar).toHaveBeenCalledWith({
       id: 'u2',

@@ -2,6 +2,7 @@ import { accesoDeRuta, contrato } from '@gpb/contracts'
 import { ORPCError } from '@orpc/client'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { type FormEvent, useEffect, useRef, useState } from 'react'
+import { confirmar } from '../../componentes/avisos.ts'
 import { Boton } from '../../componentes/Boton.tsx'
 import { Campo } from '../../componentes/Campo.tsx'
 import { Shell } from '../../componentes/Shell.tsx'
@@ -287,6 +288,15 @@ function Formulario({
       await invalidar()
       alTerminar(password)
     },
+    meta: {
+      exito: () =>
+        !existente
+          ? `${nombre} ${apellido} dado de alta`
+          : existente.activo && !activo
+            ? `${existente.email} dado de baja: se cerraron sus sesiones`
+            : `Cambios guardados en ${existente.email}`,
+      error: mensajeDe,
+    },
   })
 
   const regenerar = useMutation({
@@ -299,11 +309,40 @@ function Formulario({
       await invalidar()
       alTerminar(password)
     },
+    meta: { exito: 'Contraseña nueva generada', error: mensajeDe },
   })
 
-  function enviar(evento?: FormEvent) {
+  async function enviar(evento?: FormEvent) {
     evento?.preventDefault()
-    if (!guardar.isPending) guardar.mutate()
+    if (guardar.isPending) return
+    if (
+      existente?.activo &&
+      !activo &&
+      !(await confirmar({
+        titulo: `¿Dar de baja a ${existente.nombre} ${existente.apellido}?`,
+        texto:
+          'No va a poder entrar al sistema y se cierran sus sesiones abiertas. Se puede volver a habilitar.',
+        confirmar: 'Dar de baja',
+        peligro: true,
+      }))
+    ) {
+      return
+    }
+    guardar.mutate()
+  }
+
+  async function generarPassword() {
+    if (
+      existente &&
+      (await confirmar({
+        titulo: `¿Generar una contraseña nueva para ${existente.email}?`,
+        texto: 'La que tiene ahora deja de servir y se cierran sus sesiones.',
+        confirmar: 'Generar contraseña nueva',
+        peligro: true,
+      }))
+    ) {
+      regenerar.mutate()
+    }
   }
 
   function alternar(conjunto: Set<string>, id: string, marcado: boolean) {
@@ -312,8 +351,6 @@ function Formulario({
     else nuevo.delete(id)
     return nuevo
   }
-
-  const error = guardar.error ?? regenerar.error
 
   return (
     <form
@@ -425,14 +462,8 @@ function Formulario({
         </div>
       )}
 
-      {error && (
-        <p role="alert" className="text-dato text-critico">
-          {mensajeDe(error)}
-        </p>
-      )}
-
       <div className="flex flex-wrap gap-2">
-        <Boton accion="global.guardar" variante="principal" onClick={() => enviar()}>
+        <Boton accion="global.guardar" variante="principal" onClick={() => void enviar()}>
           {existente ? 'Guardar cambios' : 'Dar de alta'}
         </Boton>
         <Boton accion="global.cancelar" onClick={() => alTerminar()}>
@@ -440,7 +471,7 @@ function Formulario({
         </Boton>
         {existente && (
           <span className="ml-auto">
-            <Boton variante="sutil" onClick={() => regenerar.mutate()}>
+            <Boton variante="sutil" onClick={() => void generarPassword()}>
               Generar contraseña nueva
             </Boton>
           </span>

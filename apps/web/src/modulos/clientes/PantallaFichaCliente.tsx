@@ -3,6 +3,8 @@ import { ORPCError } from '@orpc/client'
 import { useQuery } from '@tanstack/react-query'
 import { getRouteApi, Link } from '@tanstack/react-router'
 import { type ReactNode, useState } from 'react'
+import { Boton } from '../../componentes/Boton.tsx'
+import { IconoEditar } from '../../componentes/iconos.tsx'
 import { Shell } from '../../componentes/Shell.tsx'
 import { usarSesion } from '../../sesion/almacen.ts'
 import { api } from '../../sesion/cliente.ts'
@@ -82,13 +84,9 @@ export function PantallaFichaCliente() {
             titulo="Datos"
             accion={
               puedeEditar && !modificando ? (
-                <button
-                  type="button"
-                  onClick={() => setModificando(true)}
-                  className="text-etiqueta text-marca hover:underline"
-                >
+                <Boton tamano="chico" icono={<IconoEditar />} onClick={() => setModificando(true)}>
                   Modificar
-                </button>
+                </Boton>
               ) : undefined
             }
           >

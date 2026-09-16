@@ -13,6 +13,9 @@ import {
 } from '@tanstack/react-router'
 import { useEffect } from 'react'
 import { z } from 'zod'
+import { limpiarAvisos } from './componentes/avisos.ts'
+import { DialogoConfirmacion } from './componentes/DialogoConfirmacion.tsx'
+import { Notificaciones } from './componentes/Notificaciones.tsx'
 import { Shell } from './componentes/Shell.tsx'
 import { useCacheDeSesion } from './ganchos/useCacheDeSesion.ts'
 import { useTema } from './ganchos/useTema.ts'
@@ -281,6 +284,7 @@ function Raiz() {
         // dejó el anterior. Va por navegación directa y no por las guardias para que
         // no haya carrera entre las dos.
         if (anterior.datos && !actual.datos) {
+          limpiarAvisos()
           void router.navigate({ to: '/entrar', replace: true })
           return
         }
@@ -298,7 +302,13 @@ function Raiz() {
     [router],
   )
 
-  return <Outlet />
+  return (
+    <>
+      <Outlet />
+      <Notificaciones />
+      <DialogoConfirmacion />
+    </>
+  )
 }
 
 /** El proveedor del teclado, con la pantalla que declara la ruta más profunda. */

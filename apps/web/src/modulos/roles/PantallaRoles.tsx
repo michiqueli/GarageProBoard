@@ -11,6 +11,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { type FormEvent, useEffect, useRef, useState } from 'react'
 import { Boton } from '../../componentes/Boton.tsx'
 import { Campo } from '../../componentes/Campo.tsx'
+import { IconoClonar, IconoEditar } from '../../componentes/iconos.tsx'
 import { Shell } from '../../componentes/Shell.tsx'
 import { usarSesion } from '../../sesion/almacen.ts'
 import { api } from '../../sesion/cliente.ts'
@@ -115,14 +116,24 @@ export function PantallaRoles() {
                   {r.usuarios === 1 ? '1 usuario' : `${r.usuarios} usuarios`}
                 </span>
                 {!edicion && (
-                  <span className="ml-auto flex gap-3">
+                  <span className="ml-auto flex gap-2">
                     {!r.noEditable && (
-                      <Enlace onClick={() => setEdicion({ tipo: 'modificar', rol: r })}>
+                      <Boton
+                        tamano="chico"
+                        icono={<IconoEditar />}
+                        onClick={() => setEdicion({ tipo: 'modificar', rol: r })}
+                      >
                         Modificar
-                      </Enlace>
+                      </Boton>
                     )}
                     {puedeCrear && (
-                      <Enlace onClick={() => setEdicion({ tipo: 'clonar', rol: r })}>Clonar</Enlace>
+                      <Boton
+                        tamano="chico"
+                        icono={<IconoClonar />}
+                        onClick={() => setEdicion({ tipo: 'clonar', rol: r })}
+                      >
+                        Clonar
+                      </Boton>
                     )}
                   </span>
                 )}
@@ -212,6 +223,11 @@ function Formulario({
     onSuccess: async () => {
       await cache.invalidateQueries({ queryKey: ['roles', tenantId] })
       alTerminar()
+    },
+    meta: {
+      exito: () =>
+        edicion.tipo === 'modificar' ? `Rol ${nombre} guardado` : `Rol ${nombre} creado`,
+      error: mensajeDe,
     },
   })
 
@@ -312,12 +328,6 @@ function Formulario({
         )}
       </form>
 
-      {guardar.isError && (
-        <p role="alert" className="text-dato text-critico">
-          {mensajeDe(guardar.error)}
-        </p>
-      )}
-
       <div className="flex gap-2">
         <Boton
           accion="global.guardar"
@@ -334,13 +344,5 @@ function Formulario({
         </Boton>
       </div>
     </section>
-  )
-}
-
-function Enlace({ onClick, children }: { onClick: () => void; children: string }) {
-  return (
-    <button type="button" onClick={onClick} className="text-etiqueta text-marca hover:underline">
-      {children}
-    </button>
   )
 }

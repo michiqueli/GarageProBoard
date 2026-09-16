@@ -6,6 +6,7 @@ import { getRouteApi, Link } from '@tanstack/react-router'
 import { type FormEvent, type ReactNode, useRef, useState } from 'react'
 import { Boton } from '../../componentes/Boton.tsx'
 import { Campo } from '../../componentes/Campo.tsx'
+import { IconoEditar, IconoTransferir } from '../../componentes/iconos.tsx'
 import { type ClienteElegido, SelectorCliente } from '../../componentes/SelectorCliente.tsx'
 import { Shell } from '../../componentes/Shell.tsx'
 import { usarSesion } from '../../sesion/almacen.ts'
@@ -76,7 +77,11 @@ export function PantallaFichaVehiculo() {
               Historia
             </Boton>
             {puedeEditar && (
-              <Boton accion="vehiculos.transferir" onClick={() => setEdicion('transferir')}>
+              <Boton
+                accion="vehiculos.transferir"
+                icono={<IconoTransferir />}
+                onClick={() => setEdicion('transferir')}
+              >
                 {f.titular ? 'Transferir' : 'Asignar titular'}
               </Boton>
             )}
@@ -111,7 +116,9 @@ export function PantallaFichaVehiculo() {
             titulo="Datos"
             accion={
               puedeEditar && !edicion ? (
-                <Enlace onClick={() => setEdicion('datos')}>Modificar</Enlace>
+                <Boton tamano="chico" icono={<IconoEditar />} onClick={() => setEdicion('datos')}>
+                  Modificar
+                </Boton>
               ) : undefined
             }
           >
@@ -240,6 +247,7 @@ function FormDatos({ ficha, alTerminar }: { ficha: Ficha; alTerminar: () => void
       await cache.invalidateQueries({ queryKey: ['vehiculos'] })
       alTerminar()
     },
+    meta: { exito: 'Datos del vehículo guardados', error: mensajeDeGuardar },
   })
 
   function enviar(evento: FormEvent) {
@@ -253,7 +261,7 @@ function FormDatos({ ficha, alTerminar }: { ficha: Ficha; alTerminar: () => void
       titulo="Modificar los datos"
       id="formulario-datos"
       onSubmit={enviar}
-      error={guardar.isError ? mensajeDeGuardar(guardar.error) : null}
+      error={null}
       ocupado={guardar.isPending}
       alTerminar={alTerminar}
     >
@@ -285,6 +293,19 @@ function FormTransferir({ ficha, alTerminar }: { ficha: Ficha; alTerminar: () =>
       await cache.invalidateQueries({ queryKey: ['vehiculos'] })
       alTerminar()
     },
+    meta: {
+      exito: () =>
+        actual
+          ? `Vehículo transferido a ${nuevo?.razonSocial}`
+          : `Titular asignado: ${nuevo?.razonSocial}`,
+      error: (e) => {
+        if (e instanceof ORPCError && e.code === 'FECHA_ANTERIOR') {
+          const d = (e.data as { desde: string }).desde
+          return `${actual?.cliente.razonSocial ?? 'El titular actual'} lo tiene desde el ${formatearFecha(d)}: la fecha tiene que ser ésa o posterior.`
+        }
+        return mensajeDeGuardar(e)
+      },
+    },
   })
 
   function enviar(evento: FormEvent) {
@@ -293,15 +314,8 @@ function FormTransferir({ ficha, alTerminar }: { ficha: Ficha; alTerminar: () =>
     if (nuevo) guardar.mutate(nuevo.id)
   }
 
-  let error: string | null = null
-  if (guardar.error instanceof ORPCError && guardar.error.code === 'FECHA_ANTERIOR') {
-    const d = (guardar.error.data as { desde: string }).desde
-    error = `${actual?.cliente.razonSocial ?? 'El titular actual'} lo tiene desde el ${formatearFecha(d)}: la fecha tiene que ser ésa o posterior.`
-  } else if (guardar.isError) {
-    error = mensajeDeGuardar(guardar.error)
-  } else if (faltaCliente) {
-    error = 'Elegí a quién pasa el vehículo.'
-  }
+  // Lo que falta completar va en el formulario; lo que rechazó el servidor, en una notificación.
+  const error = faltaCliente && !nuevo ? 'Elegí a quién pasa el vehículo.' : null
 
   return (
     <Formulario
@@ -408,13 +422,5 @@ function Dato({ nombre, mono, children }: { nombre: string; mono?: boolean; chil
         {children || <span className="text-texto-tenue">—</span>}
       </dd>
     </>
-  )
-}
-
-function Enlace({ onClick, children }: { onClick: () => void; children: ReactNode }) {
-  return (
-    <button type="button" onClick={onClick} className="text-etiqueta text-marca hover:underline">
-      {children}
-    </button>
   )
 }

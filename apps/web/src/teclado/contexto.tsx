@@ -61,6 +61,9 @@ export function ProveedorTeclado({
   useEffect(() => {
     function alPresionar(evento: KeyboardEvent) {
       if (!debeDisparar(evento)) return
+      // Con una confirmación abierta, la pantalla de atrás no escucha: F2 no puede guardar
+      // el formulario que la pregunta está protegiendo.
+      if (document.querySelector('[aria-modal="true"]')) return
 
       const tecla = teclaDesdeEvento(evento)
 

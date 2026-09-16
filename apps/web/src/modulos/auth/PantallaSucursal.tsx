@@ -22,6 +22,7 @@ export function PantallaSucursal() {
   const sucursalElegida = usarSesion((e) => e.sucursalElegida)
 
   const elegir = useMutation({
+    meta: { error: false },
     mutationFn: async (sucursalId: string) => {
       try {
         return await api.auth.cambiarSucursal({ sucursalId })

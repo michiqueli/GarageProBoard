@@ -4,14 +4,17 @@ import { ORPCError } from '@orpc/client'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { getRouteApi, Link, useNavigate } from '@tanstack/react-router'
 import { type FormEvent, useEffect, useRef, useState } from 'react'
+import { confirmar } from '../../componentes/avisos.ts'
 import { Boton } from '../../componentes/Boton.tsx'
 import { Campo } from '../../componentes/Campo.tsx'
+import { IconoEditar } from '../../componentes/iconos.tsx'
 import { ResultadoPadron } from '../../componentes/ResultadoPadron.tsx'
 import { Selector } from '../../componentes/Selector.tsx'
 import { Shell } from '../../componentes/Shell.tsx'
 import { ES_ESCRITORIO, useMedia } from '../../ganchos/useMedia.ts'
 import { usarSesion } from '../../sesion/almacen.ts'
 import { api } from '../../sesion/cliente.ts'
+import { mensajeGeneral } from '../../sesion/consultas.ts'
 import { usePuedeUsar } from '../../sesion/permisos.ts'
 
 // Por id y no importando la ruta: `rutas.tsx` importa esta pantalla.
@@ -201,13 +204,13 @@ export function PantallaClientes() {
                     </td>
                     <td className="h-fila border-b border-borde-suave px-3 text-right">
                       {puedeEditar && (
-                        <button
-                          type="button"
+                        <Boton
+                          tamano="chico"
+                          icono={<IconoEditar />}
                           onClick={() => setEdicion({ cliente: c })}
-                          className="text-etiqueta text-marca hover:underline"
                         >
                           Modificar
-                        </button>
+                        </Boton>
                       )}
                     </td>
                   </tr>
@@ -230,13 +233,15 @@ export function PantallaClientes() {
                   </span>
                   <Marcas cliente={c} />
                   {puedeEditar && (
-                    <button
-                      type="button"
-                      onClick={() => setEdicion({ cliente: c })}
-                      className="ml-auto text-etiqueta text-marca hover:underline"
-                    >
-                      Modificar
-                    </button>
+                    <span className="ml-auto">
+                      <Boton
+                        tamano="chico"
+                        icono={<IconoEditar />}
+                        onClick={() => setEdicion({ cliente: c })}
+                      >
+                        Modificar
+                      </Boton>
+                    </span>
                   )}
                 </div>
                 <span className="font-mono text-etiqueta text-texto-suave">
@@ -347,6 +352,31 @@ export function Formulario({
       await cache.invalidateQueries({ queryKey: ['clientes', tenantId] })
       alTerminar()
     },
+    meta: {
+      exito: () =>
+        !cliente
+          ? `${razonSocial} dado de alta`
+          : cliente.activo && !activo
+            ? `${razonSocial} desactivado`
+            : `${razonSocial} guardado`,
+      error: (error) => {
+        // Ya existe: se ofrece abrir la ficha en vez de hacerlo buscar.
+        if (error instanceof ORPCError && error.code === 'CLIENTE_DUPLICADO') {
+          const d = error.data as { id: string; razonSocial: string }
+          return {
+            texto: `Ese documento ya está cargado como cliente, a nombre de ${d.razonSocial}.`,
+            accion: {
+              texto: 'Abrir su ficha',
+              alHacer: () => {
+                alTerminar()
+                void navegar({ to: '/clientes/$id', params: { id: d.id } })
+              },
+            },
+          }
+        }
+        return mensajeGeneral(error)
+      },
+    },
   })
 
   /**
@@ -354,6 +384,8 @@ export function Formulario({
    * revisa y confirma.
    */
   const padron = useMutation({
+    // El resultado, bueno o malo, se muestra al lado del CUIT.
+    meta: { error: false },
     mutationFn: () => api.padron.consultar({ cuit: normalizado }),
     onSuccess: (c) => {
       setRazonSocial(c.razonSocial)
@@ -375,17 +407,25 @@ export function Formulario({
     if (!esDni && cuitValido(normalizado)) padron.mutate()
   }
 
-  function enviar(evento: FormEvent) {
+  async function enviar(evento: FormEvent) {
     evento.preventDefault()
     setTocado(true)
     if (!cliente && !documentoValido) return
+    if (
+      cliente?.activo &&
+      !activo &&
+      !(await confirmar({
+        titulo: `¿Desactivar a ${cliente.razonSocial}?`,
+        texto:
+          'No se le va a poder facturar ni abrir órdenes. Su historia queda, y se puede volver a activar.',
+        confirmar: 'Desactivar',
+        peligro: true,
+      }))
+    ) {
+      return
+    }
     guardar.mutate()
   }
-
-  const duplicado =
-    guardar.error instanceof ORPCError && guardar.error.code === 'CLIENTE_DUPLICADO'
-      ? (guardar.error.data as { id: string; razonSocial: string } | undefined)
-      : undefined
 
   const titulo = cliente ? `Modificar ${cliente.razonSocial}` : 'Nuevo cliente'
   const puedeConsultar = !cliente && !esDni
@@ -550,30 +590,6 @@ export function Formulario({
           También es proveedor: el domicilio y los datos fiscales que cambies acá cambian para los
           dos.
         </p>
-      )}
-
-      {duplicado ? (
-        <p role="alert" className="flex flex-wrap items-baseline gap-2 text-dato text-critico">
-          Ese documento ya está cargado como cliente, a nombre de {duplicado.razonSocial}.
-          <button
-            type="button"
-            onClick={() => {
-              alTerminar()
-              void navegar({ to: '/clientes/$id', params: { id: duplicado.id } })
-            }}
-            className="text-etiqueta text-marca hover:underline"
-          >
-            Abrir su ficha
-          </button>
-        </p>
-      ) : (
-        guardar.isError && (
-          <p role="alert" className="text-dato text-critico">
-            {guardar.error instanceof ORPCError
-              ? guardar.error.message
-              : 'No se pudo conectar con el servidor. Probá de nuevo en un momento.'}
-          </p>
-        )
       )}
 
       <div className="flex gap-2">

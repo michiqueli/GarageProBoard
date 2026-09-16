@@ -4,11 +4,13 @@ import { ORPCError } from '@orpc/client'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { getRouteApi, Link } from '@tanstack/react-router'
 import { type FormEvent, type ReactNode, useState } from 'react'
+import { confirmar } from '../../componentes/avisos.ts'
 import { Boton } from '../../componentes/Boton.tsx'
 import { Campo } from '../../componentes/Campo.tsx'
 import { Shell } from '../../componentes/Shell.tsx'
 import { usarSesion } from '../../sesion/almacen.ts'
 import { api } from '../../sesion/cliente.ts'
+import { type MensajeError, mensajeGeneral } from '../../sesion/consultas.ts'
 import { usePuedeUsar } from '../../sesion/permisos.ts'
 
 const ruta = getRouteApi('/con-sesion/empresas/$id/certificado-afip')
@@ -52,26 +54,22 @@ function motivoRechazo(motivo: string, estado: Estado): string {
   }
 }
 
-function mensajeDe(error: unknown, estado?: Estado): ReactNode {
+/** Cada error dice qué hacer. Va en una notificación: queda hasta que se cierra. */
+function mensajeDe(error: unknown, estado?: Estado): MensajeError | string {
   if (error instanceof ORPCError) {
     const datos = error.data as { motivo?: string; detalle?: string } | undefined
     if (error.code === 'CERTIFICADO_RECHAZADO' && datos?.motivo && estado) {
       return motivoRechazo(datos.motivo, estado)
     }
     if (error.code === 'AFIP_NO_ACEPTA') {
-      return (
-        <>
-          AFIP no dejó facturar con este certificado. Casi siempre es el paso 4: la relación tiene
-          que estar hecha con el <b>computador</b>, no con el CUIT.
-          {datos?.detalle && (
-            <span className="mt-1 block font-mono text-etiqueta">AFIP dijo: {datos.detalle}</span>
-          )}
-        </>
-      )
+      return {
+        texto:
+          'AFIP no dejó facturar con este certificado. Casi siempre es el paso 4: la relación tiene que estar hecha con el computador, no con el CUIT.',
+        detalle: datos?.detalle ? `AFIP dijo: ${datos.detalle}` : undefined,
+      }
     }
-    return error.message
   }
-  return 'No se pudo conectar con el servidor. Probá de nuevo en un momento.'
+  return mensajeGeneral(error)
 }
 
 function descargar(nombre: string, contenido: string) {
@@ -117,6 +115,10 @@ export function PantallaCertificadoAfip() {
       setRenovando(false)
       actualizar(r.estado)
     },
+    meta: {
+      exito: 'AFIP aceptó el certificado: ya se puede facturar con él',
+      error: (e) => mensajeDe(e, consulta.data),
+    },
   })
 
   const activo = estado?.activo
@@ -137,7 +139,7 @@ export function PantallaCertificadoAfip() {
         <p role="alert" className="text-dato text-critico">
           {consulta.error instanceof ORPCError && consulta.error.code === 'NO_ENCONTRADA'
             ? 'Esa razón social no existe. Elegila desde Empresas y sucursales.'
-            : mensajeDe(consulta.error)}
+            : mensajeGeneral(consulta.error)}
         </p>
       )}
 
@@ -164,11 +166,6 @@ export function PantallaCertificadoAfip() {
             ) : (
               <p className="text-dato text-atencion">
                 Todavía no factura: falta el certificado. Seguí los pasos de abajo.
-              </p>
-            )}
-            {probar.isError && !pendiente?.conCertificado && (
-              <p role="alert" className="text-dato text-critico">
-                {mensajeDe(probar.error, estado)}
               </p>
             )}
           </section>
@@ -252,11 +249,6 @@ export function PantallaCertificadoAfip() {
                     {probar.isPending ? 'Probando con AFIP…' : 'Probar contra AFIP'}
                   </Boton>
                 </div>
-                {probar.isError && pendiente?.conCertificado && (
-                  <p role="alert" className="text-dato text-critico">
-                    {mensajeDe(probar.error, estado)}
-                  </p>
-                )}
               </Paso>
             </ol>
           )}
@@ -374,6 +366,10 @@ function PasoPedido({ estado, alTerminar }: { estado: Estado; alTerminar: (e: Es
       alTerminar(nuevo)
       if (nuevo.pendiente) descargar(`${nuevo.pendiente.alias}.csr`, nuevo.pendiente.pedido)
     },
+    meta: {
+      exito: 'Pedido generado y descargado. Seguí con el paso 2 en ARCA',
+      error: (e) => mensajeDe(e, estado),
+    },
   })
 
   function enviar(evento: FormEvent) {
@@ -396,7 +392,20 @@ function PasoPedido({ estado, alTerminar }: { estado: Estado; alTerminar: (e: Es
         </button>
         <button
           type="button"
-          onClick={() => setOtro(true)}
+          onClick={async () => {
+            if (
+              await confirmar({
+                titulo: '¿Generar otro pedido?',
+                texto: pendiente.conCertificado
+                  ? 'Este pedido y el certificado que le cargaste dejan de servir. Vas a tener que cargar el pedido nuevo en ARCA.'
+                  : 'Este pedido deja de servir. Si ya lo cargaste en ARCA, vas a tener que cargar el nuevo.',
+                confirmar: 'Descartar y generar otro',
+                peligro: true,
+              })
+            ) {
+              setOtro(true)
+            }
+          }}
           className="text-etiqueta text-texto-suave hover:underline"
         >
           Generar otro
@@ -428,11 +437,6 @@ function PasoPedido({ estado, alTerminar }: { estado: Estado; alTerminar: (e: Es
           {pedir.isPending ? 'Generando…' : 'Generar y descargar el pedido'}
         </button>
       </div>
-      {pedir.isError && (
-        <p role="alert" className="text-dato text-critico">
-          {mensajeDe(pedir.error, estado)}
-        </p>
-      )}
     </form>
   )
 }
@@ -449,6 +453,10 @@ function PasoCertificado({
     mutationFn: (certificado: string) =>
       api.certificados.cargar({ empresaId: estado.empresa.id, certificado }),
     onSuccess: alTerminar,
+    meta: {
+      exito: 'Certificado revisado y cargado. Falta probarlo contra AFIP',
+      error: (e) => mensajeDe(e, estado),
+    },
   })
 
   if (pendiente?.conCertificado) {
@@ -478,11 +486,6 @@ function PasoCertificado({
         />
       </label>
       {cargar.isPending && <p className="text-dato text-texto-suave">Revisando el certificado…</p>}
-      {cargar.isError && (
-        <p role="alert" className="text-dato text-critico">
-          {mensajeDe(cargar.error, estado)}
-        </p>
-      )}
     </div>
   )
 }
@@ -494,9 +497,7 @@ function ResultadoPrueba({ prueba }: { prueba: Prueba }) {
       aria-label="Resultado de la prueba"
       className="grid gap-2 rounded-base border border-ok bg-superficie px-3 py-2.5"
     >
-      <p className="text-dato font-semibold text-ok">
-        AFIP aceptó el certificado: ya se puede facturar con él.
-      </p>
+      <h2 className="text-dato font-semibold">Puntos de venta en AFIP</h2>
       {prueba.faltanEnAfip.length > 0 && (
         <p role="alert" className="text-dato text-atencion">
           {prueba.faltanEnAfip.length === 1 ? 'El punto de venta' : 'Los puntos de venta'}{' '}

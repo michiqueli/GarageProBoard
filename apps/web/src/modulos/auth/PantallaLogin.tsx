@@ -25,6 +25,8 @@ export function PantallaLogin() {
   }, [])
 
   const entrar = useMutation({
+    // Antes de entrar no hay pantalla que tapar: el error va debajo del formulario.
+    meta: { error: false },
     mutationFn: async () => {
       try {
         return await api.auth.iniciar({ email, password })

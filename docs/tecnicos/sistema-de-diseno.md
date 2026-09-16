@@ -417,6 +417,47 @@ Los mismos tres estados del menú, por los mismos motivos:
   devuelve el foco a donde estaba.
 - Nunca hace falta el mouse, como todo lo demás.
 
+### Notificaciones, confirmaciones y botones de acción
+
+Tres piezas compartidas en `apps/web/src/componentes/`, montadas una sola vez en la raíz.
+Ninguna pantalla arma las suyas.
+
+**Notificaciones** (`notificar.ok/error/info` en `avisos.ts`). Abajo a la derecha, arriba de
+la barra de estado; en el teléfono, a todo el ancho.
+
+- Lo que se guardó se avisa: la operación declara `meta: { exito: 'Cliente guardado' }`.
+- **Lo que falla al guardar se avisa solo**: la caché de consultas (`sesion/consultas.ts`)
+  manda todo error de una operación a una notificación. Una pantalla nueva no puede
+  olvidarse. Si el error necesita otras palabras, `meta.error` las da, con una acción si
+  hace falta («Abrir su ficha»). `meta: { error: false }` sólo donde el error se muestra en
+  su lugar: el inicio de sesión y la consulta al padrón.
+- Las de éxito se van solas a los cinco segundos, salvo con el mouse o el foco encima. **Los
+  errores quedan hasta que alguien los cierra**: un error que se va solo es un error que
+  nadie leyó.
+- Ícono, borde de color y palabra: nunca sólo color.
+- Lo que **no** va en una notificación: la validación de un campo, que va al lado del campo,
+  y el error al *cargar* una pantalla, que va en el lugar de lo que no se pudo mostrar.
+
+**Confirmación** (`confirmar()` en `avisos.ts`, que devuelve una promesa). **Nada se da de
+baja, desactiva, descarta ni invalida sin preguntar**: desactivar un cliente, una sucursal o
+un punto de venta, dar de baja un usuario, generarle una contraseña nueva, descartar un
+pedido de certificado. Una acción así sin confirmación es un bug.
+
+- El título es la pregunta con el nombre de lo que se toca: «¿Dar de baja a Pedro Sosa?».
+  El texto dice qué implica y si se puede volver atrás. El botón dice lo que va a pasar:
+  «Dar de baja», nunca «Aceptar».
+- `peligro: true` en las bajas: botón crítico y **el foco arranca en Cancelar**, para que un
+  `Enter` de más no dé de baja a nadie. `Esc` cancela; `Tab` no se escapa del diálogo.
+- Con la pregunta abierta los atajos de la pantalla no disparan: F2 no puede guardar lo que
+  la pregunta está protegiendo.
+
+**Botones de acción.** Las acciones de una fila, una tarjeta o una sección son botones
+`<Boton tamano="chico" icono={…}>`, no palabras subrayadas: se ven como algo que se aprieta.
+El ícono acompaña a la palabra, nunca la reemplaza (`componentes/iconos.tsx`, mismo trazo
+que el menú). Lo que **lleva a otra pantalla** sigue siendo un enlace —el nombre del
+cliente, la patente, «← Todos los clientes»—, y si tiene que verse como botón usa
+`clasesBoton()` sin dejar de ser un `<a>`.
+
 ### Estados vacíos, cargando y con error
 
 - **Vacío**: decir qué es esto y ofrecer la acción. «Todavía no hay órdenes en esta

@@ -1,8 +1,10 @@
 import { MODULOS, type ReglaPermiso } from '@gpb/core'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { QueryClientProvider } from '@tanstack/react-query'
 import { createMemoryHistory, RouterProvider } from '@tanstack/react-router'
-import { render } from '@testing-library/react'
+import { render, screen, within } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import type { DatosSesion } from '../src/sesion/almacen.ts'
+import { crearConsultas } from '../src/sesion/consultas.ts'
 
 /**
  * Monta la aplicación entera en una dirección, con el router de verdad y un historial
@@ -16,7 +18,8 @@ export async function montarApp(ruta: string) {
   const router = crearRouter({ history: createMemoryHistory({ initialEntries: [ruta] }) })
 
   // Sin reintentos: un error tiene que verse ya, no después de que el test espere.
-  const consultas = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+  // La misma caché que la aplicación, con los avisos enchufados.
+  const consultas = crearConsultas()
 
   render(
     <QueryClientProvider client={consultas}>
@@ -99,3 +102,21 @@ export const SESION_SIN_TALLER_NI_CAJA = {
 
 /** Recién creado, sin rol asignado: entra y no tiene ni una pantalla. */
 export const SESION_SIN_ROL = { ...SESION, habilidades: [] }
+
+/** La notificación de error que quedó abierta: el `li`, con su texto y su acción. */
+export async function errorNotificado(): Promise<HTMLElement> {
+  const errores = await screen.findByRole('list', { name: 'Errores' })
+  return within(errores).findByRole('listitem')
+}
+
+/** El texto principal de esa notificación, sin el ícono ni el botón de cerrar. */
+export async function textoDelError(): Promise<string> {
+  return (await errorNotificado()).querySelector('p')?.textContent ?? ''
+}
+
+/** Responde que sí a la confirmación abierta, con el botón que la confirma. */
+export async function confirmarDialogo(boton: string | RegExp): Promise<HTMLElement> {
+  const dialogo = await screen.findByRole('alertdialog')
+  await userEvent.click(within(dialogo).getByRole('button', { name: boton }))
+  return dialogo
+}

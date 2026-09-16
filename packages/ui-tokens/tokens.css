@@ -62,6 +62,30 @@
   --color-atencion: #d9962b;
   --color-critico: #e0705c;
   --color-info: #5aa9e6;
+
+  /* ── Lo que flota: notificaciones y diálogos ─────────────────────────────
+     La única sombra del sistema. Todo lo demás se separa con un borde; lo que flota
+     sobre la pantalla necesita despegarse, o se confunde con el contenido de abajo. */
+  --color-velo: #0e141299;
+  --shadow-flotante: 0 8px 24px #00000059, 0 1px 3px #00000040;
+
+  /* Cortas y sobrias: se ven decenas de veces por día. */
+  --animate-aparecer: aparecer 140ms ease-out;
+  --animate-emerger: emerger 120ms ease-out;
+
+  @keyframes aparecer {
+    from {
+      opacity: 0;
+      transform: translateY(8px);
+    }
+  }
+
+  @keyframes emerger {
+    from {
+      opacity: 0;
+      transform: scale(0.97);
+    }
+  }
 }
 
 /*
@@ -89,6 +113,9 @@
   --color-atencion: #a96c10;
   --color-critico: #b2412c;
   --color-info: #2a6fa8;
+
+  --color-velo: #16211e59;
+  --shadow-flotante: 0 8px 24px #16211e26, 0 1px 3px #16211e1f;
 }
 
 @layer base {

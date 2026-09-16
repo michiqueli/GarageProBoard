@@ -3,7 +3,7 @@ import { cleanup, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { usarSesion } from '../src/sesion/almacen.ts'
-import { montarApp, SESION, SESION_MECANICO } from './montar.tsx'
+import { montarApp, SESION, SESION_MECANICO, textoDelError } from './montar.tsx'
 
 const vehiculos = {
   listar: vi.fn(),
@@ -211,7 +211,7 @@ describe('el alta', () => {
     await userEvent.type(within(formulario).getByLabelText('Patente'), 'AE123BC')
     await userEvent.keyboard('{F2}')
 
-    expect((await within(formulario).findByRole('alert')).textContent).toBe(
+    expect(await textoDelError()).toBe(
       'Esa patente ya la tiene el vehículo con chasis 8AJFB8CD5N1234567. Revisá cuál de los dos está mal.',
     )
   })
@@ -264,7 +264,7 @@ describe('la ficha', () => {
     expect(vehiculos.transferir).toHaveBeenCalledWith(
       expect.objectContaining({ id: ID, clienteId: 'c1' }),
     )
-    expect((await within(formulario).findByRole('alert')).textContent).toBe(
+    expect(await textoDelError()).toBe(
       'Gómez, Ana lo tiene desde el 15/06/2025: la fecha tiene que ser ésa o posterior.',
     )
   })

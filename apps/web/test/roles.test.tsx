@@ -3,7 +3,7 @@ import { cleanup, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { usarSesion } from '../src/sesion/almacen.ts'
-import { montarApp, SESION, SESION_MECANICO } from './montar.tsx'
+import { montarApp, SESION, SESION_MECANICO, textoDelError } from './montar.tsx'
 
 const roles = { listar: vi.fn(), crear: vi.fn(), editar: vi.fn() }
 const renovar = vi.fn()
@@ -134,12 +134,10 @@ describe('modificar', () => {
 
     const tarjeta = await screen.findByRole('region', { name: 'Mecánico' })
     await userEvent.click(within(tarjeta).getByRole('button', { name: 'Modificar' }))
-    const formulario = await screen.findByRole('region', { name: 'Modificar Mecánico' })
+    await screen.findByRole('region', { name: 'Modificar Mecánico' })
     await userEvent.keyboard('{F2}')
 
-    expect((await within(formulario).findByRole('alert')).textContent).toBe(
-      'Lo tenés vos, y nadie modifica sus propios permisos.',
-    )
+    expect(await textoDelError()).toBe('Lo tenés vos, y nadie modifica sus propios permisos.')
   })
 })
 

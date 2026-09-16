@@ -228,6 +228,7 @@ function FormAlta({ alTerminar }: { alTerminar: () => void }) {
       alTerminar()
       void navegar({ to: '/vehiculos/$id', params: { id: creado.id } })
     },
+    meta: { exito: 'Vehículo dado de alta', error: mensajeDeGuardar },
   })
 
   function enviar(evento: FormEvent) {
@@ -280,12 +281,6 @@ function FormAlta({ alTerminar }: { alTerminar: () => void }) {
           </p>
         )}
       </form>
-
-      {guardar.isError && (
-        <p role="alert" className="text-dato text-critico">
-          {mensajeDeGuardar(guardar.error)}
-        </p>
-      )}
 
       <div className="flex gap-2">
         <Boton

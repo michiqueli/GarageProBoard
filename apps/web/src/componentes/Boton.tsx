@@ -2,12 +2,34 @@ import type { ReactNode } from 'react'
 import { useAtajo, useTeclado } from '../teclado/index.ts'
 import { Tecla } from './Tecla.tsx'
 
-type Variante = 'principal' | 'normal' | 'sutil'
+export type Variante = 'principal' | 'normal' | 'sutil'
+export type Tamano = 'normal' | 'chico'
 
 const ESTILOS: Record<Variante, string> = {
   principal: 'border-marca bg-marca-suave text-marca font-semibold',
-  normal: 'border-borde bg-superficie-2 text-texto',
+  normal: 'border-borde bg-superficie-2 text-texto hover:border-texto-tenue',
   sutil: 'border-transparent text-texto-suave hover:bg-superficie-2',
+}
+
+const TAMANOS: Record<Tamano, string> = {
+  normal: 'h-campo gap-2 px-3 text-dato',
+  // Para las acciones de una fila o una tarjeta: se ven como botón sin pelearle
+  // protagonismo al contenido.
+  chico: 'h-7 gap-1.5 px-2 text-etiqueta',
+}
+
+/**
+ * Las clases de un botón, para lo que tiene que verse como botón sin serlo: un enlace que
+ * lleva a otra pantalla sigue siendo un `<a>`, con su clic del medio y su «abrir en otra
+ * pestaña».
+ */
+export function clasesBoton(variante: Variante = 'normal', tamano: Tamano = 'normal'): string {
+  return [
+    'inline-flex shrink-0 items-center whitespace-nowrap rounded-base border',
+    'transition-colors disabled:opacity-40 [&>svg]:size-3.5 [&>svg]:shrink-0',
+    TAMANOS[tamano],
+    ESTILOS[variante],
+  ].join(' ')
 }
 
 /**
@@ -23,13 +45,18 @@ export function Boton({
   accion,
   onClick,
   children,
+  icono,
   variante = 'normal',
+  tamano = 'normal',
   deshabilitado = false,
 }: {
   accion?: string
   onClick: () => void
   children: ReactNode
+  /** Un ícono de `iconos.tsx`: acompaña al texto, nunca lo reemplaza. */
+  icono?: ReactNode
   variante?: Variante
+  tamano?: Tamano
   deshabilitado?: boolean
 }) {
   const { teclaDe } = useTeclado()
@@ -42,12 +69,9 @@ export function Boton({
       type="button"
       onClick={onClick}
       disabled={deshabilitado}
-      className={[
-        'inline-flex h-campo items-center gap-2 rounded-base border px-3',
-        'text-dato transition-colors disabled:opacity-40',
-        ESTILOS[variante],
-      ].join(' ')}
+      className={clasesBoton(variante, tamano)}
     >
+      {icono}
       {children}
       {tecla && <Tecla tecla={tecla} tono={variante === 'principal' ? 'marca' : 'normal'} />}
     </button>

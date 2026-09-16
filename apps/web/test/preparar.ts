@@ -1,4 +1,8 @@
-import { vi } from 'vitest'
+import { afterEach, vi } from 'vitest'
+import { limpiarAvisos } from '../src/componentes/avisos.ts'
+
+/** Cada test arranca sin notificaciones ni preguntas del anterior. */
+afterEach(() => limpiarAvisos())
 
 /**
  * jsdom no implementa `matchMedia`. El polyfill vive acá y no en el código de

@@ -2,6 +2,8 @@ import { accesoDeRuta, contrato } from '@gpb/contracts'
 import { ORPCError } from '@orpc/client'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { type FormEvent, type ReactNode, useState } from 'react'
+import { Boton } from '../../componentes/Boton.tsx'
+import { IconoEditar } from '../../componentes/iconos.tsx'
 import { Shell } from '../../componentes/Shell.tsx'
 import { ES_ESCRITORIO, useMedia } from '../../ganchos/useMedia.ts'
 import { usarSesion } from '../../sesion/almacen.ts'
@@ -206,13 +208,9 @@ function Computadoras() {
             <span key="n" className="flex flex-wrap items-center gap-2">
               {d.nombre ?? <Tenue>Sin nombre</Tenue>}
               {puedeNombrar && (
-                <button
-                  type="button"
-                  onClick={() => setEditando(d.id)}
-                  className="text-etiqueta text-marca hover:underline"
-                >
+                <Boton tamano="chico" icono={<IconoEditar />} onClick={() => setEditando(d.id)}>
                   {d.nombre ? 'Cambiar nombre' : 'Ponerle nombre'}
-                </button>
+                </Boton>
               )}
             </span>
           ),
@@ -249,6 +247,7 @@ function Renombrar({
       await cache.invalidateQueries({ queryKey: ['auditoria', tenantId] })
       alTerminar()
     },
+    meta: { exito: 'Nombre de la computadora guardado', error: mensajeDe },
   })
 
   function enviar(evento: FormEvent) {
@@ -275,11 +274,6 @@ function Renombrar({
       <button type="submit" className="text-etiqueta font-semibold text-marca">
         Guardar
       </button>
-      {guardar.isError && (
-        <span role="alert" className="text-etiqueta text-critico">
-          {mensajeDe(guardar.error)}
-        </span>
-      )}
     </form>
   )
 }

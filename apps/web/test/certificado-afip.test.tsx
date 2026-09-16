@@ -3,7 +3,7 @@ import { cleanup, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { usarSesion } from '../src/sesion/almacen.ts'
-import { montarApp, SESION } from './montar.tsx'
+import { errorNotificado, montarApp, SESION, textoDelError } from './montar.tsx'
 
 const certificados = {
   estado: vi.fn(),
@@ -113,11 +113,9 @@ describe('el asistente del certificado de AFIP', () => {
     const archivo = new File(['-----BEGIN CERTIFICATE-----'], 'cert.crt')
     await userEvent.upload(within(paso3).getByLabelText('El archivo .crt que te dio ARCA'), archivo)
 
-    expect(
-      await within(paso3).findByText(
-        'Ese certificado es de otro CUIT. Entrá a ARCA con la clave fiscal de Automotores Litoral SAS (30-71234567-1).',
-      ),
-    ).toBeDefined()
+    expect(await textoDelError()).toBe(
+      'Ese certificado es de otro CUIT. Entrá a ARCA con la clave fiscal de Automotores Litoral SAS (30-71234567-1).',
+    )
     expect(certificados.cargar).toHaveBeenCalledWith({
       empresaId: EMPRESA.id,
       certificado: '-----BEGIN CERTIFICATE-----',
@@ -144,7 +142,7 @@ describe('el asistente del certificado de AFIP', () => {
 
     const paso6 = await screen.findByRole('listitem', { name: 'Paso 6: Probar contra AFIP' })
     await userEvent.click(within(paso6).getByRole('button', { name: 'Probar contra AFIP' }))
-    const alerta = await within(paso6).findByRole('alert')
+    const alerta = await errorNotificado()
     expect(alerta.textContent).toContain('Casi siempre es el paso 4')
     expect(alerta.textContent).toContain('AFIP dijo: Computador no autorizado')
   })
@@ -176,7 +174,11 @@ describe('el asistente del certificado de AFIP', () => {
 
     await userEvent.click(await screen.findByRole('button', { name: 'Probar contra AFIP' }))
     const resultado = await screen.findByRole('region', { name: 'Resultado de la prueba' })
-    expect(within(resultado).getByText(/AFIP aceptó el certificado/)).toBeDefined()
+    expect(
+      await screen.findByRole('listitem', {
+        name: 'Listo: AFIP aceptó el certificado: ya se puede facturar con él',
+      }),
+    ).toBeDefined()
     expect(within(resultado).getByRole('alert').textContent).toContain(
       'El punto de venta 0004 está cargado acá pero AFIP no lo tiene habilitado',
     )

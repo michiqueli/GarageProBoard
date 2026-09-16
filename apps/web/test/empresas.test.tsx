@@ -3,7 +3,7 @@ import { cleanup, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { usarSesion } from '../src/sesion/almacen.ts'
-import { montarApp, SESION, SESION_MECANICO } from './montar.tsx'
+import { confirmarDialogo, montarApp, SESION, SESION_MECANICO, textoDelError } from './montar.tsx'
 
 const organizacion = {
   catalogos: vi.fn(),
@@ -171,8 +171,9 @@ describe('desactivar una sucursal', () => {
     const formulario = await screen.findByRole('region', { name: 'Modificar la sucursal Rafaela' })
     await userEvent.click(within(formulario).getByRole('checkbox', { name: /Activa/ }))
     await userEvent.keyboard('{F2}')
+    await confirmarDialogo('Desactivar')
 
-    expect((await within(formulario).findByRole('alert')).textContent).toBe(
+    expect(await textoDelError()).toBe(
       'No se puede desactivar: taller@litoral.test sólo entran a esta sucursal. Dales acceso a otra desde Usuarios.',
     )
   })

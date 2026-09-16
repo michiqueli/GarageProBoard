@@ -3,9 +3,11 @@ import { cuitValido, formatearCuit, normalizarCuit } from '@gpb/core'
 import { ORPCError } from '@orpc/client'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link } from '@tanstack/react-router'
-import { type FormEvent, type ReactNode, useEffect, useRef, useState } from 'react'
-import { Boton } from '../../componentes/Boton.tsx'
+import { type FormEvent, useEffect, useRef, useState } from 'react'
+import { confirmar, notificar } from '../../componentes/avisos.ts'
+import { Boton, clasesBoton } from '../../componentes/Boton.tsx'
 import { Campo } from '../../componentes/Campo.tsx'
+import { IconoAgregar, IconoCertificado, IconoEditar } from '../../componentes/iconos.tsx'
 import { ResultadoPadron } from '../../componentes/ResultadoPadron.tsx'
 import { Selector } from '../../componentes/Selector.tsx'
 import { Shell } from '../../componentes/Shell.tsx'
@@ -120,20 +122,29 @@ export function PantallaEmpresas() {
                   <Link
                     to="/empresas/$id/certificado-afip"
                     params={{ id: e.id }}
-                    className="text-etiqueta text-marca hover:underline"
+                    className={clasesBoton('normal', 'chico')}
                   >
+                    <IconoCertificado />
                     Certificado de AFIP
                   </Link>
                 )}
                 {puedeEditar && (
-                  <Enlace onClick={() => setEdicion({ tipo: 'empresa', empresa: e })}>
+                  <Boton
+                    tamano="chico"
+                    icono={<IconoEditar />}
+                    onClick={() => setEdicion({ tipo: 'empresa', empresa: e })}
+                  >
                     Modificar
-                  </Enlace>
+                  </Boton>
                 )}
                 {puedeEditar && puedeCrear && (
-                  <Enlace onClick={() => setEdicion({ tipo: 'sucursal', empresa: e })}>
+                  <Boton
+                    tamano="chico"
+                    icono={<IconoAgregar />}
+                    onClick={() => setEdicion({ tipo: 'sucursal', empresa: e })}
+                  >
                     Nueva sucursal
-                  </Enlace>
+                  </Boton>
                 )}
               </span>
             )}
@@ -163,15 +174,21 @@ export function PantallaEmpresas() {
                     </span>
                     {puedeEditar && (
                       <span className="ml-auto flex gap-2">
-                        <Enlace
+                        <Boton
+                          tamano="chico"
+                          icono={<IconoEditar />}
                           onClick={() => setEdicion({ tipo: 'sucursal', empresa: e, sucursal: s })}
                         >
                           Modificar
-                        </Enlace>
+                        </Boton>
                         {puedeCrear && (
-                          <Enlace onClick={() => setEdicion({ tipo: 'puntoVenta', sucursal: s })}>
+                          <Boton
+                            tamano="chico"
+                            icono={<IconoAgregar />}
+                            onClick={() => setEdicion({ tipo: 'puntoVenta', sucursal: s })}
+                          >
                             Nuevo punto de venta
-                          </Enlace>
+                          </Boton>
                         )}
                       </span>
                     )}
@@ -233,11 +250,13 @@ function Formulario({
   }, [])
 
   const guardar = useMutation({
-    mutationFn: (enviar: () => Promise<unknown>) => enviar(),
-    onSuccess: async () => {
+    mutationFn: ({ enviar }: Pedido) => enviar(),
+    onSuccess: async (_, { exito }) => {
       await cache.invalidateQueries({ queryKey: ['empresas', tenantId] })
+      notificar.ok(exito)
       alTerminar()
     },
+    meta: { error: mensajeDe },
   })
 
   const titulo =
@@ -285,12 +304,6 @@ function Formulario({
         />
       )}
 
-      {guardar.isError && (
-        <p role="alert" className="text-dato text-critico">
-          {mensajeDe(guardar.error)}
-        </p>
-      )}
-
       <div className="flex gap-2">
         <Boton
           accion="global.guardar"
@@ -311,7 +324,12 @@ function Formulario({
   )
 }
 
-type Guardar = (enviar: () => Promise<unknown>) => void
+/** Lo que se manda, y lo que se avisa cuando sale bien. */
+interface Pedido {
+  enviar: () => Promise<unknown>
+  exito: string
+}
+type Guardar = (pedido: Pedido) => void
 type RefCampo = React.RefObject<HTMLInputElement | null>
 
 function FormEmpresa({
@@ -345,6 +363,8 @@ function FormEmpresa({
    * revisa y confirma, porque la condición frente al IVA a veces es una deducción.
    */
   const padron = useMutation({
+    // El resultado, bueno o malo, se muestra al lado del CUIT.
+    meta: { error: false },
     mutationFn: () => api.padron.consultar({ cuit: normalizarCuit(cuit) }),
     onSuccess: (c) => {
       setRazonSocial(c.razonSocial)
@@ -376,11 +396,13 @@ function FormEmpresa({
       convenioMultilateral,
       numeroIibb,
     }
-    guardar(() =>
-      empresa
-        ? api.organizacion.editarEmpresa({ ...datos, id: empresa.id })
-        : api.organizacion.crearEmpresa({ ...datos, cuit: normalizarCuit(cuit) }),
-    )
+    guardar({
+      enviar: () =>
+        empresa
+          ? api.organizacion.editarEmpresa({ ...datos, id: empresa.id })
+          : api.organizacion.crearEmpresa({ ...datos, cuit: normalizarCuit(cuit) }),
+      exito: empresa ? `${razonSocial} guardada` : `${razonSocial} dada de alta`,
+    })
   }
 
   return (
@@ -490,14 +512,33 @@ function FormSucursal({
   const [telefono, setTelefono] = useState(sucursal?.telefono ?? '')
   const [activa, setActiva] = useState(sucursal?.activa ?? true)
 
-  function enviar(evento: FormEvent) {
+  async function enviar(evento: FormEvent) {
     evento.preventDefault()
+    const desactiva = sucursal?.activa && !activa
+    if (
+      desactiva &&
+      !(await confirmar({
+        titulo: `¿Desactivar la sucursal ${sucursal.nombre}?`,
+        texto:
+          'Nadie va a poder entrar a esta sucursal ni facturar desde ella. Se puede volver a activar.',
+        confirmar: 'Desactivar',
+        peligro: true,
+      }))
+    ) {
+      return
+    }
     const datos = { nombre, domicilio, localidad, provinciaCodigo, telefono }
-    guardar(() =>
-      sucursal
-        ? api.organizacion.editarSucursal({ ...datos, id: sucursal.id, activa })
-        : api.organizacion.crearSucursal({ ...datos, empresaId: empresa.id }),
-    )
+    guardar({
+      enviar: () =>
+        sucursal
+          ? api.organizacion.editarSucursal({ ...datos, id: sucursal.id, activa })
+          : api.organizacion.crearSucursal({ ...datos, empresaId: empresa.id }),
+      exito: desactiva
+        ? `Sucursal ${nombre} desactivada`
+        : sucursal
+          ? `Sucursal ${nombre} guardada`
+          : `Sucursal ${nombre} dada de alta`,
+    })
   }
 
   return (
@@ -568,25 +609,44 @@ function FormPuntoVenta({
   )
   const [activo, setActivo] = useState(puntoVenta?.activo ?? true)
 
-  function enviar(evento: FormEvent) {
+  async function enviar(evento: FormEvent) {
     evento.preventDefault()
-    guardar(() =>
-      puntoVenta
-        ? api.organizacion.editarPuntoVenta({
-            id: puntoVenta.id,
-            uso,
-            modo,
-            predeterminado,
-            activo,
-          })
-        : api.organizacion.crearPuntoVenta({
-            sucursalId: sucursal.id,
-            numero: Number(numero),
-            uso,
-            modo,
-            predeterminado,
-          }),
-    )
+    const nombre = `Punto de venta ${String(puntoVenta?.numero ?? numero).padStart(4, '0')}`
+    const desactiva = puntoVenta?.activo && !activo
+    if (
+      desactiva &&
+      !(await confirmar({
+        titulo: `¿Desactivar el ${nombre.toLowerCase()}?`,
+        texto: `${sucursal.nombre} deja de facturar con este número. Se puede volver a activar.`,
+        confirmar: 'Desactivar',
+        peligro: true,
+      }))
+    ) {
+      return
+    }
+    guardar({
+      enviar: () =>
+        puntoVenta
+          ? api.organizacion.editarPuntoVenta({
+              id: puntoVenta.id,
+              uso,
+              modo,
+              predeterminado,
+              activo,
+            })
+          : api.organizacion.crearPuntoVenta({
+              sucursalId: sucursal.id,
+              numero: Number(numero),
+              uso,
+              modo,
+              predeterminado,
+            }),
+      exito: desactiva
+        ? `${nombre} desactivado`
+        : puntoVenta
+          ? `${nombre} guardado`
+          : `${nombre} dado de alta`,
+    })
   }
 
   return (
@@ -642,14 +702,6 @@ function FormPuntoVenta({
         </label>
       )}
     </form>
-  )
-}
-
-function Enlace({ onClick, children }: { onClick: () => void; children: ReactNode }) {
-  return (
-    <button type="button" onClick={onClick} className="text-etiqueta text-marca hover:underline">
-      {children}
-    </button>
   )
 }
 

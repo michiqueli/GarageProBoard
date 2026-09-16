@@ -3,7 +3,14 @@ import { cleanup, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { usarSesion } from '../src/sesion/almacen.ts'
-import { montarApp, SESION, SESION_MECANICO, SESION_REPUESTERO } from './montar.tsx'
+import {
+  confirmarDialogo,
+  errorNotificado,
+  montarApp,
+  SESION,
+  SESION_MECANICO,
+  SESION_REPUESTERO,
+} from './montar.tsx'
 
 const clientes = { listar: vi.fn(), ficha: vi.fn(), crear: vi.fn(), editar: vi.fn() }
 const catalogos = vi.fn()
@@ -213,7 +220,7 @@ describe('un cliente nuevo', () => {
     await userEvent.type(within(formulario).getByLabelText('Razón social'), 'Transportes')
     await userEvent.keyboard('{F2}')
 
-    const aviso = await within(formulario).findByRole('alert')
+    const aviso = await errorNotificado()
     expect(aviso.textContent).toMatch(/a nombre de Transportes del Sur SRL/)
     await userEvent.click(within(aviso).getByRole('button', { name: 'Abrir su ficha' }))
 
@@ -239,6 +246,11 @@ describe('modificar', () => {
     await userEvent.click(within(formulario).getByRole('checkbox', { name: /Activo/ }))
     expect(within(formulario).getByText('no se le va a poder facturar')).toBeDefined()
     await userEvent.keyboard('{F2}')
+
+    // Desactivar pregunta antes: sin confirmar, no se manda nada.
+    await screen.findByRole('alertdialog', { name: '¿Desactivar a Transportes del Sur SRL?' })
+    expect(clientes.editar).not.toHaveBeenCalled()
+    await confirmarDialogo('Desactivar')
 
     expect(clientes.editar).toHaveBeenCalledWith(
       expect.objectContaining({ id: 'c1', activo: false }),
