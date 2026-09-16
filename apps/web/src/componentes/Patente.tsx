@@ -22,16 +22,16 @@ const ANTERIOR = /^[A-Z]{3}\d{3}$/
 export type TamanoPatente = 'chico' | 'grande'
 
 const ANCHO: Record<TamanoPatente, string> = {
-  chico: 'w-[5.4rem]',
-  grande: 'w-[7.5rem]',
+  chico: 'w-[6.5rem]',
+  grande: 'w-[9rem]',
 }
 const LETRAS: Record<TamanoPatente, string> = {
-  chico: 'py-px text-[0.8125rem]',
-  grande: 'py-0.5 text-lg',
+  chico: 'py-0.5 text-[0.9375rem]',
+  grande: 'py-1 text-[1.375rem]',
 }
 const BANDA: Record<TamanoPatente, string> = {
-  chico: 'py-px text-[0.3125rem]',
-  grande: 'py-0.5 text-[0.4375rem]',
+  chico: 'py-px text-[0.375rem]',
+  grande: 'py-0.5 text-[0.5rem]',
 }
 
 export function Patente({
@@ -58,12 +58,12 @@ export function Patente({
   if (ANTERIOR.test(limpio)) {
     return (
       <span
-        className={`inline-flex shrink-0 flex-col overflow-hidden rounded-[3px] border border-patente-vieja-tinta/40 bg-patente-vieja text-center leading-none whitespace-nowrap text-patente-vieja-tinta ${ANCHO[tamano]}`}
+        className={`inline-flex shrink-0 flex-col overflow-hidden rounded-[3px] border border-patente-vieja-tinta/60 bg-patente-vieja text-center leading-none whitespace-nowrap text-patente-vieja-tinta ${ANCHO[tamano]}`}
       >
         <span aria-hidden="true" className={`font-semibold tracking-[0.2em] ${BANDA[tamano]}`}>
           ARGENTINA
         </span>
-        <span className={`font-mono font-bold tracking-wider ${LETRAS[tamano]}`}>
+        <span className={`font-display font-bold tracking-wide tabular-nums ${LETRAS[tamano]}`}>
           {`${limpio.slice(0, 3)} ${limpio.slice(3)}`}
         </span>
       </span>
@@ -105,7 +105,7 @@ function Mercosur({
       <span
         // En el 0 km, «KM 000 KM» es dibujo: lo que se lee es la banda.
         aria-hidden={tenue ? true : undefined}
-        className={`font-mono font-bold tracking-wider ${LETRAS[tamano]} ${
+        className={`font-display font-bold tracking-wide tabular-nums ${LETRAS[tamano]} ${
           tenue ? 'text-patente-tinta/45' : 'text-patente-tinta'
         }`}
       >

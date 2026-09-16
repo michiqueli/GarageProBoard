@@ -68,10 +68,11 @@
   /* ── Patentes ────────────────────────────────────────────────────────────
      Los colores de la chapa real, iguales en los dos temas: una patente se reconoce por
      cómo es en la calle, no por el tema de la pantalla. */
-  --color-patente: #fbfbf8;
-  --color-patente-tinta: #111418;
+  /* No es blanco puro: sobre el tema oscuro, una chapa blanca encandila y cuesta leerla. */
+  --color-patente: #dfe2dc;
+  --color-patente-tinta: #0b0d10;
   --color-patente-banda: #0b3a8c;
-  --color-patente-vieja: #16181a;
+  --color-patente-vieja: #050607;
   --color-patente-vieja-tinta: #f1f1ec;
 
   /* ── Lo que flota: notificaciones y diálogos ─────────────────────────────
