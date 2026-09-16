@@ -59,6 +59,68 @@ function juntar(partes: string[]): string {
  * cuentan puede mejorar sin reescribir la historia. Los nombres de roles y sucursales son
  * los de hoy.
  */
+/** Los campos de empresas, sucursales y puntos de venta, como se llaman en la pantalla. */
+const CAMPOS_ORGANIZACION: Record<string, string> = {
+  razonSocial: 'razón social',
+  nombreFantasia: 'nombre de fantasía',
+  condicionIva: 'condición frente al IVA',
+  inicioActividades: 'inicio de actividades',
+  domicilioFiscal: 'domicilio fiscal',
+  provinciaCodigo: 'provincia',
+  numeroIibb: 'número de Ingresos Brutos',
+  nombre: 'nombre',
+  domicilio: 'domicilio',
+  localidad: 'localidad',
+  telefono: 'teléfono',
+  uso: 'uso',
+  modo: 'modo',
+}
+
+/** «la empresa Litoral SAS», «la sucursal Rafaela», «el punto de venta 0002». */
+export function sobreQue(tabla: string, antes: Foto, despues: Foto): string {
+  const dato = (clave: string) => despues?.[clave] ?? antes?.[clave]
+  if (tabla === 'empresa') return `la empresa ${String(dato('razonSocial'))}`
+  if (tabla === 'sucursal') return `la sucursal ${String(dato('nombre'))}`
+  if (tabla === 'punto_venta') {
+    return `el punto de venta ${String(dato('numero')).padStart(4, '0')}`
+  }
+  return tabla
+}
+
+/** Qué cambió en una empresa, sucursal o punto de venta. Masculino y femenino, como se dice. */
+function describirOrganizacion(tabla: string, accion: string, antes: Foto, despues: Foto): string {
+  const la = tabla === 'punto_venta' ? 'lo' : 'la'
+  if (accion === 'alta') return `${la === 'lo' ? 'Lo' : 'La'} dio de alta`
+
+  const partes: string[] = []
+  const activoAntes = antes?.activa ?? antes?.activo
+  const activoDespues = despues?.activa ?? despues?.activo
+  if (activoAntes !== activoDespues) {
+    partes.push(activoDespues ? `${la} volvió a activar` : `${la} desactivó`)
+  }
+  if (antes?.predeterminado !== despues?.predeterminado && tabla === 'punto_venta') {
+    partes.push(
+      despues?.predeterminado ? 'lo marcó como predeterminado' : 'le sacó el predeterminado',
+    )
+  }
+  if (antes?.convenioMultilateral !== despues?.convenioMultilateral && tabla === 'empresa') {
+    partes.push(
+      despues?.convenioMultilateral
+        ? 'la pasó a Convenio Multilateral'
+        : 'la sacó de Convenio Multilateral',
+    )
+  }
+  for (const [clave, etiqueta] of Object.entries(CAMPOS_ORGANIZACION)) {
+    const a = antes?.[clave] ?? null
+    const d = despues?.[clave] ?? null
+    if (a !== d && (clave in (antes ?? {}) || clave in (despues ?? {}))) {
+      partes.push(`${etiqueta}: «${a ?? 'vacío'}» → «${d ?? 'vacío'}»`)
+    }
+  }
+
+  return juntar(partes)
+}
+
 export function describirCambio(
   tabla: string,
   accion: string,
@@ -66,6 +128,9 @@ export function describirCambio(
   despues: Foto,
   nombres: Nombres,
 ): string {
+  if (tabla === 'empresa' || tabla === 'sucursal' || tabla === 'punto_venta') {
+    return describirOrganizacion(tabla, accion, antes, despues)
+  }
   if (tabla === 'dispositivo') {
     return `Nombre: «${antes?.nombre ?? 'sin nombre'}» → «${despues?.nombre ?? 'sin nombre'}»`
   }
@@ -241,7 +306,7 @@ export class ServicioAuditoria {
               ? `el usuario ${r.sobre_usuario ?? 'borrado'}`
               : r.tabla === 'dispositivo'
                 ? `la computadora ${r.sobre_dispositivo ?? 'sin datos'}`
-                : r.tabla,
+                : sobreQue(r.tabla, r.datos_antes, r.datos_despues),
           accion: r.accion,
           detalle: describirCambio(r.tabla, r.accion, r.datos_antes, r.datos_despues, nombres),
           ip: r.ip,

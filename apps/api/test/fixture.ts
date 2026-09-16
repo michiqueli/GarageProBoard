@@ -1,5 +1,6 @@
 import {
   atajosParaSembrar,
+  cuitValido,
   MODULOS,
   type Modulo,
   type ReglaPermiso,
@@ -23,6 +24,14 @@ import {
 import { FastifyAdapter, type NestFastifyApplication } from '@nestjs/platform-fastify'
 import { Test } from '@nestjs/testing'
 import argon2 from 'argon2'
+
+/** Un CUIT de persona jurídica al azar, con el dígito verificador bien calculado. */
+function cuitAlAzar(): string {
+  for (;;) {
+    const cuit = `30${String(Math.floor(Math.random() * 1e8)).padStart(8, '0')}`
+    for (let dv = 0; dv <= 9; dv++) if (cuitValido(cuit + dv)) return cuit + dv
+  }
+}
 
 export const CLAVE = 'clave-de-prueba'
 
@@ -108,8 +117,9 @@ export async function sembrarConcesionaria(db: Db, s: Semilla) {
     .values({
       tenantId: t.id,
       razonSocial: `${s.slug} SAS`,
-      // El CUIT es único por tenant, así que cada concesionaria necesita el suyo.
-      cuit: `30${String(Math.floor(Math.random() * 1e9)).padStart(9, '0')}`,
+      // El CUIT es único por tenant, así que cada concesionaria necesita el suyo. Uno real,
+      // con dígito verificador: el contrato rechaza los inventados.
+      cuit: cuitAlAzar(),
       condicionIva: 1,
     })
     .returning()

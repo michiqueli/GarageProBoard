@@ -71,7 +71,7 @@ const ALTA = {
   nombre: 'Automotores de Prueba',
   slug: 'prueba',
   modulos: ['nucleo', 'servicios', 'contable'],
-  empresa: { razonSocial: 'Automotores de Prueba SAS', cuit: '30712345679', condicionIva: 1 },
+  empresa: { razonSocial: 'Automotores de Prueba SAS', cuit: '30712345671', condicionIva: 1 },
   sucursal: 'Casa Central',
   gerente: { email: 'Gerente@Prueba.test', nombre: 'Ana', apellido: 'Sosa' },
 }

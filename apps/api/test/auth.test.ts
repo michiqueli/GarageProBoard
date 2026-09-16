@@ -373,7 +373,7 @@ async function sembrarConcesionaria(
     .values({
       tenantId: t.id,
       razonSocial: `${slug} SAS`,
-      cuit: slug === 'litoral' ? '30712345679' : '30719876543',
+      cuit: slug === 'litoral' ? '30712345671' : '30719876540',
       condicionIva: 1,
     })
     .returning()

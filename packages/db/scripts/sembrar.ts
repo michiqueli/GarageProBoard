@@ -115,10 +115,10 @@ const EJEMPLOS: Concesionaria[] = [
     empresas: [
       {
         nombre: 'Automotores Litoral SAS',
-        cuit: '30712345679',
+        cuit: '30712345671',
         sucursales: ['Casa Central', 'Rafaela'],
       },
-      { nombre: 'Litoral Repuestos SAS', cuit: '30719876543', sucursales: ['Depósito Central'] },
+      { nombre: 'Litoral Repuestos SAS', cuit: '30719876540', sucursales: ['Depósito Central'] },
     ],
     usuarios: [
       { email: 'admin@litoral.test', nombre: 'Martín', apellido: 'Gutiérrez', rol: 'Gerente' },
@@ -143,7 +143,7 @@ const EJEMPLOS: Concesionaria[] = [
     // desaparece del menú aunque el gerente pueda todo.
     modulos: ['nucleo', 'servicios', 'repuestos'],
     empresas: [
-      { nombre: 'Automotores del Norte SA', cuit: '30655443321', sucursales: ['Salta Centro'] },
+      { nombre: 'Automotores del Norte SA', cuit: '30655443327', sucursales: ['Salta Centro'] },
     ],
     usuarios: [{ email: 'admin@norte.test', nombre: 'Lucía', apellido: 'Quiroga', rol: 'Gerente' }],
     vehiculos: [

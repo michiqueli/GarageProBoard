@@ -6,6 +6,8 @@ import { ControladorAuditoria } from './auditoria/auditoria.controller.ts'
 import { ServicioAuditoria } from './auditoria/auditoria.service.ts'
 import { ModuloAuth } from './auth/auth.module.ts'
 import { ModuloBase } from './comun/base.module.ts'
+import { ControladorOrganizacion } from './organizacion/organizacion.controller.ts'
+import { ServicioOrganizacion } from './organizacion/organizacion.service.ts'
 import { ControladorSalud } from './salud/salud.controller.ts'
 import { ControladorUsuarios } from './usuarios/usuarios.controller.ts'
 import { ServicioUsuarios } from './usuarios/usuarios.service.ts'
@@ -32,7 +34,13 @@ import { ControladorVehiculos } from './vehiculos/vehiculos.controller.ts'
     ModuloBase,
     ModuloAuth,
   ],
-  controllers: [ControladorSalud, ControladorVehiculos, ControladorUsuarios, ControladorAuditoria],
-  providers: [ServicioUsuarios, ServicioAuditoria],
+  controllers: [
+    ControladorSalud,
+    ControladorVehiculos,
+    ControladorUsuarios,
+    ControladorAuditoria,
+    ControladorOrganizacion,
+  ],
+  providers: [ServicioUsuarios, ServicioAuditoria, ServicioOrganizacion],
 })
 export class ModuloPrincipal {}

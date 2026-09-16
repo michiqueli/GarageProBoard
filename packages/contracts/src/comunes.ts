@@ -1,7 +1,14 @@
+import { cuitValido } from '@gpb/core'
 import { z } from 'zod'
 
-/** Un CUIT son once dígitos. El guion es presentación, no dato. */
-export const cuit = z.string().regex(/^[0-9]{11}$/, 'El CUIT son 11 dígitos sin guiones')
+/**
+ * Un CUIT son once dígitos y el último es verificador. El guion es presentación, no dato.
+ * Se valida el dígito: un número mal tipeado pasa cualquier regex.
+ */
+export const cuit = z
+  .string()
+  .regex(/^[0-9]{11}$/, 'El CUIT son 11 dígitos sin guiones')
+  .refine(cuitValido, 'Ese CUIT no existe: revisá los números, el último no coincide')
 
 /**
  * Los dos formatos de patente que conviven en la calle. No hace falta más:
