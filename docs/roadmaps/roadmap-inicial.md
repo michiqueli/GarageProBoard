@@ -120,7 +120,9 @@ Las entidades ya están modeladas; falta poder operarlas.
       ingreso asociado a su computadora, aviso al afectado y pantalla de Auditoría
 - ⬜ Crear, clonar y editar roles
 - ⬜ Registrar Usuarios en el índice del buscador del sistema cuando exista
-- ⬜ ABM de entidades comerciales con consulta al padrón de AFIP por CUIT
+- ✅ Consulta al padrón de AFIP por CUIT: constancia de inscripción y A13 de respaldo,
+      condición frente al IVA informada o deducida, probada contra AFIP
+- ⬜ ABM de entidades comerciales, usando la consulta al padrón
 - 🔨 ABM de vehículos: listado y alta contra la API; falta edición y titularidad
 - ⬜ Búsqueda única: por patente, por chasis, por cliente, por CUIT
 - ⬜ Ficha del vehículo con su historia completa, incluidos los titulares anteriores

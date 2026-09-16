@@ -65,7 +65,7 @@ const EMPRESA = {
   condicionIva: 1,
   inicioActividades: '2020-03-01',
   domicilioFiscal: 'Bv. Santa Fe 1200',
-  provinciaCodigo: 21,
+  provinciaCodigo: 12,
   convenioMultilateral: false,
   numeroIibb: '',
 }

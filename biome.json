@@ -12,8 +12,7 @@
       "!**/node_modules",
       "!**/.turbo",
       "!**/migrations/**/*.sql",
-      "!GarageTick",
-      "!referencias"
+      "!para_sacar_codigo"
     ]
   },
   "formatter": {

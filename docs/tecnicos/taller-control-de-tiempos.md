@@ -6,7 +6,7 @@ de verdad** y por eso vale más que todo lo que venimos razonando sin piloto: es
 parte de GarageProBoard que se apoya en observación directa y no en conocimiento general del
 dominio.
 
-La copia está en `GarageTick/`, con sus documentos completos (relevamiento,
+La copia está en `para_sacar_codigo/GarageTick/`, fuera de git, con sus documentos completos (relevamiento,
 arquitectura, modelo de datos, plan por fases, investigación sobre Oversoft, presupuesto
 y licencia). **No es parte del monorepo** — tiene su propio `.git` y su propio stack —;
 se conserva como material de referencia hasta que el módulo de servicios esté escrito.

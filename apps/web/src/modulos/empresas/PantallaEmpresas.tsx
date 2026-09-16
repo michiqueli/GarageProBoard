@@ -325,6 +325,27 @@ function FormEmpresa({
   // campo y no como un rechazo genérico del servidor.
   const cuitMal = !empresa && tocado && !cuitValido(cuit)
 
+  /**
+   * Trae de AFIP lo que se pueda y completa el formulario. No guarda nada: quien carga
+   * revisa y confirma, porque la condición frente al IVA a veces es una deducción.
+   */
+  const padron = useMutation({
+    mutationFn: () => api.padron.consultar({ cuit: normalizarCuit(cuit) }),
+    onSuccess: (c) => {
+      setRazonSocial(c.razonSocial)
+      if (c.condicionIva.codigo !== null) setCondicionIva(c.condicionIva.codigo)
+      if (c.domicilio) {
+        setDomicilio([c.domicilio.direccion, c.domicilio.localidad].filter(Boolean).join(', '))
+        setProvincia(c.domicilio.provinciaCodigo)
+      }
+    },
+  })
+
+  function consultarPadron() {
+    setTocado(true)
+    if (cuitValido(cuit)) padron.mutate()
+  }
+
   function enviar(evento: FormEvent) {
     evento.preventDefault()
     setTocado(true)
@@ -367,6 +388,19 @@ function FormEmpresa({
         }
         aria-invalid={cuitMal}
       />
+      {!empresa && (
+        <div className="grid content-end gap-1 md:col-span-2">
+          <button
+            type="button"
+            onClick={consultarPadron}
+            disabled={padron.isPending}
+            className="h-campo w-fit rounded-base border border-borde px-3 text-dato text-texto-suave hover:bg-superficie-2 hover:text-texto disabled:opacity-50"
+          >
+            {padron.isPending ? 'Consultando a AFIP…' : 'Completar con los datos de AFIP'}
+          </button>
+          <ResultadoPadron consulta={padron} />
+        </div>
+      )}
       <Campo
         ref={empresa ? primerCampo : undefined}
         etiqueta="Razón social"
@@ -644,6 +678,50 @@ function Esqueleto() {
     <div className="grid gap-2">
       {[0, 1].map((i) => (
         <div key={i} className="h-24 animate-pulse rounded-base bg-superficie-2" />
+      ))}
+    </div>
+  )
+}
+
+/**
+ * Lo que contestó AFIP, con lo que hay que mirar antes de guardar: si la condición frente
+ * al IVA es una deducción, si es un CUIL o si está inactivo.
+ */
+function ResultadoPadron({
+  consulta,
+}: {
+  consulta: {
+    isError: boolean
+    error: unknown
+    data?: Awaited<ReturnType<typeof api.padron.consultar>> | undefined
+  }
+}) {
+  if (consulta.isError) {
+    return (
+      <p role="alert" className="text-etiqueta text-critico">
+        {mensajeDe(consulta.error)}
+      </p>
+    )
+  }
+  const c = consulta.data
+  if (!c) return null
+
+  const avisos = [
+    c.tipoClave === 'CUIL' &&
+      'Es un CUIL, no un CUIT: una persona sin inscripción en AFIP no puede facturar.',
+    !c.activo && 'AFIP lo informa inactivo.',
+    c.condicionIva.fuente === 'inferida' && c.condicionIva.motivo,
+  ].filter((a): a is string => Boolean(a))
+
+  return (
+    <div role="status" className="grid gap-0.5 text-etiqueta">
+      <span className="text-ok">
+        Datos completados con lo que informa AFIP. Revisalos antes de guardar.
+      </span>
+      {avisos.map((a) => (
+        <span key={a} className="text-atencion">
+          {a}
+        </span>
       ))}
     </div>
   )

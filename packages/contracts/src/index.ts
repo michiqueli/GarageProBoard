@@ -5,6 +5,7 @@ import { contratoAuditoria } from './auditoria.ts'
 import { contratoAuth } from './auth.ts'
 import { chasis, dominio, paginado, problema } from './comunes.ts'
 import { contratoOrganizacion } from './organizacion.ts'
+import { contratoPadron } from './padron.ts'
 import { contratoUsuarios } from './usuarios.ts'
 
 export * from './acceso.ts'
@@ -12,6 +13,7 @@ export * from './auditoria.ts'
 export * from './auth.ts'
 export * from './comunes.ts'
 export * from './organizacion.ts'
+export * from './padron.ts'
 export * from './usuarios.ts'
 
 export const vehiculoSalida = z.object({
@@ -36,6 +38,7 @@ export const contrato = {
   auditoria: contratoAuditoria,
   usuarios: contratoUsuarios,
   organizacion: contratoOrganizacion,
+  padron: contratoPadron,
 
   salud: publico
     .route({

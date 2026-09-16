@@ -10,6 +10,8 @@
  * Nada de lo que está acá abajo menciona al SDK. Ese es el punto.
  */
 
+import type { Contribuyente } from './padron.ts'
+
 export type Entorno = 'homologacion' | 'produccion'
 
 export interface Credenciales {
@@ -50,18 +52,20 @@ export interface ComprobanteAutorizado {
   respuestaCruda: unknown
 }
 
-export interface ContribuyentePadron {
-  cuit: string
-  razonSocial: string
-  condicionIva: number | null
-  domicilio: string | null
-}
-
 export interface ServicioFiscal {
   autorizar(cred: Credenciales, solicitud: SolicitudComprobante): Promise<ComprobanteAutorizado>
   ultimoAutorizado(cred: Credenciales, puntoVenta: number, tipo: number): Promise<number>
-  consultarPadron(cred: Credenciales, cuit: string): Promise<ContribuyentePadron | null>
   condicionesIvaReceptor(
     cred: Credenciales,
   ): Promise<Array<{ codigo: number; descripcion: string }>>
+}
+
+/**
+ * El padrón, aparte de la facturación: usa **nuestra** credencial y no la de cada empresa.
+ * Autocompletar un CUIT es un servicio que da el sistema; no tiene por qué esperar a que
+ * la concesionaria cargue sus certificados.
+ */
+export interface ServicioPadron {
+  /** `null` si AFIP no lo encuentra en ningún padrón. */
+  consultar(cuit: string): Promise<Contribuyente | null>
 }

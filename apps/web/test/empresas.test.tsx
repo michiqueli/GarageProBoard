@@ -16,10 +16,12 @@ const organizacion = {
   editarPuntoVenta: vi.fn(),
 }
 const renovar = vi.fn()
+const consultarPadron = vi.fn()
 
 vi.mock('../src/sesion/cliente.ts', () => ({
   api: {
     auth: { iniciar: vi.fn(), cerrar: vi.fn().mockResolvedValue({}), cambiarSucursal: vi.fn() },
+    padron: { consultar: (x: unknown) => consultarPadron(x) },
     organizacion: Object.fromEntries(
       [
         'catalogos',
@@ -43,7 +45,7 @@ const CENTRAL = {
   id: 's1',
   nombre: 'Casa Central',
   domicilio: 'Bv. Pellegrini 2500',
-  provinciaCodigo: 21,
+  provinciaCodigo: 12,
   localidad: 'Santa Fe',
   telefono: null,
   activa: true,
@@ -69,7 +71,7 @@ const LITORAL = {
   condicionIva: 1,
   inicioActividades: null,
   domicilioFiscal: null,
-  provinciaCodigo: 21,
+  provinciaCodigo: 12,
   convenioMultilateral: false,
   numeroIibb: null,
   sucursales: [CENTRAL, RAFAELA],
@@ -83,12 +85,12 @@ function entraComo(sesion: typeof SESION) {
 }
 
 beforeEach(() => {
-  for (const f of [...Object.values(organizacion), renovar]) f.mockReset()
+  for (const f of [...Object.values(organizacion), renovar, consultarPadron]) f.mockReset()
   usarSesion.getState().limpiar()
   organizacion.listar.mockResolvedValue({ datos: [LITORAL] })
   organizacion.catalogos.mockResolvedValue({
     condicionesIva: [{ codigo: 1, descripcion: 'IVA Responsable Inscripto' }],
-    provincias: [{ codigo: 21, nombre: 'Santa Fe' }],
+    provincias: [{ codigo: 12, nombre: 'Santa Fe' }],
   })
 })
 
@@ -173,5 +175,46 @@ describe('desactivar una sucursal', () => {
     expect((await within(formulario).findByRole('alert')).textContent).toBe(
       'No se puede desactivar: taller@litoral.test sólo entran a esta sucursal. Dales acceso a otra desde Usuarios.',
     )
+  })
+})
+
+describe('el padrón de AFIP', () => {
+  it('completa la razón social, la condición y el domicilio, y avisa si la condición es deducida', async () => {
+    entraComo(SESION)
+    consultarPadron.mockResolvedValue({
+      cuit: '30719876540',
+      razonSocial: 'LITORAL REPUESTOS SAS',
+      tipoPersona: 'juridica',
+      tipoClave: 'CUIT',
+      activo: true,
+      condicionIva: {
+        codigo: 1,
+        fuente: 'inferida',
+        motivo: 'AFIP no informa su condición frente al IVA. Es una sociedad: confirmalo.',
+      },
+      domicilio: {
+        direccion: 'BV PELLEGRINI 2500',
+        localidad: 'SANTA FE',
+        codigoPostal: '3000',
+        provinciaCodigo: 12,
+      },
+      origen: 'a13',
+    })
+    await montarApp('/empresas')
+    await screen.findByRole('region', { name: 'Automotores Litoral SAS' })
+
+    await userEvent.keyboard('{Insert}')
+    const formulario = await screen.findByRole('region', { name: 'Nueva razón social' })
+    await userEvent.type(within(formulario).getByLabelText('CUIT'), '30-71987654-0')
+    await userEvent.click(
+      within(formulario).getByRole('button', { name: 'Completar con los datos de AFIP' }),
+    )
+
+    expect(consultarPadron).toHaveBeenCalledWith({ cuit: '30719876540' })
+    expect(await within(formulario).findByDisplayValue('LITORAL REPUESTOS SAS')).toBeDefined()
+    expect(within(formulario).getByDisplayValue('BV PELLEGRINI 2500, SANTA FE')).toBeDefined()
+    expect(within(formulario).getByText(/Es una sociedad: confirmalo/)).toBeDefined()
+    // Completa, no guarda: quien carga revisa y confirma.
+    expect(organizacion.crearEmpresa).not.toHaveBeenCalled()
   })
 })

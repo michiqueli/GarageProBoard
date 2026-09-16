@@ -22,7 +22,7 @@ import {
   vehiculo,
 } from '@gpb/db/schema'
 import { FastifyAdapter, type NestFastifyApplication } from '@nestjs/platform-fastify'
-import { Test } from '@nestjs/testing'
+import { Test, type TestingModuleBuilder } from '@nestjs/testing'
 import argon2 from 'argon2'
 
 /** Un CUIT de persona jurídica al azar, con el dígito verificador bien calculado. */
@@ -48,7 +48,13 @@ export interface ApiDePrueba {
  * andamios distintos terminan siempre desincronizados, y el que se olvida algo pasa
  * tests contra una aplicación que no existe.
  */
-export async function levantarApi(): Promise<ApiDePrueba> {
+/**
+ * `ajustar` reemplaza proveedores antes de compilar: el padrón de AFIP, por ejemplo, no se
+ * consulta de verdad desde un test.
+ */
+export async function levantarApi(
+  ajustar: (m: TestingModuleBuilder) => TestingModuleBuilder = (m) => m,
+): Promise<ApiDePrueba> {
   const pg = await levantarPostgres()
 
   // Antes de crear el módulo: la fábrica del pool lee estas variables al arrancar.
@@ -60,7 +66,7 @@ export async function levantarApi(): Promise<ApiDePrueba> {
 
   const { ModuloPrincipal } = await import('../src/app.module.ts')
   const { configurarApp } = await import('../src/arranque.ts')
-  const modulo = await Test.createTestingModule({ imports: [ModuloPrincipal] }).compile()
+  const modulo = await ajustar(Test.createTestingModule({ imports: [ModuloPrincipal] })).compile()
 
   const app = modulo.createNestApplication<NestFastifyApplication>(new FastifyAdapter())
   // La misma configuración que main.ts.

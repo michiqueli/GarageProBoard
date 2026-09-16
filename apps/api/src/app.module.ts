@@ -8,6 +8,7 @@ import { ModuloAuth } from './auth/auth.module.ts'
 import { ModuloBase } from './comun/base.module.ts'
 import { ControladorOrganizacion } from './organizacion/organizacion.controller.ts'
 import { ServicioOrganizacion } from './organizacion/organizacion.service.ts'
+import { ModuloPadron } from './padron/padron.module.ts'
 import { ControladorSalud } from './salud/salud.controller.ts'
 import { ControladorUsuarios } from './usuarios/usuarios.controller.ts'
 import { ServicioUsuarios } from './usuarios/usuarios.service.ts'
@@ -33,6 +34,7 @@ import { ControladorVehiculos } from './vehiculos/vehiculos.controller.ts'
     }),
     ModuloBase,
     ModuloAuth,
+    ModuloPadron,
   ],
   controllers: [
     ControladorSalud,

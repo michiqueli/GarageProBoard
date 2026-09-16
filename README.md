@@ -46,6 +46,16 @@ aparte y con su propio rol de Postgres, así que `pnpm dev` no lo levanta.
 Necesita `DATABASE_URL_BACKOFFICE` y `BACKOFFICE_DB_PASSWORD` en el `.env` (están en
 `.env.example`). El panel se abre en <http://localhost:5174>.
 
+### El padrón de AFIP
+
+Autocompletar un CUIT usa **una credencial de GarageProBoard**, no la de cada
+concesionaria. El certificado y la clave van en `secretos/afip/`, que no se versiona, y se
+configuran con `AFIP_PADRON_*` en el `.env` (ver `.env.example`). Sin eso la API arranca
+igual y la consulta contesta «no disponible».
+
+**Ojo si el certificado es de producción:** para el padrón no pasa nada —sólo lee datos
+públicos—, pero facturar con él emite comprobantes reales.
+
 El Postgres del contenedor va al **5433** a propósito: el 5432 suele estar ocupado por
 una instalación nativa, y su `psql` sirve igual como cliente de línea de comandos.
 
