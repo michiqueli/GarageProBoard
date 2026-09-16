@@ -1,6 +1,7 @@
 # Certificados de AFIP
 
-Estado: **decidido, sin construir**. Se construye con la facturación (Hito 3).
+Estado: **construido** el 16/09/2026: guardado cifrado, verificación, prueba contra AFIP y el
+asistente en *Empresas y sucursales → Certificado de AFIP*. Falta usarlo para emitir.
 
 ## Dos credenciales, dos dueños
 
@@ -94,13 +95,30 @@ Un certificado y su clave son unos 3 KB. En la base quedan detrás de la misma R
 resto de la concesionaria, se guardan en la misma transacción que la verificación, y se
 respaldan con la base, que se respalda igual.
 
-- Tabla `certificado_afip`, colgando de `empresa`: estado (`pendiente`, `activo`,
-  `reemplazado`, `vencido`), alias, CSR, certificado, entorno, vencimiento.
-- La clave privada, con **AES-256-GCM** y la clave maestra de `SECRETOS_MASTER_KEY`.
-  Perder esa clave maestra es perder la capacidad de facturar de todos los clientes: se
-  respalda aparte de la base.
-- Para generar el CSR hace falta una biblioteca: `node:crypto` genera la clave pero no el
-  pedido. Candidata: `@peculiar/x509`.
+- Tabla `certificado_afip`, colgando de `empresa`: estado, alias, pedido (CSR), certificado,
+  entorno y vigencia. Estados: `pendiente` (pedido generado, con o sin certificado),
+  `activo`, `reemplazado` y `descartado`. Uno solo activo y uno solo pendiente por empresa,
+  con índices únicos parciales.
+- **Vencido no es un estado**: se deduce de `vigente_hasta`. Un estado que alguien tiene que
+  acordarse de marcar termina mintiendo.
+- La clave privada, con **AES-256-GCM** y la clave maestra de `SECRETOS_MASTER_KEY` (32 bytes
+  en base64), en `apps/api/src/comun/secretos.ts`. Cada clave va atada a su empresa como dato
+  autenticado: copiada a la fila de otra empresa, no se descifra. Perder la clave maestra es
+  perder la capacidad de facturar de todos los clientes: se respalda aparte de la base.
+- Sin clave maestra la API arranca igual; lo que necesita certificados contesta 503 y el log
+  dice qué falta.
+- El pedido se genera con `@peculiar/x509` (`node:crypto` genera la clave pero no el CSR),
+  que necesita `reflect-metadata`. El certificado se verifica con `X509Certificate` de Node.
+- La prueba contra AFIP corre **fuera** de toda transacción, y la activación verifica después
+  que el pedido siga siendo el mismo.
+
+### Verificación del certificado
+
+`verificarCertificado` en `@gpb/afip`, en este orden, que es el orden en que conviene
+arreglarlo: que se pueda leer; que lo haya firmado AFIP (emisor `O=AFIP`, `CN=Computadores`
+en producción o `CN=Computadores Test` en homologación, de donde sale el entorno); que
+corresponda a la clave del pedido; que el `serialNumber` sea `CUIT <el de la empresa>`; que
+esté vigente. Probado con el certificado real de GarageProBoard.
 
 ## Almacén de archivos: no ahora, sí pronto
 

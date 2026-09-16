@@ -21,6 +21,7 @@ import { PantallaLogin } from './modulos/auth/PantallaLogin.tsx'
 import { PantallaSucursal } from './modulos/auth/PantallaSucursal.tsx'
 import { PantallaClientes } from './modulos/clientes/PantallaClientes.tsx'
 import { PantallaFichaCliente } from './modulos/clientes/PantallaFichaCliente.tsx'
+import { PantallaCertificadoAfip } from './modulos/empresas/PantallaCertificadoAfip.tsx'
 import { PantallaEmpresas } from './modulos/empresas/PantallaEmpresas.tsx'
 import { PantallaOrdenes } from './modulos/ordenes/PantallaOrdenes.tsx'
 import { PantallaRoles } from './modulos/roles/PantallaRoles.tsx'
@@ -210,6 +211,12 @@ const rutaEmpresas = createRoute({
   component: PantallaEmpresas,
 })
 
+const rutaCertificadoAfip = createRoute({
+  getParentRoute: () => conSesion,
+  path: 'empresas/$id/certificado-afip',
+  component: PantallaCertificadoAfip,
+})
+
 const arbol = raiz.addChildren([
   rutaEntrar,
   rutaSucursal,
@@ -224,6 +231,7 @@ const arbol = raiz.addChildren([
     rutaRoles,
     rutaAuditoria,
     rutaEmpresas,
+    rutaCertificadoAfip,
   ]),
 ])
 

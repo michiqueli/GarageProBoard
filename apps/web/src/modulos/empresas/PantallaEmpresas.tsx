@@ -2,6 +2,7 @@ import { accesoDeRuta, contrato } from '@gpb/contracts'
 import { cuitValido, formatearCuit, normalizarCuit } from '@gpb/core'
 import { ORPCError } from '@orpc/client'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { Link } from '@tanstack/react-router'
 import { type FormEvent, type ReactNode, useEffect, useRef, useState } from 'react'
 import { Boton } from '../../componentes/Boton.tsx'
 import { Campo } from '../../componentes/Campo.tsx'
@@ -51,6 +52,7 @@ export function PantallaEmpresas() {
   const puedeVer = usePuedeUsar(contrato.organizacion.listar)
   const puedeCrear = usePuedeUsar(contrato.organizacion.crearEmpresa)
   const puedeEditar = usePuedeUsar(contrato.organizacion.editarEmpresa)
+  const puedeCertificado = usePuedeUsar(contrato.certificados.estado)
   const [edicion, setEdicion] = useState<Edicion>(null)
 
   const listado = useQuery({
@@ -112,12 +114,23 @@ export function PantallaEmpresas() {
               {formatearCuit(e.cuit)}
             </span>
             <span className="text-etiqueta text-texto-tenue">{condicion(e.condicionIva)}</span>
-            {puedeEditar && (
+            {(puedeEditar || puedeCertificado) && (
               <span className="ml-auto flex gap-2">
-                <Enlace onClick={() => setEdicion({ tipo: 'empresa', empresa: e })}>
-                  Modificar
-                </Enlace>
-                {puedeCrear && (
+                {puedeCertificado && (
+                  <Link
+                    to="/empresas/$id/certificado-afip"
+                    params={{ id: e.id }}
+                    className="text-etiqueta text-marca hover:underline"
+                  >
+                    Certificado de AFIP
+                  </Link>
+                )}
+                {puedeEditar && (
+                  <Enlace onClick={() => setEdicion({ tipo: 'empresa', empresa: e })}>
+                    Modificar
+                  </Enlace>
+                )}
+                {puedeEditar && puedeCrear && (
                   <Enlace onClick={() => setEdicion({ tipo: 'sucursal', empresa: e })}>
                     Nueva sucursal
                   </Enlace>

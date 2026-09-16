@@ -146,10 +146,10 @@ La barrera de entrada más alta. Nada se vende sin esto.
 
 - ✅ Adaptador de `@arcasdk/core` detrás del puerto `ServicioFiscal`: comprobante armado
       desde el precio final con el IVA cerrado al centavo, rechazos interpretados y QR
-- ⬜ Asistente de certificados por razón social: el sistema genera la clave y el pedido,
+- ✅ Asistente de certificados por razón social: el sistema genera la clave y el pedido,
       guía los pasos en ARCA y verifica el certificado contra AFIP antes de aceptarlo. Ver
       [certificados de AFIP](../tecnicos/afip-certificados.md)
-- ⬜ Almacenamiento cifrado de certificados por empresa, en Postgres con AES-256-GCM
+- ✅ Almacenamiento cifrado de certificados por empresa, en Postgres con AES-256-GCM
 - ⬜ WSAA: token y sign, con caché hasta el vencimiento
 - ⬜ Numeración sin huecos: `select ... for update` en la misma transacción que el CAE
 - ⬜ Matriz emisor × receptor como tabla de reglas
