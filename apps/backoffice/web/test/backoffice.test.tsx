@@ -150,10 +150,30 @@ describe('un módulo', () => {
       activo: false,
       vigenteHasta: null,
       motivo: 'Falta de pago',
+      // Nadie depende de servicios: no hay nada que arrastrar.
+      apagarDependientes: false,
     })
   })
 
-  it('si deja a otro sin lo que necesita, muestra el motivo del rechazo', async () => {
+  it('apagar el núcleo avisa qué más se apaga, y lo dice en el botón', async () => {
+    api.concesionarias.cambiarModulo.mockResolvedValue(DETALLE)
+    await montar(`/concesionarias/${LITORAL.id}`)
+
+    const fila = (await screen.findByText('Núcleo')).closest('li') as HTMLElement
+    await userEvent.click(within(fila).getByRole('button', { name: 'Cambiar' }))
+
+    expect(within(fila).getByRole('alert').textContent).toContain('También se apagan Servicios')
+    await userEvent.type(within(fila).getByLabelText('Motivo'), 'Baja del servicio')
+    await userEvent.click(
+      within(fila).getByRole('button', { name: 'Apagar Núcleo y 1 módulo más' }),
+    )
+
+    expect(api.concesionarias.cambiarModulo).toHaveBeenCalledWith(
+      expect.objectContaining({ modulo: 'nucleo', activo: false, apagarDependientes: true }),
+    )
+  })
+
+  it('si el servidor rechaza el cambio, muestra el motivo', async () => {
     api.concesionarias.cambiarModulo.mockRejectedValue(
       new ORPCError('DEPENDENCIAS_ROTAS', {
         status: 422,
@@ -163,10 +183,10 @@ describe('un módulo', () => {
     )
     await montar(`/concesionarias/${LITORAL.id}`)
 
-    const fila = (await screen.findByText('Núcleo')).closest('li') as HTMLElement
+    const fila = (await screen.findByText('Contable')).closest('li') as HTMLElement
     await userEvent.click(within(fila).getByRole('button', { name: 'Cambiar' }))
-    await userEvent.type(within(fila).getByLabelText('Motivo'), 'Prueba')
-    await userEvent.click(within(fila).getByRole('button', { name: 'Apagar Núcleo' }))
+    await userEvent.type(within(fila).getByLabelText('Motivo'), 'Lo contrató')
+    await userEvent.click(within(fila).getByRole('button', { name: 'Prender Contable' }))
 
     expect((await within(fila).findByRole('alert')).textContent).toContain(
       'Servicios necesita Núcleo',

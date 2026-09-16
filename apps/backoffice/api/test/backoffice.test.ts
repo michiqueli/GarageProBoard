@@ -263,6 +263,31 @@ describe('los módulos de una concesionaria', () => {
     expect(detalle.modulos).toContain('nucleo')
   })
 
+  it('apagar el núcleo pidiéndolo apaga todo lo que depende de él, y lo deja escrito', async () => {
+    const cookie = await entrar()
+    const r = await pedir(cookie, 'POST', '/concesionarias', {
+      ...ALTA,
+      slug: 'cascada',
+      gerente: { ...ALTA.gerente, email: 'cascada@prueba.test' },
+    })
+    const id = r.json().concesionaria.id
+
+    const apagada = await pedir(cookie, 'PUT', `/concesionarias/${id}/modulos/nucleo`, {
+      activo: false,
+      vigenteHasta: null,
+      motivo: 'Baja del servicio',
+      apagarDependientes: true,
+    })
+
+    expect(apagada.statusCode).toBe(200)
+    expect(apagada.json().modulos).toEqual([])
+    // Uno por módulo en el historial, y los arrastrados dicen por qué cayeron.
+    const motivos = apagada.json().historial.map((h: { motivo: string }) => h.motivo)
+    expect(motivos).toContain('Baja del servicio')
+    expect(motivos).toContain('Baja del servicio (se apagó con Núcleo)')
+    expect(motivos.filter((m: string | null) => m?.startsWith('Baja del servicio'))).toHaveLength(3)
+  })
+
   it('se contrata uno nuevo con vencimiento: una prueba de treinta días', async () => {
     const cookie = await entrar()
     const id = await laDePrueba(cookie)

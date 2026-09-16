@@ -1,4 +1,4 @@
-import { ETIQUETA_MODULO, type Modulo } from '@gpb/core'
+import { dependientesDe, ETIQUETA_MODULO, type Modulo } from '@gpb/core'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link, useParams } from '@tanstack/react-router'
 import { type FormEvent, useState } from 'react'
@@ -133,6 +133,7 @@ export function PantallaDetalle() {
                 <FormularioModulo
                   id={id}
                   modulo={modulo}
+                  prendidos={c.modulos}
                   contrato={contrato}
                   clave={clave}
                   alTerminar={() => setEditando(null)}
@@ -169,12 +170,14 @@ export function PantallaDetalle() {
 function FormularioModulo({
   id,
   modulo,
+  prendidos,
   contrato,
   clave,
   alTerminar,
 }: {
   id: string
   modulo: Modulo
+  prendidos: readonly Modulo[]
   contrato: Contrato
   clave: string[]
   alTerminar: () => void
@@ -184,6 +187,10 @@ function FormularioModulo({
   const [vence, setVence] = useState(contrato?.vigenteHasta?.slice(0, 10) ?? '')
   const [motivo, setMotivo] = useState('')
 
+  // Lo que cae si se apaga éste. Se muestra antes de confirmar y va escrito en el botón:
+  // apagar el núcleo es apagar la concesionaria, y no puede enterarse después.
+  const arrastrados = activo ? [] : dependientesDe(modulo, prendidos)
+
   const guardar = useMutation({
     mutationFn: () =>
       api.concesionarias.cambiarModulo({
@@ -192,6 +199,7 @@ function FormularioModulo({
         activo,
         vigenteHasta: vence ? finDelDia(vence) : null,
         motivo,
+        apagarDependientes: arrastrados.length > 0,
       }),
     onSuccess: (actualizado) => {
       cache.setQueryData(clave, actualizado)
@@ -252,6 +260,12 @@ function FormularioModulo({
           onChange={(e) => setMotivo(e.target.value)}
         />
       </div>
+      {arrastrados.length > 0 && (
+        <Aviso tono="critico">
+          También se apagan {arrastrados.map((m) => ETIQUETA_MODULO[m]).join(', ')}, porque dependen
+          de {ETIQUETA_MODULO[modulo]}. Para volver a tenerlos hay que prenderlos de a uno.
+        </Aviso>
+      )}
       {guardar.isError && <Aviso tono="critico">{mensajeDe(guardar.error)}</Aviso>}
       <div className="flex gap-2">
         <Boton
@@ -259,7 +273,11 @@ function FormularioModulo({
           variante={activo ? 'principal' : 'peligro'}
           disabled={guardar.isPending}
         >
-          {activo ? `Prender ${ETIQUETA_MODULO[modulo]}` : `Apagar ${ETIQUETA_MODULO[modulo]}`}
+          {activo
+            ? `Prender ${ETIQUETA_MODULO[modulo]}`
+            : arrastrados.length > 0
+              ? `Apagar ${ETIQUETA_MODULO[modulo]} y ${arrastrados.length} ${arrastrados.length === 1 ? 'módulo' : 'módulos'} más`
+              : `Apagar ${ETIQUETA_MODULO[modulo]}`}
         </Boton>
         <Boton onClick={alTerminar}>Cancelar</Boton>
       </div>

@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest'
-import { DEPENDENCIAS, dependenciasRotas, describirDependencia, MODULOS } from '../src/modulos.ts'
+import {
+  DEPENDENCIAS,
+  dependenciasRotas,
+  dependientesDe,
+  describirDependencia,
+  MODULOS,
+} from '../src/modulos.ts'
 
 describe('dependencias entre módulos', () => {
   it('con todo prendido no falta nada', () => {
@@ -27,6 +33,17 @@ describe('dependencias entre módulos', () => {
       expect(DEPENDENCIAS[modulo]).not.toContain(modulo)
       for (const d of DEPENDENCIAS[modulo]) expect(MODULOS).toContain(d)
     }
+  })
+
+  it('apagar el núcleo arrastra a todos los que están prendidos, y a nadie más', () => {
+    expect(dependientesDe('nucleo', ['nucleo', 'servicios', 'contable'])).toEqual([
+      'contable',
+      'servicios',
+    ])
+  })
+
+  it('apagar un módulo del que nadie depende no arrastra nada', () => {
+    expect(dependientesDe('contable', MODULOS)).toEqual([])
   })
 
   it('el motivo se lee en castellano', () => {

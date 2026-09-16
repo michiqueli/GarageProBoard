@@ -84,10 +84,20 @@ posibilidad existe. Nada de una excepción escrita en el código para un caso qu
 alguien va a querer.
 
 Lo que sí hace falta es **declarar las dependencias entre módulos**: servicios no puede
-abrir una OT sin vehículos, ni contable facturar sin clientes. Apagar algo de lo que
-cuelga un módulo prendido se rechaza en el back-office, con el motivo escrito. Un
-sistema que te deja apagar el piso y recién te avisa cuando el usuario abre la pantalla
-es peor que uno que no te deja apagarlo.
+abrir una OT sin vehículos, ni contable facturar sin clientes. Un sistema que te deja
+apagar el piso y recién te avisa cuando el usuario abre la pantalla es peor que uno que no
+te deja apagarlo.
+
+**Apagar un módulo apaga los que dependen de él**, y se ve antes de confirmar. Primero se
+había decidido rechazarlo; al usarlo, apagar el núcleo obligaba a apagar seis módulos de a
+uno para llegar a lo que se quería. Ahora el panel dice «También se apagan Contable,
+Servicios…» y el botón «Apagar Núcleo y 6 módulos más». La API sólo lo hace si se lo pide
+con `apagarDependientes`: una llamada que no sabía lo que arrastraba no puede apagar una
+concesionaria entera. Los arrastrados quedan en el historial con el motivo y de qué
+cayeron, y para volver a tenerlos se prenden de a uno.
+
+**Prender** un módulo sin lo que necesita se sigue rechazando: ahí no hay nada que
+arrastrar, falta algo.
 
 ### Un módulo apagado no se ve, y punto
 
@@ -204,6 +214,6 @@ Es el único que escribe `tenant_modulo`.
 | Sesión | Cookie `httpOnly` de doce horas, verificada en cada pedido |
 | Rol de Postgres | `gpb_backoffice`, sin BYPASSRLS. Ve todas las concesionarias sólo en `tenant` y `tenant_modulo`; no puede leer un vehículo ni un comprobante |
 | Alta | Concesionaria, módulos, razón social, sucursal, roles y gerente en una sola transacción. La contraseña del gerente se muestra una vez |
-| Módulos | Prender, apagar y vencimiento, siempre con motivo. Se rechaza lo que agrega una dependencia rota |
+| Módulos | Prender, apagar y vencimiento, siempre con motivo. Apagar arrastra a los que dependen, con aviso; prender sin lo que hace falta se rechaza |
 | Suspender | `tenant.activo = false`: nadie entra y las sesiones caen en el próximo pedido. Los datos no se tocan |
 | Auditoría | `auditoria_backoffice`, que el propio back-office no puede corregir ni borrar |

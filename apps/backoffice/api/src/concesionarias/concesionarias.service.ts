@@ -2,7 +2,9 @@ import { randomBytes, randomUUID } from 'node:crypto'
 import {
   atajosParaSembrar,
   dependenciasRotas,
+  dependientesDe,
   describirDependencia,
+  ETIQUETA_MODULO,
   MODULOS,
   type Modulo,
   ROLES_PREDEFINIDOS,
@@ -276,21 +278,32 @@ export class ServicioConcesionarias {
   /**
    * Prende, apaga o cambia la vigencia de un módulo.
    *
-   * Se rechaza si **agrega** una dependencia rota: apagar el núcleo de una concesionaria
-   * que usa servicios, o prender servicios sin núcleo. Las que ya estaban rotas antes no
+   * Apagar uno del que dependen otros prendidos los apaga a todos juntos, **si se pide**
+   * con `apagarDependientes`; si no, se rechaza diciendo cuáles. Apagar el núcleo es
+   * apagar la concesionaria entera, y eso lo decide quien opera viendo la lista.
+   *
+   * Lo demás que **agrega** una dependencia rota se rechaza siempre: prender servicios sin
+   * núcleo, o ponerle al núcleo un vencimiento anterior. Las que ya estaban rotas antes no
    * frenan un cambio que no tiene nada que ver con ellas; si no, una concesionaria mal
    * cargada no se podría ni arreglar de a un paso.
    */
   async cambiarModulo(
     id: string,
-    cambio: { modulo: Modulo; activo: boolean; vigenteHasta: string | null; motivo: string },
+    cambio: {
+      modulo: Modulo
+      activo: boolean
+      vigenteHasta: string | null
+      motivo: string
+      apagarDependientes: boolean
+    },
     autor: Autor,
   ) {
     return this.db.transaction(async (tx) => {
       const [t] = await tx.select({ id: tenant.id }).from(tenant).where(eq(tenant.id, id))
       if (!t) throw new ErrorConcesionaria('NO_ENCONTRADA')
 
-      const rotasAntes = dependenciasRotas(await this.vigentesDe(tx, id))
+      const vigentesAntes = await this.vigentesDe(tx, id)
+      const rotasAntes = dependenciasRotas(vigentesAntes)
 
       const [actual] = await tx
         .select()
@@ -312,9 +325,34 @@ export class ServicioConcesionarias {
           tenantId: id,
           modulo: cambio.modulo,
           activo: cambio.activo,
-          vigenteDesde: desde,
+          // Sin vigenteDesde: lo pone la base con now(). Con el reloj de este proceso, unos
+          // milisegundos adelante del de Postgres alcanzaban para que un módulo recién
+          // contratado figurara «no vigente», porque now() es la hora en que empezó la
+          // transacción.
           vigenteHasta: hasta,
         })
+      }
+
+      // Los que caen junto con éste. Se apagan con la llave y no se tocan sus fechas: si
+      // se vuelve a prender el núcleo, cada uno se prende de nuevo a mano, con su motivo.
+      const arrastrados =
+        !cambio.activo && cambio.apagarDependientes
+          ? dependientesDe(cambio.modulo, vigentesAntes)
+          : []
+      for (const dependiente of arrastrados) {
+        await tx
+          .update(tenantModulo)
+          .set({ activo: false, actualizadoEn: new Date() })
+          .where(and(eq(tenantModulo.tenantId, id), eq(tenantModulo.modulo, dependiente)))
+        await this.auditar(
+          tx,
+          autor,
+          id,
+          'modulo',
+          `${cambio.motivo} (se apagó con ${ETIQUETA_MODULO[cambio.modulo]})`,
+          { modulo: dependiente, activo: true },
+          { modulo: dependiente, activo: false },
+        )
       }
 
       const clave = (r: { modulo: Modulo; falta: Modulo }) => `${r.modulo}>${r.falta}`

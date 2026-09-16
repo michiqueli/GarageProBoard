@@ -81,7 +81,8 @@ después. El mapa, la configuración por módulo y quién puede tocarla, en
 - ✅ Mapa de módulos cerrado: núcleo, contable, servicios, repuestos, cartera, ventas
       y rrhh, con el flag colgando de la pantalla y no de la entidad
 - ✅ Dependencias declaradas entre módulos, con `dependenciasRotas()` lista para el back-office
-- ✅ El back-office que impide apagar el piso de uno prendido
+- ✅ El back-office no deja un módulo prendido sin su piso: apagar arrastra a los que
+      dependen, con aviso, y prender sin lo necesario se rechaza
 - ✅ Acción `configurar` en el catálogo de permisos: entrar a un módulo no es poder
       tocar sus credenciales. Ningún rol predefinido la trae salvo el gerente
 - ⬜ Pantalla de configuración **adentro de cada módulo**, más un índice que las liste

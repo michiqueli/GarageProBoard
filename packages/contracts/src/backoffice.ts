@@ -258,8 +258,9 @@ export const contratoBackoffice = {
         operationId: 'cambiarModuloConcesionaria',
         summary: 'Prender, apagar o cambiar la vigencia de un módulo',
         description:
-          'Se rechaza si deja a un módulo prendido sin algo que necesita: no se apaga el ' +
-          'núcleo de una concesionaria que usa servicios.',
+          'Apagar un módulo del que dependen otros prendidos se rechaza, salvo que se pida ' +
+          'apagarDependientes: entonces se apagan todos juntos. Prender uno sin lo que ' +
+          'necesita se rechaza siempre.',
       })
       .input(
         z.object({
@@ -269,6 +270,12 @@ export const contratoBackoffice = {
           /** Sin fecha, no vence. */
           vigenteHasta: z.iso.datetime().nullable(),
           motivo,
+          /**
+           * Al apagar, apagar también los módulos prendidos que dependen de éste. Tiene que
+           * pedirse: apagar el núcleo apaga la concesionaria entera, y eso no puede pasar
+           * por una llamada que no sabía lo que arrastraba.
+           */
+          apagarDependientes: z.boolean().default(false),
         }),
       )
       .errors({

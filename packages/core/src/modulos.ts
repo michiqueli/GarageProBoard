@@ -80,6 +80,33 @@ export function dependenciasRotas(activos: Iterable<Modulo>): DependenciaRota[] 
   return rotas
 }
 
+/**
+ * Los módulos prendidos que se quedarían sin algo que necesitan si se apaga éste,
+ * **también de forma indirecta**: si algún día ventas dependiera de cartera, apagar el
+ * núcleo arrastraría a cartera y, por cartera, a ventas.
+ *
+ * Es lo que el back-office le muestra a quien opera antes de confirmar: apagar el núcleo
+ * es apagar la concesionaria entera, y eso tiene que estar escrito en el botón.
+ */
+export function dependientesDe(modulo: Modulo, prendidos: Iterable<Modulo>): Modulo[] {
+  const entre = new Set(prendidos)
+  const arrastrados = new Set<Modulo>()
+
+  let crecio = true
+  while (crecio) {
+    crecio = false
+    for (const candidato of MODULOS) {
+      if (candidato === modulo || !entre.has(candidato) || arrastrados.has(candidato)) continue
+      if (DEPENDENCIAS[candidato].some((d) => d === modulo || arrastrados.has(d))) {
+        arrastrados.add(candidato)
+        crecio = true
+      }
+    }
+  }
+
+  return MODULOS.filter((m) => arrastrados.has(m))
+}
+
 /** «Servicios necesita Núcleo», para el back-office. */
 export function describirDependencia({ modulo, falta }: DependenciaRota): string {
   return `${ETIQUETA_MODULO[modulo]} necesita ${ETIQUETA_MODULO[falta]}`
