@@ -120,6 +120,25 @@ describe('el catálogo', () => {
   })
 })
 
+describe('las pestañas', () => {
+  it('→ pasa a la pestaña siguiente y ← vuelve', async () => {
+    const router = await montarApp('/repuestos')
+    await screen.findByRole('table')
+    await userEvent.keyboard('{ArrowRight}')
+    await waitFor(() => expect(router.state.location.pathname).toBe('/repuestos/pedidos'))
+    await screen.findByRole('heading', { name: 'Pedidos de repuestos', level: 1 })
+    await userEvent.keyboard('{ArrowLeft}')
+    await waitFor(() => expect(router.state.location.pathname).toBe('/repuestos'))
+  })
+
+  it('en un campo, las flechas mueven el cursor y no la pestaña', async () => {
+    const router = await montarApp('/repuestos')
+    const buscar = await screen.findByLabelText('Buscar repuestos')
+    await userEvent.type(buscar, 'filtro{ArrowLeft}')
+    expect(router.state.location.pathname).toBe('/repuestos')
+  })
+})
+
 describe('el pedido de mostrador', () => {
   it('pegar el código y Enter agrega la pieza; F2 guarda con la pieza del catálogo', async () => {
     pedidos.editar.mockImplementation(async (x: { items: unknown[] }) => ({

@@ -16,6 +16,7 @@ import { usarSesion } from '../../sesion/almacen.ts'
 import { api } from '../../sesion/cliente.ts'
 import { mensajeGeneral } from '../../sesion/consultas.ts'
 import { usePuedeUsar } from '../../sesion/permisos.ts'
+import { useFilasConTeclado } from '../../teclado/index.ts'
 import { ALICUOTAS } from '../caja/comprobantes.ts'
 import { PestanasRepuestos } from './Pestanas.tsx'
 import { aDecimal, esNumero, type RepuestoResumen, sinCeros } from './repuestos.ts'
@@ -60,6 +61,11 @@ export function PantallaRepuestos() {
     enabled: puedeVer,
   })
   const datos = consulta.data?.datos ?? []
+  // ↑ ↓ marcan una fila y Enter la abre, también desde el buscador.
+  const { propsFila } = useFilasConTeclado(
+    datos,
+    (x) => void navegar({ to: '/repuestos/$id', params: { id: x.id } }),
+  )
 
   return (
     <Shell
@@ -117,6 +123,7 @@ export function PantallaRepuestos() {
           <input
             type="search"
             aria-label="Buscar repuestos"
+            data-lista
             placeholder="Código, descripción, marca o modelo"
             value={buscar}
             onChange={(e) => setBuscar(e.target.value)}
@@ -159,9 +166,10 @@ export function PantallaRepuestos() {
               </tr>
             </thead>
             <tbody>
-              {datos.map((r) => (
+              {datos.map((r, i) => (
                 <tr
                   key={r.id}
+                  {...propsFila(i)}
                   className={`${FILA_CLICABLE} ${r.activo ? '' : 'text-texto-tenue'}`}
                   onClick={clicEnFila(
                     () => void navegar({ to: '/repuestos/$id', params: { id: r.id } }),
@@ -199,10 +207,11 @@ export function PantallaRepuestos() {
         )}
         {datos.length > 0 && !esEscritorio && (
           <ul className="divide-y divide-borde-suave">
-            {datos.map((r) => (
+            {datos.map((r, i) => (
               // biome-ignore lint/a11y/useKeyWithClickEvents: con teclado se entra por el enlace de la fila
               <li
                 key={r.id}
+                {...propsFila(i)}
                 className={`grid gap-0.5 px-3 py-2.5 ${FILA_CLICABLE}`}
                 onClick={clicEnFila(
                   () => void navegar({ to: '/repuestos/$id', params: { id: r.id } }),

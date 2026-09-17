@@ -17,5 +17,9 @@ export function clicEnFila(ir: () => void) {
   }
 }
 
-/** Las clases de una fila que se abre con un clic. */
-export const FILA_CLICABLE = 'cursor-ver hover:bg-superficie-2'
+/**
+ * Las clases de una fila que se abre con un clic, y la marca de la fila elegida con las flechas
+ * (`useFilasConTeclado`): el fondo de la marca y un filete a la izquierda.
+ */
+export const FILA_CLICABLE =
+  'cursor-ver hover:bg-superficie-2 data-[activa=true]:bg-marca-suave data-[activa=true]:shadow-[inset_3px_0_0_var(--color-marca)]'

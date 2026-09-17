@@ -341,7 +341,11 @@ Las dos formas se diseñan juntas o la segunda no llega nunca.
 - Los filtros viven en la URL, validados por Zod en la ruta de TanStack Router. Un
   listado filtrado tiene que poder mandarse por mail.
 - Más de 200 filas: virtualización con `@tanstack/react-virtual`.
-- La fila entera es navegable con flechas; `Enter` abre.
+- La fila entera se abre con un clic (`clicEnFila`, cursor de ojo) y es navegable con
+  flechas: `↑` `↓` marcan una fila —también desde el buscador del listado, con `data-lista`—,
+  `Enter` la abre y `Esc` suelta la marca (`useFilasConTeclado`). Las pestañas y los filtros
+  que se usan como pestañas se recorren con `←` `→` (`useFlechasPestanas`). Ninguna de las dos
+  actúa con el foco en un campo, y la barra de estado las anuncia como ayudas.
 - Columna de importes a la derecha y en tabular.
 - Por debajo del breakpoint `md`, cada fila pasa a tarjeta con las tres o cuatro
   columnas que importan. **No** una tabla con scroll horizontal: eso es una tabla rota,

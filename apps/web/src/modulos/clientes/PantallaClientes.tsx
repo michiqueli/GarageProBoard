@@ -17,6 +17,7 @@ import { usarSesion } from '../../sesion/almacen.ts'
 import { api } from '../../sesion/cliente.ts'
 import { mensajeGeneral } from '../../sesion/consultas.ts'
 import { usePuedeUsar } from '../../sesion/permisos.ts'
+import { useFilasConTeclado } from '../../teclado/index.ts'
 
 // Por id y no importando la ruta: `rutas.tsx` importa esta pantalla.
 const ruta = getRouteApi('/con-sesion/clientes')
@@ -93,6 +94,11 @@ export function PantallaClientes() {
     catalogos.data?.condicionesIva.find((c) => c.codigo === codigo)?.descripcion ?? ''
 
   const datos = consulta.data?.datos ?? []
+  // ↑ ↓ marcan una fila y Enter la abre, también desde el buscador.
+  const { propsFila } = useFilasConTeclado(
+    datos,
+    (x) => void navegar({ to: '/clientes/$id', params: { id: x.id } }),
+  )
 
   return (
     <Shell
@@ -136,6 +142,7 @@ export function PantallaClientes() {
             onChange={(e) => setBuscar(e.target.value)}
             placeholder="Nombre, CUIT o DNI"
             aria-label="Buscar"
+            data-lista
             className="h-campo w-full rounded-base border border-borde bg-superficie-2 px-2.5 text-dato outline-none placeholder:text-texto-tenue focus-visible:border-marca md:ml-auto md:w-64"
           />
         </header>
@@ -182,9 +189,10 @@ export function PantallaClientes() {
                 </tr>
               </thead>
               <tbody>
-                {datos.map((c) => (
+                {datos.map((c, i) => (
                   <tr
                     key={c.id}
+                    {...propsFila(i)}
                     className={`${FILA_CLICABLE} ${c.activo ? '' : 'text-texto-tenue'}`}
                     onClick={clicEnFila(
                       () => void navegar({ to: '/clientes/$id', params: { id: c.id } }),
@@ -226,10 +234,11 @@ export function PantallaClientes() {
 
         {datos.length > 0 && !esEscritorio && (
           <ul className="divide-y divide-borde-suave">
-            {datos.map((c) => (
+            {datos.map((c, i) => (
               // biome-ignore lint/a11y/useKeyWithClickEvents: con teclado se entra por el enlace de la fila
               <li
                 key={c.id}
+                {...propsFila(i)}
                 className={`grid gap-0.5 px-3 py-2.5 ${FILA_CLICABLE} ${c.activo ? '' : 'text-texto-tenue'}`}
                 onClick={clicEnFila(
                   () => void navegar({ to: '/clientes/$id', params: { id: c.id } }),

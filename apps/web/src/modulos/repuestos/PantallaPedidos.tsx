@@ -14,6 +14,7 @@ import { usarSesion } from '../../sesion/almacen.ts'
 import { api } from '../../sesion/cliente.ts'
 import { mensajeGeneral } from '../../sesion/consultas.ts'
 import { usePuedeUsar } from '../../sesion/permisos.ts'
+import { useFilasConTeclado } from '../../teclado/index.ts'
 import { PestanasRepuestos } from './Pestanas.tsx'
 import { nombrePedido, type PedidoResumen, seis } from './repuestos.ts'
 
@@ -59,6 +60,11 @@ export function PantallaPedidos() {
     enabled: puedeVer,
   })
   const datos = consulta.data?.datos ?? []
+  // ↑ ↓ marcan una fila y Enter la abre, también desde el buscador.
+  const { propsFila } = useFilasConTeclado(
+    datos,
+    (x) => void navegar({ to: '/repuestos/pedidos/$id', params: { id: x.id } }),
+  )
 
   return (
     <Shell
@@ -104,6 +110,7 @@ export function PantallaPedidos() {
           <input
             type="search"
             aria-label="Buscar pedidos"
+            data-lista
             placeholder="Número, chasis, patente o cliente"
             value={buscar}
             onChange={(e) => setBuscar(e.target.value)}
@@ -145,9 +152,10 @@ export function PantallaPedidos() {
               </tr>
             </thead>
             <tbody>
-              {datos.map((p) => (
+              {datos.map((p, i) => (
                 <tr
                   key={p.id}
+                  {...propsFila(i)}
                   className={FILA_CLICABLE}
                   onClick={clicEnFila(
                     () => void navegar({ to: '/repuestos/pedidos/$id', params: { id: p.id } }),
@@ -185,10 +193,11 @@ export function PantallaPedidos() {
         )}
         {datos.length > 0 && !esEscritorio && (
           <ul className="divide-y divide-borde-suave">
-            {datos.map((p) => (
+            {datos.map((p, i) => (
               // biome-ignore lint/a11y/useKeyWithClickEvents: con teclado se entra por el enlace de la fila
               <li
                 key={p.id}
+                {...propsFila(i)}
                 className={`grid gap-1 px-3 py-2.5 ${FILA_CLICABLE}`}
                 onClick={clicEnFila(
                   () => void navegar({ to: '/repuestos/pedidos/$id', params: { id: p.id } }),

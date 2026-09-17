@@ -14,6 +14,7 @@ import { ES_ESCRITORIO, useMedia } from '../../ganchos/useMedia.ts'
 import { usarSesion } from '../../sesion/almacen.ts'
 import { api } from '../../sesion/cliente.ts'
 import { usePuedeUsar } from '../../sesion/permisos.ts'
+import { useFilasConTeclado } from '../../teclado/index.ts'
 import {
   CamposVehiculo,
   DATOS_VACIOS,
@@ -73,6 +74,11 @@ export function PantallaVehiculos() {
   })
 
   const datos = consulta.data?.datos ?? []
+  // ↑ ↓ marcan una fila y Enter la abre, también desde el buscador.
+  const { propsFila } = useFilasConTeclado(
+    datos,
+    (x) => void navegar({ to: '/vehiculos/$id', params: { id: x.id } }),
+  )
 
   return (
     <Shell
@@ -99,6 +105,7 @@ export function PantallaVehiculos() {
             onChange={(e) => setBuscar(e.target.value)}
             placeholder="Patente, chasis o titular"
             aria-label="Buscar"
+            data-lista
             className="h-campo w-full rounded-base border border-borde bg-superficie-2 px-2.5 text-dato outline-none placeholder:text-texto-tenue focus-visible:border-marca md:ml-auto md:w-64"
           />
         </header>
@@ -135,9 +142,10 @@ export function PantallaVehiculos() {
                 </tr>
               </thead>
               <tbody>
-                {datos.map((v) => (
+                {datos.map((v, i) => (
                   <tr
                     key={v.id}
+                    {...propsFila(i)}
                     className={FILA_CLICABLE}
                     onClick={clicEnFila(
                       () => void navegar({ to: '/vehiculos/$id', params: { id: v.id } }),
@@ -170,10 +178,11 @@ export function PantallaVehiculos() {
 
         {datos.length > 0 && !esEscritorio && (
           <ul className="divide-y divide-borde-suave">
-            {datos.map((v) => (
+            {datos.map((v, i) => (
               // biome-ignore lint/a11y/useKeyWithClickEvents: con teclado se entra por el enlace de la fila
               <li
                 key={v.id}
+                {...propsFila(i)}
                 className={`grid gap-0.5 px-3 py-2.5 ${FILA_CLICABLE}`}
                 onClick={clicEnFila(
                   () => void navegar({ to: '/vehiculos/$id', params: { id: v.id } }),

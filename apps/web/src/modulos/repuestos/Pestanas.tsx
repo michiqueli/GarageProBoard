@@ -1,6 +1,7 @@
 import { contrato } from '@gpb/contracts'
-import { Link, type LinkProps } from '@tanstack/react-router'
+import { Link, type LinkProps, useNavigate, useRouterState } from '@tanstack/react-router'
 import { usePuedeUsar } from '../../sesion/permisos.ts'
+import { useFlechasPestanas } from '../../teclado/index.ts'
 
 /**
  * Las cuatro partes de Repuestos, arriba de cada pantalla: el catálogo con el stock, los
@@ -15,6 +16,19 @@ export function PestanasRepuestos() {
     { to: '/repuestos/compras', texto: 'Compras' },
     ...(puedeProveedores ? [{ to: '/repuestos/proveedores' as const, texto: 'Proveedores' }] : []),
   ]
+  // ← → pasan de una pestaña a la otra. La actual es la que empieza la dirección: la ficha de
+  // un pedido sigue siendo la pestaña Pedidos.
+  const navegar = useNavigate()
+  const ruta = useRouterState({ select: (e) => e.location.pathname })
+  const actual =
+    [...pestanas].reverse().find((p) => (p.exacta ? ruta === p.to : ruta.startsWith(p.to)))?.to ??
+    '/repuestos'
+  useFlechasPestanas(
+    pestanas.map((p) => p.to),
+    actual,
+    (to) => void navegar({ to }),
+  )
+
   return (
     <nav aria-label="Repuestos" className="flex flex-wrap gap-1 border-b border-borde">
       {pestanas.map((p) => (

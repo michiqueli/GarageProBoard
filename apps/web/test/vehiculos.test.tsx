@@ -169,6 +169,29 @@ describe('el listado', () => {
   })
 })
 
+describe('con el teclado', () => {
+  it('↓ desde el buscador marca la primera fila, ↓ la siguiente, Enter abre la ficha', async () => {
+    entraComo(SESION)
+    const router = await montarApp('/vehiculos')
+    const buscar = await screen.findByLabelText('Buscar')
+    await screen.findByRole('link', { name: 'AE 123 BC' })
+    expect(screen.getByText('Moverse')).toBeDefined()
+
+    buscar.focus()
+    await userEvent.keyboard('{ArrowDown}')
+    const filas = screen.getAllByRole('row').slice(1)
+    expect(filas[0]?.getAttribute('data-activa')).toBe('true')
+    await userEvent.keyboard('{ArrowDown}')
+    expect(filas[1]?.getAttribute('data-activa')).toBe('true')
+    expect(filas[0]?.getAttribute('data-activa')).toBeNull()
+    await userEvent.keyboard('{ArrowUp}')
+    expect(screen.getByText('Abrir')).toBeDefined()
+
+    await userEvent.keyboard('{Enter}')
+    await waitFor(() => expect(router.state.location.pathname).toBe(`/vehiculos/${ID}`))
+  })
+})
+
 describe('el alta', () => {
   async function abrirAlta() {
     entraComo(SESION)

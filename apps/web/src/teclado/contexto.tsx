@@ -17,6 +17,17 @@ import {
 } from 'react'
 import { debeDisparar, debePrevenir } from './coincide.ts'
 
+/**
+ * Una tecla que no es un atajo configurable pero que la pantalla ofrece y la barra de estado
+ * tiene que mostrar: las flechas de una lista, Enter para abrir. No salen del catálogo porque
+ * no se reasignan: son las de siempre.
+ */
+export interface Ayuda {
+  id: string
+  teclas: string[]
+  etiqueta: string
+}
+
 interface Teclado {
   /** El mapa resuelto: valores por omisión más las diferencias de este usuario. */
   mapa: MapaAtajos
@@ -26,6 +37,8 @@ interface Teclado {
   activas: ReadonlySet<string>
   teclaDe(accion: string): string | undefined
   registrar(accion: string, manejador: () => void): () => void
+  ayudas: readonly Ayuda[]
+  registrarAyuda(ayuda: Ayuda): () => void
 }
 
 const Contexto = createContext<Teclado | null>(null)
@@ -45,6 +58,12 @@ export function ProveedorTeclado({
   // el árbol entero. El Set de activas sí es estado, porque la barra de estado lo mira.
   const manejadores = useRef(new Map<string, () => void>())
   const [activas, setActivas] = useState<ReadonlySet<string>>(new Set())
+  const [ayudas, setAyudas] = useState<readonly Ayuda[]>([])
+
+  const registrarAyuda = useCallback((ayuda: Ayuda) => {
+    setAyudas((xs) => [...xs.filter((x) => x.id !== ayuda.id), ayuda])
+    return () => setAyudas((xs) => xs.filter((x) => x.id !== ayuda.id))
+  }, [])
 
   const registrar = useCallback((accion: string, manejador: () => void) => {
     manejadores.current.set(accion, manejador)
@@ -90,8 +109,10 @@ export function ProveedorTeclado({
       activas,
       teclaDe: (accion) => mapa[accion],
       registrar,
+      ayudas,
+      registrarAyuda,
     }),
-    [mapa, pantalla, activas, registrar],
+    [mapa, pantalla, activas, registrar, ayudas, registrarAyuda],
   )
 
   return <Contexto.Provider value={valor}>{children}</Contexto.Provider>

@@ -18,7 +18,7 @@ import { Tecla } from './Tecla.tsx'
  * anunciar el F4 de una pantalla distinta de la que efectivamente dispara.
  */
 export function BarraEstado() {
-  const { mapa, pantalla, activas } = useTeclado()
+  const { mapa, pantalla, activas, ayudas } = useTeclado()
 
   const visibles = CATALOGO.filter(
     (d) =>
@@ -71,6 +71,14 @@ export function BarraEstado() {
           </span>
         )
       })}
+      {ayudas.map((a) => (
+        <span key={a.id} className="inline-flex items-center gap-1.5">
+          {a.teclas.map((tecla) => (
+            <Tecla key={tecla} tecla={tecla} />
+          ))}
+          {a.etiqueta}
+        </span>
+      ))}
     </footer>
   )
 }

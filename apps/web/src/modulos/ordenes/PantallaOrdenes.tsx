@@ -14,6 +14,7 @@ import { usarSesion } from '../../sesion/almacen.ts'
 import { api } from '../../sesion/cliente.ts'
 import { mensajeGeneral } from '../../sesion/consultas.ts'
 import { usePuedeUsar } from '../../sesion/permisos.ts'
+import { useFilasConTeclado, useFlechasPestanas } from '../../teclado/index.ts'
 import { nombreOrden } from './ordenes.ts'
 
 type Orden = Awaited<ReturnType<typeof api.ordenes.listar>>['datos'][number]
@@ -38,6 +39,11 @@ export function PantallaOrdenes() {
   const puedeAbrir = usePuedeUsar(contrato.ordenes.abrir)
   const [filtro, setFiltro] = useState<Filtro>('en_taller')
   const [buscar, setBuscar] = useState('')
+  useFlechasPestanas(
+    FILTROS.map((f) => f.valor),
+    filtro,
+    setFiltro,
+  )
 
   const consulta = useQuery({
     queryKey: ['ordenes', tenantId, sucursalId, filtro, buscar.trim()],
@@ -51,6 +57,11 @@ export function PantallaOrdenes() {
     enabled: puedeVer,
   })
   const datos = consulta.data?.datos ?? []
+  // ↑ ↓ marcan una fila y Enter la abre, también desde el buscador.
+  const { propsFila } = useFilasConTeclado(
+    datos,
+    (x) => void navegar({ to: '/ordenes/$id', params: { id: x.id } }),
+  )
 
   // El resumen cuenta el taller entero, sea cual sea la pestaña: si dependiera de lo que se
   // está mirando, «Para facturar» daría cero justo en la pestaña de todas.
@@ -135,6 +146,7 @@ export function PantallaOrdenes() {
           <input
             type="search"
             aria-label="Buscar órdenes"
+            data-lista
             placeholder="Número, patente o pedido"
             value={buscar}
             onChange={(e) => setBuscar(e.target.value)}
@@ -179,9 +191,10 @@ export function PantallaOrdenes() {
               </tr>
             </thead>
             <tbody>
-              {datos.map((o) => (
+              {datos.map((o, i) => (
                 <tr
                   key={o.id}
+                  {...propsFila(i)}
                   className={FILA_CLICABLE}
                   onClick={clicEnFila(
                     () => void navegar({ to: '/ordenes/$id', params: { id: o.id } }),
@@ -226,10 +239,11 @@ export function PantallaOrdenes() {
         )}
         {datos.length > 0 && !esEscritorio && (
           <ul className="divide-y divide-borde-suave">
-            {datos.map((o) => (
+            {datos.map((o, i) => (
               // biome-ignore lint/a11y/useKeyWithClickEvents: con teclado se entra por el enlace de la fila
               <li
                 key={o.id}
+                {...propsFila(i)}
                 className={`grid gap-1 px-3 py-2.5 ${FILA_CLICABLE}`}
                 onClick={clicEnFila(
                   () => void navegar({ to: '/ordenes/$id', params: { id: o.id } }),
