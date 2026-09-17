@@ -3,7 +3,7 @@ import { formatearImporte, plata } from '@gpb/core'
 import { ORPCError } from '@orpc/client'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { getRouteApi, Link } from '@tanstack/react-router'
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { confirmar } from '../../componentes/avisos.ts'
 import { Boton, clasesBoton } from '../../componentes/Boton.tsx'
 import { Campo } from '../../componentes/Campo.tsx'
@@ -19,7 +19,7 @@ import {
 import { Patente } from '../../componentes/Patente.tsx'
 import { Selector } from '../../componentes/Selector.tsx'
 import { type ClienteElegido, SelectorCliente } from '../../componentes/SelectorCliente.tsx'
-import { SelectorRepuesto } from '../../componentes/SelectorRepuesto.tsx'
+import { CampoRepuesto, type RepuestoElegido } from '../../componentes/SelectorRepuesto.tsx'
 import { Shell } from '../../componentes/Shell.tsx'
 import { usarSesion } from '../../sesion/almacen.ts'
 import { api } from '../../sesion/cliente.ts'
@@ -239,7 +239,20 @@ export function PantallaPedido() {
   )
 }
 
-function desdePedido(p: Pedido): Item[] {
+const renglonVacio = (): Item => ({
+  clave: proxima++,
+  repuestoId: null,
+  codigo: '',
+  descripcion: '',
+  cantidad: '1',
+  precioUnitario: '',
+  codigoAlicuota: 5,
+  stock: null,
+})
+
+/** Los renglones del pedido. Uno vacío si no tiene y se puede editar: se pega el código y listo. */
+function desdePedido(p: Pedido, editable = false): Item[] {
+  if (!p.items.length && editable) return [renglonVacio()]
   return p.items.map((i) => ({
     clave: proxima++,
     repuestoId: i.repuestoId,
@@ -265,14 +278,20 @@ function Items({
   despachar: (hacer: () => Promise<Pedido>) => void
   ocupado: boolean
 }) {
-  const [items, setItems] = useState<Item[]>(() => desdePedido(p))
+  const [items, setItems] = useState<Item[]>(() => desdePedido(p, editable))
+  const [nuevo, setNuevo] = useState<number | null>(() => items0(p, editable))
   const [cliente, setCliente] = useState<ClienteElegido | null>(p.cliente)
   const [cambios, setCambios] = useState(false)
 
+  // Al montar ya están los renglones del pedido: rearmarlos cambiaría las claves y el renglón
+  // vacío perdería el foco.
+  const ultimoGuardado = useRef(p)
   // biome-ignore lint/correctness/useExhaustiveDependencies: se resincroniza sólo cuando cambia el pedido guardado
   useEffect(() => {
+    if (ultimoGuardado.current === p) return
+    ultimoGuardado.current = p
     if (!cambios) {
-      setItems(desdePedido(p))
+      setItems(desdePedido(p, editable))
       setCliente(p.cliente)
     }
   }, [p])
@@ -328,54 +347,22 @@ function Items({
     setItems((xs) => xs.map((x) => (x.clave === clave ? { ...x, ...parcial } : x)))
   }
 
-  function agregarDelCatalogo(r: {
-    id: string
-    codigo: string
-    descripcion: string
-    precioVenta: string
-    codigoAlicuota: number
-    stock: string
-  }) {
-    setCambios(true)
-    setItems((xs) => {
-      // La misma pieza dos veces es una más de la misma pieza.
-      const ya = xs.find((x) => x.repuestoId === r.id)
-      if (ya && esNumero(ya.cantidad)) {
-        return xs.map((x) =>
-          x === ya ? { ...x, cantidad: String(Number(aDecimal(x.cantidad)) + 1) } : x,
-        )
-      }
-      return [
-        ...xs,
-        {
-          clave: proxima++,
-          repuestoId: r.id,
-          codigo: r.codigo,
-          descripcion: r.descripcion,
-          cantidad: '1',
-          precioUnitario: sinCeros(r.precioVenta),
-          codigoAlicuota: r.codigoAlicuota as Item['codigoAlicuota'],
-          stock: r.stock,
-        },
-      ]
+  /** Engancha el renglón a la pieza del catálogo, con su código, precio, IVA y stock. */
+  const elegirDelCatalogo = (clave: number, r: RepuestoElegido) =>
+    cambiar(clave, {
+      repuestoId: r.id,
+      codigo: r.codigo,
+      descripcion: r.descripcion,
+      precioUnitario: sinCeros(r.precioVenta),
+      codigoAlicuota: r.codigoAlicuota as Item['codigoAlicuota'],
+      stock: r.stock,
     })
-  }
 
-  function agregarSuelto() {
+  function agregar() {
     setCambios(true)
-    setItems((xs) => [
-      ...xs,
-      {
-        clave: proxima++,
-        repuestoId: null,
-        codigo: '',
-        descripcion: '',
-        cantidad: '1',
-        precioUnitario: '',
-        codigoAlicuota: 5,
-        stock: null,
-      },
-    ])
+    const item = renglonVacio()
+    setNuevo(item.clave)
+    setItems((xs) => [...xs, item])
   }
 
   async function quitar(i: Item) {
@@ -436,14 +423,9 @@ function Items({
         </span>
       }
     >
-      {editable && (
-        <div className="grid gap-3 border-b border-borde-suave px-3 py-2.5 md:grid-cols-[1fr_20rem]">
-          <SelectorRepuesto
-            etiqueta="Agregar del catálogo"
-            alElegir={agregarDelCatalogo}
-            autoFocus
-          />
-          {!p.orden && (
+      {editable && !p.orden && (
+        <div className="grid gap-3 border-b border-borde-suave px-3 py-2.5 md:grid-cols-[20rem]">
+          {
             <SelectorCliente
               etiqueta="Cliente (vacío: consumidor final)"
               valor={cliente}
@@ -452,15 +434,14 @@ function Items({
                 setCliente(c)
               }}
             />
-          )}
+          }
         </div>
       )}
 
       {items.length === 0 && (
         <p className="px-3 py-4 text-dato text-texto-suave">
           Todavía no tiene repuestos.
-          {editable &&
-            ' Pegá el código que devuelve la base de la marca en «Agregar del catálogo».'}
+          {editable && ' Agregá uno y pegá el código que devuelve la base de la marca.'}
         </p>
       )}
 
@@ -511,10 +492,15 @@ function Items({
                   disabled={Boolean(i.repuestoId)}
                   onChange={(e) => cambiar(i.clave, { codigo: e.target.value })}
                 />
-                <Campo
+                <CampoRepuesto
                   etiqueta="Descripción"
-                  value={i.descripcion}
-                  onChange={(e) => cambiar(i.clave, { descripcion: e.target.value })}
+                  valor={i.descripcion}
+                  onChange={(texto) => cambiar(i.clave, { descripcion: texto })}
+                  codigo={i.codigo || null}
+                  vinculado={Boolean(i.repuestoId)}
+                  alElegir={(r) => elegirDelCatalogo(i.clave, r)}
+                  alSoltar={() => cambiar(i.clave, { repuestoId: null, stock: null })}
+                  autoFocus={nuevo === i.clave}
                 />
                 <Campo
                   etiqueta="Cantidad"
@@ -556,8 +542,8 @@ function Items({
 
       {editable && (
         <footer className="flex flex-wrap items-center gap-2 border-t border-borde-suave px-3 py-2">
-          <Boton tamano="chico" icono={<IconoAgregar />} onClick={agregarSuelto}>
-            Sin catálogo
+          <Boton tamano="chico" accion="global.nuevo" icono={<IconoAgregar />} onClick={agregar}>
+            Agregar repuesto
           </Boton>
           <span className="ml-auto flex flex-wrap items-center gap-2">
             {invalidos && (
@@ -590,4 +576,9 @@ function Items({
       )}
     </Seccion>
   )
+}
+
+/** El foco va al renglón vacío con el que arranca un pedido nuevo. */
+function items0(p: Pedido, editable: boolean) {
+  return !p.items.length && editable ? proxima - 1 : null
 }

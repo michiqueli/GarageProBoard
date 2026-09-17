@@ -142,11 +142,15 @@ describe('el pedido de mostrador', () => {
     }))
     await montarApp(`/repuestos/pedidos/${PEDIDO.id}`)
 
-    const buscar = await screen.findByLabelText('Agregar del catálogo')
+    // Un pedido vacío arranca con un renglón y el foco en la descripción: se pega el código.
+    const renglon = await screen.findByRole('listitem', { name: 'Repuesto 1' })
+    const buscar = within(renglon).getByLabelText('Descripción')
+    expect(document.activeElement).toBe(buscar)
     await userEvent.type(buscar, '7701 208 174')
     await screen.findByRole('list', { name: 'Repuestos que coinciden con 7701 208 174' })
     await userEvent.keyboard('{Enter}')
-    expect(await screen.findByRole('listitem', { name: 'Repuesto 1' })).toBeDefined()
+    expect(await within(renglon).findByText('7701208174')).toBeDefined()
+    expect((buscar as HTMLInputElement).value).toBe('Filtro de aceite')
 
     await userEvent.keyboard('{F2}')
     await waitFor(() =>

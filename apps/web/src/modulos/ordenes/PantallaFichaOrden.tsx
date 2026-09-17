@@ -21,7 +21,7 @@ import {
 import { Patente } from '../../componentes/Patente.tsx'
 import { Selector } from '../../componentes/Selector.tsx'
 import { type ClienteElegido, SelectorCliente } from '../../componentes/SelectorCliente.tsx'
-import { type RepuestoElegido, SelectorRepuesto } from '../../componentes/SelectorRepuesto.tsx'
+import { CampoRepuesto, type RepuestoElegido } from '../../componentes/SelectorRepuesto.tsx'
 import { Shell } from '../../componentes/Shell.tsx'
 import { usarSesion } from '../../sesion/almacen.ts'
 import { api } from '../../sesion/cliente.ts'
@@ -562,34 +562,24 @@ function Items({
     setCambios(true)
     setItems((xs) => xs.map((x) => (x.clave === clave ? { ...x, ...parcial } : x)))
   }
+  // El renglón recién agregado recibe el foco: con Alt+R se escribe el repuesto sin tocar el mouse.
+  const [nuevo, setNuevo] = useState<number | null>(null)
   const agregar = (tipo: Item['tipo']) => {
     setCambios(true)
-    setItems((xs) => [...xs, itemNuevo(tipo)])
+    const item = itemNuevo(tipo)
+    setNuevo(item.clave)
+    setItems((xs) => [...xs, item])
   }
-  function agregarDelCatalogo(r: RepuestoElegido) {
-    setCambios(true)
-    setItems((xs) => {
-      const ya = xs.find((x) => x.repuestoId === r.id)
-      if (ya && esNumero(ya.cantidad)) {
-        return xs.map((x) =>
-          x === ya ? { ...x, cantidad: String(Number(aDecimal(x.cantidad)) + 1) } : x,
-        )
-      }
-      return [
-        ...xs,
-        {
-          clave: proxima++,
-          tipo: 'repuesto',
-          repuestoId: r.id,
-          codigo: r.codigo,
-          descripcion: r.descripcion,
-          cantidad: '1',
-          precioUnitario: sinCeros(r.precioVenta),
-          codigoAlicuota: r.codigoAlicuota as Item['codigoAlicuota'],
-        },
-      ]
+  /** Engancha el renglón a la pieza del catálogo, con su código, descripción, precio e IVA. */
+  const elegirDelCatalogo = (clave: number, r: RepuestoElegido) =>
+    cambiar(clave, {
+      tipo: 'repuesto',
+      repuestoId: r.id,
+      codigo: r.codigo,
+      descripcion: r.descripcion,
+      precioUnitario: sinCeros(r.precioVenta),
+      codigoAlicuota: r.codigoAlicuota as Item['codigoAlicuota'],
     })
-  }
 
   async function quitar(i: Item) {
     if (
@@ -620,11 +610,6 @@ function Items({
         </span>
       }
     >
-      {editable && (
-        <div className="border-b border-borde-suave px-3 py-2.5">
-          <SelectorRepuesto etiqueta="Repuesto del catálogo" alElegir={agregarDelCatalogo} />
-        </div>
-      )}
       {items.length === 0 && (
         <p className="px-3 py-4 text-dato text-texto-suave">
           Todavía no se cargó nada para cobrar.
@@ -669,19 +654,41 @@ function Items({
                 className="grid items-end gap-2 md:grid-cols-[7rem_1fr_5rem_8rem_6rem_7rem_auto]"
               >
                 <Selector
-                  etiqueta={i.codigo ? `Tipo · ${i.codigo}` : 'Tipo'}
+                  etiqueta="Tipo"
                   valor={i.tipo}
-                  onChange={(v) => cambiar(i.clave, { tipo: v ?? 'trabajo' })}
+                  onChange={(v) =>
+                    // Un trabajo no es una pieza del catálogo: pasarlo a trabajo lo suelta.
+                    cambiar(
+                      i.clave,
+                      v === 'trabajo'
+                        ? { tipo: 'trabajo', repuestoId: null, codigo: null }
+                        : { tipo: v ?? 'trabajo' },
+                    )
+                  }
                   opciones={[
                     { valor: 'trabajo' as const, texto: 'Trabajo' },
                     { valor: 'repuesto' as const, texto: 'Repuesto' },
                   ]}
                 />
-                <Campo
-                  etiqueta="Descripción"
-                  value={i.descripcion}
-                  onChange={(e) => cambiar(i.clave, { descripcion: e.target.value })}
-                />
+                {i.tipo === 'repuesto' ? (
+                  <CampoRepuesto
+                    etiqueta="Descripción"
+                    valor={i.descripcion}
+                    onChange={(texto) => cambiar(i.clave, { descripcion: texto })}
+                    codigo={i.codigo}
+                    vinculado={Boolean(i.repuestoId)}
+                    alElegir={(r) => elegirDelCatalogo(i.clave, r)}
+                    alSoltar={() => cambiar(i.clave, { repuestoId: null, codigo: null })}
+                    autoFocus={nuevo === i.clave}
+                  />
+                ) : (
+                  <Campo
+                    etiqueta="Descripción"
+                    autoFocus={nuevo === i.clave}
+                    value={i.descripcion}
+                    onChange={(e) => cambiar(i.clave, { descripcion: e.target.value })}
+                  />
+                )}
                 <Campo
                   etiqueta="Cantidad"
                   inputMode="decimal"

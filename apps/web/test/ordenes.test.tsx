@@ -16,12 +16,14 @@ const ordenes = {
   pdf: vi.fn(),
 }
 const listarVehiculos = vi.fn()
+const listarRepuestos = vi.fn()
 const renovar = vi.fn()
 
 vi.mock('../src/sesion/cliente.ts', () => ({
   api: {
     auth: { iniciar: vi.fn(), cerrar: vi.fn().mockResolvedValue({}), cambiarSucursal: vi.fn() },
     vehiculos: { listar: (x: unknown) => listarVehiculos(x) },
+    repuestos: { listar: (x: unknown) => listarRepuestos(x) },
     clientes: { listar: vi.fn().mockResolvedValue({ datos: [], total: 0 }) },
     ordenes: Object.fromEntries(
       Object.keys(ordenes).map((n) => [
@@ -213,6 +215,57 @@ describe('los repuestos de la orden', () => {
           items: [
             expect.objectContaining({ repuestoId: REPUESTO, codigo: '7701208174' }),
             expect.objectContaining({ repuestoId: null, descripcion: 'Mano de obra' }),
+          ],
+        }),
+      ),
+    )
+  })
+})
+
+describe('buscar el repuesto en el renglón', () => {
+  it('Alt+R agrega un renglón que busca en el catálogo mientras se escribe; Enter lo engancha', async () => {
+    const PIEZA = {
+      id: '66666666-6666-4666-8666-666666666666',
+      codigo: '7701208174',
+      descripcion: 'Filtro de aceite',
+      marca: 'Renault',
+      rubro: 'Filtros',
+      precioVenta: '18500.00',
+      codigoAlicuota: 5,
+      activo: true,
+      stock: '12',
+      minimo: null,
+      ubicacion: null,
+      reponer: false,
+    }
+    listarRepuestos.mockResolvedValue({ datos: [PIEZA], total: 1 })
+    ordenes.items.mockResolvedValue(FICHA)
+    await montarApp(`/ordenes/${ORDEN.id}`)
+    await screen.findByRole('listitem', { name: 'Item 1' })
+
+    await userEvent.keyboard('{Alt>}r{/Alt}')
+    const renglon = await screen.findByRole('listitem', { name: 'Item 2' })
+    const descripcion = within(renglon).getByLabelText('Descripción')
+    expect(document.activeElement).toBe(descripcion)
+    await userEvent.type(descripcion, '7701 208')
+    const lista = await screen.findByRole('list', { name: 'Repuestos que coinciden con 7701 208' })
+    expect(within(lista).getByText('Stock 12')).toBeDefined()
+    await userEvent.keyboard('{Enter}')
+    expect((descripcion as HTMLInputElement).value).toBe('Filtro de aceite')
+    expect(within(renglon).getByText('7701208174')).toBeDefined()
+
+    await userEvent.keyboard('{F2}')
+    await waitFor(() =>
+      expect(ordenes.items).toHaveBeenCalledWith(
+        expect.objectContaining({
+          items: [
+            expect.anything(),
+            expect.objectContaining({
+              tipo: 'repuesto',
+              repuestoId: PIEZA.id,
+              codigo: PIEZA.codigo,
+              precioUnitario: '18500',
+            }),
           ],
         }),
       ),
