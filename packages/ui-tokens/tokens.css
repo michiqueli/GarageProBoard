@@ -63,6 +63,7 @@
   --color-ok: #3fbf8f;
   --color-atencion: #d9962b;
   --color-critico: #e0705c;
+  --color-critico-suave: #e0705c24;
   --color-info: #5aa9e6;
 
   /* ── Patentes ────────────────────────────────────────────────────────────
@@ -124,6 +125,7 @@
   --color-ok: #1c8a63;
   --color-atencion: #a96c10;
   --color-critico: #b2412c;
+  --color-critico-suave: #b2412c1a;
   --color-info: #2a6fa8;
 
   --color-velo: #16211e59;

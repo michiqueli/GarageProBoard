@@ -2,13 +2,16 @@ import type { ReactNode } from 'react'
 import { useAtajo, useTeclado } from '../teclado/index.ts'
 import { Tecla } from './Tecla.tsx'
 
-export type Variante = 'principal' | 'normal' | 'sutil'
+export type Variante = 'principal' | 'normal' | 'sutil' | 'peligro'
 export type Tamano = 'normal' | 'chico'
 
 const ESTILOS: Record<Variante, string> = {
   principal: 'border-marca bg-marca-suave text-marca font-semibold',
   normal: 'border-borde bg-superficie-2 text-texto hover:border-texto-tenue',
   sutil: 'border-transparent text-texto-suave hover:bg-superficie-2',
+  // Lo que deshace o descarta: anular, dejar para después. Se ve, pero en pastel: no le gana
+  // al verbo de la pantalla.
+  peligro: 'border-critico/40 bg-critico-suave text-critico hover:border-critico',
 }
 
 const TAMANOS: Record<Tamano, string> = {

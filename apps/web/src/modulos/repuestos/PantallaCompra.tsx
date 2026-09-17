@@ -90,7 +90,7 @@ export function PantallaCompra() {
               {puedeAnular && c.estado === 'pedida' && !recibiendo && (
                 <Boton
                   tamano="chico"
-                  variante="sutil"
+                  variante="peligro"
                   icono={<IconoAnular />}
                   onClick={async () => {
                     if (

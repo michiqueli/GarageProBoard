@@ -174,7 +174,7 @@ export function PantallaPedido() {
               {puedeAnular && ['abierto', 'en_caja'].includes(p.estado) && (
                 <Boton
                   tamano="chico"
-                  variante="sutil"
+                  variante="peligro"
                   icono={<IconoAnular />}
                   onClick={() => void anular()}
                 >

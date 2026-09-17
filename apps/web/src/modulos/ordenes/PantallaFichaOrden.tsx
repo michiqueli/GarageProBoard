@@ -255,7 +255,7 @@ export function PantallaFichaOrden() {
               {puedeAnular && (enTaller || o.estado === 'terminada') && (
                 <Boton
                   tamano="chico"
-                  variante="sutil"
+                  variante="peligro"
                   icono={<IconoAnular />}
                   onClick={() => void anular()}
                 >

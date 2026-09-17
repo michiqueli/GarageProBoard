@@ -1,3 +1,4 @@
+import { configure } from '@testing-library/react'
 import { afterEach, vi } from 'vitest'
 import { limpiarAvisos } from '../src/componentes/avisos.ts'
 
@@ -47,3 +48,7 @@ window.scrollTo = (() => {}) as typeof window.scrollTo
 export function conAncho(px: number): void {
   anchoActual = px
 }
+
+// Con la suite entera corriendo en paralelo, la primera pantalla de cada archivo tarda en
+// importar la aplicación: un segundo para encontrar algo no alcanza y el test falla de a ratos.
+configure({ asyncUtilTimeout: 4000 })

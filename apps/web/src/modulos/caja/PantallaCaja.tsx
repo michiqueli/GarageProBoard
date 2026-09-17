@@ -525,7 +525,7 @@ function Facturar({
             : 'Facturar'}
         </h2>
         {precarga && (
-          <Boton tamano="chico" variante="sutil" onClick={alTerminarOrden}>
+          <Boton tamano="chico" variante="peligro" onClick={alTerminarOrden}>
             Dejar {precarga.tipo === 'orden' ? 'la orden' : 'el pedido'} para después
           </Boton>
         )}
@@ -982,7 +982,7 @@ function Ultimos() {
       {puedeAnular && esFactura(c) && c.estado === 'autorizado' && !c.anulado && (
         <Boton
           tamano="chico"
-          variante="sutil"
+          variante="peligro"
           icono={<IconoAnular />}
           deshabilitado={anular.isPending}
           onClick={() => void pedirAnular(c)}
