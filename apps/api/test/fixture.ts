@@ -63,6 +63,7 @@ export async function levantarApi(
   process.env.JWT_SECRET = 'secreto-de-prueba-con-mas-de-32-caracteres'
   process.env.NODE_ENV = 'test'
   process.env.SECRETOS_MASTER_KEY = randomBytes(32).toString('base64')
+  process.env.QR_SECRET = randomBytes(32).toString('base64url')
 
   await sembrarCatalogos(pg.dbDuenio)
 

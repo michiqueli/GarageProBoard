@@ -203,6 +203,10 @@ verdad. Qué se trae y qué cambia ahora que el DMS es nuestro, en
 
 ## Más adelante, sin fecha
 
+- **Control de asistencia en RRHH con el mismo QR del taller**: la credencial firmada
+      (`GT1:M:…`, en `packages/core/src/qr.ts`) marca la entrada y la salida de todos los
+      empleados, no sólo el fichaje de los mecánicos en las órdenes
+
 - **Repuestos**: stock, pedidos a fábrica, mostrador
 - **Garantías**: reclamos a terminal, cada una con su formato y su portal
 - **Cuenta corriente y cobranzas**: recibos, retenciones, compensación de saldos

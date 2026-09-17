@@ -18,6 +18,7 @@ import { actualizadoEn, creadoEn, pk, tenantId } from './_comunes.ts'
 import { usuario } from './acceso.ts'
 import { condicionIva, tipoComprobante } from './catalogos.ts'
 import { entidadComercial } from './comercial.ts'
+import { orden } from './orden.ts'
 import { empresa, puntoVenta, sucursal } from './organizacion.ts'
 import { tenant } from './tenant.ts'
 
@@ -80,6 +81,8 @@ export const comprobante = pgTable(
     condicionVenta: text().notNull(),
     /** En una nota de crédito o débito, el comprobante que modifica. */
     comprobanteAsociadoId: uuid().references((): AnyPgColumn => comprobante.id),
+    /** La orden de trabajo que se factura, si viene del taller. */
+    ordenId: uuid().references((): AnyPgColumn => orden.id),
 
     importeNeto: importe('importe_neto').notNull(),
     importeIva: importe('importe_iva').notNull(),
@@ -114,6 +117,12 @@ export const comprobante = pgTable(
       .where(sql`estado in ('emitiendo', 'incierto')`),
     // Una factura se anula una sola vez: dos notas de crédito por el total serían devolverle
     // al cliente el doble. Las rechazadas no cuentan.
+    // Una orden se factura una vez. Si la factura se anula, la orden vuelve a caja.
+    uniqueIndex('comprobante_orden_uq')
+      .on(t.ordenId)
+      .where(
+        sql`estado in ('emitiendo', 'autorizado', 'incierto') and orden_id is not null and comprobante_asociado_id is null`,
+      ),
     uniqueIndex('comprobante_anulacion_uq')
       .on(t.comprobanteAsociadoId)
       .where(
