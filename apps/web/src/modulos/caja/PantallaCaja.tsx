@@ -894,7 +894,12 @@ async function verificar(
 ) {
   try {
     const d = await api.comprobantes.verificar({ id })
-    await cache.invalidateQueries({ queryKey: ['comprobantes', tenantId] })
+    // Si quedó emitida, la orden o el pedido que cobraba salen de la lista para facturar.
+    await Promise.all(
+      ['comprobantes', 'ordenes', 'pedidos-repuestos'].map((clave) =>
+        cache.invalidateQueries({ queryKey: [clave, tenantId] }),
+      ),
+    )
     if (d.estado === 'autorizado') {
       notificar.ok(`${nombreComprobante(d)} estaba emitida: CAE ${d.cae}`, {
         accion: { texto: 'Abrir el PDF', alHacer: () => void abrirPdf(d.id) },
@@ -932,7 +937,12 @@ function Ultimos() {
       notificar.ok(`${nombreComprobante(nota)} emitida, CAE ${nota.cae}`, {
         accion: { texto: 'Abrir el PDF', alHacer: () => void abrirPdf(nota.id) },
       })
-      await cache.invalidateQueries({ queryKey: ['comprobantes', tenantId] })
+      // La nota de crédito devuelve a caja la orden o el pedido que la factura cobraba.
+      await Promise.all(
+        ['comprobantes', 'ordenes', 'pedidos-repuestos'].map((clave) =>
+          cache.invalidateQueries({ queryKey: [clave, tenantId] }),
+        ),
+      )
     },
     meta: {
       error: (error) => {

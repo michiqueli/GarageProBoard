@@ -14,6 +14,7 @@ const ordenes = {
   items: vi.fn(),
   cambiarEstado: vi.fn(),
   pdf: vi.fn(),
+  anular: vi.fn(),
   presupuestar: vi.fn(),
   responderPresupuesto: vi.fn(),
   enviarPresupuesto: vi.fn(),
@@ -21,6 +22,7 @@ const ordenes = {
 }
 const listarVehiculos = vi.fn()
 const listarRepuestos = vi.fn()
+const listarPedidos = vi.fn()
 const renovar = vi.fn()
 
 vi.mock('../src/sesion/cliente.ts', () => ({
@@ -28,6 +30,7 @@ vi.mock('../src/sesion/cliente.ts', () => ({
     auth: { iniciar: vi.fn(), cerrar: vi.fn().mockResolvedValue({}), cambiarSucursal: vi.fn() },
     vehiculos: { listar: (x: unknown) => listarVehiculos(x) },
     repuestos: { listar: (x: unknown) => listarRepuestos(x) },
+    pedidosRepuestos: { listar: (x: unknown) => listarPedidos(x) },
     clientes: { listar: vi.fn().mockResolvedValue({ datos: [], total: 0 }) },
     ordenes: Object.fromEntries(
       Object.keys(ordenes).map((n) => [
@@ -368,5 +371,36 @@ describe('el presupuesto', () => {
       ),
     )
     expect(await screen.findByText('Rechazado: no se cobra')).toBeDefined()
+  })
+})
+
+describe('anular la orden', () => {
+  it('la lista de pedidos de la orden se actualiza sin recargar', async () => {
+    const PEDIDO = {
+      id: '88888888-8888-4888-8888-888888888888',
+      numero: 1,
+      estado: 'abierto',
+      chasis: ORDEN.vehiculo.chasis,
+      vehiculo: null,
+      orden: { id: ORDEN.id, numero: 1 },
+      cliente: null,
+      solicitante: 'Diego',
+      creadoPor: 'Carla',
+      creadoEn: '2026-09-17T12:00:00.000Z',
+      total: '0.00',
+      items: 0,
+    }
+    listarPedidos.mockResolvedValue({ datos: [PEDIDO], total: 1 })
+    ordenes.anular.mockResolvedValue({ ...FICHA, estado: 'anulada' })
+    await montarApp(`/ordenes/${ORDEN.id}`)
+    const pedidos = await screen.findByRole('region', { name: 'Pedidos de repuestos' })
+    expect(await within(pedidos).findByText('Abierto')).toBeDefined()
+
+    await userEvent.click(screen.getByRole('button', { name: 'Anular' }))
+    ordenes.ficha.mockResolvedValue({ ...FICHA, estado: 'anulada' })
+    listarPedidos.mockResolvedValue({ datos: [{ ...PEDIDO, estado: 'anulado' }], total: 1 })
+    await confirmarDialogo('Anular la orden')
+
+    expect(await within(pedidos).findByText('Anulado')).toBeDefined()
   })
 })

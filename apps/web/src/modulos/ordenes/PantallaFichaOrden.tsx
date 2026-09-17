@@ -108,7 +108,13 @@ export function PantallaFichaOrden() {
 
   const actualizar = async (nueva: Orden) => {
     cache.setQueryData(['ordenes', tenantId, 'ficha', id], nueva)
-    await cache.invalidateQueries({ queryKey: ['ordenes', tenantId], exact: false })
+    // Lo que cambia en la orden mueve otras cosas: anularla anula sus pedidos de repuestos, y
+    // cargar o quitar piezas mueve el stock. Sin esto, esas listas quedaban viejas hasta recargar.
+    await Promise.all([
+      cache.invalidateQueries({ queryKey: ['ordenes', tenantId], exact: false }),
+      cache.invalidateQueries({ queryKey: ['pedidos-repuestos', tenantId], exact: false }),
+      cache.invalidateQueries({ queryKey: ['repuestos', tenantId], exact: false }),
+    ])
   }
 
   const accion = useMutation({
