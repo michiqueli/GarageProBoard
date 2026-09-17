@@ -21,6 +21,7 @@ import {
   empresa,
   entidadComercial,
   orden,
+  pedidoRepuestos,
   provincia,
   puntoVenta,
   reglaComprobante,
@@ -57,6 +58,7 @@ type Codigo =
   | 'CORREO_NO_CONFIGURADO'
   | 'CORREO_NO_ENVIADO'
   | 'ORDEN_NO_FACTURABLE'
+  | 'PEDIDO_NO_FACTURABLE'
 
 export class ErrorComprobantes extends Error {
   constructor(
@@ -112,6 +114,7 @@ export interface PedidoEmision {
   condicionVenta: string
   renglones: RenglonPedido[]
   ordenId?: string | null | undefined
+  pedidoRepuestosId?: string | null | undefined
 }
 
 export function hoyEnArgentina(ahora = new Date()): string {
@@ -328,6 +331,13 @@ export class ServicioComprobantes {
           .where(eq(orden.id, pedido.ordenId))
         if (o?.estado !== 'terminada') throw new ErrorComprobantes('ORDEN_NO_FACTURABLE')
       }
+      if (pedido.pedidoRepuestosId) {
+        const [p] = await tx
+          .select({ estado: pedidoRepuestos.estado })
+          .from(pedidoRepuestos)
+          .where(eq(pedidoRepuestos.id, pedido.pedidoRepuestosId))
+        if (p?.estado !== 'en_caja') throw new ErrorComprobantes('PEDIDO_NO_FACTURABLE')
+      }
       return {
         emisor,
         pv,
@@ -357,6 +367,8 @@ export class ServicioComprobantes {
         asociado: null,
         ordenId: pedido.ordenId ?? null,
         devolverOrdenId: null,
+        pedidoId: pedido.pedidoRepuestosId ?? null,
+        devolverPedidoId: null,
         nombreComprobante: receptor.nombreComprobante,
       },
       ip,
@@ -460,6 +472,8 @@ export class ServicioComprobantes {
         },
         ordenId: null,
         devolverOrdenId: f.ordenId,
+        pedidoId: null,
+        devolverPedidoId: f.pedidoRepuestosId,
         nombreComprobante: previo.nombre,
       },
       ip,
@@ -498,6 +512,9 @@ export class ServicioComprobantes {
       ordenId: string | null
       /** La orden de la factura que esta nota anula: al autorizarse, vuelve a caja. */
       devolverOrdenId: string | null
+      /** El pedido de mostrador que se factura, y el que vuelve a caja con la nota de crédito. */
+      pedidoId: string | null
+      devolverPedidoId: string | null
       nombreComprobante: string
     },
     ip?: string,
@@ -588,6 +605,7 @@ export class ServicioComprobantes {
             condicionVenta: c.condicionVenta,
             comprobanteAsociadoId: c.asociado?.id ?? null,
             ordenId: c.ordenId,
+            pedidoRepuestosId: c.pedidoId,
             importeNeto: solicitud.importeNeto,
             importeIva: solicitud.importeIva,
             importeExento: solicitud.importeExento,
@@ -611,6 +629,8 @@ export class ServicioComprobantes {
             // Otro puesto está facturando la misma orden.
             if (indice === 'comprobante_orden_uq')
               throw new ErrorComprobantes('ORDEN_NO_FACTURABLE')
+            if (indice === 'comprobante_pedido_repuestos_uq')
+              throw new ErrorComprobantes('PEDIDO_NO_FACTURABLE')
             if (indice === 'comprobante_anulacion_uq') {
               throw new ErrorComprobantes('NO_ANULABLE', {
                 motivo: 'Esa factura ya tiene su nota de crédito.',
@@ -663,6 +683,9 @@ export class ServicioComprobantes {
         if (c.ordenId) await this.marcarOrden(tx, c.ordenId, 'terminada', 'facturada')
         if (c.devolverOrdenId)
           await this.marcarOrden(tx, c.devolverOrdenId, 'facturada', 'terminada')
+        if (c.pedidoId) await this.marcarPedido(tx, c.pedidoId, 'en_caja', 'facturado')
+        if (c.devolverPedidoId)
+          await this.marcarPedido(tx, c.devolverPedidoId, 'facturado', 'en_caja')
         await this.auditar(
           tx,
           sesion,
@@ -747,6 +770,9 @@ export class ServicioComprobantes {
           .where(eq(comprobante.id, id))
         if (c.ordenId && !c.comprobanteAsociadoId) {
           await this.marcarOrden(tx, c.ordenId, 'terminada', 'facturada')
+        }
+        if (c.pedidoRepuestosId && !c.comprobanteAsociadoId) {
+          await this.marcarPedido(tx, c.pedidoRepuestosId, 'en_caja', 'facturado')
         }
         await tx.insert(auditoria).values({
           tenantId: sesion.tenantId,
@@ -889,6 +915,14 @@ export class ServicioComprobantes {
       .update(orden)
       .set({ estado: hasta, actualizadoEn: new Date() })
       .where(and(eq(orden.id, id), eq(orden.estado, desde)))
+  }
+
+  /** Lo mismo con un pedido de repuestos de mostrador. */
+  private async marcarPedido(tx: Db, id: string, desde: string, hasta: string) {
+    await tx
+      .update(pedidoRepuestos)
+      .set({ estado: hasta, actualizadoEn: new Date() })
+      .where(and(eq(pedidoRepuestos.id, id), eq(pedidoRepuestos.estado, desde)))
   }
 
   private async puntoDeVenta(tx: Db, sesion: Sesion, id: string, deEstaSucursal = true) {
@@ -1179,6 +1213,7 @@ export class ServicioComprobantes {
           : null,
       clienteId: x.clienteId,
       ordenId: x.ordenId,
+      pedidoRepuestosId: x.pedidoRepuestosId,
       tipoDocReceptor: x.tipoDocReceptor,
       numeroDocReceptor: x.numeroDocReceptor,
       receptorCondicionIva: x.receptorCondicionIva,

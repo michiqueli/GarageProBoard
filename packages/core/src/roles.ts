@@ -19,7 +19,7 @@ export const ACCIONES_POR_SUJETO: Readonly<
   Vehiculo: ['ver', 'crear', 'editar'],
   Cliente: ['ver', 'crear', 'editar'],
   Proveedor: ['ver', 'crear', 'editar'],
-  Repuesto: ['ver', 'crear', 'editar', 'configurar'],
+  Repuesto: ['ver', 'crear', 'editar', 'anular', 'configurar'],
   Comprobante: ['ver', 'crear', 'facturar', 'anular', 'configurar'],
   Empleado: ['ver', 'crear', 'editar'],
   Empresa: ['ver', 'crear', 'editar'],

@@ -271,6 +271,7 @@ export const ROLES_PREDEFINIDOS: RolPredefinido[] = [
     descripcion: 'Mostrador y depósito de repuestos.',
     habilidades: [
       { action: ['ver', 'crear', 'editar'], subject: ['Repuesto', 'Proveedor'] },
+      { action: 'anular', subject: 'Repuesto' },
       { action: 'ver', subject: ['Orden', 'Cliente'] },
     ],
   },

@@ -211,10 +211,7 @@ export const pedidoRepuestos = pgTable(
       sql`${t.estado} in ('abierto', 'en_caja', 'facturado', 'entregado', 'anulado')`,
     ),
     check('pedido_repuestos_chasis_formato', sql`${t.chasis} ~ '^[A-HJ-NPR-Z0-9]{6,17}$'`),
-    check(
-      'pedido_repuestos_orden_o_cliente',
-      sql`${t.ordenId} is null or ${t.clienteId} is null`,
-    ),
+    check('pedido_repuestos_orden_o_cliente', sql`${t.ordenId} is null or ${t.clienteId} is null`),
     // Entregado es sólo del taller; en caja y facturado, sólo del mostrador.
     check(
       'pedido_repuestos_estado_segun_destino',

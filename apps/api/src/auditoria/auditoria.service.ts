@@ -142,6 +142,10 @@ export function sobreQue(tabla: string, antes: Foto, despues: Foto): string {
   if (tabla === 'comprobante' && dato('comprobante')) return `la ${String(dato('comprobante'))}`
   if (tabla === 'comprobante') return 'un comprobante'
   if (tabla === 'orden') return `la orden ${String(dato('numero'))}`
+  if (tabla === 'repuesto') return `el repuesto ${String(dato('codigo'))}`
+  if (tabla === 'pedido_repuestos') return `el pedido de repuestos ${String(dato('numero'))}`
+  if (tabla === 'compra') return `la compra ${String(dato('numero'))}`
+  if (tabla === 'proveedor') return `el proveedor ${String(dato('razonSocial'))}`
   if (tabla === 'rol') return `el rol ${String(dato('nombre'))}`
   if (tabla === 'vehiculo' || tabla === 'titularidad') {
     return `el vehículo ${String(dato('dominio') ?? dato('chasis'))}`
@@ -316,6 +320,10 @@ export function describirCambio(
   if (tabla === 'cliente') return describirCliente(accion, antes, despues, nombres)
   if (tabla === 'certificado_afip') return describirCertificado(despues)
   if (tabla === 'orden') return describirOrden(accion, despues)
+  // Repuestos anota la frase al hacer el cambio: cada operación sabe mejor que nadie qué pasó.
+  if (['repuesto', 'pedido_repuestos', 'compra', 'proveedor'].includes(tabla)) {
+    return String(despues?.texto ?? 'Lo modificó')
+  }
   if (tabla === 'comprobante') {
     if (despues?.enviadoA) return `La mandó por mail a ${String(despues.enviadoA)}`
     return despues?.verificado

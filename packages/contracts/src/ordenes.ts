@@ -60,6 +60,8 @@ export const ordenResumen = z.object({
 export const itemOrden = z.object({
   id: z.uuid(),
   tipo: z.enum(TIPOS_ITEM),
+  /** Si es del catálogo: cargarlo descontó el stock de la sucursal. */
+  repuestoId: z.uuid().nullable(),
   codigo: z.string().nullable(),
   descripcion: z.string(),
   cantidad: z.string(),
@@ -102,6 +104,7 @@ const datosRecepcion = z.object({
 
 const itemEntrada = z.object({
   tipo: z.enum(TIPOS_ITEM),
+  repuestoId: z.uuid().nullish(),
   codigo: opcional,
   descripcion: z.string().trim().min(1, 'Falta la descripción').max(500),
   cantidad: importe.refine((v) => Number(v) > 0, 'La cantidad tiene que ser mayor a cero'),
@@ -216,7 +219,14 @@ export const contratoOrdenes = {
         'está en el taller; terminada ya es de caja, y para cambiarla hay que reabrirla.',
     })
     .input(conId.extend({ items: z.array(itemEntrada) }))
-    .errors({ ...NO_ENCONTRADA, ...ESTADO_INVALIDO })
+    .errors({
+      ...NO_ENCONTRADA,
+      ...ESTADO_INVALIDO,
+      REPUESTO_INVALIDO: {
+        status: 422,
+        message: 'Alguno de los repuestos no existe en el catálogo',
+      },
+    })
     .output(ordenDetalle),
 
   cambiarEstado: conPermiso('servicios', 'editar', 'Orden')

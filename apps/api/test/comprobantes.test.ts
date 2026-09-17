@@ -615,3 +615,38 @@ describe('facturar una orden de trabajo', () => {
     expect(await estado()).toBe('terminada')
   })
 })
+
+describe('facturar un pedido de repuestos de mostrador', () => {
+  it('en caja se factura una vez; la nota de crédito lo devuelve a caja', async () => {
+    const abierto = await pedir(gerente, 'POST', '/repuestos/pedidos', {
+      chasis: '93YBB000012345',
+      items: [{ descripcion: 'Lámpara H4', cantidad: '2', precioUnitario: '60.50' }],
+    })
+    expect(abierto.statusCode, abierto.body).toBe(201)
+    const id = abierto.json().id
+    const facturar = () =>
+      pedir(gerente, 'POST', '/comprobantes', {
+        puntoVentaId,
+        receptor: { consumidorFinal: {} },
+        concepto: 1,
+        renglones: [renglon()],
+        pedidoRepuestosId: id,
+      })
+
+    afip.ultimo = 2000
+    expect((await facturar()).json().code).toBe('PEDIDO_NO_FACTURABLE')
+
+    await pedir(gerente, 'POST', `/repuestos/pedidos/${id}/caja`)
+    const factura = await facturar()
+    expect(factura.statusCode, factura.body).toBe(201)
+    expect(factura.json().pedidoRepuestosId).toBe(id)
+    const ficha = async () => (await pedir(gerente, 'GET', `/repuestos/pedidos/${id}`)).json()
+    expect(await ficha()).toMatchObject({ estado: 'facturado', factura: { id: factura.json().id } })
+    expect((await facturar()).json().code).toBe('PEDIDO_NO_FACTURABLE')
+
+    afip.ultimo = 91
+    const nota = await pedir(gerente, 'POST', `/comprobantes/${factura.json().id}/nota-credito`)
+    expect(nota.statusCode, nota.body).toBe(201)
+    expect((await ficha()).estado).toBe('en_caja')
+  })
+})

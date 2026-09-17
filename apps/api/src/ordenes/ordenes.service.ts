@@ -35,6 +35,7 @@ import { Inject, Injectable } from '@nestjs/common'
 import { contextoDelPedido, type Sesion } from '../comun/contexto.ts'
 import { DatosDelTenant } from '../comun/datos.ts'
 import { generarCodigoQr } from '../comun/qr.ts'
+import { moverDiferencia, porRepuesto, repuestosExisten } from '../repuestos/stock.ts'
 
 type Codigo =
   | 'NO_ENCONTRADA'
@@ -42,6 +43,7 @@ type Codigo =
   | 'ESTADO_INVALIDO'
   | 'VEHICULO_CON_ORDEN'
   | 'SIN_ITEMS'
+  | 'REPUESTO_INVALIDO'
 
 export class ErrorOrdenes extends Error {
   constructor(
@@ -86,6 +88,7 @@ export interface DatosRecepcion {
 
 export interface ItemEntrada {
   tipo: 'trabajo' | 'repuesto'
+  repuestoId?: string | null | undefined
   codigo?: string | null | undefined
   descripcion: string
   cantidad: string
@@ -239,7 +242,14 @@ export class ServicioOrdenes {
         .returning({ id: orden.id })
       if (!creada) throw new Error('No se pudo abrir la orden.')
 
-      if (entrada.items.length) await this.guardarItems(tx, sesion, creada.id, entrada.items)
+      if (entrada.items.length) {
+        await this.guardarItems(tx, sesion, creada.id, entrada.items)
+        await moverDiferencia(tx, sesion, new Map(), porRepuesto(entrada.items), {
+          sucursalId: sesion.sucursalId,
+          tipo: 'orden',
+          ordenId: creada.id,
+        })
+      }
 
       // Los kilómetros de la recepción son el dato más fresco del auto.
       if (entrada.kilometraje != null && (auto.kilometraje ?? 0) < entrada.kilometraje) {
@@ -301,8 +311,18 @@ export class ServicioOrdenes {
       EN_TALLER,
       'Terminada ya es de caja: para cambiar qué se cobra, reabrila.',
       async (tx, sesion, o) => {
+        const antes = await tx
+          .select({ repuestoId: ordenItem.repuestoId, cantidad: ordenItem.cantidad })
+          .from(ordenItem)
+          .where(eq(ordenItem.ordenId, id))
         await tx.delete(ordenItem).where(eq(ordenItem.ordenId, id))
         if (items.length) await this.guardarItems(tx, sesion, id, items)
+        // Sumar una pieza del catálogo la saca del depósito; sacarla la devuelve.
+        await moverDiferencia(tx, sesion, porRepuesto(antes), porRepuesto(items), {
+          sucursalId: o.sucursalId,
+          tipo: 'orden',
+          ordenId: id,
+        })
         await this.auditar(
           tx,
           sesion,
@@ -410,6 +430,17 @@ export class ServicioOrdenes {
       'Una orden facturada no se anula: primero se anula la factura.',
       async (tx, sesion, o) => {
         await this.sinFacturaEnCurso(tx, id)
+        // Lo que no se va a cobrar vuelve al depósito.
+        const cargados = await tx
+          .select({ repuestoId: ordenItem.repuestoId, cantidad: ordenItem.cantidad })
+          .from(ordenItem)
+          .where(eq(ordenItem.ordenId, id))
+        await moverDiferencia(tx, sesion, porRepuesto(cargados), new Map(), {
+          sucursalId: o.sucursalId,
+          tipo: 'orden',
+          ordenId: id,
+          motivo: 'Orden anulada',
+        })
         await tx
           .update(orden)
           .set({ estado: 'anulada', actualizadoEn: new Date() })
@@ -526,12 +557,15 @@ export class ServicioOrdenes {
   }
 
   private async guardarItems(tx: Db, sesion: Sesion, ordenId: string, items: ItemEntrada[]) {
+    const ids = items.map((i) => i.repuestoId).filter((x): x is string => Boolean(x))
+    if (!(await repuestosExisten(tx, ids))) throw new ErrorOrdenes('REPUESTO_INVALIDO')
     await tx.insert(ordenItem).values(
       items.map((i, n) => ({
         tenantId: sesion.tenantId,
         ordenId,
         tipo: i.tipo,
         orden: n + 1,
+        repuestoId: i.repuestoId ?? null,
         codigo: i.codigo ?? null,
         descripcion: i.descripcion,
         cantidad: i.cantidad,
@@ -582,6 +616,7 @@ export class ServicioOrdenes {
       items: items.map((i) => ({
         id: i.id,
         tipo: i.tipo as 'trabajo' | 'repuesto',
+        repuestoId: i.repuestoId,
         codigo: i.codigo,
         descripcion: i.descripcion,
         cantidad: i.cantidad,

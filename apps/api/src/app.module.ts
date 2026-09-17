@@ -17,6 +17,16 @@ import { ServicioOrdenes } from './ordenes/ordenes.service.ts'
 import { ControladorOrganizacion } from './organizacion/organizacion.controller.ts'
 import { ServicioOrganizacion } from './organizacion/organizacion.service.ts'
 import { ModuloPadron } from './padron/padron.module.ts'
+import { ServicioCompras } from './repuestos/compras.service.ts'
+import { ServicioPedidosRepuestos } from './repuestos/pedidos.service.ts'
+import { ServicioProveedores } from './repuestos/proveedores.service.ts'
+import {
+  ControladorCompras,
+  ControladorPedidosRepuestos,
+  ControladorProveedores,
+  ControladorRepuestos,
+} from './repuestos/repuestos.controller.ts'
+import { ServicioRepuestos } from './repuestos/repuestos.service.ts'
 import { ControladorRoles } from './roles/roles.controller.ts'
 import { ServicioRoles } from './roles/roles.service.ts'
 import { ControladorSalud } from './salud/salud.controller.ts'
@@ -58,6 +68,10 @@ import { ServicioVehiculos } from './vehiculos/vehiculos.service.ts'
     ControladorCertificados,
     ControladorComprobantes,
     ControladorOrdenes,
+    ControladorRepuestos,
+    ControladorPedidosRepuestos,
+    ControladorCompras,
+    ControladorProveedores,
   ],
   providers: [
     ServicioUsuarios,
@@ -69,6 +83,10 @@ import { ServicioVehiculos } from './vehiculos/vehiculos.service.ts'
     ServicioCertificados,
     ServicioComprobantes,
     ServicioOrdenes,
+    ServicioRepuestos,
+    ServicioPedidosRepuestos,
+    ServicioCompras,
+    ServicioProveedores,
   ],
 })
 export class ModuloPrincipal {}

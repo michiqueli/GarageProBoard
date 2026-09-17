@@ -19,8 +19,8 @@ import { usuario } from './acceso.ts'
 import { condicionIva, tipoComprobante } from './catalogos.ts'
 import { entidadComercial } from './comercial.ts'
 import { orden } from './orden.ts'
-import { pedidoRepuestos } from './repuestos.ts'
 import { empresa, puntoVenta, sucursal } from './organizacion.ts'
+import { pedidoRepuestos } from './repuestos.ts'
 import { tenant } from './tenant.ts'
 
 /** Importes de un comprobante: dos decimales, como los informa AFIP. */
