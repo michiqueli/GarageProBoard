@@ -11,6 +11,8 @@ export const TABLAS_CON_TENANT = [
   'punto_venta',
   'comprobante_secuencia',
   'certificado_afip',
+  'comprobante',
+  'comprobante_renglon',
   'entidad_comercial',
   'cliente',
   'proveedor',

@@ -32,7 +32,7 @@ export class ErrorCertificado extends Error {
 type FilaCertificado = typeof certificadoAfip.$inferSelect
 
 /** La clave privada va atada a su empresa: copiada a otra fila, no se descifra. */
-const contexto = (empresaId: string) => `certificado_afip:${empresaId}`
+export const contextoClave = (empresaId: string) => `certificado_afip:${empresaId}`
 
 const resumen = (c: FilaCertificado) => ({
   id: c.id,
@@ -87,7 +87,7 @@ export class ServicioCertificados {
           empresaId,
           alias,
           pedido: pedidoPem,
-          clavePrivadaCifrada: this.caja.cifrar(clavePrivadaPem, contexto(empresaId)),
+          clavePrivadaCifrada: this.caja.cifrar(clavePrivadaPem, contextoClave(empresaId)),
         })
         .returning({ id: certificadoAfip.id })
       if (!creado) throw new Error('No se pudo guardar el pedido.')
@@ -265,7 +265,7 @@ export class ServicioCertificados {
 
   private descifrar(fila: FilaCertificado): string {
     try {
-      return this.caja.descifrar(fila.clavePrivadaCifrada, contexto(fila.empresaId))
+      return this.caja.descifrar(fila.clavePrivadaCifrada, contextoClave(fila.empresaId))
     } catch (error) {
       if (error instanceof ClaveMaestraFaltante) throw new ErrorCertificado('SIN_CLAVE_MAESTRA')
       throw error

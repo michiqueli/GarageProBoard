@@ -139,6 +139,8 @@ export function sobreQue(tabla: string, antes: Foto, despues: Foto): string {
   if (tabla === 'certificado_afip') {
     return `el certificado de AFIP de ${String(dato('empresa'))}`
   }
+  if (tabla === 'comprobante' && dato('comprobante')) return `la ${String(dato('comprobante'))}`
+  if (tabla === 'comprobante') return 'un comprobante'
   if (tabla === 'rol') return `el rol ${String(dato('nombre'))}`
   if (tabla === 'vehiculo' || tabla === 'titularidad') {
     return `el vehículo ${String(dato('dominio') ?? dato('chasis'))}`
@@ -290,6 +292,11 @@ export function describirCambio(
   }
   if (tabla === 'cliente') return describirCliente(accion, antes, despues, nombres)
   if (tabla === 'certificado_afip') return describirCertificado(despues)
+  if (tabla === 'comprobante') {
+    return despues?.verificado
+      ? 'Lo verificó contra AFIP: había quedado emitido'
+      : `La emitió a ${String(despues?.receptor)} por $ ${String(despues?.total).replace('.', ',')}`
+  }
   if (tabla === 'rol') return describirRol(accion, antes, despues)
   if (tabla === 'vehiculo' || tabla === 'titularidad') {
     return describirVehiculo(tabla, accion, antes, despues, nombres)

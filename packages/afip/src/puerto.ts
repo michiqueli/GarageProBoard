@@ -91,11 +91,33 @@ export interface PuntoVentaAfip {
   dadoDeBaja: boolean
 }
 
+/** Lo que AFIP tiene registrado de un comprobante. */
+export interface ComprobanteConsultado {
+  cae: string
+  /** AAAA-MM-DD. */
+  vencimientoCae: string
+  /** AAAA-MM-DD. */
+  fecha: string
+  importeTotal: string
+  tipoDocReceptor: number
+  numeroDocReceptor: string
+}
+
 export interface ServicioFiscal {
   autorizar(cred: Credenciales, solicitud: SolicitudComprobante): Promise<ComprobanteAutorizado>
   ultimoAutorizado(cred: Credenciales, puntoVenta: number, tipo: number): Promise<number>
   /** Los puntos de venta habilitados para web services de ese CUIT. */
   puntosDeVenta(cred: Credenciales): Promise<PuntoVentaAfip[]>
+  /**
+   * Lo que AFIP tiene de un comprobante, o `null` si no existe. Resuelve los inciertos:
+   * cuando AFIP no contestó al emitir, esto dice si lo emitió o no.
+   */
+  consultarComprobante(
+    cred: Credenciales,
+    puntoVenta: number,
+    tipo: number,
+    numero: number,
+  ): Promise<ComprobanteConsultado | null>
   condicionesIvaReceptor(
     cred: Credenciales,
   ): Promise<Array<{ codigo: number; descripcion: string }>>

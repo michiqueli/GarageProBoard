@@ -4,6 +4,7 @@ import { join } from 'node:path'
 import { Arca } from '@arcasdk/core'
 import { interpretarRespuestaCae, type RespuestaCae } from './comprobante.ts'
 import {
+  type ComprobanteConsultado,
   ComprobanteRechazado,
   type Credenciales,
   FacturacionNoDisponible,
@@ -124,6 +125,29 @@ export function crearFacturacionArca(config: ConfiguracionFacturacion): Servicio
         sdk(cred).electronicBillingService.getLastVoucher(puntoVenta, tipo),
       )
       return Number(salida.cbteNro)
+    },
+
+    async consultarComprobante(
+      cred,
+      puntoVenta,
+      tipo,
+      numero,
+    ): Promise<ComprobanteConsultado | null> {
+      // El SDK devuelve null si AFIP no lo tiene.
+      const info = await llamar(() =>
+        sdk(cred).electronicBillingService.getVoucherInfo(numero, puntoVenta, tipo),
+      )
+      if (!info?.codAutorizacion || info.resultado !== 'A') return null
+      const iso = (f: string | undefined) =>
+        f ? `${f.slice(0, 4)}-${f.slice(4, 6)}-${f.slice(6, 8)}` : ''
+      return {
+        cae: String(info.codAutorizacion),
+        vencimientoCae: iso(info.fchVto),
+        fecha: iso(info.cbteFch),
+        importeTotal: Number(info.impTotal ?? 0).toFixed(2),
+        tipoDocReceptor: Number(info.docTipo ?? 99),
+        numeroDocReceptor: String(info.docNro ?? 0),
+      }
     },
 
     async puntosDeVenta(cred): Promise<PuntoVentaAfip[]> {

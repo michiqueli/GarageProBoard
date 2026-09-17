@@ -110,11 +110,13 @@ export const REGLAS_COMPROBANTE: ReglaComprobante[] = [
   { condicionEmisor: 1, condicionReceptor: 1, tipoComprobante: 1 }, // a RI → A
   { condicionEmisor: 1, condicionReceptor: 4, tipoComprobante: 6 }, // a Exento → B
   { condicionEmisor: 1, condicionReceptor: 5, tipoComprobante: 6 }, // a Consumidor Final → B
-  { condicionEmisor: 1, condicionReceptor: 6, tipoComprobante: 6 }, // a Monotributo → B
+  // A monotributistas, A desde la RG 5.003 (abril de 2021). La RG 5.616 lo confirma: la
+  // Factura A admite como receptor a Monotributo y Monotributista Social.
+  { condicionEmisor: 1, condicionReceptor: 6, tipoComprobante: 1 }, // a Monotributo → A
   { condicionEmisor: 1, condicionReceptor: 7, tipoComprobante: 6 }, // a No Categorizado → B
   { condicionEmisor: 1, condicionReceptor: 9, tipoComprobante: 19 }, // a Exterior → E
   { condicionEmisor: 1, condicionReceptor: 10, tipoComprobante: 6 }, // a Ley 19.640 → B
-  { condicionEmisor: 1, condicionReceptor: 13, tipoComprobante: 6 }, // a Monotributo Social → B
+  { condicionEmisor: 1, condicionReceptor: 13, tipoComprobante: 1 }, // a Monotributo Social → A
 
   // Monotributo emite C a cualquiera.
   { condicionEmisor: 6, condicionReceptor: 1, tipoComprobante: 11 },

@@ -57,6 +57,13 @@
       "when": 1789600736698,
       "tag": "0007_certificado_afip",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1789605692063,
+      "tag": "0008_comprobante",
+      "breakpoints": true
     }
   ]
 }

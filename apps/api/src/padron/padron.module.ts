@@ -35,5 +35,7 @@ function crearPadron(): ServicioPadron {
 @Module({
   controllers: [ControladorPadron],
   providers: [{ provide: PADRON, useFactory: crearPadron }, ServicioConsultaPadron],
+  // La facturación también lo usa: la letra de la factura sale de lo que informa el padrón.
+  exports: [ServicioConsultaPadron],
 })
 export class ModuloPadron {}

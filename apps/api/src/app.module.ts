@@ -9,6 +9,8 @@ import { ControladorCertificados } from './certificados/certificados.controller.
 import { ServicioCertificados } from './certificados/certificados.service.ts'
 import { ControladorClientes } from './clientes/clientes.controller.ts'
 import { ServicioClientes } from './clientes/clientes.service.ts'
+import { ControladorComprobantes } from './comprobantes/comprobantes.controller.ts'
+import { ServicioComprobantes } from './comprobantes/comprobantes.service.ts'
 import { ModuloBase } from './comun/base.module.ts'
 import { ControladorOrganizacion } from './organizacion/organizacion.controller.ts'
 import { ServicioOrganizacion } from './organizacion/organizacion.service.ts'
@@ -52,6 +54,7 @@ import { ServicioVehiculos } from './vehiculos/vehiculos.service.ts'
     ControladorClientes,
     ControladorRoles,
     ControladorCertificados,
+    ControladorComprobantes,
   ],
   providers: [
     ServicioUsuarios,
@@ -61,6 +64,7 @@ import { ServicioVehiculos } from './vehiculos/vehiculos.service.ts'
     ServicioVehiculos,
     ServicioRoles,
     ServicioCertificados,
+    ServicioComprobantes,
   ],
 })
 export class ModuloPrincipal {}
