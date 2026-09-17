@@ -248,9 +248,24 @@ const ESTADOS_ORDEN: Record<string, string> = {
   entregada: 'entregada',
 }
 
+const MEDIOS: Record<string, string> = {
+  presencial: 'en persona',
+  telefono: 'teléfono',
+  whatsapp: 'WhatsApp',
+  mail: 'mail',
+}
+
 function describirOrden(accion: string, despues: Foto): string {
   if (accion === 'alta') return `La abrió: «${String(despues?.pedido)}»`
   if (accion === 'baja') return 'La anuló'
+  if (despues?.presupuesto !== undefined) {
+    if (despues.enviadoA)
+      return `Mandó el presupuesto ${String(despues.presupuesto)} a ${String(despues.enviadoA)}`
+    if (despues.medio) {
+      return `Registró la respuesta al presupuesto ${String(despues.presupuesto)}: ${String(despues.autoriza)} autorizó ${String(despues.autorizados)} y rechazó ${String(despues.rechazados)}, por ${MEDIOS[String(despues.medio)] ?? String(despues.medio)}`
+    }
+    return `Armó el presupuesto ${String(despues.presupuesto)} por $ ${String(despues.total).replace('.', ',')}, con ${String(despues.renglones)} renglones`
+  }
   if (despues?.estado)
     return `La pasó a ${ESTADOS_ORDEN[String(despues.estado)] ?? String(despues.estado)}`
   if (despues?.items !== undefined) return `Cargó ${String(despues.items)} trabajos y repuestos`

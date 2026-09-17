@@ -23,6 +23,7 @@ import {
   modelo,
   orden,
   ordenItem,
+  ordenPresupuesto,
   ordenSecuencia,
   sucursal,
   tipoComprobante,
@@ -31,10 +32,13 @@ import {
   usuarioSucursal,
   vehiculo,
 } from '@gpb/db/schema'
+import { generarPresupuestoPdf } from '@gpb/pdf'
 import { Inject, Injectable } from '@nestjs/common'
 import { contextoDelPedido, type Sesion } from '../comun/contexto.ts'
+import { CorreoNoConfigurado, type ServicioCorreo } from '../comun/correo.ts'
 import { DatosDelTenant } from '../comun/datos.ts'
 import { generarCodigoQr } from '../comun/qr.ts'
+import { CORREO } from '../comun/simbolos.ts'
 import { moverDiferencia, porRepuesto, repuestosExisten } from '../repuestos/stock.ts'
 
 type Codigo =
@@ -44,6 +48,10 @@ type Codigo =
   | 'VEHICULO_CON_ORDEN'
   | 'SIN_ITEMS'
   | 'REPUESTO_INVALIDO'
+  | 'PRESUPUESTO_PENDIENTE'
+  | 'ITEM_INVALIDO'
+  | 'CORREO_NO_CONFIGURADO'
+  | 'CORREO_NO_ENVIADO'
 
 export class ErrorOrdenes extends Error {
   constructor(
@@ -78,6 +86,8 @@ export interface DatosRecepcion {
   pagaId?: string | null | undefined
   traeNombre?: string | null | undefined
   traeTelefono?: string | null | undefined
+  autorizaNombre?: string | null | undefined
+  autorizaTelefono?: string | null | undefined
   kilometraje?: number | null | undefined
   combustible?: string | null | undefined
   pedido: string
@@ -87,6 +97,7 @@ export interface DatosRecepcion {
 }
 
 export interface ItemEntrada {
+  id?: string | null | undefined
   tipo: 'trabajo' | 'repuesto'
   repuestoId?: string | null | undefined
   codigo?: string | null | undefined
@@ -99,6 +110,16 @@ export interface ItemEntrada {
 const totalItem = (i: { cantidad: string; precioUnitario: string }) =>
   plata(i.cantidad).times(plata(i.precioUnitario)).toDecimalPlaces(2)
 
+type MedioAutorizacion = 'presencial' | 'telefono' | 'whatsapp' | 'mail'
+type Autorizacion = 'pendiente' | 'autorizado' | 'rechazado'
+
+/** Lo que el cliente rechazó no se cobra ni ocupa stock: para todo cálculo, no existe. */
+const vigentes = <T extends { autorizacion?: string | null | undefined }>(items: T[]) =>
+  items.filter((i) => i.autorizacion !== 'rechazado')
+
+/** Un presupuesto vale una semana: después, los precios de los repuestos cambian. */
+const DIAS_VALIDEZ = 7
+
 /**
  * Órdenes de trabajo: la recepción, lo que se le hace al auto, y el paso a caja.
  *
@@ -108,7 +129,10 @@ const totalItem = (i: { cantidad: string; precioUnitario: string }) =>
  */
 @Injectable()
 export class ServicioOrdenes {
-  constructor(@Inject(DatosDelTenant) private readonly datos: DatosDelTenant) {}
+  constructor(
+    @Inject(DatosDelTenant) private readonly datos: DatosDelTenant,
+    @Inject(CORREO) private readonly correo: ServicioCorreo,
+  ) {}
 
   listar(filtro: {
     pagina: number
@@ -231,6 +255,8 @@ export class ServicioOrdenes {
           pagaId,
           traeNombre: entrada.traeNombre ?? null,
           traeTelefono: entrada.traeTelefono ?? null,
+          autorizaNombre: entrada.autorizaNombre ?? null,
+          autorizaTelefono: entrada.autorizaTelefono ?? null,
           kilometraje: entrada.kilometraje ?? null,
           combustible: entrada.combustible ?? null,
           pedido: entrada.pedido,
@@ -284,6 +310,8 @@ export class ServicioOrdenes {
             pagaId: entrada.pagaId ?? null,
             traeNombre: entrada.traeNombre ?? null,
             traeTelefono: entrada.traeTelefono ?? null,
+            autorizaNombre: entrada.autorizaNombre ?? null,
+            autorizaTelefono: entrada.autorizaTelefono ?? null,
             kilometraje: entrada.kilometraje ?? null,
             combustible: entrada.combustible ?? null,
             pedido: entrada.pedido,
@@ -311,18 +339,37 @@ export class ServicioOrdenes {
       EN_TALLER,
       'Terminada ya es de caja: para cambiar qué se cobra, reabrila.',
       async (tx, sesion, o) => {
-        const antes = await tx
-          .select({ repuestoId: ordenItem.repuestoId, cantidad: ordenItem.cantidad })
-          .from(ordenItem)
-          .where(eq(ordenItem.ordenId, id))
-        await tx.delete(ordenItem).where(eq(ordenItem.ordenId, id))
-        if (items.length) await this.guardarItems(tx, sesion, id, items)
-        // Sumar una pieza del catálogo la saca del depósito; sacarla la devuelve.
-        await moverDiferencia(tx, sesion, porRepuesto(antes), porRepuesto(items), {
-          sucursalId: o.sucursalId,
-          tipo: 'orden',
-          ordenId: id,
+        const antes = await tx.select().from(ordenItem).where(eq(ordenItem.ordenId, id))
+        const porId = new Map(antes.map((a) => [a.id, a]))
+        // Lo que está en un presupuesto esperando respuesta es lo que se le dijo al cliente: no
+        // cambia ni desaparece hasta que conteste.
+        for (const a of antes.filter((x) => x.autorizacion === 'pendiente')) {
+          const nuevo = items.find((i) => i.id === a.id)
+          if (!nuevo || !mismoRenglon(a, nuevo)) throw new ErrorOrdenes('PRESUPUESTO_PENDIENTE')
+        }
+        const conEstado = items.map((i) => {
+          const previo = i.id ? porId.get(i.id) : undefined
+          return {
+            ...i,
+            id: previo?.id ?? null,
+            autorizacion: (previo?.autorizacion ?? null) as Autorizacion | null,
+            presupuestoId: previo?.presupuestoId ?? null,
+          }
         })
+        await tx.delete(ordenItem).where(eq(ordenItem.ordenId, id))
+        if (conEstado.length) await this.guardarItems(tx, sesion, id, conEstado)
+        // Sumar una pieza del catálogo la saca del depósito; sacarla la devuelve.
+        await moverDiferencia(
+          tx,
+          sesion,
+          porRepuesto(vigentes(antes)),
+          porRepuesto(vigentes(conEstado)),
+          {
+            sucursalId: o.sucursalId,
+            tipo: 'orden',
+            ordenId: id,
+          },
+        )
         await this.auditar(
           tx,
           sesion,
@@ -360,7 +407,15 @@ export class ServicioOrdenes {
       EN_TALLER,
       'Esa orden no está en el taller.',
       async (tx, sesion, o) => {
-        const [n] = await tx.select({ n: count() }).from(ordenItem).where(eq(ordenItem.ordenId, id))
+        const [pendiente] = await tx
+          .select({ id: ordenPresupuesto.id })
+          .from(ordenPresupuesto)
+          .where(and(eq(ordenPresupuesto.ordenId, id), eq(ordenPresupuesto.estado, 'pendiente')))
+        if (pendiente) throw new ErrorOrdenes('PRESUPUESTO_PENDIENTE')
+        const [n] = await tx
+          .select({ n: count() })
+          .from(ordenItem)
+          .where(and(eq(ordenItem.ordenId, id), sinRechazar()))
         if (!n?.n) throw new ErrorOrdenes('SIN_ITEMS')
         await tx
           .update(orden)
@@ -434,7 +489,7 @@ export class ServicioOrdenes {
         const cargados = await tx
           .select({ repuestoId: ordenItem.repuestoId, cantidad: ordenItem.cantidad })
           .from(ordenItem)
-          .where(eq(ordenItem.ordenId, id))
+          .where(and(eq(ordenItem.ordenId, id), sinRechazar()))
         await moverDiferencia(tx, sesion, porRepuesto(cargados), new Map(), {
           sucursalId: o.sucursalId,
           tipo: 'orden',
@@ -448,6 +503,270 @@ export class ServicioOrdenes {
         await this.auditar(tx, sesion, id, 'baja', { numero: o.numero, antes: o.estado }, ip)
       },
     )
+  }
+
+  // ── presupuestos ────────────────────────────────────────────────────────────
+
+  /**
+   * Arma un presupuesto con renglones de la orden que no pasaron por uno. Quedan pendientes y
+   * la orden espera autorización. Si hay a quién mandarlo, sale por mail después de guardarlo:
+   * un mail que no sale no deshace el presupuesto.
+   */
+  async presupuestar(
+    id: string,
+    itemIds: string[],
+    enviarA: string | null | undefined,
+    ip?: string,
+  ) {
+    let presupuestoId = ''
+    const detalle = await this.conOrdenEn(
+      id,
+      EN_TALLER,
+      'Sólo se presupuesta una orden que está en el taller.',
+      async (tx, sesion, o) => {
+        const elegidos = await tx
+          .select()
+          .from(ordenItem)
+          .where(and(eq(ordenItem.ordenId, id), inArray(ordenItem.id, [...new Set(itemIds)])))
+        if (elegidos.length !== new Set(itemIds).size || elegidos.some((i) => i.autorizacion)) {
+          throw new ErrorOrdenes('ITEM_INVALIDO')
+        }
+        const [ultimo] = await tx
+          .select({ n: sql<number>`coalesce(max(${ordenPresupuesto.numero}), 0)::int` })
+          .from(ordenPresupuesto)
+          .where(eq(ordenPresupuesto.ordenId, id))
+        const total = elegidos.reduce((a, i) => a.plus(totalItem(i)), plata('0'))
+        const [creado] = await tx
+          .insert(ordenPresupuesto)
+          .values({
+            tenantId: sesion.tenantId,
+            ordenId: id,
+            numero: (ultimo?.n ?? 0) + 1,
+            total: total.toFixed(2),
+            creadoPor: sesion.usuarioId,
+          })
+          .returning({ id: ordenPresupuesto.id, numero: ordenPresupuesto.numero })
+        if (!creado) throw new Error('No se pudo armar el presupuesto.')
+        presupuestoId = creado.id
+        await tx
+          .update(ordenItem)
+          .set({ autorizacion: 'pendiente', presupuestoId: creado.id })
+          .where(
+            inArray(
+              ordenItem.id,
+              elegidos.map((i) => i.id),
+            ),
+          )
+        await tx
+          .update(orden)
+          .set({ estado: 'esperando_autorizacion', actualizadoEn: new Date() })
+          .where(eq(orden.id, id))
+        await this.auditar(
+          tx,
+          sesion,
+          id,
+          'modificacion',
+          {
+            numero: o.numero,
+            presupuesto: creado.numero,
+            total: total.toFixed(2),
+            renglones: elegidos.length,
+          },
+          ip,
+        )
+      },
+    )
+    if (enviarA) return this.enviarPresupuesto(id, presupuestoId, enviarA, ip)
+    return detalle
+  }
+
+  async enviarPresupuesto(id: string, presupuestoId: string, para: string, ip?: string) {
+    const { bytes, nombre, datos } = await this.pdfPresupuesto(id, presupuestoId)
+    try {
+      await this.correo.enviar({
+        para,
+        asunto: `Presupuesto de la orden ${String(datos.ordenNumero).padStart(6, '0')} · ${datos.concesionaria}`,
+        texto: [
+          `Hola${datos.autoriza.nombre ? `, ${datos.autoriza.nombre}` : ''}:`,
+          '',
+          `Te mandamos el presupuesto para ${datos.vehiculo.marcaModelo ?? 'tu vehículo'}${datos.vehiculo.dominio ? ` ${datos.vehiculo.dominio}` : ''}, por $ ${Number(datos.total).toLocaleString('es-AR', { minimumFractionDigits: 2 })} con IVA.`,
+          'Va adjunto en PDF, con el detalle de cada trabajo y repuesto.',
+          'Contestanos qué autorizás y lo hacemos.',
+          '',
+          datos.concesionaria,
+          [datos.sucursal.nombre, datos.sucursal.telefono].filter(Boolean).join(' · '),
+        ].join('\n'),
+        adjuntos: [{ nombre, contenido: bytes, tipo: 'application/pdf' }],
+      })
+    } catch (error) {
+      if (error instanceof CorreoNoConfigurado) throw new ErrorOrdenes('CORREO_NO_CONFIGURADO')
+      throw new ErrorOrdenes('CORREO_NO_ENVIADO')
+    }
+    return this.datos.transaccion(async (tx, sesion) => {
+      await tx
+        .update(ordenPresupuesto)
+        .set({ enviadoA: para })
+        .where(and(eq(ordenPresupuesto.id, presupuestoId), eq(ordenPresupuesto.ordenId, id)))
+      await this.auditar(
+        tx,
+        sesion,
+        id,
+        'modificacion',
+        { numero: datos.ordenNumero, presupuesto: datos.numero, enviadoA: para },
+        ip,
+      )
+      return this.detalle(tx, id)
+    })
+  }
+
+  /**
+   * Lo que contestó el cliente. Lo autorizado se hace; el resto del presupuesto queda rechazado:
+   * no se cobra y sus repuestos vuelven al depósito. Sin otro presupuesto pendiente, el auto
+   * vuelve a trabajarse.
+   */
+  responderPresupuesto(
+    id: string,
+    presupuestoId: string,
+    respuesta: {
+      autorizados: string[]
+      autorizaNombre: string
+      medio: MedioAutorizacion
+      nota?: string | null | undefined
+    },
+    ip?: string,
+  ) {
+    return this.conOrdenEn(
+      id,
+      EN_TALLER,
+      'La orden ya no está en el taller.',
+      async (tx, sesion, o) => {
+        const [presupuesto] = await tx
+          .select()
+          .from(ordenPresupuesto)
+          .where(and(eq(ordenPresupuesto.id, presupuestoId), eq(ordenPresupuesto.ordenId, id)))
+          .for('update')
+        if (!presupuesto) throw new ErrorOrdenes('NO_ENCONTRADA')
+        if (presupuesto.estado !== 'pendiente') {
+          throw new ErrorOrdenes('ESTADO_INVALIDO', {
+            motivo: 'Ese presupuesto ya tiene respuesta.',
+          })
+        }
+        const renglones = await tx
+          .select()
+          .from(ordenItem)
+          .where(eq(ordenItem.presupuestoId, presupuestoId))
+        const si = new Set(respuesta.autorizados)
+        if ([...si].some((x) => !renglones.some((r) => r.id === x))) {
+          throw new ErrorOrdenes('ESTADO_INVALIDO', {
+            motivo: 'Se autorizó un renglón que no es de ese presupuesto.',
+          })
+        }
+        const rechazados = renglones.filter((r) => !si.has(r.id))
+        if (si.size) {
+          await tx
+            .update(ordenItem)
+            .set({ autorizacion: 'autorizado' })
+            .where(inArray(ordenItem.id, [...si]))
+        }
+        if (rechazados.length) {
+          await tx
+            .update(ordenItem)
+            .set({ autorizacion: 'rechazado' })
+            .where(
+              inArray(
+                ordenItem.id,
+                rechazados.map((r) => r.id),
+              ),
+            )
+          await moverDiferencia(tx, sesion, porRepuesto(rechazados), new Map(), {
+            sucursalId: o.sucursalId,
+            tipo: 'orden',
+            ordenId: id,
+            motivo: `Rechazado en el presupuesto ${presupuesto.numero}`,
+          })
+        }
+        await tx
+          .update(ordenPresupuesto)
+          .set({
+            estado: 'respondido',
+            autorizaNombre: respuesta.autorizaNombre,
+            autorizaMedio: respuesta.medio,
+            nota: respuesta.nota ?? null,
+            respondidoPor: sesion.usuarioId,
+            respondidoEn: new Date(),
+          })
+          .where(eq(ordenPresupuesto.id, presupuestoId))
+        const [otro] = await tx
+          .select({ id: ordenPresupuesto.id })
+          .from(ordenPresupuesto)
+          .where(and(eq(ordenPresupuesto.ordenId, id), eq(ordenPresupuesto.estado, 'pendiente')))
+        if (!otro && o.estado === 'esperando_autorizacion') {
+          await tx
+            .update(orden)
+            .set({ estado: 'en_proceso', actualizadoEn: new Date() })
+            .where(eq(orden.id, id))
+        }
+        await this.auditar(
+          tx,
+          sesion,
+          id,
+          'modificacion',
+          {
+            numero: o.numero,
+            presupuesto: presupuesto.numero,
+            autorizados: si.size,
+            rechazados: rechazados.length,
+            autoriza: respuesta.autorizaNombre,
+            medio: respuesta.medio,
+          },
+          ip,
+        )
+      },
+    )
+  }
+
+  /** El presupuesto en PDF, con lo que hace falta para mandarlo. */
+  async pdfPresupuesto(id: string, presupuestoId: string) {
+    const { orden: d, extra } = await this.paraImprimir(id)
+    const p = d.presupuestos.find((x) => x.id === presupuestoId)
+    if (!p) throw new ErrorOrdenes('NO_ENCONTRADA')
+    const creado = new Date(p.creadoEn)
+    const validoHasta = new Date(creado.getTime() + DIAS_VALIDEZ * 86_400_000)
+    const datos = {
+      concesionaria: extra.nombreFantasia ?? extra.razonSocial,
+      sucursal: { nombre: extra.sucursal, domicilio: extra.domicilio, telefono: extra.telefono },
+      ordenNumero: d.numero,
+      numero: p.numero,
+      fecha: horaArgentina(creado),
+      vehiculo: {
+        dominio: d.vehiculo.dominio,
+        marcaModelo: [d.vehiculo.marca, d.vehiculo.modelo].filter(Boolean).join(' ') || null,
+        chasis: d.vehiculo.chasis,
+        kilometraje: d.kilometraje,
+      },
+      cliente: d.paga?.razonSocial ?? d.titular?.razonSocial ?? null,
+      autoriza: {
+        nombre: d.autorizaNombre ?? d.paga?.razonSocial ?? null,
+        telefono: d.autorizaTelefono,
+      },
+      asesor: d.asesor,
+      items: d.items
+        .filter((i) => i.presupuestoId === p.id)
+        .map((i) => ({
+          tipo: i.tipo,
+          descripcion: i.descripcion,
+          cantidad: i.cantidad,
+          precioUnitario: i.precioUnitario,
+          total: i.total,
+        })),
+      total: p.total,
+      validoHasta: horaArgentina(validoHasta).slice(0, 10),
+    }
+    return {
+      bytes: await generarPresupuestoPdf(datos),
+      nombre: `Presupuesto-OT-${String(d.numero).padStart(6, '0')}-${p.numero}.pdf`,
+      datos,
+    }
   }
 
   /** Todo lo que hace falta para imprimir la orden. */
@@ -556,13 +875,24 @@ export class ServicioOrdenes {
     }
   }
 
-  private async guardarItems(tx: Db, sesion: Sesion, ordenId: string, items: ItemEntrada[]) {
+  private async guardarItems(
+    tx: Db,
+    sesion: Sesion,
+    ordenId: string,
+    items: Array<
+      ItemEntrada & { autorizacion?: Autorizacion | null; presupuestoId?: string | null }
+    >,
+  ) {
     const ids = items.map((i) => i.repuestoId).filter((x): x is string => Boolean(x))
     if (!(await repuestosExisten(tx, ids))) throw new ErrorOrdenes('REPUESTO_INVALIDO')
     await tx.insert(ordenItem).values(
       items.map((i, n) => ({
+        // El renglón que ya existía conserva su id: el presupuesto lo sigue encontrando.
+        ...(i.id ? { id: i.id } : {}),
         tenantId: sesion.tenantId,
         ordenId,
+        autorizacion: i.autorizacion ?? null,
+        presupuestoId: i.presupuestoId ?? null,
         tipo: i.tipo,
         orden: n + 1,
         repuestoId: i.repuestoId ?? null,
@@ -603,11 +933,29 @@ export class ServicioOrdenes {
       )
       .orderBy(desc(comprobante.creadoEn))
       .limit(1)
+    const presupuestos = await tx
+      .select({
+        p: ordenPresupuesto,
+        creadoPor: sql<string>`${usuario.nombre} || ' ' || ${usuario.apellido}`,
+      })
+      .from(ordenPresupuesto)
+      .innerJoin(usuario, eq(usuario.id, ordenPresupuesto.creadoPor))
+      .where(eq(ordenPresupuesto.ordenId, id))
+      .orderBy(desc(ordenPresupuesto.numero))
+    const [paga] = o.pagaId
+      ? await tx
+          .select({ email: entidadComercial.email })
+          .from(entidadComercial)
+          .where(eq(entidadComercial.id, o.pagaId))
+      : []
 
     return {
       ...resumen,
       traeNombre: o.traeNombre,
       traeTelefono: o.traeTelefono,
+      autorizaNombre: o.autorizaNombre,
+      autorizaTelefono: o.autorizaTelefono,
+      pagaEmail: paga?.email ?? null,
       kilometraje: o.kilometraje,
       combustible: o.combustible as 'vacio' | 'cuarto' | 'medio' | 'tres_cuartos' | 'lleno' | null,
       observaciones: o.observaciones,
@@ -623,6 +971,28 @@ export class ServicioOrdenes {
         precioUnitario: i.precioUnitario,
         codigoAlicuota: i.codigoAlicuota,
         total: totalItem(i).toFixed(2),
+        autorizacion: i.autorizacion as Autorizacion | null,
+        presupuestoId: i.presupuestoId,
+      })),
+      presupuestos: presupuestos.map(({ p, creadoPor }) => ({
+        id: p.id,
+        numero: p.numero,
+        estado: p.estado as 'pendiente' | 'respondido',
+        total: plata(p.total).toFixed(2),
+        totalAutorizado:
+          p.estado === 'respondido'
+            ? items
+                .filter((i) => i.presupuestoId === p.id && i.autorizacion === 'autorizado')
+                .reduce((a, i) => a.plus(totalItem(i)), plata('0'))
+                .toFixed(2)
+            : null,
+        enviadoA: p.enviadoA,
+        creadoPor,
+        creadoEn: p.creadoEn.toISOString(),
+        autorizaNombre: p.autorizaNombre,
+        autorizaMedio: p.autorizaMedio as MedioAutorizacion | null,
+        nota: p.nota,
+        respondidoEn: p.respondidoEn?.toISOString() ?? null,
       })),
       factura: factura ?? null,
     }
@@ -669,7 +1039,7 @@ export class ServicioOrdenes {
         total: sql<string>`coalesce(sum(round(${ordenItem.cantidad} * ${ordenItem.precioUnitario}, 2)), 0)`,
       })
       .from(ordenItem)
-      .where(inArray(ordenItem.ordenId, ids))
+      .where(and(inArray(ordenItem.ordenId, ids), sinRechazar()))
       .groupBy(ordenItem.ordenId)
 
     const persona = (id: string | null) => {
@@ -725,4 +1095,36 @@ export class ServicioOrdenes {
       ip: ip ?? null,
     })
   }
+}
+
+/** Los renglones que cuentan: todos menos los que el cliente rechazó. */
+function sinRechazar() {
+  return sql`${ordenItem.autorizacion} is distinct from 'rechazado'`
+}
+
+/** Si un renglón pendiente llegó igual: lo que se presupuestó no se cambia. */
+function mismoRenglon(a: typeof ordenItem.$inferSelect, b: ItemEntrada) {
+  return (
+    a.tipo === b.tipo &&
+    a.descripcion === b.descripcion &&
+    (a.repuestoId ?? null) === (b.repuestoId ?? null) &&
+    a.codigoAlicuota === b.codigoAlicuota &&
+    plata(a.cantidad).eq(plata(b.cantidad)) &&
+    plata(a.precioUnitario).eq(plata(b.precioUnitario))
+  )
+}
+
+/** «2026-09-16T09:42», en la hora de Argentina. */
+export function horaArgentina(fecha: Date) {
+  const partes = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'America/Argentina/Buenos_Aires',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    hourCycle: 'h23',
+  }).formatToParts(fecha)
+  const v = (t: string) => partes.find((x) => x.type === t)?.value ?? ''
+  return `${v('year')}-${v('month')}-${v('day')}T${v('hour')}:${v('minute')}`
 }

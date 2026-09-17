@@ -30,6 +30,8 @@ export function PantallaRecepcion() {
   const [paga, setPaga] = useState<ClienteElegido | null>(null)
   const [traeNombre, setTraeNombre] = useState('')
   const [traeTelefono, setTraeTelefono] = useState('')
+  const [autorizaNombre, setAutorizaNombre] = useState('')
+  const [autorizaTelefono, setAutorizaTelefono] = useState('')
   const [kilometraje, setKilometraje] = useState('')
   const [combustible, setCombustible] = useState<Combustible | null>(null)
   const [pedido, setPedido] = useState('')
@@ -57,6 +59,8 @@ export function PantallaRecepcion() {
         pagaId: paga?.id ?? null,
         traeNombre,
         traeTelefono,
+        autorizaNombre,
+        autorizaTelefono,
         kilometraje: kilometraje ? Number(kilometraje) : null,
         combustible,
         pedido,
@@ -138,6 +142,18 @@ export function PantallaRecepcion() {
             inputMode="tel"
             value={traeTelefono}
             onChange={(e) => setTraeTelefono(e.target.value)}
+          />
+          <Campo
+            etiqueta="Quién autoriza"
+            value={autorizaNombre}
+            onChange={(e) => setAutorizaNombre(e.target.value)}
+            ayuda="A quién se le consultan los presupuestos"
+          />
+          <Campo
+            etiqueta="Teléfono de quien autoriza"
+            inputMode="tel"
+            value={autorizaTelefono}
+            onChange={(e) => setAutorizaTelefono(e.target.value)}
           />
           <Campo
             etiqueta="Kilómetros"

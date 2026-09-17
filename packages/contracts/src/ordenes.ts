@@ -26,6 +26,8 @@ export const ESTADOS_EN_TALLER = [
 
 export const NIVELES_COMBUSTIBLE = ['vacio', 'cuarto', 'medio', 'tres_cuartos', 'lleno'] as const
 export const TIPOS_ITEM = ['trabajo', 'repuesto'] as const
+export const AUTORIZACIONES = ['pendiente', 'autorizado', 'rechazado'] as const
+export const MEDIOS_AUTORIZACION = ['presencial', 'telefono', 'whatsapp', 'mail'] as const
 
 const opcional = z
   .string()
@@ -68,17 +70,45 @@ export const itemOrden = z.object({
   precioUnitario: z.string(),
   codigoAlicuota: z.number().int(),
   total: z.string(),
+  /**
+   * Sin valor, no pasó por un presupuesto. Pendiente: espera la respuesta del cliente y no se
+   * toca. Rechazado: se ve, pero no se cobra ni consume stock.
+   */
+  autorizacion: z.enum(AUTORIZACIONES).nullable(),
+  presupuestoId: z.uuid().nullable(),
+})
+
+export const presupuestoOrden = z.object({
+  id: z.uuid(),
+  numero: z.number().int(),
+  estado: z.enum(['pendiente', 'respondido']),
+  /** Con IVA: lo que se le dijo al cliente. */
+  total: z.string(),
+  /** De eso, lo que autorizó. Null mientras no respondió. */
+  totalAutorizado: z.string().nullable(),
+  enviadoA: z.string().nullable(),
+  creadoPor: z.string(),
+  creadoEn: z.iso.datetime(),
+  autorizaNombre: z.string().nullable(),
+  autorizaMedio: z.enum(MEDIOS_AUTORIZACION).nullable(),
+  nota: z.string().nullable(),
+  respondidoEn: z.iso.datetime().nullable(),
 })
 
 export const ordenDetalle = ordenResumen.extend({
   traeNombre: z.string().nullable(),
   traeTelefono: z.string().nullable(),
+  autorizaNombre: z.string().nullable(),
+  autorizaTelefono: z.string().nullable(),
+  /** El correo de quien paga, para ofrecerlo al mandar un presupuesto. */
+  pagaEmail: z.string().nullable(),
   kilometraje: z.number().int().nullable(),
   combustible: z.enum(NIVELES_COMBUSTIBLE).nullable(),
   observaciones: z.string().nullable(),
   terminadaEn: z.iso.datetime().nullable(),
   entregadaEn: z.iso.datetime().nullable(),
   items: z.array(itemOrden),
+  presupuestos: z.array(presupuestoOrden),
   /** La factura vigente, si ya se facturó. */
   factura: z
     .object({
@@ -94,6 +124,8 @@ const datosRecepcion = z.object({
   pagaId: z.uuid().nullish(),
   traeNombre: opcional,
   traeTelefono: opcional,
+  autorizaNombre: opcional,
+  autorizaTelefono: opcional,
   kilometraje: z.number().int().min(0, 'Los kilómetros no pueden ser negativos').nullish(),
   combustible: z.enum(NIVELES_COMBUSTIBLE).nullish(),
   pedido: z.string().trim().min(3, 'Anotá qué pide el cliente'),
@@ -103,6 +135,11 @@ const datosRecepcion = z.object({
 })
 
 const itemEntrada = z.object({
+  /**
+   * El renglón que ya existía, si es uno de ellos: así conserva si se autorizó y en qué
+   * presupuesto. Sin id es un renglón nuevo.
+   */
+  id: z.uuid().nullish(),
   tipo: z.enum(TIPOS_ITEM),
   repuestoId: z.uuid().nullish(),
   codigo: opcional,
@@ -226,6 +263,11 @@ export const contratoOrdenes = {
         status: 422,
         message: 'Alguno de los repuestos no existe en el catálogo',
       },
+      PRESUPUESTO_PENDIENTE: {
+        status: 409,
+        message:
+          'Hay renglones en un presupuesto esperando la respuesta del cliente: no se modifican ni se quitan',
+      },
     })
     .output(ordenDetalle),
 
@@ -256,8 +298,115 @@ export const contratoOrdenes = {
       ...NO_ENCONTRADA,
       ...ESTADO_INVALIDO,
       SIN_ITEMS: { status: 422, message: 'La orden no tiene trabajos ni repuestos para cobrar' },
+      PRESUPUESTO_PENDIENTE: {
+        status: 409,
+        message:
+          'Hay un presupuesto esperando la respuesta del cliente: registrala antes de terminar',
+      },
     })
     .output(ordenDetalle),
+
+  presupuestar: conPermiso('servicios', 'editar', 'Orden')
+    .route({
+      method: 'POST',
+      path: '/ordenes/{id}/presupuestos',
+      tags: [TAG],
+      operationId: 'presupuestarOrden',
+      summary: 'Pedirle autorización al cliente: armar un presupuesto con renglones de la orden',
+      successStatus: 201,
+      description:
+        'Los renglones elegidos quedan pendientes y no se modifican hasta la respuesta, y la orden ' +
+        'pasa a esperando autorización. Con `enviarA`, el presupuesto en PDF sale por mail.',
+    })
+    .input(
+      conId.extend({
+        itemIds: z.array(z.uuid()).min(1, 'Elegí qué trabajos y repuestos se consultan'),
+        enviarA: z
+          .string()
+          .trim()
+          .transform((v) => v || null)
+          .pipe(z.email('Ese correo no parece bien escrito').nullable())
+          .nullish(),
+      }),
+    )
+    .errors({
+      ...NO_ENCONTRADA,
+      ...ESTADO_INVALIDO,
+      ITEM_INVALIDO: {
+        status: 422,
+        message: 'Alguno de esos renglones no es de la orden o ya pasó por un presupuesto',
+      },
+      CORREO_NO_CONFIGURADO: {
+        status: 503,
+        message: 'El presupuesto quedó armado, pero el servidor no tiene configurado el correo',
+      },
+      CORREO_NO_ENVIADO: {
+        status: 502,
+        message:
+          'El presupuesto quedó armado, pero el mail no salió: mandalo de nuevo desde la orden',
+      },
+    })
+    .output(ordenDetalle),
+
+  enviarPresupuesto: conPermiso('servicios', 'ver', 'Orden')
+    .route({
+      method: 'POST',
+      path: '/ordenes/{id}/presupuestos/{presupuestoId}/envio',
+      tags: [TAG],
+      operationId: 'enviarPresupuesto',
+      summary: 'Mandar un presupuesto por mail',
+    })
+    .input(
+      conId.extend({
+        presupuestoId: z.uuid(),
+        para: z.email('Ese correo no parece bien escrito'),
+      }),
+    )
+    .errors({
+      ...NO_ENCONTRADA,
+      CORREO_NO_CONFIGURADO: {
+        status: 503,
+        message: 'El servidor no tiene configurado el correo saliente. Avisale a soporte',
+      },
+      CORREO_NO_ENVIADO: { status: 502, message: 'El servidor de correo no aceptó el mensaje' },
+    })
+    .output(ordenDetalle),
+
+  responderPresupuesto: conPermiso('servicios', 'editar', 'Orden')
+    .route({
+      method: 'POST',
+      path: '/ordenes/{id}/presupuestos/{presupuestoId}/respuesta',
+      tags: [TAG],
+      operationId: 'responderPresupuesto',
+      summary: 'Registrar qué autorizó el cliente, quién y por qué medio',
+      description:
+        'Los renglones de `autorizados` se hacen; el resto del presupuesto queda rechazado: no se ' +
+        'cobra y sus repuestos vuelven al stock. Si no queda ningún presupuesto pendiente, la orden ' +
+        'vuelve a en proceso.',
+    })
+    .input(
+      conId.extend({
+        presupuestoId: z.uuid(),
+        autorizados: z.array(z.uuid()),
+        autorizaNombre: z.string().trim().min(2, 'Anotá quién autorizó'),
+        medio: z.enum(MEDIOS_AUTORIZACION),
+        nota: opcional,
+      }),
+    )
+    .errors({ ...NO_ENCONTRADA, ...ESTADO_INVALIDO })
+    .output(ordenDetalle),
+
+  pdfPresupuesto: conPermiso('servicios', 'ver', 'Orden')
+    .route({
+      method: 'GET',
+      path: '/ordenes/{id}/presupuestos/{presupuestoId}/pdf',
+      tags: [TAG],
+      operationId: 'pdfPresupuesto',
+      summary: 'El presupuesto impreso, con la firma de conformidad',
+    })
+    .input(conId.extend({ presupuestoId: z.uuid() }))
+    .errors(NO_ENCONTRADA)
+    .output(z.file()),
 
   reabrir: conPermiso('servicios', 'editar', 'Orden')
     .route({

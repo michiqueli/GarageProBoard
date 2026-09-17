@@ -181,7 +181,7 @@ verdad. Qué se trae y qué cambia ahora que el DMS es nuestro, en
 [control de tiempos de taller](../tecnicos/taller-control-de-tiempos.md).
 
 - ⬜ Turnos y agenda
-- 🔨 Apertura de OT con los roles: titular, quien trae y quien paga ✅. Falta quien autoriza
+- ✅ Apertura de OT con los cuatro roles: titular, quien trae, quien autoriza y quien paga
 - ⬜ Operaciones con tiempos de referencia por terminal
 - ⬜ Fichaje de mecánicos por QR: dos escaneos, tres segundos, sin login. Tiempo real
       contra tiempo de referencia
@@ -193,8 +193,11 @@ verdad. Qué se trae y qué cambia ahora que el DMS es nuestro, en
 - ✅ Repuestos consumidos, con descuento de stock: la orden busca en el catálogo y el stock
       sigue a sus renglones; los pedidos de repuestos del taller pasan a la orden al entregarlos.
       Ver [repuestos](../tecnicos/repuestos.md)
-- 🔨 Trabajos y repuestos con precio final, estados del taller y cierre (terminar → caja) ✅.
-      Falta presupuesto y autorización del cliente
+- ✅ Trabajos y repuestos con precio final, estados del taller y cierre (terminar → caja)
+- ✅ **Presupuesto y autorización**: se arma con los renglones elegidos (PDF con una casilla por
+      renglón, por mail), la orden espera autorización y lo presupuestado no se toca. La respuesta
+      dice quién autorizó y por qué medio; lo rechazado no se cobra y sus repuestos vuelven al
+      stock. Sin respuesta, la orden no se termina
 - ⬜ **Catálogo de services**: los services de cada marca (10.000, 20.000, …) con sus trabajos,
       repuestos y **tiempo estipulado**, más un service genérico que se completa a mano. Cargarlos
       en una OT la completa de un toque, y el tiempo estipulado sirve para comparar con el real.

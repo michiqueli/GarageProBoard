@@ -16,6 +16,7 @@ export const TABLAS_CON_TENANT = [
   'orden',
   'orden_item',
   'orden_secuencia',
+  'orden_presupuesto',
   'repuesto',
   'repuesto_stock',
   'movimiento_stock',

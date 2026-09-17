@@ -225,3 +225,146 @@ describe('en el taller', () => {
     expect(r.rawPayload.subarray(0, 5).toString()).toBe('%PDF-')
   })
 })
+
+describe('presupuesto y autorización', () => {
+  let otra: { id: string }
+  let presupuestoId: string
+
+  it('quien autoriza se anota en la recepción', async () => {
+    otra = (await pedir(gerente, 'GET', '/ordenes?buscar=3')).json().datos[0]
+    const r = await pedir(gerente, 'PUT', `/ordenes/${otra.id}`, {
+      pedido: 'Vuelve',
+      autorizaNombre: 'Jorge Pérez (dueño de la flota)',
+      autorizaTelefono: '342 400-9000',
+    })
+    expect(r.json()).toMatchObject({
+      autorizaNombre: 'Jorge Pérez (dueño de la flota)',
+      autorizaTelefono: '342 400-9000',
+      presupuestos: [],
+    })
+  })
+
+  it('se arma con los renglones elegidos: quedan pendientes y la orden espera autorización', async () => {
+    const cargada = (
+      await pedir(gerente, 'PUT', `/ordenes/${otra.id}/items`, {
+        items: [
+          { tipo: 'trabajo', descripcion: 'Diagnóstico', cantidad: '1', precioUnitario: '20000' },
+          {
+            tipo: 'trabajo',
+            descripcion: 'Cambio de embrague',
+            cantidad: '1',
+            precioUnitario: '210000',
+          },
+          {
+            tipo: 'repuesto',
+            descripcion: 'Kit de embrague',
+            cantidad: '1',
+            precioUnitario: '325000',
+          },
+        ],
+      })
+    ).json()
+    const [diagnostico, mano, kit] = cargada.items
+
+    const vacio = await pedir(gerente, 'POST', `/ordenes/${otra.id}/presupuestos`, { itemIds: [] })
+    expect(vacio.statusCode).toBe(400)
+
+    const r = await pedir(gerente, 'POST', `/ordenes/${otra.id}/presupuestos`, {
+      itemIds: [mano.id, kit.id],
+    })
+    expect(r.statusCode, r.body).toBe(201)
+    const o = r.json()
+    presupuestoId = o.presupuestos[0].id
+    expect(o).toMatchObject({
+      estado: 'esperando_autorizacion',
+      presupuestos: [{ numero: 1, estado: 'pendiente', total: '535000.00', totalAutorizado: null }],
+    })
+    expect(o.items.map((i: { autorizacion: string | null }) => i.autorizacion)).toEqual([
+      null,
+      'pendiente',
+      'pendiente',
+    ])
+
+    // Un renglón que ya está en un presupuesto no entra en otro.
+    const otraVez = await pedir(gerente, 'POST', `/ordenes/${otra.id}/presupuestos`, {
+      itemIds: [kit.id],
+    })
+    expect(otraVez.json().code).toBe('ITEM_INVALIDO')
+
+    // Lo presupuestado no se cambia ni se quita mientras espera; lo demás, sí.
+    const cambiado = await pedir(gerente, 'PUT', `/ordenes/${otra.id}/items`, {
+      items: [diagnostico, mano, { ...kit, precioUnitario: '1' }],
+    })
+    expect(cambiado.json().code).toBe('PRESUPUESTO_PENDIENTE')
+    const conOtro = await pedir(gerente, 'PUT', `/ordenes/${otra.id}/items`, {
+      items: [
+        mano,
+        kit,
+        { tipo: 'trabajo', descripcion: 'Lavado', cantidad: '1', precioUnitario: '5000' },
+      ],
+    })
+    expect(conOtro.statusCode, conOtro.body).toBe(200)
+    expect(conOtro.json().items.slice(0, 2)).toMatchObject([
+      { id: mano.id, autorizacion: 'pendiente' },
+      { id: kit.id, autorizacion: 'pendiente' },
+    ])
+
+    // Sin respuesta no se termina.
+    const terminar = await pedir(gerente, 'POST', `/ordenes/${otra.id}/terminar`)
+    expect(terminar.json().code).toBe('PRESUPUESTO_PENDIENTE')
+  })
+
+  it('el PDF del presupuesto sale con su casilla por renglón', async () => {
+    const r = await pedir(gerente, 'GET', `/ordenes/${otra.id}/presupuestos/${presupuestoId}/pdf`)
+    expect(r.statusCode).toBe(200)
+    expect(r.rawPayload.subarray(0, 5).toString()).toBe('%PDF-')
+  })
+
+  it('la respuesta dice quién y cómo; lo rechazado no se cobra y la orden vuelve a trabajarse', async () => {
+    const antes = (await pedir(gerente, 'GET', `/ordenes/${otra.id}`)).json()
+    const [mano, kit] = antes.items
+
+    const r = await pedir(
+      gerente,
+      'POST',
+      `/ordenes/${otra.id}/presupuestos/${presupuestoId}/respuesta`,
+      {
+        autorizados: [mano.id],
+        autorizaNombre: 'Jorge Pérez',
+        medio: 'whatsapp',
+        nota: 'El kit lo trae él',
+      },
+    )
+    expect(r.statusCode, r.body).toBe(200)
+    const o = r.json()
+    expect(o).toMatchObject({
+      estado: 'en_proceso',
+      // Mano de obra 210.000 + lavado 5.000: el kit rechazado no suma.
+      total: '215000.00',
+      presupuestos: [
+        {
+          estado: 'respondido',
+          totalAutorizado: '210000.00',
+          autorizaNombre: 'Jorge Pérez',
+          autorizaMedio: 'whatsapp',
+          nota: 'El kit lo trae él',
+        },
+      ],
+    })
+    expect(o.items.find((i: { id: string }) => i.id === kit.id).autorizacion).toBe('rechazado')
+
+    const otraVez = await pedir(
+      gerente,
+      'POST',
+      `/ordenes/${otra.id}/presupuestos/${presupuestoId}/respuesta`,
+      { autorizados: [], autorizaNombre: 'Jorge', medio: 'telefono' },
+    )
+    expect(otraVez.json().code).toBe('ESTADO_INVALIDO')
+
+    const terminada = await pedir(gerente, 'POST', `/ordenes/${otra.id}/terminar`)
+    expect(terminada.json().estado).toBe('terminada')
+
+    const cambios = (await pedir(gerente, 'GET', '/auditoria/cambios?pagina=1&porPagina=100')).body
+    expect(cambios).toContain('Jorge Pérez autorizó 1 y rechazó 1, por WhatsApp')
+  })
+})

@@ -14,6 +14,10 @@ const ordenes = {
   items: vi.fn(),
   cambiarEstado: vi.fn(),
   pdf: vi.fn(),
+  presupuestar: vi.fn(),
+  responderPresupuesto: vi.fn(),
+  enviarPresupuesto: vi.fn(),
+  pdfPresupuesto: vi.fn(),
 }
 const listarVehiculos = vi.fn()
 const listarRepuestos = vi.fn()
@@ -63,6 +67,10 @@ const FICHA = {
   ...ORDEN,
   traeNombre: null,
   traeTelefono: null,
+  autorizaNombre: 'Jorge Pérez',
+  autorizaTelefono: null,
+  pagaEmail: 'flota@transportes.test',
+  presupuestos: [],
   kilometraje: 48210,
   combustible: 'medio',
   observaciones: null,
@@ -79,6 +87,8 @@ const FICHA = {
       precioUnitario: '1140200.0000',
       codigoAlicuota: 5,
       total: '1140200.00',
+      autorizacion: null,
+      presupuestoId: null,
     },
   ],
 }
@@ -270,5 +280,93 @@ describe('buscar el repuesto en el renglón', () => {
         }),
       ),
     )
+  })
+})
+
+describe('el presupuesto', () => {
+  const ITEM = FICHA.items[0] as (typeof FICHA.items)[number]
+  const PRESUPUESTO = {
+    id: '77777777-7777-4777-8777-777777777777',
+    numero: 1,
+    estado: 'pendiente',
+    total: '1140200.00',
+    totalAutorizado: null,
+    enviadoA: 'flota@transportes.test',
+    creadoPor: 'Martín Gutiérrez',
+    creadoEn: '2026-09-17T12:00:00.000Z',
+    autorizaNombre: null,
+    autorizaMedio: null,
+    nota: null,
+    respondidoEn: null,
+  }
+  const PENDIENTE = {
+    ...FICHA,
+    estado: 'esperando_autorizacion',
+    items: [{ ...ITEM, autorizacion: 'pendiente', presupuestoId: PRESUPUESTO.id }],
+    presupuestos: [PRESUPUESTO],
+  }
+
+  it('se arma con los renglones elegidos y sale por mail al correo de quien paga', async () => {
+    ordenes.presupuestar.mockResolvedValue(PENDIENTE)
+    await montarApp(`/ordenes/${ORDEN.id}`)
+    await userEvent.click(await screen.findByRole('button', { name: 'Pedir autorización' }))
+    const renglones = await screen.findByRole('list', { name: 'Renglones a presupuestar' })
+    expect(within(renglones).getByRole('checkbox')).toHaveProperty('checked', true)
+    expect(screen.getByLabelText('Correo')).toHaveProperty('value', 'flota@transportes.test')
+
+    ordenes.ficha.mockResolvedValue(PENDIENTE)
+    await userEvent.click(screen.getByRole('button', { name: 'Armar el presupuesto' }))
+    await waitFor(() =>
+      expect(ordenes.presupuestar).toHaveBeenCalledWith({
+        id: ORDEN.id,
+        itemIds: [ITEM.id],
+        enviarA: 'flota@transportes.test',
+      }),
+    )
+    expect(await screen.findByText('Esperando respuesta')).toBeDefined()
+  })
+
+  it('lo que espera respuesta no se edita; rechazar pide confirmar y dice qué no se cobra', async () => {
+    ordenes.ficha.mockResolvedValue(PENDIENTE)
+    const RESPONDIDA = {
+      ...FICHA,
+      estado: 'en_proceso',
+      items: [{ ...ITEM, autorizacion: 'rechazado', presupuestoId: PRESUPUESTO.id }],
+      presupuestos: [{ ...PRESUPUESTO, estado: 'respondido', totalAutorizado: '0.00' }],
+    }
+    ordenes.responderPresupuesto.mockResolvedValue(RESPONDIDA)
+    await montarApp(`/ordenes/${ORDEN.id}`)
+    const lista = await screen.findByRole('list', { name: 'Items' })
+    expect(within(lista).getByText('Esperando autorización')).toBeDefined()
+    expect(screen.queryByRole('listitem', { name: 'Item 1' })).toBeNull()
+
+    await userEvent.click(screen.getByRole('button', { name: 'Registrar respuesta' }))
+    const respuesta = await screen.findByRole('region', { name: 'Respuesta al presupuesto 1' })
+    expect(within(respuesta).getByLabelText('Quién autorizó')).toHaveProperty(
+      'value',
+      'Jorge Pérez',
+    )
+    await userEvent.click(within(respuesta).getByRole('checkbox'))
+    await userEvent.selectOptions(within(respuesta).getByLabelText('Cómo'), 'Por WhatsApp')
+    await userEvent.keyboard('{F2}')
+
+    const dialogo = await screen.findByRole('alertdialog', {
+      name: '¿No autoriza nada de todo el presupuesto?',
+    })
+    expect(dialogo.textContent).toMatch(/no se hace ni se cobra/)
+    ordenes.ficha.mockResolvedValue(RESPONDIDA)
+    await confirmarDialogo('Registrar la respuesta')
+    await waitFor(() =>
+      expect(ordenes.responderPresupuesto).toHaveBeenCalledWith(
+        expect.objectContaining({
+          id: ORDEN.id,
+          presupuestoId: PRESUPUESTO.id,
+          autorizados: [],
+          autorizaNombre: 'Jorge Pérez',
+          medio: 'whatsapp',
+        }),
+      ),
+    )
+    expect(await screen.findByText('Rechazado: no se cobra')).toBeDefined()
   })
 })

@@ -384,3 +384,215 @@ export async function generarOrdenPdf(o: DatosOrdenImpresa): Promise<Uint8Array>
   await fin
   return new Uint8Array(Buffer.concat(partes))
 }
+
+/**
+ * El presupuesto: lo que se le consulta al cliente antes de hacerlo. Una hoja, con una casilla
+ * por renglón para que marque lo que autoriza y la firma de conformidad. Si autoriza por
+ * teléfono o WhatsApp no hay firma, y la respuesta queda registrada en la orden.
+ */
+export interface DatosPresupuestoImpreso {
+  concesionaria: string
+  sucursal: { nombre: string; domicilio: string | null; telefono: string | null }
+  ordenNumero: number
+  numero: number
+  /** AAAA-MM-DDTHH:mm, en la hora de Argentina. */
+  fecha: string
+  vehiculo: {
+    dominio: string | null
+    marcaModelo: string | null
+    chasis: string
+    kilometraje: number | null
+  }
+  cliente: string | null
+  autoriza: { nombre: string | null; telefono: string | null }
+  asesor: string
+  items: Array<{
+    tipo: 'trabajo' | 'repuesto'
+    descripcion: string
+    cantidad: string
+    precioUnitario: string
+    total: string
+  }>
+  total: string
+  /** Hasta cuándo vale el precio, AAAA-MM-DD. */
+  validoHasta: string
+}
+
+export async function generarPresupuestoPdf(p: DatosPresupuestoImpreso): Promise<Uint8Array> {
+  const doc = new PDFDocument({
+    size: 'A4',
+    margin: 0,
+    autoFirstPage: false,
+    info: {
+      Title: `Presupuesto ${p.numero} de la orden ${p.ordenNumero}`,
+      Author: p.concesionaria,
+      Creator: 'GarageProBoard',
+    },
+  })
+  const partes: Buffer[] = []
+  doc.on('data', (b: Buffer) => partes.push(b))
+  const fin = new Promise<void>((resolver) => doc.on('end', () => resolver()))
+
+  doc.addPage()
+  let y = mm(12)
+  doc
+    .font(NEGRITA)
+    .fontSize(12)
+    .text(p.concesionaria, IZQ, y, { width: UTIL * 0.6 })
+  doc
+    .font(NORMAL)
+    .fontSize(8)
+    .text(
+      [
+        p.sucursal.nombre,
+        p.sucursal.domicilio,
+        p.sucursal.telefono && `Tel. ${p.sucursal.telefono}`,
+      ]
+        .filter(Boolean)
+        .join(' · '),
+      IZQ,
+      y + mm(5.5),
+      { width: UTIL * 0.6 },
+    )
+  doc.font(NORMAL).fontSize(9).text('PRESUPUESTO', IZQ, y, { width: UTIL, align: 'right' })
+  doc
+    .font(NEGRITA)
+    .fontSize(20)
+    .text(`OT ${String(p.ordenNumero).padStart(6, '0')} · N° ${p.numero}`, IZQ, y + mm(4), {
+      width: UTIL,
+      align: 'right',
+    })
+  doc
+    .font(NORMAL)
+    .fontSize(8)
+    .text(`${fecha(p.fecha)} · válido hasta el ${fecha(p.validoHasta)}`, IZQ, y + mm(12), {
+      width: UTIL,
+      align: 'right',
+    })
+  y += mm(22)
+
+  const col = UTIL / 4
+  caja(doc, y, mm(26), 'Vehículo y cliente')
+  doc
+    .font(NEGRITA)
+    .fontSize(16)
+    .text(patente(p.vehiculo.dominio), IZQ + mm(3), y + mm(6), {
+      width: col * 1.3,
+      lineBreak: false,
+    })
+  etiquetaValor(
+    doc,
+    IZQ + col * 1.4,
+    y + mm(6),
+    'Marca y modelo',
+    p.vehiculo.marcaModelo ?? '',
+    col * 1.3,
+  )
+  etiquetaValor(doc, IZQ + col * 2.8, y + mm(6), 'Chasis', p.vehiculo.chasis, col * 1.15)
+  etiquetaValor(doc, IZQ + mm(3), y + mm(15), 'Cliente', p.cliente ?? '', col * 1.3)
+  etiquetaValor(
+    doc,
+    IZQ + col * 1.4,
+    y + mm(15),
+    'Autoriza',
+    [p.autoriza.nombre, p.autoriza.telefono].filter(Boolean).join(' · '),
+    col * 1.3,
+  )
+  etiquetaValor(doc, IZQ + col * 2.8, y + mm(15), 'Asesor', p.asesor, col * 1.15)
+  y += mm(30)
+
+  // Renglones, con la casilla para marcar
+  const alto = mm(14) + p.items.length * mm(6.5)
+  caja(doc, y, alto, 'Trabajos y repuestos a autorizar')
+  let yy = y + mm(7)
+  doc.font(NEGRITA).fontSize(7).fillColor('#555')
+  doc.text('OK', IZQ + mm(3), yy, { width: mm(6), lineBreak: false })
+  doc.text('DESCRIPCIÓN', IZQ + mm(24), yy, { width: mm(80), lineBreak: false })
+  doc.text('CANT.', DER - mm(78), yy, { width: mm(14), align: 'right', lineBreak: false })
+  doc.text('UNITARIO', DER - mm(60), yy, { width: mm(26), align: 'right', lineBreak: false })
+  doc.text('TOTAL', DER - mm(31), yy, { width: mm(28), align: 'right', lineBreak: false })
+  doc.fillColor('#000')
+  yy += mm(5)
+  for (const i of p.items) {
+    doc
+      .lineWidth(0.7)
+      .rect(IZQ + mm(3), yy - mm(0.4), mm(3.6), mm(3.6))
+      .stroke()
+    doc.font(NORMAL).fontSize(8).fillColor('#555')
+    doc.text(i.tipo === 'trabajo' ? 'Trabajo' : 'Repuesto', IZQ + mm(9), yy, {
+      width: mm(15),
+      lineBreak: false,
+    })
+    doc.fillColor('#000').fontSize(9.5)
+    doc.text(i.descripcion, IZQ + mm(24), yy, {
+      width: UTIL - mm(24) - mm(80),
+      lineBreak: false,
+      ellipsis: true,
+      height: doc.currentLineHeight(),
+    })
+    doc.text(formatearImporte(i.cantidad).replace(/,00$/, ''), DER - mm(78), yy, {
+      width: mm(14),
+      align: 'right',
+      lineBreak: false,
+    })
+    doc.text(`$ ${formatearImporte(i.precioUnitario)}`, DER - mm(60), yy, {
+      width: mm(26),
+      align: 'right',
+      lineBreak: false,
+    })
+    doc.text(`$ ${formatearImporte(i.total)}`, DER - mm(31), yy, {
+      width: mm(28),
+      align: 'right',
+      lineBreak: false,
+    })
+    yy += mm(6.5)
+  }
+  y += alto + mm(3)
+  doc
+    .font(NEGRITA)
+    .fontSize(13)
+    .text(`Total: $ ${formatearImporte(p.total)}`, IZQ, y, { width: UTIL - mm(3), align: 'right' })
+  doc
+    .font(NORMAL)
+    .fontSize(8)
+    .text('Precios finales con IVA incluido.', IZQ, y + mm(6), {
+      width: UTIL - mm(3),
+      align: 'right',
+    })
+
+  const yFirma = Math.max(y + mm(30), 297 * MM - mm(45))
+  doc
+    .font(NORMAL)
+    .fontSize(7.5)
+    .fillColor('#444')
+    .text(
+      'Marque los trabajos que autoriza. Lo que no se autoriza no se hace ni se cobra. Si durante el ' +
+        'trabajo aparece algo no previsto, se consulta antes de hacerlo. Los precios valen hasta la ' +
+        'fecha indicada; los repuestos quedan sujetos a disponibilidad.',
+      IZQ,
+      yFirma - mm(14),
+      { width: UTIL },
+    )
+    .fillColor('#000')
+  doc
+    .lineWidth(0.6)
+    .moveTo(IZQ, yFirma + mm(10))
+    .lineTo(IZQ + mm(75), yFirma + mm(10))
+    .stroke()
+  doc
+    .moveTo(DER - mm(45), yFirma + mm(10))
+    .lineTo(DER, yFirma + mm(10))
+    .stroke()
+  doc
+    .font(NORMAL)
+    .fontSize(8)
+    .text('Firma y aclaración de quien autoriza', IZQ, yFirma + mm(12), {
+      width: mm(75),
+      align: 'center',
+    })
+  doc.text('Fecha', DER - mm(45), yFirma + mm(12), { width: mm(45), align: 'center' })
+
+  doc.end()
+  await fin
+  return new Uint8Array(Buffer.concat(partes))
+}

@@ -159,13 +159,16 @@ function OrdenesParaFacturar({
         id: o.id,
         numero: o.numero,
         paga: o.paga,
-        renglones: o.items.map((i) => ({
-          ...renglonVacio(),
-          descripcion: i.descripcion,
-          cantidad: i.cantidad.replace(/\.?0+$/, ''),
-          precioUnitario: i.precioUnitario.replace(/\.?0+$/, ''),
-          codigoAlicuota: i.codigoAlicuota as Renglon['codigoAlicuota'],
-        })),
+        // Lo que el cliente rechazó en un presupuesto no se cobra.
+        renglones: o.items
+          .filter((i) => i.autorizacion !== 'rechazado')
+          .map((i) => ({
+            ...renglonVacio(),
+            descripcion: i.descripcion,
+            cantidad: i.cantidad.replace(/\.?0+$/, ''),
+            precioUnitario: i.precioUnitario.replace(/\.?0+$/, ''),
+            codigoAlicuota: i.codigoAlicuota as Renglon['codigoAlicuota'],
+          })),
       })
     } catch (error) {
       notificar.error(`No se pudo traer la orden. ${mensajeGeneral(error)}`)

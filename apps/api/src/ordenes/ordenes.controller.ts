@@ -6,7 +6,7 @@ import { implement } from '@orpc/nest'
 import type { FastifyRequest } from 'fastify'
 import { Operacion } from '../comun/operacion.ts'
 import { qrFirmado, SecretoQrFaltante } from '../comun/qr.ts'
-import { ErrorOrdenes, ServicioOrdenes } from './ordenes.service.ts'
+import { ErrorOrdenes, horaArgentina, ServicioOrdenes } from './ordenes.service.ts'
 
 const c = contrato.ordenes
 
@@ -24,21 +24,6 @@ function traducir<E extends Partial<Record<ErrorOrdenes['codigo'] | 'SIN_SECRETO
     if (fabricar) throw error.datos ? fabricar({ data: error.datos }) : fabricar()
   }
   throw error
-}
-
-/** «2026-09-16T09:42», en la hora de Argentina. */
-function horaArgentina(iso: string) {
-  const partes = new Intl.DateTimeFormat('en-CA', {
-    timeZone: 'America/Argentina/Buenos_Aires',
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-    hourCycle: 'h23',
-  }).formatToParts(new Date(iso))
-  const v = (t: string) => partes.find((p) => p.type === t)?.value ?? ''
-  return `${v('year')}-${v('month')}-${v('day')}T${v('hour')}:${v('minute')}`
 }
 
 @Controller()
@@ -120,6 +105,46 @@ export class ControladorOrdenes {
     )
   }
 
+  @Operacion(c.presupuestar)
+  presupuestar(@Req() pedido: FastifyRequest) {
+    return implement(c.presupuestar).handler(({ input, errors }) =>
+      this.servicio
+        .presupuestar(input.id, input.itemIds, input.enviarA, pedido.ip)
+        .catch((e) => traducir(e, errors)),
+    )
+  }
+
+  @Operacion(c.enviarPresupuesto)
+  enviarPresupuesto(@Req() pedido: FastifyRequest) {
+    return implement(c.enviarPresupuesto).handler(({ input, errors }) =>
+      this.servicio
+        .enviarPresupuesto(input.id, input.presupuestoId, input.para, pedido.ip)
+        .catch((e) => traducir(e, errors)),
+    )
+  }
+
+  @Operacion(c.responderPresupuesto)
+  responderPresupuesto(@Req() pedido: FastifyRequest) {
+    return implement(c.responderPresupuesto).handler(
+      ({ input: { id, presupuestoId, ...respuesta }, errors }) =>
+        this.servicio
+          .responderPresupuesto(id, presupuestoId, respuesta, pedido.ip)
+          .catch((e) => traducir(e, errors)),
+    )
+  }
+
+  @Operacion(c.pdfPresupuesto)
+  pdfPresupuesto() {
+    return implement(c.pdfPresupuesto).handler(async ({ input, errors }) => {
+      try {
+        const { bytes, nombre } = await this.servicio.pdfPresupuesto(input.id, input.presupuestoId)
+        return new File([bytes], nombre, { type: 'application/pdf' })
+      } catch (error) {
+        return traducir(error, errors)
+      }
+    })
+  }
+
   @Operacion(c.pdf)
   pdf() {
     return implement(c.pdf).handler(async ({ input, errors }) => {
@@ -134,7 +159,7 @@ export class ControladorOrdenes {
           },
           numero: o.numero,
           qr: qrFirmado(TIPOS_QR.orden, extra.codigoQr),
-          ingreso: horaArgentina(o.creadoEn),
+          ingreso: horaArgentina(new Date(o.creadoEn)),
           prometidaPara: o.prometidaPara,
           vehiculo: {
             dominio: o.vehiculo.dominio,
@@ -152,12 +177,15 @@ export class ControladorOrdenes {
           observaciones: o.observaciones,
           asesor: o.asesor,
           mecanico: o.mecanico?.nombre ?? null,
-          items: o.items.map((i) => ({
-            tipo: i.tipo,
-            descripcion: i.descripcion,
-            cantidad: i.cantidad,
-            total: i.total,
-          })),
+          // Lo que el cliente rechazó no va en la orden impresa: no se hace ni se cobra.
+          items: o.items
+            .filter((i) => i.autorizacion !== 'rechazado')
+            .map((i) => ({
+              tipo: i.tipo,
+              descripcion: i.descripcion,
+              cantidad: i.cantidad,
+              total: i.total,
+            })),
           total: o.total,
         })
         return new File([bytes], `Orden-${String(o.numero).padStart(6, '0')}.pdf`, {

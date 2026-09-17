@@ -77,6 +77,9 @@ export const orden = pgTable(
     pagaId: uuid().references(() => entidadComercial.id),
     traeNombre: text(),
     traeTelefono: text(),
+    /** Quién dice que sí a los trabajos: el dueño de la flota, no el chofer que trajo el auto. */
+    autorizaNombre: text(),
+    autorizaTelefono: text(),
 
     kilometraje: integer(),
     combustible: text(),
@@ -137,13 +140,77 @@ export const ordenItem = pgTable(
     precioUnitario: numeric({ precision: 18, scale: 4 }).notNull().default('0'),
     /** Código de alícuota de AFIP. 21% por omisión: la mano de obra y casi todo repuesto. */
     codigoAlicuota: smallint().notNull().default(5),
+    /**
+     * Sin valor, el renglón no pasó por un presupuesto: lo pidió el cliente al dejar el auto, o
+     * el asesor lo carga sin consultar. Pendiente, está en un presupuesto esperando respuesta y
+     * no se toca. Rechazado, queda a la vista pero no se cobra ni consume stock.
+     */
+    autorizacion: text(),
+    presupuestoId: uuid().references((): AnyPgColumn => ordenPresupuesto.id),
     creadoEn: creadoEn(),
   },
   (t) => [
     index('orden_item_orden_idx').on(t.ordenId, t.orden),
+    check(
+      'orden_item_autorizacion_valida',
+      sql`${t.autorizacion} is null or ${t.autorizacion} in ('pendiente', 'autorizado', 'rechazado')`,
+    ),
+    check(
+      'orden_item_autorizacion_con_presupuesto',
+      sql`(${t.autorizacion} is null) = (${t.presupuestoId} is null)`,
+    ),
     check('orden_item_tipo_valido', sql`${t.tipo} in ('trabajo', 'repuesto')`),
     check('orden_item_cantidad_positiva', sql`${t.cantidad} > 0`),
     check('orden_item_precio_no_negativo', sql`${t.precioUnitario} >= 0`),
+  ],
+)
+
+export const MEDIOS_AUTORIZACION = ['presencial', 'telefono', 'whatsapp', 'mail'] as const
+
+/**
+ * Un presupuesto: los trabajos y repuestos que se le consultan al cliente antes de hacerlos.
+ *
+ * No copia los renglones: los marca (`orden_item.presupuesto_id`). Lo que se presupuestó es lo
+ * que está en la orden, y mientras espera respuesta no se modifica, así que la foto y la orden
+ * no pueden divergir. El total sí queda anotado: es lo que se le dijo al cliente.
+ *
+ * La respuesta dice quién autorizó y por qué medio. Por teléfono o WhatsApp no hay firma, y
+ * «¿quién dijo que sí?» es la primera pregunta cuando el cliente no quiere pagar.
+ */
+export const ordenPresupuesto = pgTable(
+  'orden_presupuesto',
+  {
+    id: pk(),
+    tenantId: tenantId().references(() => tenant.id),
+    ordenId: uuid()
+      .notNull()
+      .references((): AnyPgColumn => orden.id),
+    /** 1, 2, 3… dentro de la orden: «OT 123, presupuesto 2». */
+    numero: smallint().notNull(),
+    estado: text().notNull().default('pendiente'),
+    total: numeric({ precision: 18, scale: 2 }).notNull(),
+    enviadoA: text(),
+    creadoPor: uuid()
+      .notNull()
+      .references(() => usuario.id),
+    autorizaNombre: text(),
+    autorizaMedio: text(),
+    nota: text(),
+    respondidoPor: uuid().references(() => usuario.id),
+    respondidoEn: timestamp({ withTimezone: true }),
+    creadoEn: creadoEn(),
+  },
+  (t) => [
+    unique('orden_presupuesto_numero_uq').on(t.ordenId, t.numero),
+    check('orden_presupuesto_estado_valido', sql`${t.estado} in ('pendiente', 'respondido')`),
+    check(
+      'orden_presupuesto_medio_valido',
+      sql`${t.autorizaMedio} is null or ${t.autorizaMedio} in ('presencial', 'telefono', 'whatsapp', 'mail')`,
+    ),
+    check(
+      'orden_presupuesto_respuesta_completa',
+      sql`${t.estado} <> 'respondido' or (${t.respondidoEn} is not null and ${t.autorizaNombre} is not null and ${t.autorizaMedio} is not null)`,
+    ),
   ],
 )
 
