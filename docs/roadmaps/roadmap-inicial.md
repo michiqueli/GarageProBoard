@@ -158,8 +158,9 @@ La barrera de entrada más alta. Nada se vende sin esto.
       CUIT, la condición del receptor sale del padrón al emitir
 - ✅ PDF del comprobante con QR (`@gpb/pdf`: el formato de «Comprobantes en línea»; sin
       código de barras, que la RG 4.892 reemplazó por el QR), conectado a la emisión
-- ⬜ Mandar el PDF por mail al receptor
-- ⬜ Notas de crédito y débito, con el comprobante asociado
+- ✅ Mandar el PDF por mail al receptor (SMTP; Mailpit en desarrollo)
+- 🔨 Notas de crédito ✅, con el comprobante asociado: anular una factura la devuelve a caja.
+      Faltan las notas de débito
 - ✅ Pantalla de Caja: facturar a consumidor final, a un cliente o a un CUIT; últimos
       comprobantes con PDF y verificación de inciertos
 - ✅ Importar un certificado que ya se usa en otro sistema
@@ -246,6 +247,3 @@ Cosas que sabemos que faltan, para que no se descubran de golpe:
   negocio en una tarde.
 - **Convenio Multilateral de Ingresos Brutos**: los campos están en el esquema, la
   lógica de coeficientes y retenciones por jurisdicción no.
-- El adaptador de AFIP está pendiente a propósito: sin certificados de homologación
-  cargados no hay forma de verificar que ande, y un adaptador que nadie probó contra
-  AFIP es peor que ninguno porque parece que funciona.
