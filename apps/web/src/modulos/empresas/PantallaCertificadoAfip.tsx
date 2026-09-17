@@ -383,16 +383,25 @@ function PasoPedido({ estado, alTerminar }: { estado: Estado; alTerminar: (e: Es
   if (pendiente && !otro) {
     return (
       <div className="flex flex-wrap items-center gap-x-3 gap-y-2 text-dato">
-        <span>
-          Pedido <b>{pendiente.alias}</b>, generado el {fecha(pendiente.creadoEn)}.
-        </span>
-        <Boton
-          tamano="chico"
-          icono={<IconoDescargar />}
-          onClick={() => descargar(`${pendiente.alias}.csr`, pendiente.pedido)}
-        >
-          Descargar el pedido (.csr)
-        </Boton>
+        {pendiente.pedido ? (
+          <>
+            <span>
+              Pedido <b>{pendiente.alias}</b>, generado el {fecha(pendiente.creadoEn)}.
+            </span>
+            <Boton
+              tamano="chico"
+              icono={<IconoDescargar />}
+              onClick={() => descargar(`${pendiente.alias}.csr`, pendiente.pedido)}
+            >
+              Descargar el pedido (.csr)
+            </Boton>
+          </>
+        ) : (
+          <span>
+            Certificado <b>{pendiente.alias}</b>, traído de otro sistema el{' '}
+            {fecha(pendiente.creadoEn)}.
+          </span>
+        )}
         <Boton
           tamano="chico"
           variante="sutil"
@@ -436,7 +445,89 @@ function PasoPedido({ estado, alTerminar }: { estado: Estado; alTerminar: (e: Es
           {pedir.isPending ? 'Generando…' : 'Generar y descargar el pedido'}
         </button>
       </div>
+      <Importar estado={estado} alTerminar={alTerminar} />
     </form>
+  )
+}
+
+/**
+ * Para quien ya factura con otro sistema y tiene el certificado con su clave: se cargan
+ * los dos archivos y se saltean los pasos de ARCA. La clave se lee acá y viaja una sola
+ * vez, al servidor, que la guarda cifrada.
+ */
+function Importar({ estado, alTerminar }: { estado: Estado; alTerminar: (e: Estado) => void }) {
+  const [abierto, setAbierto] = useState(false)
+  const [certificado, setCertificado] = useState<string | null>(null)
+  const [clave, setClave] = useState<string | null>(null)
+
+  const importar = useMutation({
+    mutationFn: () =>
+      api.certificados.importar({
+        empresaId: estado.empresa.id,
+        certificado: certificado ?? '',
+        clavePrivada: clave ?? '',
+      }),
+    onSuccess: (nuevo) => {
+      setAbierto(false)
+      alTerminar(nuevo)
+    },
+    meta: {
+      exito: 'Certificado cargado. Falta probarlo contra AFIP (paso 6)',
+      error: (e) => mensajeDe(e, estado),
+    },
+  })
+
+  if (!abierto) {
+    return (
+      <div>
+        <Boton tamano="chico" variante="sutil" onClick={() => setAbierto(true)}>
+          ¿Ya tenés el certificado y la clave de otro sistema?
+        </Boton>
+      </div>
+    )
+  }
+
+  const leer =
+    (poner: (texto: string) => void) => async (e: React.ChangeEvent<HTMLInputElement>) => {
+      const archivo = e.target.files?.[0]
+      if (archivo) poner(await archivo.text())
+    }
+
+  return (
+    <div className="grid gap-2 rounded-base border border-borde-suave bg-superficie-2 p-3">
+      <p className="text-dato text-texto-suave">
+        Si ya facturás con otro programa, cargá su certificado (.crt) y su clave privada (.key). Se
+        revisan igual que uno nuevo, y la clave queda guardada cifrada.
+      </p>
+      <div className="grid gap-2 md:grid-cols-2">
+        <label className="grid gap-1 text-dato">
+          <span className="text-etiqueta text-texto-suave">Certificado (.crt)</span>
+          <input
+            type="file"
+            accept=".crt,.pem,.cer"
+            onChange={leer(setCertificado)}
+            className="text-dato"
+          />
+        </label>
+        <label className="grid gap-1 text-dato">
+          <span className="text-etiqueta text-texto-suave">Clave privada (.key)</span>
+          <input type="file" accept=".key,.pem" onChange={leer(setClave)} className="text-dato" />
+        </label>
+      </div>
+      <div className="flex gap-2">
+        <Boton
+          variante="principal"
+          tamano="chico"
+          deshabilitado={!certificado || !clave || importar.isPending}
+          onClick={() => importar.mutate()}
+        >
+          {importar.isPending ? 'Revisando…' : 'Cargar el certificado'}
+        </Boton>
+        <Boton tamano="chico" variante="sutil" onClick={() => setAbierto(false)}>
+          Cancelar
+        </Boton>
+      </div>
+    </div>
   )
 }
 

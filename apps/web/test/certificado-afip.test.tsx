@@ -10,6 +10,7 @@ const certificados = {
   pedir: vi.fn(),
   cargar: vi.fn(),
   probar: vi.fn(),
+  importar: vi.fn(),
 }
 const renovar = vi.fn()
 
@@ -17,7 +18,7 @@ vi.mock('../src/sesion/cliente.ts', () => ({
   api: {
     auth: { iniciar: vi.fn(), cerrar: vi.fn().mockResolvedValue({}), cambiarSucursal: vi.fn() },
     certificados: Object.fromEntries(
-      ['estado', 'pedir', 'cargar', 'probar'].map((nombre) => [
+      ['estado', 'pedir', 'cargar', 'probar', 'importar'].map((nombre) => [
         nombre,
         (x: unknown) => (certificados as Record<string, (x: unknown) => unknown>)[nombre]?.(x),
       ]),
@@ -93,6 +94,47 @@ describe('el asistente del certificado de AFIP', () => {
     expect(URL.createObjectURL).toHaveBeenCalled()
     const paso3 = await screen.findByRole('listitem', { name: 'Paso 3: Subir el certificado' })
     expect(paso3.getAttribute('aria-current')).toBe('step')
+  })
+
+  it('el certificado de otro sistema se carga con su clave, sin pasar por ARCA', async () => {
+    certificados.estado.mockResolvedValue({ empresa: EMPRESA, activo: null, pendiente: null })
+    certificados.importar.mockResolvedValue({
+      empresa: EMPRESA,
+      activo: null,
+      pendiente: pendiente({
+        pedido: '',
+        alias: 'ecoparrilla',
+        conCertificado: true,
+        entorno: 'produccion',
+        vigenteHasta: '2028-02-24T00:00:00.000Z',
+      }),
+    })
+    await montarApp(RUTA)
+
+    await userEvent.click(
+      await screen.findByRole('button', {
+        name: '¿Ya tenés el certificado y la clave de otro sistema?',
+      }),
+    )
+    await userEvent.upload(
+      screen.getByLabelText('Certificado (.crt)'),
+      new File(['CERT'], 'cert.crt'),
+    )
+    await userEvent.upload(
+      screen.getByLabelText('Clave privada (.key)'),
+      new File(['KEY'], 'clave.key'),
+    )
+    await userEvent.click(screen.getByRole('button', { name: 'Cargar el certificado' }))
+
+    expect(certificados.importar).toHaveBeenCalledWith({
+      empresaId: EMPRESA.id,
+      certificado: 'CERT',
+      clavePrivada: 'KEY',
+    })
+    expect(await screen.findByText(/traído de otro sistema/)).toBeDefined()
+    // Lo que sigue es probarlo.
+    const paso6 = screen.getByRole('listitem', { name: 'Paso 6: Probar contra AFIP' })
+    expect(paso6.getAttribute('aria-current')).toBe('step')
   })
 
   it('un certificado que no corresponde dice qué hacer', async () => {

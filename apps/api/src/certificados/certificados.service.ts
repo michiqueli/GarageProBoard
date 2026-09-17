@@ -1,3 +1,4 @@
+import { createPrivateKey } from 'node:crypto'
 import {
   CertificadoRechazado,
   type Entorno,
@@ -22,7 +23,8 @@ export class ErrorCertificado extends Error {
       | 'SIN_PEDIDO'
       | 'CERTIFICADO_RECHAZADO'
       | 'NADA_PARA_PROBAR'
-      | 'AFIP_NO_ACEPTA',
+      | 'AFIP_NO_ACEPTA'
+      | 'CLAVE_ILEGIBLE',
     readonly datos?: { motivo: MotivoRechazoCertificado } | { detalle: string },
   ) {
     super(codigo)
@@ -101,6 +103,73 @@ export class ServicioCertificados {
           empresa: duenia.razonSocial,
           evento: 'pedido',
           alias,
+        },
+        ip,
+      )
+      return this.armar(tx, empresaId)
+    })
+  }
+
+  /**
+   * Un certificado que ya existe, con su clave: el de quien ya factura con otro sistema.
+   * Queda como pedido pendiente con el certificado cargado, así la prueba es la misma que
+   * para uno nuevo, y el que estaba activo sigue andando hasta que ésta pase.
+   */
+  importar(empresaId: string, certificadoPem: string, clavePrivadaPem: string, ip?: string) {
+    if (!this.caja.disponible) return Promise.reject(new ErrorCertificado('SIN_CLAVE_MAESTRA'))
+    try {
+      createPrivateKey(clavePrivadaPem)
+    } catch {
+      return Promise.reject(new ErrorCertificado('CLAVE_ILEGIBLE'))
+    }
+    return this.datos.transaccion(async (tx, sesion) => {
+      const duenia = await this.empresa(tx, empresaId, true)
+      const leido = (() => {
+        try {
+          return verificarCertificado({ certificadoPem, clavePrivadaPem, cuit: duenia.cuit })
+        } catch (error) {
+          if (error instanceof CertificadoRechazado) {
+            throw new ErrorCertificado('CERTIFICADO_RECHAZADO', { motivo: error.motivo })
+          }
+          throw error
+        }
+      })()
+
+      await tx
+        .update(certificadoAfip)
+        .set({ estado: 'descartado', actualizadoEn: new Date() })
+        .where(
+          and(eq(certificadoAfip.empresaId, empresaId), eq(certificadoAfip.estado, 'pendiente')),
+        )
+
+      const [creado] = await tx
+        .insert(certificadoAfip)
+        .values({
+          tenantId: sesion.tenantId,
+          empresaId,
+          alias: leido.alias,
+          // No hubo pedido: el certificado se generó en otro lado.
+          pedido: '',
+          clavePrivadaCifrada: this.caja.cifrar(clavePrivadaPem.trim(), contextoClave(empresaId)),
+          certificado: certificadoPem.trim(),
+          entorno: leido.entorno,
+          vigenteDesde: leido.vigenteDesde,
+          vigenteHasta: leido.vigenteHasta,
+        })
+        .returning({ id: certificadoAfip.id })
+      if (!creado) throw new Error('No se pudo guardar el certificado.')
+
+      await this.auditar(
+        tx,
+        sesion,
+        creado.id,
+        'alta',
+        {
+          empresa: duenia.razonSocial,
+          evento: 'importado',
+          alias: leido.alias,
+          entorno: leido.entorno,
+          vigenteHasta: leido.vigenteHasta.toISOString().slice(0, 10),
         },
         ip,
       )

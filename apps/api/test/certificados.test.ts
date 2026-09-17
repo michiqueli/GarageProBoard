@@ -272,6 +272,40 @@ describe('el certificado de una razón social', () => {
     expect(texto).toContain('Lo probó contra AFIP y quedó activo')
   })
 
+  it('un certificado de otro sistema se importa con su clave, y queda pendiente de prueba', async () => {
+    const activo = (await pedir(gerente, 'GET', base())).json().activo
+    const existente = await generarPedido({ cuit, razonSocial: 'X', alias: 'ecoparrilla' })
+    const certificado = await firmarComoAfip(existente.pedidoPem, { entorno: 'produccion' })
+
+    const sinClave = await pedir(gerente, 'PUT', `${base()}/importado`, {
+      certificado,
+      clavePrivada: 'esto no es una clave',
+    })
+    expect(sinClave.json().code).toBe('CLAVE_ILEGIBLE')
+
+    const otraClave = await generarPedido({ cuit, razonSocial: 'X', alias: 'otra' })
+    const cruzado = await pedir(gerente, 'PUT', `${base()}/importado`, {
+      certificado,
+      clavePrivada: otraClave.clavePrivadaPem,
+    })
+    expect(cruzado.json()).toMatchObject({ data: { motivo: 'NO_CORRESPONDE_AL_PEDIDO' } })
+
+    const r = await pedir(gerente, 'PUT', `${base()}/importado`, {
+      certificado,
+      clavePrivada: existente.clavePrivadaPem,
+    })
+    expect(r.statusCode).toBe(200)
+    expect(r.json()).toMatchObject({
+      activo: { id: activo.id },
+      pendiente: { alias: 'ecoparrilla', conCertificado: true, entorno: 'produccion', pedido: '' },
+    })
+
+    respuestaAfip = async () => [pv(3)]
+    const probado = await pedir(gerente, 'POST', `${base()}/prueba`)
+    expect(probado.json().estado.activo).toMatchObject({ alias: 'ecoparrilla' })
+    expect(ultimaCredencial?.certificadoPem).toBe(certificado.trim())
+  })
+
   it('una empresa que no es de la concesionaria no existe', async () => {
     const r = await pedir(
       gerente,

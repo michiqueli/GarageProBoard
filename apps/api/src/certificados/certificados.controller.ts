@@ -46,6 +46,15 @@ export class ControladorCertificados {
     )
   }
 
+  @Operacion(c.importar)
+  importar(@Req() pedido: FastifyRequest) {
+    return implement(c.importar).handler(({ input, errors }) =>
+      this.servicio
+        .importar(input.empresaId, input.certificado, input.clavePrivada, pedido.ip)
+        .catch((e) => this.traducir(e, errors)),
+    )
+  }
+
   @Operacion(c.cargar)
   cargar(@Req() pedido: FastifyRequest) {
     return implement(c.cargar).handler(({ input, errors }) =>

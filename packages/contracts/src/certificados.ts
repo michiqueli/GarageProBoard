@@ -94,6 +94,38 @@ export const contratoCertificados = {
     .errors(ERRORES)
     .output(estadoCertificado),
 
+  importar: permiso()
+    .route({
+      method: 'PUT',
+      path: '/empresas/{empresaId}/certificado-afip/importado',
+      tags: [TAG],
+      operationId: 'importarCertificadoAfip',
+      summary: 'Cargar un certificado que ya se usa en otro sistema, con su clave',
+      description:
+        'Para quien ya factura con otro programa y tiene el certificado y su clave privada. ' +
+        'Se verifica igual que uno nuevo, la clave se guarda cifrada, y queda pendiente hasta ' +
+        'que pase la prueba. Reemplaza el pedido en curso, si había uno.',
+    })
+    .input(
+      empresaId.extend({
+        certificado: z.string().min(1).max(20_000),
+        clavePrivada: z.string().min(1).max(20_000),
+      }),
+    )
+    .errors({
+      ...ERRORES,
+      CLAVE_ILEGIBLE: {
+        status: 422,
+        message: 'La clave privada no se puede leer: tiene que ser el archivo .key sin contraseña',
+      },
+      CERTIFICADO_RECHAZADO: {
+        status: 422,
+        message: 'El certificado no sirve para esta empresa',
+        data: z.object({ motivo: z.enum(MOTIVOS_RECHAZO_CERTIFICADO) }),
+      },
+    })
+    .output(estadoCertificado),
+
   cargar: permiso()
     .route({
       method: 'PUT',

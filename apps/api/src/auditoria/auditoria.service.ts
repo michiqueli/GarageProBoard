@@ -239,6 +239,9 @@ function describirCertificado(despues: Foto): string {
   if (despues?.evento === 'pedido') {
     return `Generó el pedido de certificado para el computador «${String(despues.alias)}»`
   }
+  if (despues?.evento === 'importado') {
+    return `Cargó un certificado ${entorno} que ya existía, vigente hasta el ${fecha(despues.vigenteHasta)}`
+  }
   if (despues?.evento === 'certificado') {
     return `Cargó el certificado ${entorno}, vigente hasta el ${fecha(despues.vigenteHasta)}`
   }
