@@ -295,7 +295,9 @@ plata sin que nadie lo vea.
       verificación de que el vendedor hizo lo que tenía que hacer**
 - ⬜ **Gestor de eventos**: notificaciones por mail, SMS y WhatsApp — recordatorio de turno,
       **«su auto está listo»**, vencimiento del service, cumpleaños. Lo más barato que más se
-      nota, y el caño del mail ya está andando desde el Hito 3
+      nota, y el caño del mail ya está andando desde el Hito 3. **WhatsApp depende de la
+      landing**: Meta no da credenciales sin una URL del producto con su política de
+      privacidad
 - ⬜ **Cuestionarios de satisfacción** en venta y en posventa. Las terminales los exigen y
       los miden
 - ⬜ **Quejas y reclamos** centralizados, con alerta al responsable y seguimiento hasta que
@@ -382,6 +384,30 @@ La app nativa, que se integra con todo lo anterior en vez de ser un sistema apar
       fichar no se usa
 
 ---
+
+### Landing y presencia pública ⬜
+
+**Va antes de lo que parece.** No es sólo hacer ruido: Mercado Pago y Meta —y casi cualquier
+plataforma donde haya que registrar una aplicación— piden una **URL del producto** con
+política de privacidad y términos antes de darte credenciales. O sea que el gestor de
+eventos por WhatsApp del Hito 6 y cualquier cobro por Mercado Pago **están bloqueados por
+esto**, no por código.
+
+Y cuanto antes esté, antes empieza a indexar: la competencia lleva treinta años de dominio.
+
+- ⬜ Landing de **GarageProBoard** con qué es, para quién y los módulos. La marca se presentó
+      en el INPI el 16/09/2026
+- ⬜ Dominio propio y correo de contacto en ese dominio
+- ⬜ **Política de privacidad y términos y condiciones.** Es el requisito formal de Meta y de
+      Mercado Pago, y además vamos a tratar datos de terceros —clientes de la concesionaria—
+      con obligación de conservación
+- ⬜ Capturas de verdad del sistema. Las tres pantallas que más venden hoy: la orden de
+      trabajo, la caja facturando contra AFIP y el presupuesto con su PDF
+- ⬜ Formulario de contacto y pedido de demo
+- ⬜ Novedades o blog: los tres competidores tienen uno, y es por donde se entra buscando
+
+**Criterio de terminado:** se puede registrar una aplicación en Meta y en Mercado Pago sin
+que falte ningún dato.
 
 ### Integraciones: no ser una isla ⬜
 
