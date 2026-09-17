@@ -7,6 +7,7 @@ import { type FormEvent, useEffect, useRef, useState } from 'react'
 import { confirmar } from '../../componentes/avisos.ts'
 import { Boton } from '../../componentes/Boton.tsx'
 import { Campo } from '../../componentes/Campo.tsx'
+import { clicEnFila, FILA_CLICABLE } from '../../componentes/filas.ts'
 import { IconoEditar } from '../../componentes/iconos.tsx'
 import { ResultadoPadron } from '../../componentes/ResultadoPadron.tsx'
 import { Selector } from '../../componentes/Selector.tsx'
@@ -184,7 +185,10 @@ export function PantallaClientes() {
                 {datos.map((c) => (
                   <tr
                     key={c.id}
-                    className={`hover:bg-superficie-2 ${c.activo ? '' : 'text-texto-tenue'}`}
+                    className={`${FILA_CLICABLE} ${c.activo ? '' : 'text-texto-tenue'}`}
+                    onClick={clicEnFila(
+                      () => void navegar({ to: '/clientes/$id', params: { id: c.id } }),
+                    )}
                   >
                     <td className="h-fila border-b border-borde-suave px-3">
                       <span className="flex items-baseline gap-2">
@@ -223,9 +227,13 @@ export function PantallaClientes() {
         {datos.length > 0 && !esEscritorio && (
           <ul className="divide-y divide-borde-suave">
             {datos.map((c) => (
+              // biome-ignore lint/a11y/useKeyWithClickEvents: con teclado se entra por el enlace de la fila
               <li
                 key={c.id}
-                className={`grid gap-0.5 px-3 py-2.5 ${c.activo ? '' : 'text-texto-tenue'}`}
+                className={`grid gap-0.5 px-3 py-2.5 ${FILA_CLICABLE} ${c.activo ? '' : 'text-texto-tenue'}`}
+                onClick={clicEnFila(
+                  () => void navegar({ to: '/clientes/$id', params: { id: c.id } }),
+                )}
               >
                 <div className="flex items-baseline gap-2">
                   <span className="text-dato font-semibold">

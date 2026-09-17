@@ -6,6 +6,7 @@ import { Link, useNavigate } from '@tanstack/react-router'
 import { type FormEvent, useEffect, useRef, useState } from 'react'
 import { Boton } from '../../componentes/Boton.tsx'
 import { Campo } from '../../componentes/Campo.tsx'
+import { clicEnFila, FILA_CLICABLE } from '../../componentes/filas.ts'
 import { IconoAgregar } from '../../componentes/iconos.tsx'
 import { Selector } from '../../componentes/Selector.tsx'
 import { type ProveedorElegido, SelectorProveedor } from '../../componentes/SelectorProveedor.tsx'
@@ -34,6 +35,7 @@ const FILTROS: Array<{ valor: Filtro; texto: string }> = [
  * `Ins` da de alta una pieza.
  */
 export function PantallaRepuestos() {
+  const navegar = useNavigate()
   const tenantId = usarSesion((e) => e.datos?.tenant.id)
   const sucursalId = usarSesion((e) => e.datos?.sucursalActiva.id)
   const esEscritorio = useMedia(ES_ESCRITORIO)
@@ -160,7 +162,10 @@ export function PantallaRepuestos() {
               {datos.map((r) => (
                 <tr
                   key={r.id}
-                  className={`hover:bg-superficie-2 ${r.activo ? '' : 'text-texto-tenue'}`}
+                  className={`${FILA_CLICABLE} ${r.activo ? '' : 'text-texto-tenue'}`}
+                  onClick={clicEnFila(
+                    () => void navegar({ to: '/repuestos/$id', params: { id: r.id } }),
+                  )}
                 >
                   <td className="h-fila border-b border-borde-suave px-3 font-mono">
                     <Link
@@ -195,7 +200,14 @@ export function PantallaRepuestos() {
         {datos.length > 0 && !esEscritorio && (
           <ul className="divide-y divide-borde-suave">
             {datos.map((r) => (
-              <li key={r.id} className="grid gap-0.5 px-3 py-2.5">
+              // biome-ignore lint/a11y/useKeyWithClickEvents: con teclado se entra por el enlace de la fila
+              <li
+                key={r.id}
+                className={`grid gap-0.5 px-3 py-2.5 ${FILA_CLICABLE}`}
+                onClick={clicEnFila(
+                  () => void navegar({ to: '/repuestos/$id', params: { id: r.id } }),
+                )}
+              >
                 <div className="flex items-baseline gap-2">
                   <Link
                     to="/repuestos/$id"

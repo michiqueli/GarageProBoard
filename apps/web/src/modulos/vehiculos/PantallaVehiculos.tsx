@@ -6,6 +6,7 @@ import { type FormEvent, useEffect, useRef, useState } from 'react'
 import { Boton } from '../../componentes/Boton.tsx'
 import { Campo } from '../../componentes/Campo.tsx'
 import { BotonCopiar } from '../../componentes/Copiar.tsx'
+import { clicEnFila, FILA_CLICABLE } from '../../componentes/filas.ts'
 import { Patente } from '../../componentes/Patente.tsx'
 import { type ClienteElegido, SelectorCliente } from '../../componentes/SelectorCliente.tsx'
 import { Shell } from '../../componentes/Shell.tsx'
@@ -135,7 +136,13 @@ export function PantallaVehiculos() {
               </thead>
               <tbody>
                 {datos.map((v) => (
-                  <tr key={v.id} className="hover:bg-superficie-2">
+                  <tr
+                    key={v.id}
+                    className={FILA_CLICABLE}
+                    onClick={clicEnFila(
+                      () => void navegar({ to: '/vehiculos/$id', params: { id: v.id } }),
+                    )}
+                  >
                     <td className="h-fila border-b border-borde-suave px-3 py-1">
                       <EnlaceFicha vehiculo={v} />
                     </td>
@@ -164,7 +171,14 @@ export function PantallaVehiculos() {
         {datos.length > 0 && !esEscritorio && (
           <ul className="divide-y divide-borde-suave">
             {datos.map((v) => (
-              <li key={v.id} className="grid gap-0.5 px-3 py-2.5">
+              // biome-ignore lint/a11y/useKeyWithClickEvents: con teclado se entra por el enlace de la fila
+              <li
+                key={v.id}
+                className={`grid gap-0.5 px-3 py-2.5 ${FILA_CLICABLE}`}
+                onClick={clicEnFila(
+                  () => void navegar({ to: '/vehiculos/$id', params: { id: v.id } }),
+                )}
+              >
                 <div className="flex items-center gap-2">
                   <EnlaceFicha vehiculo={v} />
                   <span className="ml-auto text-etiqueta text-texto-suave">

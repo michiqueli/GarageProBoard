@@ -7,6 +7,7 @@ import { confirmar } from '../../componentes/avisos.ts'
 import { Boton } from '../../componentes/Boton.tsx'
 import { Campo } from '../../componentes/Campo.tsx'
 import { EstadoPedido } from '../../componentes/EstadoPedido.tsx'
+import { clicEnFila, FILA_CLICABLE } from '../../componentes/filas.ts'
 import { IconoAgregar, IconoBorrar } from '../../componentes/iconos.tsx'
 import { type ProveedorElegido, SelectorProveedor } from '../../componentes/SelectorProveedor.tsx'
 import { SelectorRepuesto } from '../../componentes/SelectorRepuesto.tsx'
@@ -34,6 +35,7 @@ const fecha = (iso: string) => new Date(iso).toLocaleDateString('es-AR')
  * a fábrica, o la mercadería que ya está en el depósito con su factura.
  */
 export function PantallaCompras() {
+  const navegar = useNavigate()
   const tenantId = usarSesion((e) => e.datos?.tenant.id)
   const sucursalId = usarSesion((e) => e.datos?.sucursalActiva.id)
   const esEscritorio = useMedia(ES_ESCRITORIO)
@@ -151,7 +153,13 @@ export function PantallaCompras() {
             </thead>
             <tbody>
               {datos.map((c) => (
-                <tr key={c.id} className="hover:bg-superficie-2">
+                <tr
+                  key={c.id}
+                  className={FILA_CLICABLE}
+                  onClick={clicEnFila(
+                    () => void navegar({ to: '/repuestos/compras/$id', params: { id: c.id } }),
+                  )}
+                >
                   <td className="h-fila border-b border-borde-suave px-3 font-mono">
                     <Link
                       to="/repuestos/compras/$id"
@@ -184,7 +192,14 @@ export function PantallaCompras() {
         {datos.length > 0 && !esEscritorio && (
           <ul className="divide-y divide-borde-suave">
             {datos.map((c) => (
-              <li key={c.id} className="grid gap-1 px-3 py-2.5">
+              // biome-ignore lint/a11y/useKeyWithClickEvents: con teclado se entra por el enlace de la fila
+              <li
+                key={c.id}
+                className={`grid gap-1 px-3 py-2.5 ${FILA_CLICABLE}`}
+                onClick={clicEnFila(
+                  () => void navegar({ to: '/repuestos/compras/$id', params: { id: c.id } }),
+                )}
+              >
                 <div className="flex items-center gap-2">
                   <Link
                     to="/repuestos/compras/$id"

@@ -5,6 +5,7 @@ import { Link, useNavigate } from '@tanstack/react-router'
 import { useState } from 'react'
 import { Boton } from '../../componentes/Boton.tsx'
 import { EstadoOT } from '../../componentes/EstadoOT.tsx'
+import { clicEnFila, FILA_CLICABLE } from '../../componentes/filas.ts'
 import { IconoAgregar } from '../../componentes/iconos.tsx'
 import { Patente } from '../../componentes/Patente.tsx'
 import { Shell } from '../../componentes/Shell.tsx'
@@ -179,7 +180,13 @@ export function PantallaOrdenes() {
             </thead>
             <tbody>
               {datos.map((o) => (
-                <tr key={o.id} className="hover:bg-superficie-2">
+                <tr
+                  key={o.id}
+                  className={FILA_CLICABLE}
+                  onClick={clicEnFila(
+                    () => void navegar({ to: '/ordenes/$id', params: { id: o.id } }),
+                  )}
+                >
                   <td className="h-fila border-b border-borde-suave px-3 py-1 font-mono">
                     <Link
                       to="/ordenes/$id"
@@ -220,7 +227,14 @@ export function PantallaOrdenes() {
         {datos.length > 0 && !esEscritorio && (
           <ul className="divide-y divide-borde-suave">
             {datos.map((o) => (
-              <li key={o.id} className="grid gap-1 px-3 py-2.5">
+              // biome-ignore lint/a11y/useKeyWithClickEvents: con teclado se entra por el enlace de la fila
+              <li
+                key={o.id}
+                className={`grid gap-1 px-3 py-2.5 ${FILA_CLICABLE}`}
+                onClick={clicEnFila(
+                  () => void navegar({ to: '/ordenes/$id', params: { id: o.id } }),
+                )}
+              >
                 <div className="flex items-center gap-2">
                   <Link
                     to="/ordenes/$id"

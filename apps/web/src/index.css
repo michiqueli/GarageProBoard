@@ -1,2 +1,18 @@
 @import "tailwindcss";
 @import "@gpb/ui-tokens/tokens.css";
+
+/* Las filas que abren su detalle con un clic: el cursor es un ojo, «ver».
+   Los colores van escritos porque la imagen de un cursor no lee variables: blanco con
+   borde oscuro, que se ve sobre los dos temas. */
+@utility cursor-ver {
+  cursor:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24'%3E%3Cpath d='M1.5 12S5.3 4.8 12 4.8 22.5 12 22.5 12 18.7 19.2 12 19.2 1.5 12 1.5 12z' fill='white' stroke='%2316211e' stroke-width='1.6' stroke-linejoin='round'/%3E%3Ccircle cx='12' cy='12' r='3.6' fill='%2316211e'/%3E%3Ccircle cx='13.2' cy='10.8' r='1' fill='white'/%3E%3C/svg%3E")
+    12 12,
+    pointer;
+}
+
+/* Adentro de una fila que se abre con un clic, los controles propios —copiar, modificar,
+   un enlace— muestran la mano: hacen otra cosa que abrir el detalle. */
+.cursor-ver :where(a, button, label, select) {
+  cursor: pointer;
+}

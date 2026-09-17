@@ -1,5 +1,5 @@
 import { ORPCError } from '@orpc/client'
-import { cleanup, screen, within } from '@testing-library/react'
+import { cleanup, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { usarSesion } from '../src/sesion/almacen.ts'
@@ -146,6 +146,26 @@ describe('el listado', () => {
     // El 0km: sin patente y sin titular, dicho con palabras.
     expect(screen.getByText('SIN PATENTAR')).toBeDefined()
     expect(screen.getByText('sin titular')).toBeDefined()
+  })
+
+  it('un clic en cualquier parte de la fila abre la ficha, pero copiar el chasis no', async () => {
+    Object.defineProperty(navigator, 'clipboard', {
+      value: { writeText: vi.fn().mockResolvedValue(undefined) },
+      configurable: true,
+    })
+    entraComo(SESION)
+    const router = await montarApp('/vehiculos')
+    const fila = (await screen.findByRole('link', { name: 'AE 123 BC' })).closest(
+      'tr',
+    ) as HTMLElement
+
+    await userEvent.click(
+      within(fila).getAllByRole('button', { name: /^Copiar chasis/ })[0] as HTMLElement,
+    )
+    expect(router.state.location.pathname).toBe('/vehiculos')
+
+    await userEvent.click(within(fila).getByText('Gómez, Ana'))
+    await waitFor(() => expect(router.state.location.pathname).toMatch(/^\/vehiculos\/.+/))
   })
 })
 
