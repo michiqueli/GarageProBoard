@@ -192,6 +192,10 @@ verdad. Qué se trae y qué cambia ahora que el DMS es nuestro, en
 - ⬜ Repuestos consumidos, con descuento de stock
 - 🔨 Trabajos y repuestos con precio final, estados del taller y cierre (terminar → caja) ✅.
       Falta presupuesto y autorización del cliente
+- ⬜ **Catálogo de services**: los services de cada marca (10.000, 20.000, …) con sus trabajos,
+      repuestos y **tiempo estipulado**, más un service genérico que se completa a mano. Cargarlos
+      en una OT la completa de un toque, y el tiempo estipulado sirve para comparar con el real.
+      Hay un Excel de Renault con los tiempos para importar como primer catálogo
 - ✅ Facturación de la OT: panel «Órdenes para facturar» en caja; anular la factura la devuelve
 - ⬜ **Tablero de piso en tiempo real**: qué auto, quién lo tiene, cuánto lleva.
       Es la pantalla que vende el producto en una demo.
