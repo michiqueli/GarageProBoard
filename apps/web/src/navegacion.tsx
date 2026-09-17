@@ -102,6 +102,7 @@ export const PRINCIPALES: Seccion[] = [
   {
     id: 'caja',
     etiqueta: 'Caja',
+    to: '/caja',
     requiere: { modulo: 'contable', accion: 'ver', sujeto: 'Comprobante' },
     icono: (
       <svg viewBox="0 0 16 16" {...trazo} aria-hidden="true">

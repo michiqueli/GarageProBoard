@@ -257,7 +257,7 @@ describe('la navegación', () => {
     await montarApp('/vehiculos')
     await screen.findByRole('heading', { name: 'Vehículos', level: 1 })
 
-    expect(screen.queryByRole('link', { name: 'Caja' })).toBeNull()
-    expect(screen.getByText('Caja')).toBeDefined()
+    expect(screen.queryByRole('link', { name: 'Entregas' })).toBeNull()
+    expect(screen.getByText('Entregas')).toBeDefined()
   })
 })

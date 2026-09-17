@@ -168,11 +168,11 @@ const ESTATICAS: EntradaIndice[] = [
     destino: { to: '/ordenes' },
     requiere: { modulo: 'servicios', accion: 'ver', sujeto: 'Orden' },
   },
-  // Sin construir: aparecen atenuadas y dicen dónde van a estar.
   {
     id: 'caja.facturar',
     titulo: 'Facturar',
     donde: 'Caja',
+    destino: { to: '/caja' },
     claves: [
       'afip',
       'arca',
@@ -182,8 +182,17 @@ const ESTATICAS: EntradaIndice[] = [
       'cobrar',
       'cae',
     ],
-    requiere: { modulo: 'contable', accion: 'ver', sujeto: 'Comprobante' },
+    requiere: accesoDeRuta(contrato.comprobantes.emitir),
   },
+  {
+    id: 'caja.comprobantes',
+    titulo: 'Comprobantes emitidos',
+    donde: 'Caja → Últimos comprobantes',
+    claves: ['facturas', 'pdf', 'imprimir', 'cae', 'reimprimir', 'verificar', 'afip', 'arca'],
+    destino: { to: '/caja' },
+    requiere: accesoDeRuta(contrato.comprobantes.listar),
+  },
+  // Sin construir: aparecen atenuadas y dicen dónde van a estar.
   {
     id: 'configuracion.teclas',
     titulo: 'Teclas rápidas',

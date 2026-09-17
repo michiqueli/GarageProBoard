@@ -102,9 +102,11 @@ describe('el campo de la barra lateral', () => {
 
     await userEvent.type(
       screen.getByRole('combobox', { name: 'Buscar pantallas y configuraciones' }),
-      'facturar',
+      'atajos',
     )
-    expect(await screen.findByText('Todavía no está disponible · va a estar en Caja')).toBeDefined()
+    expect(
+      await screen.findByText('Todavía no está disponible · va a estar en Configuración'),
+    ).toBeDefined()
   })
 
   it('Esc cierra la lista', async () => {

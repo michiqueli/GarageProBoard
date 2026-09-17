@@ -90,3 +90,28 @@ export function IconoVolver() {
     </svg>
   )
 }
+
+export function IconoBorrar() {
+  return (
+    <svg {...trazo} aria-hidden="true">
+      <path d="M3 4.5h10M6.5 4.5V3h3v1.5M4.5 4.5l.6 9h5.8l.6-9" />
+    </svg>
+  )
+}
+
+export function IconoImprimir() {
+  return (
+    <svg {...trazo} aria-hidden="true">
+      <path d="M4.5 6V2.5h7V6M4.5 11.5h-2v-5h11v5h-2" />
+      <rect x="4.5" y="9.5" width="7" height="4" />
+    </svg>
+  )
+}
+
+export function IconoVerificar() {
+  return (
+    <svg {...trazo} aria-hidden="true">
+      <path d="M13.5 8a5.5 5.5 0 1 1-1.6-3.9M13.5 2.5v3h-3" />
+    </svg>
+  )
+}

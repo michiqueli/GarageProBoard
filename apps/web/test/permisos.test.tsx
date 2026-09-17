@@ -84,9 +84,9 @@ describe('el menú', () => {
     await montarApp('/vehiculos')
 
     await screen.findByRole('heading', { name: 'Vehículos', level: 1 })
-    // Caja no tiene pantalla: está, pero no es un enlace.
-    expect(screen.getByText('Caja')).toBeDefined()
-    expect(screen.queryByRole('link', { name: 'Caja' })).toBeNull()
+    // Entregas no tiene pantalla: está, pero no es un enlace.
+    expect(screen.getByText('Entregas')).toBeDefined()
+    expect(screen.queryByRole('link', { name: 'Entregas' })).toBeNull()
   })
 })
 

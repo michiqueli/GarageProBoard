@@ -1,0 +1,200 @@
+import { ORPCError } from '@orpc/client'
+import { cleanup, screen, waitFor, within } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { usarSesion } from '../src/sesion/almacen.ts'
+import { confirmarDialogo, errorNotificado, montarApp, SESION, SESION_MECANICO } from './montar.tsx'
+
+const comprobantes = {
+  opciones: vi.fn(),
+  receptor: vi.fn(),
+  emitir: vi.fn(),
+  listar: vi.fn(),
+  verificar: vi.fn(),
+  pdf: vi.fn(),
+}
+const renovar = vi.fn()
+
+vi.mock('../src/sesion/cliente.ts', () => ({
+  api: {
+    auth: { iniciar: vi.fn(), cerrar: vi.fn().mockResolvedValue({}), cambiarSucursal: vi.fn() },
+    clientes: { listar: vi.fn().mockResolvedValue({ datos: [], total: 0 }) },
+    comprobantes: Object.fromEntries(
+      Object.keys(comprobantes).map((nombre) => [
+        nombre,
+        (x: unknown) => (comprobantes as Record<string, (x: unknown) => unknown>)[nombre]?.(x),
+      ]),
+    ),
+  },
+  renovar: () => renovar(),
+}))
+
+const PV = {
+  id: '11111111-1111-4111-8111-111111111111',
+  numero: 5,
+  predeterminado: true,
+  empresa: {
+    id: '22222222-2222-4222-8222-222222222222',
+    razonSocial: 'Litoral SAS',
+    condicionIva: 1,
+  },
+  certificado: 'vigente',
+  entorno: 'produccion',
+}
+
+const RECEPTOR_CF = {
+  clienteId: null,
+  tipoDocReceptor: 99,
+  numeroDocReceptor: '0',
+  nombre: 'Consumidor Final',
+  condicionIva: 5,
+  domicilio: null,
+  tipoComprobante: 6,
+  letra: 'B',
+  nombreComprobante: 'Factura B',
+  avisos: [],
+}
+
+function entraComo(sesion: typeof SESION) {
+  renovar.mockImplementation(async () => {
+    usarSesion.getState().establecer(sesion)
+    return true
+  })
+}
+
+beforeEach(() => {
+  for (const f of [...Object.values(comprobantes), renovar]) f.mockReset()
+  usarSesion.getState().limpiar()
+  comprobantes.opciones.mockResolvedValue({ puntosVenta: [PV] })
+  comprobantes.receptor.mockResolvedValue(RECEPTOR_CF)
+  comprobantes.listar.mockResolvedValue({ datos: [], total: 0 })
+})
+
+afterEach(cleanup)
+
+async function cargarRenglon(descripcion: string, precio: string) {
+  const renglon = await screen.findByRole('listitem', { name: 'Renglón 1' })
+  await userEvent.type(within(renglon).getByLabelText('Descripción'), descripcion)
+  await userEvent.type(within(renglon).getByLabelText('Precio unitario'), precio)
+}
+
+describe('facturar', () => {
+  it('a consumidor final: F4 pide confirmar con el resumen, y recién ahí emite', async () => {
+    comprobantes.emitir.mockResolvedValue({
+      id: '33333333-3333-4333-8333-333333333333',
+      nombre: 'Factura B',
+      puntoVenta: 5,
+      numero: 42,
+      cae: '70000000000042',
+    })
+    entraComo(SESION)
+    await montarApp('/caja')
+
+    await screen.findByText('Factura B', { selector: 'b' })
+    await cargarRenglon('Service 10.000 km', '1.234,50')
+    expect(screen.getByText('$ 1.234,50')).toBeDefined()
+
+    await userEvent.keyboard('{F4}')
+    const dialogo = await screen.findByRole('alertdialog', {
+      name: '¿Emitir Factura B por $ 1.234,50?',
+    })
+    expect(dialogo.textContent).toMatch(/sólo se anula con una nota de crédito/)
+    expect(comprobantes.emitir).not.toHaveBeenCalled()
+
+    await confirmarDialogo('Emitir')
+    await waitFor(() =>
+      expect(comprobantes.emitir).toHaveBeenCalledWith(
+        expect.objectContaining({
+          puntoVentaId: PV.id,
+          receptor: { consumidorFinal: { nombre: null, dni: null } },
+          renglones: [
+            expect.objectContaining({
+              descripcion: 'Service 10.000 km',
+              precioUnitario: '1234.50',
+            }),
+          ],
+        }),
+      ),
+    )
+    expect(
+      await screen.findByRole('listitem', {
+        name: 'Listo: Factura B 00005-00000042 emitida, CAE 70000000000042',
+      }),
+    ).toBeDefined()
+  })
+
+  it('con CUIT muestra qué factura corresponde según el padrón, con sus avisos', async () => {
+    comprobantes.receptor.mockImplementation(async (x: { cuit?: string }) =>
+      x.cuit
+        ? {
+            ...RECEPTOR_CF,
+            tipoDocReceptor: 80,
+            numeroDocReceptor: x.cuit,
+            nombre: 'TRANSPORTES DEL SUR SRL',
+            condicionIva: 1,
+            tipoComprobante: 1,
+            letra: 'A',
+            nombreComprobante: 'Factura A',
+            avisos: [
+              'La condición frente al IVA que informa AFIP no es la de la ficha del cliente.',
+            ],
+          }
+        : RECEPTOR_CF,
+    )
+    entraComo(SESION)
+    await montarApp('/caja')
+    await screen.findByText('Factura B', { selector: 'b' })
+
+    await userEvent.click(screen.getByRole('radio', { name: 'Otro CUIT' }))
+    await userEvent.type(screen.getByLabelText('CUIT'), '30711111111')
+
+    const vista = await screen.findByRole('region', { name: 'Comprobante que corresponde' })
+    await within(vista).findByText('Factura A')
+    expect(within(vista).getByText('TRANSPORTES DEL SUR SRL')).toBeDefined()
+    expect(within(vista).getByText(/no es la de la ficha/)).toBeDefined()
+    expect(comprobantes.receptor).toHaveBeenLastCalledWith({
+      puntoVentaId: PV.id,
+      cuit: '30711111111',
+    })
+  })
+
+  it('si AFIP rechaza, lo dice con los motivos', async () => {
+    comprobantes.emitir.mockRejectedValue(
+      new ORPCError('RECHAZADO', {
+        status: 422,
+        data: {
+          comprobanteId: '44444444-4444-4444-8444-444444444444',
+          errores: [{ codigo: 10016, mensaje: 'El número no es el próximo a autorizar' }],
+          observaciones: [],
+        },
+      }),
+    )
+    entraComo(SESION)
+    await montarApp('/caja')
+    await screen.findByText('Factura B', { selector: 'b' })
+    await cargarRenglon('Aceite', '100')
+    await userEvent.keyboard('{F4}')
+    await confirmarDialogo('Emitir')
+
+    const error = await errorNotificado()
+    expect(error.textContent).toMatch(/AFIP rechazó la factura/)
+    expect(error.textContent).toMatch(/10016: El número no es el próximo a autorizar/)
+  })
+
+  it('sin certificado no deja facturar y lleva a cargarlo', async () => {
+    comprobantes.opciones.mockResolvedValue({
+      puntosVenta: [{ ...PV, certificado: 'falta', entorno: null }],
+    })
+    entraComo(SESION)
+    await montarApp('/caja')
+    expect(await screen.findByText(/todavía no tiene el certificado de AFIP/)).toBeDefined()
+    expect(screen.getByRole('link', { name: 'Certificado de AFIP' })).toBeDefined()
+    expect(screen.queryByRole('button', { name: /Emitir/ })).toBeNull()
+  })
+
+  it('el mecánico no ve la caja', async () => {
+    entraComo(SESION_MECANICO)
+    await montarApp('/caja')
+    expect(await screen.findByRole('heading', { name: /No tenés permiso/ })).toBeDefined()
+  })
+})
