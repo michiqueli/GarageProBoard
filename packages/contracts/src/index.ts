@@ -6,6 +6,7 @@ import { contratoAuth } from './auth.ts'
 import { contratoCertificados } from './certificados.ts'
 import { contratoClientes } from './clientes.ts'
 import { contratoComprobantes } from './comprobantes.ts'
+import { contratoOrdenes } from './ordenes.ts'
 import { contratoOrganizacion } from './organizacion.ts'
 import { contratoPadron } from './padron.ts'
 import { contratoRoles } from './roles.ts'
@@ -19,6 +20,7 @@ export * from './certificados.ts'
 export * from './clientes.ts'
 export * from './comprobantes.ts'
 export * from './comunes.ts'
+export * from './ordenes.ts'
 export * from './organizacion.ts'
 export * from './padron.ts'
 export * from './roles.ts'
@@ -44,6 +46,7 @@ export const contrato = {
   clientes: contratoClientes,
   certificados: contratoCertificados,
   comprobantes: contratoComprobantes,
+  ordenes: contratoOrdenes,
 
   salud: publico
     .route({

@@ -8,7 +8,13 @@ import {
 } from '@gpb/afip'
 import { firmarComoAfip } from '@gpb/afip/pruebas'
 import { eq } from '@gpb/db'
-import { comprobante, entidadComercial, cliente as tablaCliente } from '@gpb/db/schema'
+import {
+  comprobante,
+  entidadComercial,
+  orden,
+  cliente as tablaCliente,
+  vehiculo,
+} from '@gpb/db/schema'
 import type { NestFastifyApplication } from '@nestjs/platform-fastify'
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { Mensaje } from '../src/comun/correo.ts'
@@ -542,5 +548,70 @@ describe('mandar por mail', () => {
     const d = (await emitir({ consumidorFinal: {} })).json()
     const r = await pedir(gerente, 'POST', `/comprobantes/${d.id}/enviar`, { email: 'no-es-mail' })
     expect(r.statusCode).toBe(400)
+  })
+})
+
+describe('facturar una orden de trabajo', () => {
+  it('una orden terminada se factura una vez; anular la factura la devuelve a caja', async () => {
+    const [auto] = await api.pg.dbDuenio
+      .insert(vehiculo)
+      .values({ tenantId, chasis: '8AJFB8CD5N7777777', dominio: 'AF777ZZ' })
+      .returning()
+    const abierta = (
+      await pedir(gerente, 'POST', '/ordenes', {
+        vehiculoId: auto?.id,
+        pedido: 'Service de 10.000 km',
+        items: [{ tipo: 'trabajo', descripcion: 'Service', cantidad: '1', precioUnitario: '121' }],
+      })
+    ).json()
+
+    // Sin terminar, no se factura.
+    afip.ultimo = 1000
+    const antes = await emitir({ consumidorFinal: {} })
+    expect(antes.statusCode).toBe(201) // sin orden, cualquier factura sale
+    const noTerminada = await pedir(gerente, 'POST', '/comprobantes', {
+      puntoVentaId,
+      receptor: { consumidorFinal: {} },
+      concepto: 1,
+      renglones: [renglon()],
+      ordenId: abierta.id,
+    })
+    expect(noTerminada.json().code).toBe('ORDEN_NO_FACTURABLE')
+
+    await pedir(gerente, 'POST', `/ordenes/${abierta.id}/terminar`)
+    const factura = await pedir(gerente, 'POST', '/comprobantes', {
+      puntoVentaId,
+      receptor: { consumidorFinal: {} },
+      concepto: 1,
+      renglones: [renglon()],
+      ordenId: abierta.id,
+    })
+    expect(factura.statusCode).toBe(201)
+    expect(factura.json().ordenId).toBe(abierta.id)
+    const estado = async () =>
+      (
+        await api.pg.dbDuenio
+          .select({ estado: orden.estado })
+          .from(orden)
+          .where(eq(orden.id, abierta.id))
+      )[0]?.estado
+    expect(await estado()).toBe('facturada')
+    expect((await pedir(gerente, 'GET', `/ordenes/${abierta.id}`)).json().factura).toMatchObject({
+      id: factura.json().id,
+    })
+
+    const otraVez = await pedir(gerente, 'POST', '/comprobantes', {
+      puntoVentaId,
+      receptor: { consumidorFinal: {} },
+      concepto: 1,
+      renglones: [renglon()],
+      ordenId: abierta.id,
+    })
+    expect(otraVez.json().code).toBe('ORDEN_NO_FACTURABLE')
+
+    afip.ultimo = 90
+    const nota = await pedir(gerente, 'POST', `/comprobantes/${factura.json().id}/nota-credito`)
+    expect(nota.statusCode).toBe(201)
+    expect(await estado()).toBe('terminada')
   })
 })

@@ -118,6 +118,7 @@ export const comprobanteDetalle = comprobanteResumen.omit({ anulado: true }).ext
   concepto: z.number().int(),
   servicio: z.object({ desde: fecha, hasta: fecha, vencimientoPago: fecha }).nullable(),
   clienteId: z.uuid().nullable(),
+  ordenId: z.uuid().nullable(),
   tipoDocReceptor: z.number().int(),
   numeroDocReceptor: z.string(),
   receptorCondicionIva: z.number().int(),
@@ -217,6 +218,8 @@ export const contratoComprobantes = {
           servicio: z.object({ desde: fecha, hasta: fecha, vencimientoPago: fecha }).nullish(),
           condicionVenta: z.string().trim().min(1).max(60).default('Contado'),
           renglones: z.array(renglonEntrada).min(1, 'Un comprobante sin renglones no se emite'),
+          /** La orden de trabajo que se factura: al quedar autorizada, la orden pasa a facturada. */
+          ordenId: z.uuid().nullish(),
         })
         .refine((d) => d.concepto === 1 || d.servicio, {
           message: 'Facturar servicios pide el período y el vencimiento del pago',
@@ -225,6 +228,10 @@ export const contratoComprobantes = {
     )
     .errors({
       ...ERRORES_RECEPTOR,
+      ORDEN_NO_FACTURABLE: {
+        status: 409,
+        message: 'Esa orden no está terminada o ya se facturó',
+      },
       PUNTO_VENTA_INVALIDO: {
         status: 422,
         message: 'Ese punto de venta no es de facturación, está desactivado o es de otra sucursal',

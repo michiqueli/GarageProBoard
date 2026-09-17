@@ -1,4 +1,4 @@
-import { createMongoAbility, type MongoAbility } from '@casl/ability'
+import { createMongoAbility, type MongoAbility, subject } from '@casl/ability'
 
 /**
  * Permisos, compartidos entre la API y el front.
@@ -197,6 +197,20 @@ export function construirHabilidades(reglas: readonly ReglaPermiso[]): Habilidad
     anyAction: 'administrar',
     anySubjectType: 'all',
   })
+}
+
+/**
+ * El permiso sobre un objeto concreto, no sobre el sujeto en general: el mecánico puede
+ * editar órdenes, pero sólo las suyas. La guardia de la API evalúa sin objeto —y deja pasar
+ * una regla con condición—; el servicio vuelve a preguntar con la orden en la mano.
+ */
+export function puedeSobre(
+  habilidades: Habilidades,
+  accion: AccionPermiso,
+  sujeto: Sujeto,
+  datos: Record<string, unknown>,
+): boolean {
+  return habilidades.can(accion, subject(sujeto, { ...datos }) as never)
 }
 
 /**

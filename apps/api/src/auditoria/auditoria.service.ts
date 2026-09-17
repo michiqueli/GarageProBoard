@@ -141,6 +141,7 @@ export function sobreQue(tabla: string, antes: Foto, despues: Foto): string {
   }
   if (tabla === 'comprobante' && dato('comprobante')) return `la ${String(dato('comprobante'))}`
   if (tabla === 'comprobante') return 'un comprobante'
+  if (tabla === 'orden') return `la orden ${String(dato('numero'))}`
   if (tabla === 'rol') return `el rol ${String(dato('nombre'))}`
   if (tabla === 'vehiculo' || tabla === 'titularidad') {
     return `el vehículo ${String(dato('dominio') ?? dato('chasis'))}`
@@ -233,6 +234,25 @@ function describirCliente(accion: string, antes: Foto, despues: Foto, nombres: N
   return juntar([...partes, ...cambiosDe(CAMPOS_CLIENTE, antes, despues, nombres)])
 }
 
+/** Lo que pasó con una orden de trabajo, en palabras del taller. */
+const ESTADOS_ORDEN: Record<string, string> = {
+  recibida: 'recibida',
+  en_proceso: 'en proceso',
+  esperando_repuesto: 'esperando repuesto',
+  esperando_autorizacion: 'esperando autorización',
+  terminada: 'terminada: pasó a caja',
+  entregada: 'entregada',
+}
+
+function describirOrden(accion: string, despues: Foto): string {
+  if (accion === 'alta') return `La abrió: «${String(despues?.pedido)}»`
+  if (accion === 'baja') return 'La anuló'
+  if (despues?.estado)
+    return `La pasó a ${ESTADOS_ORDEN[String(despues.estado)] ?? String(despues.estado)}`
+  if (despues?.items !== undefined) return `Cargó ${String(despues.items)} trabajos y repuestos`
+  return 'Modificó la recepción'
+}
+
 /** Cada paso del certificado de AFIP. Nunca guarda ni muestra la clave. */
 function describirCertificado(despues: Foto): string {
   const entorno = despues?.entorno === 'produccion' ? 'de producción' : 'de homologación'
@@ -295,6 +315,7 @@ export function describirCambio(
   }
   if (tabla === 'cliente') return describirCliente(accion, antes, despues, nombres)
   if (tabla === 'certificado_afip') return describirCertificado(despues)
+  if (tabla === 'orden') return describirOrden(accion, despues)
   if (tabla === 'comprobante') {
     if (despues?.enviadoA) return `La mandó por mail a ${String(despues.enviadoA)}`
     return despues?.verificado

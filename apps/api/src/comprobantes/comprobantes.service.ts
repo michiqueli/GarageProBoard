@@ -20,6 +20,7 @@ import {
   condicionIva,
   empresa,
   entidadComercial,
+  orden,
   provincia,
   puntoVenta,
   reglaComprobante,
@@ -55,6 +56,7 @@ type Codigo =
   | 'NO_ANULABLE'
   | 'CORREO_NO_CONFIGURADO'
   | 'CORREO_NO_ENVIADO'
+  | 'ORDEN_NO_FACTURABLE'
 
 export class ErrorComprobantes extends Error {
   constructor(
@@ -109,6 +111,7 @@ export interface PedidoEmision {
   servicio?: { desde: string; hasta: string; vencimientoPago: string } | null | undefined
   condicionVenta: string
   renglones: RenglonPedido[]
+  ordenId?: string | null | undefined
 }
 
 export function hoyEnArgentina(ahora = new Date()): string {
@@ -318,6 +321,13 @@ export class ServicioComprobantes {
     const previo = await this.datos.transaccion(async (tx, sesion) => {
       const pv = await this.puntoDeVenta(tx, sesion, pedido.puntoVentaId)
       const emisor = await this.emisor(tx, pv)
+      if (pedido.ordenId) {
+        const [o] = await tx
+          .select({ estado: orden.estado })
+          .from(orden)
+          .where(eq(orden.id, pedido.ordenId))
+        if (o?.estado !== 'terminada') throw new ErrorComprobantes('ORDEN_NO_FACTURABLE')
+      }
       return {
         emisor,
         pv,
@@ -345,6 +355,8 @@ export class ServicioComprobantes {
         condicionVenta: pedido.condicionVenta,
         renglones: pedido.renglones.map((r) => ({ ...r, total: totalRenglon(r) })),
         asociado: null,
+        ordenId: pedido.ordenId ?? null,
+        devolverOrdenId: null,
         nombreComprobante: receptor.nombreComprobante,
       },
       ip,
@@ -446,6 +458,8 @@ export class ServicioComprobantes {
           cuit: emisor.cuit,
           fecha: f.fecha,
         },
+        ordenId: null,
+        devolverOrdenId: f.ordenId,
         nombreComprobante: previo.nombre,
       },
       ip,
@@ -480,6 +494,10 @@ export class ServicioComprobantes {
         cuit: string
         fecha: string
       } | null
+      /** La orden que se factura: al autorizarse, pasa a facturada. */
+      ordenId: string | null
+      /** La orden de la factura que esta nota anula: al autorizarse, vuelve a caja. */
+      devolverOrdenId: string | null
       nombreComprobante: string
     },
     ip?: string,
@@ -569,6 +587,7 @@ export class ServicioComprobantes {
             receptorDomicilio: receptor.domicilio,
             condicionVenta: c.condicionVenta,
             comprobanteAsociadoId: c.asociado?.id ?? null,
+            ordenId: c.ordenId,
             importeNeto: solicitud.importeNeto,
             importeIva: solicitud.importeIva,
             importeExento: solicitud.importeExento,
@@ -589,6 +608,9 @@ export class ServicioComprobantes {
             if (indice === 'comprobante_numero_uq')
               throw new ErrorComprobantes('NUMERACION_DESFASADA', { numero })
             // Otro puesto anuló esta factura en el medio.
+            // Otro puesto está facturando la misma orden.
+            if (indice === 'comprobante_orden_uq')
+              throw new ErrorComprobantes('ORDEN_NO_FACTURABLE')
             if (indice === 'comprobante_anulacion_uq') {
               throw new ErrorComprobantes('NO_ANULABLE', {
                 motivo: 'Esa factura ya tiene su nota de crédito.',
@@ -638,6 +660,9 @@ export class ServicioComprobantes {
             actualizadoEn: new Date(),
           })
           .where(eq(comprobante.id, comprobanteId))
+        if (c.ordenId) await this.marcarOrden(tx, c.ordenId, 'terminada', 'facturada')
+        if (c.devolverOrdenId)
+          await this.marcarOrden(tx, c.devolverOrdenId, 'facturada', 'terminada')
         await this.auditar(
           tx,
           sesion,
@@ -720,6 +745,9 @@ export class ServicioComprobantes {
             actualizadoEn: new Date(),
           })
           .where(eq(comprobante.id, id))
+        if (c.ordenId && !c.comprobanteAsociadoId) {
+          await this.marcarOrden(tx, c.ordenId, 'terminada', 'facturada')
+        }
         await tx.insert(auditoria).values({
           tenantId: sesion.tenantId,
           usuarioId: sesion.usuarioId,
@@ -854,6 +882,14 @@ export class ServicioComprobantes {
   }
 
   // ── piezas ──────────────────────────────────────────────────────────────────
+
+  /** Mueve la orden de un estado a otro sólo si está donde se espera: nunca pisa otro cambio. */
+  private async marcarOrden(tx: Db, id: string, desde: string, hasta: string) {
+    await tx
+      .update(orden)
+      .set({ estado: hasta, actualizadoEn: new Date() })
+      .where(and(eq(orden.id, id), eq(orden.estado, desde)))
+  }
 
   private async puntoDeVenta(tx: Db, sesion: Sesion, id: string, deEstaSucursal = true) {
     const [pv] = await tx
@@ -1142,6 +1178,7 @@ export class ServicioComprobantes {
           ? { desde: x.servicioDesde, hasta: x.servicioHasta, vencimientoPago: x.vencimientoPago }
           : null,
       clienteId: x.clienteId,
+      ordenId: x.ordenId,
       tipoDocReceptor: x.tipoDocReceptor,
       numeroDocReceptor: x.numeroDocReceptor,
       receptorCondicionIva: x.receptorCondicionIva,
