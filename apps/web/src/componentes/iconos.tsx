@@ -133,3 +133,19 @@ export function IconoMail() {
     </svg>
   )
 }
+
+export function IconoMenu() {
+  return (
+    <svg {...trazo} aria-hidden="true">
+      <path d="M2.5 4.5h11M2.5 8h11M2.5 11.5h11" />
+    </svg>
+  )
+}
+
+export function IconoCerrar() {
+  return (
+    <svg {...trazo} aria-hidden="true">
+      <path d="M4 4l8 8M12 4l-8 8" />
+    </svg>
+  )
+}

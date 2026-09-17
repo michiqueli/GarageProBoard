@@ -238,11 +238,6 @@ Cosas que sabemos que faltan, para que no se descubran de golpe:
   justo en «¿A qué sucursal entrás?», la sesión recuperada no sabe que faltaba elegir.
   Cerrarlo del todo requiere que el servidor recuerde que la elección está pendiente.
 
-- **En teléfono no hay menú.** La barra lateral está oculta por debajo de `md` y no hay
-  todavía una puerta que la reemplace: en un teléfono se llega a las pantallas por la URL
-  y nada más. Cuando entre el buscador del sistema hay que resolver las dos cosas juntas,
-  porque comparten el lugar.
-
 - **Backups de Postgres antes del primer cliente en producción.** Vamos a guardar
   comprobantes fiscales de terceros con obligación legal de conservación. `pgBackRest`
   o `wal-g` contra un bucket S3-compatible, con restauración **probada**, no solo

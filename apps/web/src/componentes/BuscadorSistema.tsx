@@ -26,6 +26,9 @@ const MAXIMO = 8
  *
  * No confundir con el del encabezado (`F3`), que busca **datos**: patentes, clientes.
  */
+/** 22rem: lo que ocupa la lista cuando hay lugar. */
+const ANCHO_PANEL = 352
+
 export function BuscadorSistema() {
   const { teclaDe } = useTeclado()
   const autorizacion = useAutorizacion()
@@ -66,12 +69,25 @@ export function BuscadorSistema() {
   // La lista va fija a la pantalla, al lado del campo: la barra lateral scrollea, y una
   // lista posicionada adentro quedaría recortada por ella.
   const caja = useRef<HTMLLabelElement>(null)
-  const [posicion, setPosicion] = useState<{ top: number; left: number } | null>(null)
+  const [posicion, setPosicion] = useState<{ top: number; left: number; width: number } | null>(
+    null,
+  )
   useLayoutEffect(() => {
     if (!mostrar) return
     const ubicar = () => {
       const r = caja.current?.getBoundingClientRect()
-      if (r) setPosicion({ top: r.top, left: r.right + 8 })
+      if (!r) return
+      const ancho = Math.min(ANCHO_PANEL, window.innerWidth - 16)
+      // Al costado del campo si entra; si no —en el teléfono—, abajo y adentro de la pantalla.
+      setPosicion(
+        r.right + 8 + ancho <= window.innerWidth
+          ? { top: r.top, left: r.right + 8, width: ancho }
+          : {
+              top: r.bottom + 4,
+              left: Math.max(8, Math.min(r.left, window.innerWidth - ancho - 8)),
+              width: ancho,
+            },
+      )
     }
     ubicar()
     window.addEventListener('resize', ubicar)
@@ -181,7 +197,7 @@ export function BuscadorSistema() {
           id="resultados-sistema"
           aria-label="Lugares del sistema"
           style={posicion ?? undefined}
-          className="fixed z-40 grid w-[22rem] animate-emerger gap-px overflow-hidden rounded-base border border-borde bg-superficie py-1 shadow-flotante"
+          className="fixed z-[60] grid animate-emerger gap-px overflow-hidden rounded-base border border-borde bg-superficie py-1 shadow-flotante"
         >
           {resultados.length === 0 && (
             <li className="px-3 py-2 text-dato text-texto-suave">
