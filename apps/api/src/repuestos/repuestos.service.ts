@@ -1,7 +1,6 @@
 import { plata } from '@gpb/core'
 import { and, asc, count, type Db, desc, eq, ilike, or, sql } from '@gpb/db'
 import {
-  auditoria,
   compra,
   entidadComercial,
   movimientoStock,
@@ -14,6 +13,7 @@ import {
   usuario,
 } from '@gpb/db/schema'
 import { Inject, Injectable } from '@nestjs/common'
+import { auditar } from '../comun/auditoria.ts'
 import type { Sesion } from '../comun/contexto.ts'
 import { DatosDelTenant } from '../comun/datos.ts'
 import { ErrorRepuestos } from './errores.ts'
@@ -194,9 +194,16 @@ export class ServicioRepuestos {
   ubicar(
     id: string,
     entrada: { ubicacion?: string | null | undefined; minimo?: string | null | undefined },
+    ip?: string,
   ) {
     return this.datos.transaccion(async (tx, sesion) => {
       await this.existe(tx, id)
+      const [antes] = await tx
+        .select({ ubicacion: repuestoStock.ubicacion, minimo: repuestoStock.minimo })
+        .from(repuestoStock)
+        .where(
+          and(eq(repuestoStock.repuestoId, id), eq(repuestoStock.sucursalId, sesion.sucursalId)),
+        )
       await tx
         .insert(repuestoStock)
         .values({
@@ -214,6 +221,39 @@ export class ServicioRepuestos {
             actualizadoEn: new Date(),
           },
         })
+
+      // El mínimo es lo que va a disparar el pedido a fábrica, y la ubicación es dónde el
+      // repuestero lo busca: los dos son datos que después alguien pregunta quién cambió.
+      const partes: string[] = []
+      if ((antes?.ubicacion ?? null) !== (entrada.ubicacion ?? null)) {
+        partes.push(
+          `ubicación: «${antes?.ubicacion ?? 'sin ubicación'}» → «${entrada.ubicacion ?? 'sin ubicación'}»`,
+        )
+      }
+      // Comparado como número: la base devuelve «5.0000» y el campo manda «5».
+      const minimoIgual =
+        antes?.minimo == null && entrada.minimo == null
+          ? true
+          : antes?.minimo != null &&
+            entrada.minimo != null &&
+            plata(antes.minimo).eq(plata(entrada.minimo))
+      if (!minimoIgual) {
+        const decir = (v: string | null | undefined) =>
+          v == null ? 'sin mínimo' : cantidadLinda(v)
+        partes.push(`mínimo: «${decir(antes?.minimo)}» → «${decir(entrada.minimo)}»`)
+      }
+      if (partes.length) {
+        const texto = partes.join(' y ')
+        await this.auditar(
+          tx,
+          sesion,
+          id,
+          'modificacion',
+          { texto: texto.charAt(0).toUpperCase() + texto.slice(1) },
+          ip,
+        )
+      }
+
       return this.detalle(tx, sesion, id)
     })
   }
@@ -438,15 +478,12 @@ export class ServicioRepuestos {
     datosDespues: Record<string, unknown>,
     ip?: string,
   ) {
-    await tx.insert(auditoria).values({
-      tenantId: sesion.tenantId,
-      usuarioId: sesion.usuarioId,
+    await auditar(tx, sesion, {
       tabla: 'repuesto',
       registroId: id,
       accion,
-      datosAntes: null,
-      datosDespues,
-      ip: ip ?? null,
+      despues: datosDespues,
+      ip,
     })
   }
 }

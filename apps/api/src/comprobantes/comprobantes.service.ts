@@ -12,7 +12,6 @@ import {
 import { plata } from '@gpb/core'
 import { and, asc, count, type Db, desc, eq, ilike, inArray, or, sql } from '@gpb/db'
 import {
-  auditoria,
   certificadoAfip,
   cliente,
   comprobante,
@@ -31,6 +30,7 @@ import {
 import { generarFacturaPdf } from '@gpb/pdf'
 import { Inject, Injectable } from '@nestjs/common'
 import { contextoClave } from '../certificados/certificados.service.ts'
+import { auditar } from '../comun/auditoria.ts'
 import type { Sesion } from '../comun/contexto.ts'
 import { CorreoNoConfigurado, type ServicioCorreo } from '../comun/correo.ts'
 import { DatosDelTenant } from '../comun/datos.ts'
@@ -220,15 +220,12 @@ export class ServicioComprobantes {
       throw new ErrorComprobantes('CORREO_NO_ENVIADO')
     }
     await this.datos.transaccion((tx, sesion) =>
-      tx.insert(auditoria).values({
-        tenantId: sesion.tenantId,
-        usuarioId: sesion.usuarioId,
+      auditar(tx, sesion, {
         tabla: 'comprobante',
         registroId: id,
         accion: 'modificacion',
-        datosAntes: null,
-        datosDespues: { comprobante: titulo, enviadoA: para },
-        ip: ip ?? null,
+        despues: { comprobante: titulo, enviadoA: para },
+        ip,
       }),
     )
     return { enviadoA: para }
@@ -774,15 +771,13 @@ export class ServicioComprobantes {
         if (c.pedidoRepuestosId && !c.comprobanteAsociadoId) {
           await this.marcarPedido(tx, c.pedidoRepuestosId, 'en_caja', 'facturado')
         }
-        await tx.insert(auditoria).values({
-          tenantId: sesion.tenantId,
-          usuarioId: sesion.usuarioId,
+        await auditar(tx, sesion, {
           tabla: 'comprobante',
           registroId: id,
           accion: 'modificacion',
-          datosAntes: { estado: c.estado },
-          datosDespues: { estado: 'autorizado', verificado: true },
-          ip: ip ?? null,
+          antes: { estado: c.estado },
+          despues: { estado: 'autorizado', verificado: true },
+          ip,
         })
       } else {
         // AFIP no lo tiene (o tiene otro con ese número, de otro sistema): éste no se emitió.
@@ -1253,19 +1248,16 @@ export class ServicioComprobantes {
     solicitud: SolicitudComprobante,
     ip?: string,
   ) {
-    await tx.insert(auditoria).values({
-      tenantId: sesion.tenantId,
-      usuarioId: sesion.usuarioId,
+    await auditar(tx, sesion, {
       tabla: 'comprobante',
       registroId: id,
       accion: 'alta',
-      datosAntes: null,
-      datosDespues: {
+      despues: {
         comprobante: `${receptor.nombreComprobante} ${String(solicitud.puntoVenta).padStart(5, '0')}-${String(solicitud.numero).padStart(8, '0')}`,
         receptor: receptor.nombre,
         total: solicitud.importeTotal,
       },
-      ip: ip ?? null,
+      ip,
     })
   }
 }

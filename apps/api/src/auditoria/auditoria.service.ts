@@ -1,7 +1,8 @@
 import { diferenciaDePermisos, type Permiso } from '@gpb/core'
 import { type Db, eq, sql } from '@gpb/db'
-import { auditoria, condicionIva, dispositivo, provincia, rol, sucursal } from '@gpb/db/schema'
+import { condicionIva, dispositivo, provincia, rol, sucursal } from '@gpb/db/schema'
 import { Inject, Injectable } from '@nestjs/common'
+import { auditar } from '../comun/auditoria.ts'
 import { DatosDelTenant } from '../comun/datos.ts'
 
 export class ErrorAuditoria extends Error {
@@ -551,15 +552,13 @@ export class ServicioAuditoria {
       if (!antes) throw new ErrorAuditoria('NO_ENCONTRADO')
 
       await tx.update(dispositivo).set({ nombre }).where(eq(dispositivo.id, id))
-      await tx.insert(auditoria).values({
-        tenantId: sesion.tenantId,
-        usuarioId: sesion.usuarioId,
+      await auditar(tx, sesion, {
         tabla: 'dispositivo',
         registroId: id,
         accion: 'modificacion',
-        datosAntes: { nombre: antes.nombre },
-        datosDespues: { nombre },
-        ip: ip ?? null,
+        antes: { nombre: antes.nombre },
+        despues: { nombre },
+        ip,
       })
 
       const [listado] = await this.listarDispositivos(tx, id)

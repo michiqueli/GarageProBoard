@@ -1,7 +1,6 @@
 import { plata } from '@gpb/core'
 import { and, asc, count, type Db, desc, eq, ilike, inArray, isNull, or, sql } from '@gpb/db'
 import {
-  auditoria,
   cliente,
   comprobante,
   entidadComercial,
@@ -16,6 +15,7 @@ import {
   vehiculo,
 } from '@gpb/db/schema'
 import { Inject, Injectable } from '@nestjs/common'
+import { auditar } from '../comun/auditoria.ts'
 import type { Sesion } from '../comun/contexto.ts'
 import { DatosDelTenant } from '../comun/datos.ts'
 import { EN_TALLER } from '../ordenes/ordenes.service.ts'
@@ -585,15 +585,12 @@ export class ServicioPedidosRepuestos {
     datosDespues: Record<string, unknown>,
     ip?: string,
   ) {
-    await tx.insert(auditoria).values({
-      tenantId: sesion.tenantId,
-      usuarioId: sesion.usuarioId,
+    await auditar(tx, sesion, {
       tabla: 'pedido_repuestos',
       registroId: id,
       accion,
-      datosAntes: null,
-      datosDespues,
-      ip: ip ?? null,
+      despues: datosDespues,
+      ip,
     })
   }
 }

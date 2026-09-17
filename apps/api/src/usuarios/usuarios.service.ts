@@ -2,7 +2,6 @@ import { randomBytes } from 'node:crypto'
 import { atajosParaSembrar, faltaParaAsignar, type Habilidades, type ReglaPermiso } from '@gpb/core'
 import { and, asc, type Db, eq, inArray, isNull } from '@gpb/db'
 import {
-  auditoria,
   aviso,
   empresa,
   rol,
@@ -16,6 +15,7 @@ import {
 } from '@gpb/db/schema'
 import { Inject, Injectable } from '@nestjs/common'
 import argon2 from 'argon2'
+import { auditar } from '../comun/auditoria.ts'
 import { contextoDelPedido, type Sesion } from '../comun/contexto.ts'
 import { DatosDelTenant } from '../comun/datos.ts'
 
@@ -428,15 +428,13 @@ export class ServicioUsuarios {
     datosDespues: unknown,
     ip?: string,
   ) {
-    await tx.insert(auditoria).values({
-      tenantId: sesion.tenantId,
-      usuarioId: sesion.usuarioId,
+    await auditar(tx, sesion, {
       tabla: 'usuario',
       registroId,
       accion,
-      datosAntes,
-      datosDespues,
-      ip: ip ?? null,
+      antes: datosAntes,
+      despues: datosDespues,
+      ip,
     })
   }
 

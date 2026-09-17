@@ -10,8 +10,9 @@ import {
   separarReglas,
 } from '@gpb/core'
 import { asc, count, type Db, eq, inArray } from '@gpb/db'
-import { auditoria, aviso, rol, usuario, usuarioRol } from '@gpb/db/schema'
+import { aviso, rol, usuario, usuarioRol } from '@gpb/db/schema'
 import { Inject, Injectable } from '@nestjs/common'
+import { auditar } from '../comun/auditoria.ts'
 import { contextoDelPedido, type Sesion } from '../comun/contexto.ts'
 import { DatosDelTenant } from '../comun/datos.ts'
 
@@ -299,15 +300,13 @@ export class ServicioRoles {
     datosDespues: unknown,
     ip?: string,
   ) {
-    await tx.insert(auditoria).values({
-      tenantId: sesion.tenantId,
-      usuarioId: sesion.usuarioId,
+    await auditar(tx, sesion, {
       tabla: 'rol',
       registroId,
       accion,
-      datosAntes,
-      datosDespues,
-      ip: ip ?? null,
+      antes: datosAntes,
+      despues: datosDespues,
+      ip,
     })
   }
 }

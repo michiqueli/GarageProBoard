@@ -32,7 +32,8 @@ Sin esto no hay pantalla que mostrar a nadie.
 - ✅ Login con argon2, access de 15 min y refresco rotativo de 30 días con detección
       de reuso. 14 tests de integración.
 - ✅ Semillas: catálogos y una concesionaria de ejemplo con dos razones sociales
-- ⬜ Al crear un usuario desde la aplicación, sembrar su config y su mapa de atajos
+- ✅ Al crear un usuario desde la aplicación, sembrar su config y su mapa de atajos —y al
+      crear una concesionaria desde el back-office, la de su gerente
 - ✅ Resolución del tenant desde el token: un interceptor deja la sesión en el contexto
       del pedido y `DatosDelTenant.transaccion()` la toma sola, sin parámetro de tenant
 - ✅ Roles y permisos con CASL, compartidos entre API y front
@@ -50,8 +51,10 @@ Sin esto no hay pantalla que mostrar a nadie.
       del mapa del usuario. 11 tests contra un DOM real.
 - ✅ Shell: navegación, encabezado, barra de estado
 - ✅ Patrón de listado responsive, aplicado en la pantalla de OT
-- ⬜ Pantalla **Configuración → Teclas rápidas**, agrupada por módulo, con captura de
-      la combinación y los motivos de rechazo escritos
+- ✅ Pantalla **Configuración → Teclas rápidas**, agrupada por módulo, con captura de
+      la combinación apretándola y los motivos de rechazo escritos: la que se queda el
+      navegador, la reservada y la que ya está en otra acción, con el nombre de esa acción.
+      Se guardan las **diferencias** contra el valor por omisión, no el mapa entero
 - ✅ Enrutado con TanStack Router: guardias de sesión y sucursal, `volver` al entrar,
       búsqueda en la URL y el módulo del teclado declarado por la ruta. 21 tests nuevos.
 - ✅ Barra de estado inferior con las teclas activas del contexto
@@ -62,8 +65,14 @@ Sin esto no hay pantalla que mostrar a nadie.
 - ✅ Pantallas con carga diferida y librerías en archivos aparte
 - ✅ Cookie httpOnly para el refresco, con entrega por cuerpo para clientes sin cookies
 - ✅ Login sólo con correo y contraseña: el tenant sale del usuario
-- ⬜ Auditoría automática de altas, modificaciones y bajas
-- ⬜ Pantalla de configuración: sucursal predeterminada, tema, densidad y teclas
+- 🔨 Auditoría automática de altas, modificaciones y bajas. **Un solo lugar escribe la
+      tabla** (`auditar()` en `comun/auditoria.ts`, antes once copias del mismo insert) y hay
+      un test que recorre el contrato y falla si una ruta que muta no está clasificada. Falta
+      el trigger de Postgres, que es lo que lo vuelve una garantía y no una disciplina; el
+      obstáculo está anotado en [auditoría](../tecnicos/auditoria.md)
+- ✅ Pantalla de configuración: tema, densidad, filas por página y a qué sucursal entrar.
+      Va con `conSesion` y **sin permiso**: es lo propio de cada uno. El cambio se ve en el
+      momento, sin recargar
 - ✅ CASL aplicado **en las pantallas**: el menú esconde lo que el usuario no puede
       ver, los botones con atajo no se dibujan sin permiso —y así tampoco registran su
       tecla—, el inicio lleva a la primera pantalla que le toque, y una pantalla sin

@@ -1,14 +1,8 @@
 import { and, asc, count, type Db, eq, ilike, or, sql } from '@gpb/db'
-import {
-  auditoria,
-  cliente,
-  condicionIva,
-  entidadComercial,
-  proveedor,
-  provincia,
-} from '@gpb/db/schema'
+import { cliente, condicionIva, entidadComercial, proveedor, provincia } from '@gpb/db/schema'
 import { Inject, Injectable } from '@nestjs/common'
 import { tipoPersonaDe } from '../clientes/clientes.service.ts'
+import { auditar } from '../comun/auditoria.ts'
 import type { Sesion } from '../comun/contexto.ts'
 import { DatosDelTenant } from '../comun/datos.ts'
 import { ErrorRepuestos } from './errores.ts'
@@ -218,15 +212,12 @@ export class ServicioProveedores {
     datosDespues: Record<string, unknown>,
     ip?: string,
   ) {
-    await tx.insert(auditoria).values({
-      tenantId: sesion.tenantId,
-      usuarioId: sesion.usuarioId,
+    await auditar(tx, sesion, {
       tabla: 'proveedor',
       registroId: id,
       accion,
-      datosAntes: null,
-      datosDespues,
-      ip: ip ?? null,
+      despues: datosDespues,
+      ip,
     })
   }
 }

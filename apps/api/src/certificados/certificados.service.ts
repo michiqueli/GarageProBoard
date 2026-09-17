@@ -8,8 +8,9 @@ import {
   verificarCertificado,
 } from '@gpb/afip'
 import { and, type Db, desc, eq, inArray } from '@gpb/db'
-import { auditoria, certificadoAfip, empresa, puntoVenta } from '@gpb/db/schema'
+import { certificadoAfip, empresa, puntoVenta } from '@gpb/db/schema'
 import { Inject, Injectable } from '@nestjs/common'
+import { auditar } from '../comun/auditoria.ts'
 import type { Sesion } from '../comun/contexto.ts'
 import { DatosDelTenant } from '../comun/datos.ts'
 import { CajaFuerte, ClaveMaestraFaltante } from '../comun/secretos.ts'
@@ -394,15 +395,12 @@ export class ServicioCertificados {
     datosDespues: Record<string, unknown>,
     ip?: string,
   ) {
-    await tx.insert(auditoria).values({
-      tenantId: sesion.tenantId,
-      usuarioId: sesion.usuarioId,
+    await auditar(tx, sesion, {
       tabla: 'certificado_afip',
       registroId,
       accion,
-      datosAntes: null,
-      datosDespues,
-      ip: ip ?? null,
+      despues: datosDespues,
+      ip,
     })
   }
 }

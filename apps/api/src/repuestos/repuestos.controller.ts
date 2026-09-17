@@ -45,9 +45,9 @@ export class ControladorRepuestos {
   }
 
   @Operacion(r.ubicar)
-  ubicar() {
+  ubicar(@Req() pedido: FastifyRequest) {
     return implement(r.ubicar).handler(({ input: { id, ...datos }, errors }) =>
-      this.servicio.ubicar(id, datos).catch((e) => traducir(e, errors)),
+      this.servicio.ubicar(id, datos, pedido.ip).catch((e) => traducir(e, errors)),
     )
   }
 

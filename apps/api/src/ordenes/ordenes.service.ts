@@ -14,7 +14,6 @@ import {
   sql,
 } from '@gpb/db'
 import {
-  auditoria,
   cliente,
   comprobante,
   empresa,
@@ -35,6 +34,7 @@ import {
 } from '@gpb/db/schema'
 import { generarPresupuestoPdf } from '@gpb/pdf'
 import { Inject, Injectable } from '@nestjs/common'
+import { auditar } from '../comun/auditoria.ts'
 import { contextoDelPedido, type Sesion } from '../comun/contexto.ts'
 import { CorreoNoConfigurado, type ServicioCorreo } from '../comun/correo.ts'
 import { DatosDelTenant } from '../comun/datos.ts'
@@ -505,19 +505,18 @@ export class ServicioOrdenes {
           .where(and(eq(pedidoRepuestos.ordenId, id), eq(pedidoRepuestos.estado, 'abierto')))
           .returning({ id: pedidoRepuestos.id, numero: pedidoRepuestos.numero })
         if (abiertos.length) {
-          await tx.insert(auditoria).values(
+          await auditar(
+            tx,
+            sesion,
             abiertos.map((x) => ({
-              tenantId: sesion.tenantId,
-              usuarioId: sesion.usuarioId,
-              tabla: 'pedido_repuestos',
+              tabla: 'pedido_repuestos' as const,
               registroId: x.id,
-              accion: 'baja',
-              datosAntes: null,
-              datosDespues: {
+              accion: 'baja' as const,
+              despues: {
                 numero: x.numero,
                 texto: `Lo anuló al anular la OT ${String(o.numero).padStart(6, '0')}`,
               },
-              ip: ip ?? null,
+              ip,
             })),
           )
         }
@@ -1109,16 +1108,7 @@ export class ServicioOrdenes {
     datosDespues: Record<string, unknown>,
     ip?: string,
   ) {
-    await tx.insert(auditoria).values({
-      tenantId: sesion.tenantId,
-      usuarioId: sesion.usuarioId,
-      tabla: 'orden',
-      registroId: id,
-      accion,
-      datosAntes: null,
-      datosDespues,
-      ip: ip ?? null,
-    })
+    await auditar(tx, sesion, { tabla: 'orden', registroId: id, accion, despues: datosDespues, ip })
   }
 }
 
