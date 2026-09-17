@@ -86,9 +86,9 @@ después. El mapa, la configuración por módulo y quién puede tocarla, en
 - ✅ Acción `configurar` en el catálogo de permisos: entrar a un módulo no es poder
       tocar sus credenciales. Ningún rol predefinido la trae salvo el gerente
 - ⬜ Pantalla de configuración **adentro de cada módulo**, más un índice que las liste
-- ⬜ **Buscador del sistema en la barra lateral**, la misma cosa que la paleta de `F10`:
-      «mercado pago» lleva a su configuración y «certificados» a los de AFIP. Con
-      palabras clave por entrada, y filtrado por permiso y por módulo como el menú
+- ✅ **Buscador del sistema en la barra lateral**, la misma cosa que la paleta de `F10`:
+      «afip» lista certificados, padrón, puntos de venta y facturación. Índice en
+      `apps/web/src/indice.ts`, con palabras clave por entrada y filtrado por permiso
 - ✅ Módulos contratados por tenant en el esquema, con su flag y su vigencia — y el rol
       de la API sin permiso para escribirlos
 - ✅ El contrato declara a qué módulo pertenece cada ruta, al lado del permiso
@@ -120,7 +120,7 @@ Las entidades ya están modeladas; falta poder operarlas.
       ingreso asociado a su computadora, aviso al afectado y pantalla de Auditoría
 - ✅ Crear, clonar y editar roles: con casillas, conservando las reglas con condiciones, sin
       que nadie edite el suyo ni el que puede todo
-- ⬜ Registrar Usuarios en el índice del buscador del sistema cuando exista
+- ✅ Registrar Usuarios en el índice del buscador del sistema
 - ✅ Consulta al padrón de AFIP por CUIT: constancia de inscripción y A13 de respaldo,
       condición frente al IVA informada o deducida, probada contra AFIP
 - 🔨 ABM de entidades comerciales, usando la consulta al padrón: clientes ✅, con el
