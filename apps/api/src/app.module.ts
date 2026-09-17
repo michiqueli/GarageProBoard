@@ -12,6 +12,8 @@ import { ServicioClientes } from './clientes/clientes.service.ts'
 import { ControladorComprobantes } from './comprobantes/comprobantes.controller.ts'
 import { ServicioComprobantes } from './comprobantes/comprobantes.service.ts'
 import { ModuloBase } from './comun/base.module.ts'
+import { ControladorConfiguracion } from './configuracion/configuracion.controller.ts'
+import { ServicioConfiguracion } from './configuracion/configuracion.service.ts'
 import { ControladorOrdenes } from './ordenes/ordenes.controller.ts'
 import { ServicioOrdenes } from './ordenes/ordenes.service.ts'
 import { ControladorOrganizacion } from './organizacion/organizacion.controller.ts'
@@ -66,6 +68,7 @@ import { ServicioVehiculos } from './vehiculos/vehiculos.service.ts'
     ControladorClientes,
     ControladorRoles,
     ControladorCertificados,
+    ControladorConfiguracion,
     ControladorComprobantes,
     ControladorOrdenes,
     ControladorRepuestos,
@@ -81,6 +84,7 @@ import { ServicioVehiculos } from './vehiculos/vehiculos.service.ts'
     ServicioVehiculos,
     ServicioRoles,
     ServicioCertificados,
+    ServicioConfiguracion,
     ServicioComprobantes,
     ServicioOrdenes,
     ServicioRepuestos,

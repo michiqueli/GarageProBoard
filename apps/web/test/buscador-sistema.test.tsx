@@ -102,10 +102,12 @@ describe('el campo de la barra lateral', () => {
 
     await userEvent.type(
       screen.getByRole('combobox', { name: 'Buscar pantallas y configuraciones' }),
-      'atajos',
+      'fichada',
     )
     expect(
-      await screen.findByText('Todavía no está disponible · va a estar en Configuración'),
+      await screen.findByText(
+        'Todavía no está disponible · va a estar en Órdenes de trabajo → ficha de la orden',
+      ),
     ).toBeDefined()
   })
 

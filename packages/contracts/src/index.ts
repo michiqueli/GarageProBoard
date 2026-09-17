@@ -6,6 +6,7 @@ import { contratoAuth } from './auth.ts'
 import { contratoCertificados } from './certificados.ts'
 import { contratoClientes } from './clientes.ts'
 import { contratoComprobantes } from './comprobantes.ts'
+import { contratoConfiguracion } from './configuracion.ts'
 import { contratoOrdenes } from './ordenes.ts'
 import { contratoOrganizacion } from './organizacion.ts'
 import { contratoPadron } from './padron.ts'
@@ -22,6 +23,7 @@ export * from './certificados.ts'
 export * from './clientes.ts'
 export * from './comprobantes.ts'
 export * from './comunes.ts'
+export * from './configuracion.ts'
 export * from './ordenes.ts'
 export * from './organizacion.ts'
 export * from './padron.ts'
@@ -49,6 +51,7 @@ export const contrato = {
   padron: contratoPadron,
   clientes: contratoClientes,
   certificados: contratoCertificados,
+  configuracion: contratoConfiguracion,
   comprobantes: contratoComprobantes,
   ordenes: contratoOrdenes,
   repuestos: contratoRepuestos,

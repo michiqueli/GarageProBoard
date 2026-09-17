@@ -506,3 +506,30 @@ export function teclaDesdeEvento(evento: {
 
   return partes.join('+')
 }
+
+/** La definición de una acción del catálogo, o nada si el identificador no existe. */
+export function definicionDe(accion: string): DefinicionAccion | undefined {
+  return POR_ACCION.get(accion)
+}
+
+/**
+ * De un mapa completo a las diferencias: lo que el usuario efectivamente cambió.
+ *
+ * La base guarda el catálogo entero sembrado, así que el mapa que viaja en la sesión trae
+ * todas las acciones —también las que nadie tocó—. Lo que se valida y se guarda son las
+ * diferencias: así una tecla por omisión que cambiemos mañana le llega a todos los que
+ * nunca configuraron nada, en vez de quedar congelada en la base de cada usuario.
+ *
+ * Las no reasignables se descartan: su tecla no es del usuario.
+ */
+export function soloDiferencias(mapa: Readonly<Record<string, string>>): Diferencias {
+  const diferencias: Record<string, string> = {}
+
+  for (const [accion, tecla] of Object.entries(mapa)) {
+    const definicion = POR_ACCION.get(accion)
+    if (!definicion?.reasignable) continue
+    if (tecla !== definicion.porOmision) diferencias[accion] = tecla
+  }
+
+  return diferencias
+}

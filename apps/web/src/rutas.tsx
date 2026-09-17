@@ -19,6 +19,7 @@ import { DialogoConfirmacion } from './componentes/DialogoConfirmacion.tsx'
 import { Notificaciones } from './componentes/Notificaciones.tsx'
 import { Shell } from './componentes/Shell.tsx'
 import { useCacheDeSesion } from './ganchos/useCacheDeSesion.ts'
+import { useDensidad } from './ganchos/useDensidad.ts'
 import { useTema } from './ganchos/useTema.ts'
 import { PantallaLogin } from './modulos/auth/PantallaLogin.tsx'
 import { PantallaSucursal } from './modulos/auth/PantallaSucursal.tsx'
@@ -344,6 +345,25 @@ const rutaFichaRepuesto = createRoute({
   ),
 })
 
+/**
+ * La configuración personal. No declara `pantalla`: sus teclas son las globales, y el verbo
+ * F4 no tiene nada que hacer acá.
+ *
+ * La pestaña va en la dirección para que el buscador del sistema pueda llevar derecho a las
+ * teclas rápidas, que es como la mayoría va a llegar.
+ */
+const rutaConfiguracion = createRoute({
+  getParentRoute: () => conSesion,
+  path: 'configuracion',
+  validateSearch: z.object({
+    ver: z.enum(['generales', 'teclas']).optional().catch(undefined),
+  }),
+  component: lazyRouteComponent(
+    () => import('./modulos/configuracion/PantallaConfiguracion.tsx'),
+    'PantallaConfiguracion',
+  ),
+})
+
 const rutaCertificadoAfip = createRoute({
   getParentRoute: () => conSesion,
   path: 'empresas/$id/certificado-afip',
@@ -369,6 +389,7 @@ const arbol = raiz.addChildren([
     rutaRoles,
     rutaAuditoria,
     rutaEmpresas,
+    rutaConfiguracion,
     rutaCertificadoAfip,
     rutaCaja,
     rutaRepuestos,
@@ -415,6 +436,7 @@ function Raiz() {
   const datos = usarSesion((e) => e.datos)
 
   useTema(datos?.config.tema)
+  useDensidad(datos?.config.densidad)
 
   // Al cambiar de usuario se tira la caché: en la PC compartida del mostrador, el
   // cambio de turno no puede dejar a la vista los datos del turno anterior.

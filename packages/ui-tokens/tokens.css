@@ -132,6 +132,19 @@
   --shadow-flotante: 0 8px 24px #16211e26, 0 1px 3px #16211e1f;
 }
 
+/*
+ * Densidad cómoda.
+ *
+ * Igual que el tema: el atributo lo estampa la aplicación leyendo
+ * `usuario_config.densidad`, y acá sólo se redefine el alto de fila. Nada más cambia a
+ * propósito — los campos y los botones siguen en 32px—: lo que el que pide «cómoda»
+ * quiere es poder seguir un renglón con la vista en una tabla de cien filas, no una
+ * pantalla más grande.
+ */
+[data-densidad="comoda"] {
+  --spacing-fila: var(--spacing-fila-comoda);
+}
+
 @layer base {
   html {
     background: var(--color-fondo);

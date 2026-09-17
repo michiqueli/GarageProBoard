@@ -186,8 +186,11 @@ export const SECUNDARIAS: Seccion[] = [
     ),
   },
   {
+    // Sin `requiere`: es lo propio de cada uno. Pedir un permiso para cambiarse el tema o las
+    // teclas significaría que alguien se las elige al de al lado.
     id: 'configuracion',
     etiqueta: 'Configuración',
+    to: '/configuracion',
     icono: (
       <svg viewBox="0 0 16 16" {...trazo} aria-hidden="true">
         <circle cx="8" cy="8" r="2.2" />

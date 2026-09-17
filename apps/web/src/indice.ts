@@ -21,7 +21,12 @@ export interface EntradaIndice {
   donde: string
   claves: string[]
   /** Sin destino: todavía no está construida. Aparece atenuada y dice dónde va a estar. */
-  destino?: { to: NonNullable<LinkProps['to']>; params?: Record<string, string> }
+  destino?: {
+    to: NonNullable<LinkProps['to']>
+    params?: Record<string, string>
+    /** Para las entradas que caen en una pestaña, como `?ver=teclas`. */
+    search?: Record<string, string>
+  }
   requiere?: Acceso
 }
 
@@ -322,12 +327,67 @@ const ESTATICAS: EntradaIndice[] = [
     destino: { to: '/caja' },
     requiere: accesoDeRuta(contrato.comprobantes.listar),
   },
-  // Sin construir: aparecen atenuadas y dicen dónde van a estar.
+  {
+    id: 'configuracion',
+    titulo: 'Configuración: tema, densidad y sucursal al entrar',
+    donde: 'Configuración',
+    claves: [
+      'preferencias',
+      'tema',
+      'oscuro',
+      'claro',
+      'modo noche',
+      'densidad',
+      'filas',
+      'sucursal predeterminada',
+      'al entrar',
+      'mi cuenta',
+    ],
+    destino: { to: '/configuracion' },
+  },
   {
     id: 'configuracion.teclas',
     titulo: 'Teclas rápidas',
-    donde: 'Configuración',
-    claves: ['atajos', 'teclado', 'f2', 'f4', 'teclas'],
+    donde: 'Configuración → Teclas rápidas',
+    claves: [
+      'atajos',
+      'teclado',
+      'f2',
+      'f4',
+      'teclas',
+      'combinaciones',
+      'reasignar',
+      'cambiar teclas',
+      'shortcuts',
+    ],
+    destino: { to: '/configuracion', search: { ver: 'teclas' } },
+  },
+  // Sin construir: aparecen atenuadas y dicen dónde van a estar. «¿Dónde va a estar el
+  // fichaje?» se contesta igual antes de que la pantalla exista, y es mejor respuesta que
+  // el silencio.
+  {
+    id: 'ordenes.fichaje',
+    titulo: 'Fichaje de mecánicos por QR',
+    donde: 'Órdenes de trabajo → ficha de la orden',
+    claves: [
+      'fichar',
+      'fichada',
+      'reloj',
+      'tiempos',
+      'mecanico',
+      'qr',
+      'escanear',
+      'mano de obra',
+      'tiempo real',
+    ],
+    requiere: accesoDeRuta(contrato.ordenes.listar),
+  },
+  {
+    id: 'tablero',
+    titulo: 'Tablero de piso en tiempo real',
+    donde: 'Principal → Tablero',
+    claves: ['tablero', 'piso', 'taller', 'que auto', 'quien lo tiene', 'demoras', 'pantalla'],
+    requiere: accesoDeRuta(contrato.ordenes.listar),
   },
 ]
 

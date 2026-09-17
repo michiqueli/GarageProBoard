@@ -3,9 +3,11 @@ import {
   atajosParaSembrar,
   CATALOGO,
   catalogoPorAmbito,
+  definicionDe,
   mostrarTecla,
   PANTALLAS,
   resolverAtajos,
+  soloDiferencias,
   TECLAS_PROHIBIDAS,
   teclaDesdeEvento,
   validarAtajos,
@@ -157,5 +159,47 @@ describe('sembrado al crear el usuario', () => {
     // Las estructurales no se pueden reasignar ni siquiera a su propio valor.
     delete diferencias['global.cancelar']
     expect(validarAtajos(diferencias)).toEqual([])
+  })
+})
+
+describe('de un mapa completo a las diferencias', () => {
+  it('descarta todo lo que está en su valor de fábrica', () => {
+    // Lo que la sesión trae es el catálogo entero sembrado: si se guardara así, el día que
+    // cambiemos una tecla por omisión quedaría congelada en la base de cada usuario.
+    const completo = Object.fromEntries(atajosParaSembrar().map((f) => [f.accion, f.tecla]))
+    expect(soloDiferencias(completo)).toEqual({})
+  })
+
+  it('deja sólo lo que el usuario movió', () => {
+    const completo = Object.fromEntries(atajosParaSembrar().map((f) => [f.accion, f.tecla]))
+    const mapa = { ...completo, 'global.guardar': 'Ctrl+G' }
+    expect(soloDiferencias(mapa)).toEqual({ 'global.guardar': 'Ctrl+G' })
+  })
+
+  it('descarta las no reasignables aunque vengan con otra tecla', () => {
+    // Esc no es del usuario. Si se colara acá, la API la rechazaría con un error que la
+    // pantalla no puede explicar, porque nadie la eligió.
+    expect(soloDiferencias({ 'global.cancelar': 'F7' })).toEqual({})
+  })
+
+  it('ignora una acción que ya no existe en el catálogo', () => {
+    // Un mapa guardado antes de sacar una pantalla: se deja pasar en silencio, porque el
+    // usuario no tiene nada que arreglar.
+    expect(soloDiferencias({ 'entregas.loQueSea': 'Ctrl+K' })).toEqual({})
+  })
+
+  it('lo que sale de acá siempre pasa la validación, si el mapa era válido', () => {
+    const completo = Object.fromEntries(atajosParaSembrar().map((f) => [f.accion, f.tecla]))
+    expect(validarAtajos(soloDiferencias(completo))).toEqual([])
+  })
+})
+
+describe('la definición de una acción', () => {
+  it('se encuentra por su identificador', () => {
+    expect(definicionDe('caja.facturar')?.etiqueta).toBe('Facturar')
+  })
+
+  it('no existe la que no está en el catálogo', () => {
+    expect(definicionDe('caja.inventada')).toBeUndefined()
   })
 })

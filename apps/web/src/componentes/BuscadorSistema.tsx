@@ -212,6 +212,7 @@ export function BuscadorSistema() {
                   data-opcion
                   to={r.destino.to}
                   params={r.destino.params as never}
+                  search={r.destino.search as never}
                   onClick={elegido}
                   className="grid gap-0.5 px-3 py-1.5 hover:bg-superficie-2 focus-visible:bg-superficie-2 focus-visible:outline-none"
                 >
