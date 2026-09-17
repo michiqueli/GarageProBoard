@@ -1,7 +1,11 @@
 # Roadmap inicial
 
-Estado al 17/09/2026. Los hitos están ordenados por dependencia, no por deseo: cada
-uno necesita el anterior. Lo que no está acá no está decidido todavía.
+Estado al 17/09/2026. Los hitos están ordenados por dependencia, no por deseo: cada uno
+necesita el anterior. Lo que no está acá no está decidido todavía.
+
+Del 5 en adelante se escribieron ese mismo día, después de relevar a la competencia: el
+objetivo es **la aplicación más completa del rubro**, sin apurar el lanzamiento. Ver
+[contra qué competimos](../tecnicos/competencia-dms.md).
 
 Leyenda: ✅ hecho · 🔨 en curso · ⬜ pendiente
 
@@ -226,22 +230,170 @@ verdad. Qué se trae y qué cambia ahora que el DMS es nuestro, en
 
 ---
 
-## Más adelante, sin fecha
+## Después del piso: el sistema entero
 
-- **Control de asistencia en RRHH con el mismo QR del taller**: la credencial firmada
-      (`GT1:M:…`, en `packages/core/src/qr.ts`) marca la entrada y la salida de todos los
+Hasta acá llega lo que hace falta para mostrarle el taller a alguien. De acá en adelante está
+lo que hace falta para que una concesionaria **no necesite ningún otro sistema**, que es el
+objetivo declarado: vamos por la aplicación más completa del rubro, sin apurar el
+lanzamiento.
+
+Qué tiene cada competidor y qué nos falta contra ellos, en
+[contra qué competimos](../tecnicos/competencia-dms.md). Lo de abajo sale de ahí, ordenado
+por dependencia como el resto: cada hito necesita el anterior.
+
+---
+
+### Hito 5 — Contabilidad y tesorería ⬜
+
+**El agujero más grande que teníamos**, y no estaba escrito en ningún lado hasta el
+17/09/2026. Sin esto el contador de la concesionaria sigue cargando todo de nuevo en otro
+sistema, y dejamos de ser *el* sistema para ser *uno más*. Es además lo que justifica el
+precio: un DMS que reemplaza al software contable se paga solo.
+
+- ⬜ Plan de cuentas jerárquico, con imputación por **centro de costo** (taller, repuestos,
+      ventas: es la única forma de saber cuál de los tres gana plata)
+- ⬜ **Asiento automático desde cada movimiento**, en el momento: la factura, el pago, la
+      compra, el ajuste de stock. Asentar después a mano es tener dos verdades
+- ⬜ Plantillas de asientos periódicos
+- ⬜ Libros: diario, mayor, balance general, IVA compras y ventas, retenciones,
+      percepciones, Ingresos Brutos
+- ⬜ Exportación a SIAP y al aplicativo del contable
+- ⬜ **Convenio Multilateral**: coeficientes y retenciones por jurisdicción (los campos ya
+      están en el esquema desde el Hito 2; falta la lógica, y se decide con un contable)
+- ⬜ **Tesorería**: caja y bancos, recibos, órdenes de pago, canjes, transferencias entre
+      cajas, cierre de caja
+- ⬜ **Cheques de terceros y chequeras.** Acá el cheque se endosa y circula: una
+      concesionaria que recibe uno a 90 días y con eso le paga a un proveedor necesita saber
+      dónde está cada uno. Sin esto la administración vuelve al Excel
+- ⬜ Retenciones con su comprobante generado solo, e impresión de cheques
+- ⬜ **Conciliación bancaria**
+- ⬜ Cuenta corriente de clientes y de proveedores, con vencimientos, cobranzas y
+      compensación de saldos
+
+**Criterio de terminado:** el contador cierra un mes sin abrir otro programa.
+
+---
+
+### Hito 6 — La recepción y el cliente ⬜
+
+Lo que pasa antes de que alguien sea una orden o una factura. Es la parte que ningún
+competidor de los tres relevados tiene resuelta, y donde se pierde la mayor cantidad de
+plata sin que nadie lo vea.
+
+- ⬜ **Tótem de recepción**, la pantalla en la puerta como la de un banco: ponés tu
+      documento, si ya existís te saluda por tu nombre y si no te lo pide, elegís a qué
+      viniste —ventas, servicios, repuestos, administración— y te llevás tu turno. Llamado
+      por pantalla y medición de la espera por sector y por hora.
+      **Es el único lugar donde se captura al que no compró**: el que vino a preguntar por un
+      usado y se fue hoy no existe en ningún sistema
+- ⬜ Tres cuidados del tótem, que se deciden al construirlo y están razonados en
+      [contra qué competimos](../tecnicos/competencia-dms.md): tipear un documento **no puede
+      devolver el nombre de nadie** sin una confirmación más; es la otra excepción a la
+      densidad (dedo, 44px); y tiene que emitir el turno **aunque se caiga la red**
+- ⬜ **CRM**: prospectos, agenda del vendedor, contactos programados, demandas, contactos
+      levantados en eventos. Y lo que de verdad compra un gerente comercial: **la
+      verificación de que el vendedor hizo lo que tenía que hacer**
+- ⬜ **Gestor de eventos**: notificaciones por mail, SMS y WhatsApp — recordatorio de turno,
+      **«su auto está listo»**, vencimiento del service, cumpleaños. Lo más barato que más se
+      nota, y el caño del mail ya está andando desde el Hito 3
+- ⬜ **Cuestionarios de satisfacción** en venta y en posventa. Las terminales los exigen y
+      los miden
+- ⬜ **Quejas y reclamos** centralizados, con alerta al responsable y seguimiento hasta que
+      se cierran
+
+**Criterio de terminado:** entra alguien a la concesionaria, saca su turno solo, y queda
+registrado aunque se vaya sin comprar nada.
+
+---
+
+### Hito 7 — Repuestos completo ⬜
+
+La base está hecha en el Hito 4. Falta lo que convierte el módulo en una herramienta de
+compra en vez de un inventario.
+
+- ⬜ **Ventas perdidas**: registrar lo que alguien vino a buscar y no había. Es el dato que
+      dice qué comprar, y no lo tiene nadie porque no se registra solo
+- ⬜ **Rotación y stock muerto**: clasificar el stock por movimiento, para dejar de tener
+      plata inmovilizada en el estante
+- ⬜ Reservas y **pedido a fábrica desde el mínimo**
+- ⬜ Reemplazos y códigos alternativos
+- ⬜ Importar la lista de precios de la terminal
+- ⬜ Valorización múltiple del stock e inventarios
+- ⬜ Presupuestos, remitos y vales de salida
+
+---
+
+### Hito 8 — Ventas de unidades ⬜
+
+- ⬜ Stock de 0km, usados y rodados: pedidos, reservas, asignaciones, consignaciones,
+      transferencias entre sucursales y entre concesionarias
+- ⬜ Unidades **en producción**, por interfaz con la fábrica
+- ⬜ La operación de venta con su financiación, sus gastos y sus bonificaciones **pegados al
+      vehículo**: si el flete y la patente viven en otro lado, el margen es un número
+      inventado
+- ⬜ **Gestoría**: formularios asignados, trámites y su cuenta corriente
+- ⬜ Patentamiento y prenda
+- ⬜ Agenda de preparación y entrega, con autorización de entrega
+- ⬜ **Liquidación de comisiones a vendedores**
+- ⬜ Rentabilidad por operación
+- ⬜ **Plan de ahorro**: suscripciones, agrupamientos, adjudicaciones, transferencias,
+      renuncias, rescisiones, scoring, cuenta corriente por contrato, cobranza de la primera
+      cuota y licitaciones. En Argentina un porcentaje enorme de los 0km se vende por plan:
+      sin esto no entramos en una concesionaria de marca masiva
+
+---
+
+### Hito 9 — Garantías y campañas ⬜
+
+- ⬜ Reclamos de garantía a la terminal, cada una con su formato y su portal
+- ⬜ **Campañas de la terminal**: qué vehículos las tienen pendientes, y avisar cuando uno
+      entra al taller
+
+---
+
+### Hito 10 — RRHH, con liquidación de sueldos ⬜
+
+**Ninguno de los competidores relevados lo tiene** — AutoPack ni siquiera menciona RRHH—, y
+es de las cosas que más atan a un cliente. Con contabilidad, tesorería y sueldos adentro no
+queda nada afuera que justifique un segundo proveedor.
+
+- ⬜ Legajo del empleado
+- ⬜ **Asistencia con el mismo QR firmado del taller** (`GT1:M:…`, en
+      `packages/core/src/qr.ts`): la credencial marca entrada y salida de **todos** los
       empleados, no sólo el fichaje de los mecánicos en las órdenes
+- ⬜ **Liquidación de sueldos** con convenio SMATA y el personal fuera de convenio
+- ⬜ Recibos, cargas sociales, libro de sueldos digital, F.931
+- ⬜ ART, obra social y sindicato
+- ⬜ El asiento de la liquidación, contra el Hito 5
 
-- **Repuestos** 🔨: catálogo, stock por sucursal con movimientos, ajustes y transferencias,
-      pedidos (con chasis; a una orden, a un cliente o de mostrador) facturados en caja, compras
-      a proveedores con recepción, y proveedores ✅. Falta importar la lista de precios de la
-      terminal, reservas y el pedido a fábrica desde el mínimo
-- **Garantías**: reclamos a terminal, cada una con su formato y su portal
-- **Cuenta corriente y cobranzas**: recibos, retenciones, compensación de saldos
-- **Ventas 0km y usados**: prospectos, planes de ahorro, patentamiento, prenda
-- **RRHH**: legajo, asistencia, liquidación con convenio SMATA
-- **`apps/mobile`**: app nativa para el piso de taller — fichaje, fotos de daño para
-  garantía, escaneo de chasis, y cola offline porque el fondo del taller no tiene wifi
+---
+
+### Transversal — `apps/mobile` ⬜
+
+La app nativa, que se integra con todo lo anterior en vez de ser un sistema aparte.
+
+- ⬜ **Peritaje digital** en recepción: fotos del vehículo, daños marcados y **firma del
+      cliente en pantalla**, y la orden se abre sola desde ahí
+- ⬜ Fichaje del piso de taller y escaneo de chasis por código de barras
+- ⬜ **Recepción de 0km**: leer el chasis del código de barras y fotodocumentar las averías
+      de transporte antes de aceptar la unidad
+- ⬜ Ingreso y egreso de vehículos en tablet, viendo los turnos del día
+- ⬜ **Cola offline**: el fondo del taller no tiene wifi, y una app que necesita señal para
+      fichar no se usa
+
+---
+
+### Integraciones: no ser una isla ⬜
+
+De ACK, que se vende como núcleo de un ecosistema y publica con quién se integra. Hoy no
+tenemos ninguna pensada más allá de AFIP.
+
+- ⬜ Interfaces con la fábrica: listas de precios, vehículos en producción, facturas y planes
+- ⬜ Catálogo de piezas de terceros
+- ⬜ Peritaje de daños (tipo GT Motive o Audatex)
+- ⬜ Gestión documental
+- ⬜ Una API pública documentada — el contrato oRPC ya publica OpenAPI desde el Hito 0, así
+      que el trabajo es de política y de credenciales, no de código
 
 ## Deuda técnica registrada
 
@@ -254,5 +406,6 @@ Cosas que sabemos que faltan, para que no se descubran de golpe:
   o `wal-g` contra un bucket S3-compatible, con restauración **probada**, no solo
   configurada. Un VPS autogestionado sin backup probado es la forma de perder el
   negocio en una tarde.
-- **Convenio Multilateral de Ingresos Brutos**: los campos están en el esquema, la
-  lógica de coeficientes y retenciones por jurisdicción no.
+- **Convenio Multilateral de Ingresos Brutos**: los campos están en el esquema, la lógica de
+  coeficientes y retenciones por jurisdicción no. Dejó de ser deuda suelta: es parte del
+  Hito 5, y se decide con un contable.
