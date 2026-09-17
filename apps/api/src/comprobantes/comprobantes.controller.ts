@@ -1,11 +1,9 @@
 import { contrato } from '@gpb/contracts'
-import { generarFacturaPdf } from '@gpb/pdf'
 import { Controller, Inject, Logger, Req } from '@nestjs/common'
 import { implement } from '@orpc/nest'
 import type { FastifyRequest } from 'fastify'
 import { Operacion } from '../comun/operacion.ts'
 import { ErrorComprobantes, ServicioComprobantes } from './comprobantes.service.ts'
-import { aImpresion } from './impresion.ts'
 
 const c = contrato.comprobantes
 
