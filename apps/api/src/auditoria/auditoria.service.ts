@@ -298,7 +298,9 @@ export function describirCambio(
   if (tabla === 'comprobante') {
     return despues?.verificado
       ? 'Lo verificó contra AFIP: había quedado emitido'
-      : `La emitió a ${String(despues?.receptor)} por $ ${String(despues?.total).replace('.', ',')}`
+      : String(despues?.comprobante ?? '').startsWith('Nota de Crédito')
+        ? `La emitió a ${String(despues?.receptor)} por $ ${String(despues?.total).replace('.', ',')}, anulando la factura`
+        : `La emitió a ${String(despues?.receptor)} por $ ${String(despues?.total).replace('.', ',')}`
   }
   if (tabla === 'rol') return describirRol(accion, antes, despues)
   if (tabla === 'vehiculo' || tabla === 'titularidad') {

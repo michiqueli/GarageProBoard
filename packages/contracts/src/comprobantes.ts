@@ -98,9 +98,22 @@ export const comprobanteResumen = z.object({
   importeTotal: z.string(),
   cae: z.string().nullable(),
   entorno: z.enum(['produccion', 'homologacion']),
+  /** Una factura con su nota de crédito. */
+  anulado: z.boolean(),
 })
 
-export const comprobanteDetalle = comprobanteResumen.extend({
+const referencia = z.object({
+  id: z.uuid(),
+  nombre: z.string(),
+  puntoVenta: z.number().int(),
+  numero: z.number().int(),
+})
+
+export const comprobanteDetalle = comprobanteResumen.omit({ anulado: true }).extend({
+  /** En una nota de crédito, la factura que anula. */
+  comprobanteAsociado: referencia.nullable(),
+  /** En una factura, la nota de crédito que la anula. */
+  anuladoPor: referencia.nullable(),
   empresa: z.object({ id: z.uuid(), razonSocial: z.string(), cuit: z.string() }),
   concepto: z.number().int(),
   servicio: z.object({ desde: fecha, hasta: fecha, vencimientoPago: fecha }).nullable(),
@@ -247,6 +260,64 @@ export const contratoComprobantes = {
         status: 503,
         message:
           'AFIP no contestó. No se sabe si la factura quedó emitida: se verifica antes de seguir',
+        data: z.object({ comprobanteId: z.uuid() }),
+      },
+    })
+    .output(comprobanteDetalle),
+
+  anular: conPermiso('contable', 'anular', 'Comprobante')
+    .route({
+      method: 'POST',
+      path: '/comprobantes/{id}/nota-credito',
+      tags: [TAG],
+      operationId: 'anularComprobante',
+      summary: 'Anular una factura con una nota de crédito por el total',
+      successStatus: 201,
+      description:
+        'Mismos renglones, mismo receptor y mismo punto de venta que la factura, que viaja ' +
+        'asociada. Una factura se anula una sola vez.',
+    })
+    .input(conId)
+    .errors({
+      NO_ENCONTRADO: { status: 404, message: 'Ese comprobante no existe' },
+      NO_ANULABLE: {
+        status: 409,
+        message: 'Ese comprobante no se puede anular',
+        data: z.object({ motivo: z.string() }),
+      },
+      SIN_CERTIFICADO: {
+        status: 409,
+        message: 'La razón social no tiene un certificado de AFIP activo',
+      },
+      CERTIFICADO_VENCIDO: {
+        status: 409,
+        message: 'El certificado de AFIP de la razón social está vencido: hay que renovarlo',
+      },
+      SERIE_OCUPADA: {
+        status: 409,
+        message:
+          'Hay una nota de crédito de este punto de venta sin confirmar por AFIP: verificala antes de emitir otra',
+        data: z.object({ comprobanteId: z.uuid() }),
+      },
+      NUMERACION_DESFASADA: {
+        status: 409,
+        message:
+          'AFIP informa como último un número que en el sistema ya está usado. Revisá los comprobantes de ese punto de venta antes de seguir',
+        data: z.object({ numero: z.number().int() }),
+      },
+      RECHAZADO: {
+        status: 422,
+        message: 'AFIP rechazó la nota de crédito',
+        data: z.object({
+          comprobanteId: z.uuid(),
+          errores: z.array(mensajeAfip),
+          observaciones: z.array(mensajeAfip),
+        }),
+      },
+      AFIP_NO_RESPONDE: {
+        status: 503,
+        message:
+          'AFIP no contestó. No se sabe si la nota de crédito quedó emitida: se verifica antes de seguir',
         data: z.object({ comprobanteId: z.uuid() }),
       },
     })

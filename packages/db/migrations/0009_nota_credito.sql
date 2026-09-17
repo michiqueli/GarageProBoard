@@ -1,0 +1,3 @@
+ALTER TABLE "comprobante" ADD COLUMN "comprobante_asociado_id" uuid;--> statement-breakpoint
+ALTER TABLE "comprobante" ADD CONSTRAINT "comprobante_comprobante_asociado_id_comprobante_id_fk" FOREIGN KEY ("comprobante_asociado_id") REFERENCES "public"."comprobante"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
+CREATE UNIQUE INDEX "comprobante_anulacion_uq" ON "comprobante" USING btree ("comprobante_asociado_id") WHERE estado in ('emitiendo', 'autorizado', 'incierto') and comprobante_asociado_id is not null;

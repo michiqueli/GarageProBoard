@@ -47,6 +47,13 @@ export interface DatosComprobante {
   renglones: readonly RenglonFacturable[]
   /** Obligatorias para servicios: el período facturado y cuándo vence el pago. AAAA-MM-DD. */
   servicio?: { desde: string; hasta: string; vencimientoPago: string } | undefined
+  /**
+   * El comprobante que ésta modifica: obligatorio en notas de crédito y débito. AFIP
+   * verifica que exista, que sea del mismo emisor y que la fecha no sea anterior.
+   */
+  asociado?:
+    | { tipo: number; puntoVenta: number; numero: number; cuit: string; fecha: string }
+    | undefined
 }
 
 const dos = (d: Decimal) => d.toDecimalPlaces(2, Decimal.ROUND_HALF_UP)
@@ -119,6 +126,7 @@ export function armarComprobante(datos: DatosComprobante): SolicitudComprobante 
     importeExento: '0.00',
     alicuotas,
     servicio: datos.servicio,
+    asociado: datos.asociado,
   }
 }
 

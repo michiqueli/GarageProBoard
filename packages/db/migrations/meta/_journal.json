@@ -64,6 +64,13 @@
       "when": 1789605692063,
       "tag": "0008_comprobante",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1789607756689,
+      "tag": "0009_nota_credito",
+      "breakpoints": true
     }
   ]
 }

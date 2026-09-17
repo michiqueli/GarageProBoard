@@ -81,6 +81,13 @@ export function aImpresion({
       domicilio: d.receptorDomicilio,
       condicionVenta: d.condicionVenta,
     },
+    comprobanteAsociado: d.comprobanteAsociado
+      ? {
+          nombre: d.comprobanteAsociado.nombre,
+          puntoVenta: d.comprobanteAsociado.puntoVenta,
+          numero: d.comprobanteAsociado.numero,
+        }
+      : undefined,
     renglones: d.renglones.map((r) => {
       const bruto = new Decimal(r.cantidad).times(r.precioUnitario).toDecimalPlaces(2)
       const bonificacion = bruto.minus(r.total).toFixed(2)
@@ -165,6 +172,13 @@ export class ControladorComprobantes {
         }
         return traducir(e, errors)
       }),
+    )
+  }
+
+  @Operacion(c.anular)
+  anular(@Req() pedido: FastifyRequest) {
+    return implement(c.anular).handler(({ input, errors }) =>
+      this.servicio.anular(input.id, pedido.ip).catch((e) => traducir(e, errors)),
     )
   }
 

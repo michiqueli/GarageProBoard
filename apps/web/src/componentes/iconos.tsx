@@ -115,3 +115,12 @@ export function IconoVerificar() {
     </svg>
   )
 }
+
+export function IconoAnular() {
+  return (
+    <svg {...trazo} aria-hidden="true">
+      <circle cx="8" cy="8" r="5.5" />
+      <path d="M4.2 11.8l7.6-7.6" />
+    </svg>
+  )
+}

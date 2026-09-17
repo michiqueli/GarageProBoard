@@ -24,6 +24,7 @@ let api: ApiDePrueba
 let app: NestFastifyApplication
 let gerente: string
 let mecanico: string
+let cajero: string
 let puntoVentaId: string
 let tenantId: string
 
@@ -95,11 +96,15 @@ beforeAll(async () => {
   const semilla = await sembrarConcesionaria(api.pg.dbDuenio, {
     slug: 'facturacion',
     email: 'gerente@facturacion.test',
-    otros: [{ email: 'mecanico@facturacion.test', rol: 'Mecánico' }],
+    otros: [
+      { email: 'mecanico@facturacion.test', rol: 'Mecánico' },
+      { email: 'cajero@facturacion.test', rol: 'Cajero' },
+    ],
   })
   tenantId = semilla.tenant.id
   gerente = await entrar('gerente@facturacion.test')
   mecanico = await entrar('mecanico@facturacion.test')
+  cajero = await entrar('cajero@facturacion.test')
 
   // Punto de venta y certificado, por el camino de verdad.
   const sucursalId = semilla.sucursales[0]?.id as string
@@ -424,5 +429,75 @@ describe('consultar e imprimir', () => {
     const rechazada = (await emitir({ consumidorFinal: {} })).json().data.comprobanteId
     const sinPdf = await pedir(gerente, 'GET', `/comprobantes/${rechazada}/pdf`)
     expect(sinPdf.statusCode).toBe(409)
+  })
+})
+
+describe('anular con nota de crédito', () => {
+  const anular = (id: string, quien = gerente) =>
+    pedir(quien, 'POST', `/comprobantes/${id}/nota-credito`)
+
+  it('una B se anula con una nota de crédito B por el total, con la factura asociada', async () => {
+    afip.ultimo = 500
+    const factura = (await emitir({ consumidorFinal: {} }, [renglon('242')])).json()
+    afip.ultimo = 20
+
+    const r = await anular(factura.id)
+    expect(r.statusCode).toBe(201)
+    expect(r.json()).toMatchObject({
+      estado: 'autorizado',
+      tipoComprobante: 8,
+      letra: 'B',
+      numero: 21,
+      importeTotal: '242.00',
+      comprobanteAsociado: { id: factura.id, numero: 501 },
+    })
+    const enviado = afip.autorizar.mock.calls.at(-1)?.[0] as SolicitudComprobante
+    expect(enviado.asociado).toMatchObject({
+      tipo: 6,
+      puntoVenta: 5,
+      numero: 501,
+      fecha: factura.fecha,
+    })
+
+    const anulada = (await pedir(gerente, 'GET', `/comprobantes/${factura.id}`)).json()
+    expect(anulada.anuladoPor).toMatchObject({ id: r.json().id })
+    const listado = (await pedir(gerente, 'GET', '/comprobantes?porPagina=50')).json()
+    expect(listado.datos.find((d: { id: string }) => d.id === factura.id).anulado).toBe(true)
+
+    // La nota de crédito tiene su PDF.
+    const pdf = await pedir(gerente, 'GET', `/comprobantes/${r.json().id}/pdf`)
+    expect(pdf.statusCode).toBe(200)
+  })
+
+  it('una factura se anula una sola vez, y una nota de crédito no se anula', async () => {
+    afip.ultimo = 600
+    const factura = (await emitir({ consumidorFinal: {} })).json()
+    afip.ultimo = 40
+    const nota = (await anular(factura.id)).json()
+
+    const otraVez = await anular(factura.id)
+    expect(otraVez.statusCode).toBe(409)
+    expect(otraVez.json().data.motivo).toMatch(/ya tiene su nota de crédito/)
+
+    const deNota = await anular(nota.id)
+    expect(deNota.json().data.motivo).toMatch(/Sólo se anulan facturas/)
+  })
+
+  it('si AFIP rechaza la nota, la factura sigue sin anular y se puede reintentar', async () => {
+    afip.ultimo = 700
+    const factura = (await emitir({ consumidorFinal: {} })).json()
+    afip.ultimo = 60
+    afip.autorizar.mockRejectedValueOnce(
+      new ComprobanteRechazado([{ codigo: 10040, mensaje: 'no' }], [], {}),
+    )
+    expect((await anular(factura.id)).statusCode).toBe(422)
+    const reintento = await anular(factura.id)
+    expect(reintento.json()).toMatchObject({ estado: 'autorizado', numero: 61 })
+  })
+
+  it('el cajero factura pero no anula', async () => {
+    afip.ultimo = 800
+    const factura = (await emitir({ consumidorFinal: {} })).json()
+    expect((await anular(factura.id, cajero)).statusCode).toBe(403)
   })
 })

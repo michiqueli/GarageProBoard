@@ -47,6 +47,13 @@ export interface SolicitudComprobante {
   alicuotas: RenglonIva[]
   /** Obligatorio si el concepto incluye servicios. AAAA-MM-DD. */
   servicio?: { desde: string; hasta: string; vencimientoPago: string } | undefined
+  /**
+   * El comprobante que ésta modifica: obligatorio en notas de crédito y débito. AFIP
+   * verifica que exista, que sea del mismo emisor y que la fecha no sea anterior.
+   */
+  asociado?:
+    | { tipo: number; puntoVenta: number; numero: number; cuit: string; fecha: string }
+    | undefined
 }
 
 export interface ComprobanteAutorizado {

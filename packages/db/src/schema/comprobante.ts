@@ -1,5 +1,6 @@
 import { sql } from 'drizzle-orm'
 import {
+  type AnyPgColumn,
   bigint,
   check,
   date,
@@ -77,6 +78,8 @@ export const comprobante = pgTable(
       .references(() => condicionIva.codigo),
     receptorDomicilio: text(),
     condicionVenta: text().notNull(),
+    /** En una nota de crédito o débito, el comprobante que modifica. */
+    comprobanteAsociadoId: uuid().references((): AnyPgColumn => comprobante.id),
 
     importeNeto: importe('importe_neto').notNull(),
     importeIva: importe('importe_iva').notNull(),
@@ -109,6 +112,13 @@ export const comprobante = pgTable(
     uniqueIndex('comprobante_en_vuelo_uq')
       .on(t.puntoVentaId, t.tipoComprobante)
       .where(sql`estado in ('emitiendo', 'incierto')`),
+    // Una factura se anula una sola vez: dos notas de crédito por el total serían devolverle
+    // al cliente el doble. Las rechazadas no cuentan.
+    uniqueIndex('comprobante_anulacion_uq')
+      .on(t.comprobanteAsociadoId)
+      .where(
+        sql`estado in ('emitiendo', 'autorizado', 'incierto') and comprobante_asociado_id is not null`,
+      ),
     check(
       'comprobante_estado_valido',
       sql`${t.estado} in ('emitiendo', 'autorizado', 'rechazado', 'incierto')`,

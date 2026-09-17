@@ -49,6 +49,19 @@ export function aVoucherWsfe(s: SolicitudComprobante) {
           FchVtoPago: aaaammdd(s.servicio.vencimientoPago),
         }
       : {}),
+    ...(s.asociado
+      ? {
+          CbtesAsoc: [
+            {
+              Tipo: s.asociado.tipo,
+              PtoVta: s.asociado.puntoVenta,
+              Nro: s.asociado.numero,
+              Cuit: s.asociado.cuit,
+              CbteFch: aaaammdd(s.asociado.fecha),
+            },
+          ],
+        }
+      : {}),
     ...(s.alicuotas.length
       ? {
           Iva: s.alicuotas.map((a) => ({

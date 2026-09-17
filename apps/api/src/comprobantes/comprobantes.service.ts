@@ -49,6 +49,7 @@ type Codigo =
   | 'AFIP_NO_RESPONDE'
   | 'SIN_CAE'
   | 'NUMERACION_DESFASADA'
+  | 'NO_ANULABLE'
 
 export class ErrorComprobantes extends Error {
   constructor(
@@ -69,6 +70,9 @@ const ADMITE: Record<string, readonly number[]> = {
   B: [4, 5, 6, 7, 8, 9, 10, 13, 15, 16],
   C: [1, 4, 5, 6, 7, 8, 9, 10, 13, 15, 16],
 }
+
+/** La nota de crédito de cada factura: A → 3, B → 8, C → 13. */
+const NOTA_DE_CREDITO: Record<number, number> = { 1: 3, 6: 8, 11: 13 }
 
 const CONSUMIDOR_FINAL = 5
 const DOC_CUIT = 80
@@ -272,38 +276,199 @@ export class ServicioComprobantes {
       previo.cliente,
       previo.reglas,
     )
-    const { emisor } = previo
 
-    // 3. Si hay uno en vuelo de esta serie, no se sigue: primero hay que saber qué pasó.
-    await this.datos.transaccion(async (tx) => {
-      const [enVuelo] = await tx
+    return this.circuito(
+      {
+        emisor: previo.emisor,
+        tipoComprobante: receptor.tipoComprobante,
+        receptor,
+        concepto: pedido.concepto,
+        servicio: pedido.concepto === 1 ? null : (pedido.servicio ?? null),
+        condicionVenta: pedido.condicionVenta,
+        renglones: pedido.renglones.map((r) => ({ ...r, total: totalRenglon(r) })),
+        asociado: null,
+        nombreComprobante: receptor.nombreComprobante,
+      },
+      ip,
+    )
+  }
+
+  /**
+   * Anula una factura con una nota de crédito por el total: los mismos renglones, el mismo
+   * receptor —el que figura en la factura, sin volver a consultar el padrón— y el mismo
+   * punto de venta. La nota de crédito lleva la factura asociada, como pide AFIP.
+   */
+  async anular(id: string, ip?: string) {
+    const previo = await this.datos.transaccion(async (tx, sesion) => {
+      const [f] = await tx.select().from(comprobante).where(eq(comprobante.id, id))
+      if (!f) throw new ErrorComprobantes('NO_ENCONTRADO')
+      const tipoNota = NOTA_DE_CREDITO[f.tipoComprobante]
+      if (!tipoNota) {
+        throw new ErrorComprobantes('NO_ANULABLE', { motivo: 'Sólo se anulan facturas.' })
+      }
+      if (f.estado !== 'autorizado') {
+        throw new ErrorComprobantes('NO_ANULABLE', {
+          motivo: 'Sólo se anula una factura autorizada por AFIP.',
+        })
+      }
+      const [anulacion] = await tx
         .select({ id: comprobante.id })
         .from(comprobante)
         .where(
           and(
-            eq(comprobante.puntoVentaId, emisor.puntoVentaId),
-            eq(comprobante.tipoComprobante, receptor.tipoComprobante),
-            inArray(comprobante.estado, ['emitiendo', 'incierto']),
+            eq(comprobante.comprobanteAsociadoId, id),
+            inArray(comprobante.estado, ['emitiendo', 'autorizado', 'incierto']),
           ),
         )
-      if (enVuelo) throw new ErrorComprobantes('SERIE_OCUPADA', { comprobanteId: enVuelo.id })
+      if (anulacion) {
+        throw new ErrorComprobantes('NO_ANULABLE', {
+          motivo: 'Esa factura ya tiene su nota de crédito.',
+        })
+      }
+      const pv = await this.puntoDeVenta(tx, sesion, f.puntoVentaId, false)
+      const emisor = await this.emisor(tx, pv)
+      // Una factura de homologación se anula en homologación: AFIP no la conoce en producción.
+      if (emisor.entorno !== f.entorno) {
+        throw new ErrorComprobantes('NO_ANULABLE', {
+          motivo: 'La factura es de otro entorno de AFIP que el certificado activo.',
+        })
+      }
+      const [tipo] = await tx
+        .select({ nombre: tipoComprobante.descripcion })
+        .from(tipoComprobante)
+        .where(eq(tipoComprobante.codigo, tipoNota))
+      const renglones = await tx
+        .select()
+        .from(comprobanteRenglon)
+        .where(eq(comprobanteRenglon.comprobanteId, id))
+        .orderBy(asc(comprobanteRenglon.orden))
+      return { f, emisor, tipoNota, nombre: tipo?.nombre ?? 'Nota de Crédito', renglones }
     })
+
+    const { f, emisor } = previo
+    const hoy = hoyEnArgentina()
+    return this.circuito(
+      {
+        emisor,
+        tipoComprobante: previo.tipoNota,
+        receptor: {
+          clienteId: f.clienteId,
+          tipoDocReceptor: f.tipoDocReceptor,
+          numeroDocReceptor: f.numeroDocReceptor,
+          nombre: f.receptorNombre,
+          condicionIva: f.receptorCondicionIva,
+          domicilio: f.receptorDomicilio,
+        },
+        concepto: f.concepto as 1 | 2 | 3,
+        servicio:
+          f.servicioDesde && f.servicioHasta && f.vencimientoPago
+            ? {
+                desde: f.servicioDesde,
+                hasta: f.servicioHasta,
+                // El vencimiento no puede ser anterior a la fecha de la nota.
+                vencimientoPago: f.vencimientoPago < hoy ? hoy : f.vencimientoPago,
+              }
+            : null,
+        condicionVenta: f.condicionVenta,
+        renglones: previo.renglones.map((r) => ({
+          codigo: r.codigo,
+          descripcion: r.descripcion,
+          cantidad: r.cantidad,
+          unidad: r.unidad,
+          precioUnitario: r.precioUnitario,
+          bonificacionPorcentaje: r.bonificacionPorcentaje,
+          codigoAlicuota: r.codigoAlicuota,
+          total: r.total,
+        })),
+        asociado: {
+          id: f.id,
+          tipo: f.tipoComprobante,
+          puntoVenta: f.puntoVenta,
+          numero: f.numero,
+          cuit: emisor.cuit,
+          fecha: f.fecha,
+        },
+        nombreComprobante: previo.nombre,
+      },
+      ip,
+    )
+  }
+
+  /**
+   * El circuito de un comprobante, igual para una factura que para una nota de crédito:
+   * serie libre, número de AFIP, reserva, CAE y resultado. Ver la explicación de la clase.
+   */
+  private async circuito(
+    c: {
+      emisor: Emisor
+      tipoComprobante: number
+      receptor: {
+        clienteId: string | null
+        tipoDocReceptor: number
+        numeroDocReceptor: string
+        nombre: string
+        condicionIva: number
+        domicilio: string | null
+      }
+      concepto: 1 | 2 | 3
+      servicio: { desde: string; hasta: string; vencimientoPago: string } | null
+      condicionVenta: string
+      renglones: Array<RenglonPedido & { total: string }>
+      asociado: {
+        id: string
+        tipo: number
+        puntoVenta: number
+        numero: number
+        cuit: string
+        fecha: string
+      } | null
+      nombreComprobante: string
+    },
+    ip?: string,
+  ) {
+    const { emisor, receptor } = c
+    const serieOcupada = () =>
+      this.datos.transaccion(async (tx) => {
+        const [enVuelo] = await tx
+          .select({ id: comprobante.id })
+          .from(comprobante)
+          .where(
+            and(
+              eq(comprobante.puntoVentaId, emisor.puntoVentaId),
+              eq(comprobante.tipoComprobante, c.tipoComprobante),
+              inArray(comprobante.estado, ['emitiendo', 'incierto']),
+            ),
+          )
+        return enVuelo?.id ?? null
+      })
+
+    // 3. Si hay uno en vuelo de esta serie, no se sigue: primero hay que saber qué pasó.
+    const enVuelo = await serieOcupada()
+    if (enVuelo) throw new ErrorComprobantes('SERIE_OCUPADA', { comprobanteId: enVuelo })
 
     const afip = this.fiscal(emisor.entorno)
     const fecha = hoyEnArgentina()
-    const renglones = pedido.renglones.map((r) => ({ ...r, total: totalRenglon(r) }))
     const armar = (numero: number): SolicitudComprobante =>
       armarComprobante({
         puntoVenta: emisor.puntoVenta,
-        tipoComprobante: receptor.tipoComprobante,
+        tipoComprobante: c.tipoComprobante,
         numero,
         fecha,
-        concepto: pedido.concepto,
+        concepto: c.concepto,
         tipoDocReceptor: receptor.tipoDocReceptor,
         numeroDocReceptor: receptor.numeroDocReceptor,
         condicionIvaReceptor: receptor.condicionIva,
-        renglones: renglones.map((r) => ({ total: r.total, codigoAlicuota: r.codigoAlicuota })),
-        servicio: pedido.concepto === 1 ? undefined : (pedido.servicio ?? undefined),
+        renglones: c.renglones.map((r) => ({ total: r.total, codigoAlicuota: r.codigoAlicuota })),
+        servicio: c.servicio ?? undefined,
+        asociado: c.asociado
+          ? {
+              tipo: c.asociado.tipo,
+              puntoVenta: c.asociado.puntoVenta,
+              numero: c.asociado.numero,
+              cuit: c.asociado.cuit,
+              fecha: c.asociado.fecha,
+            }
+          : undefined,
       })
     // Se arma una vez antes de pedir el número: un error de armado no gasta una consulta a AFIP.
     armar(1)
@@ -312,11 +477,7 @@ export class ServicioComprobantes {
     let numero: number
     try {
       numero =
-        (await afip.ultimoAutorizado(
-          emisor.credenciales,
-          emisor.puntoVenta,
-          receptor.tipoComprobante,
-        )) + 1
+        (await afip.ultimoAutorizado(emisor.credenciales, emisor.puntoVenta, c.tipoComprobante)) + 1
     } catch (error) {
       if (error instanceof FacturacionNoDisponible)
         throw new ErrorComprobantes('AFIP_NO_RESPONDE', {})
@@ -335,21 +496,21 @@ export class ServicioComprobantes {
             sucursalId: emisor.sucursalId,
             puntoVentaId: emisor.puntoVentaId,
             puntoVenta: emisor.puntoVenta,
-            tipoComprobante: receptor.tipoComprobante,
+            tipoComprobante: c.tipoComprobante,
             numero,
             fecha,
-            concepto: pedido.concepto,
-            servicioDesde: pedido.concepto === 1 ? null : (pedido.servicio?.desde ?? null),
-            servicioHasta: pedido.concepto === 1 ? null : (pedido.servicio?.hasta ?? null),
-            vencimientoPago:
-              pedido.concepto === 1 ? null : (pedido.servicio?.vencimientoPago ?? null),
+            concepto: c.concepto,
+            servicioDesde: c.servicio?.desde ?? null,
+            servicioHasta: c.servicio?.hasta ?? null,
+            vencimientoPago: c.servicio?.vencimientoPago ?? null,
             clienteId: receptor.clienteId,
             tipoDocReceptor: receptor.tipoDocReceptor,
             numeroDocReceptor: receptor.numeroDocReceptor,
             receptorNombre: receptor.nombre,
             receptorCondicionIva: receptor.condicionIva,
             receptorDomicilio: receptor.domicilio,
-            condicionVenta: pedido.condicionVenta,
+            condicionVenta: c.condicionVenta,
+            comprobanteAsociadoId: c.asociado?.id ?? null,
             importeNeto: solicitud.importeNeto,
             importeIva: solicitud.importeIva,
             importeExento: solicitud.importeExento,
@@ -369,11 +530,17 @@ export class ServicioComprobantes {
             // AFIP y la nuestra no coinciden, y emitir sería duplicar.
             if (indice === 'comprobante_numero_uq')
               throw new ErrorComprobantes('NUMERACION_DESFASADA', { numero })
+            // Otro puesto anuló esta factura en el medio.
+            if (indice === 'comprobante_anulacion_uq') {
+              throw new ErrorComprobantes('NO_ANULABLE', {
+                motivo: 'Esa factura ya tiene su nota de crédito.',
+              })
+            }
             throw error
           })
         if (!creado) throw new Error('No se pudo reservar el comprobante.')
         await tx.insert(comprobanteRenglon).values(
-          renglones.map((r, i) => ({
+          c.renglones.map((r, i) => ({
             tenantId: sesion.tenantId,
             comprobanteId: creado.id,
             orden: i + 1,
@@ -391,19 +558,8 @@ export class ServicioComprobantes {
       })
       .catch(async (error: unknown) => {
         if (error instanceof ErrorComprobantes && error.codigo === 'SERIE_OCUPADA') {
-          const [enVuelo] = await this.datos.transaccion((tx) =>
-            tx
-              .select({ id: comprobante.id })
-              .from(comprobante)
-              .where(
-                and(
-                  eq(comprobante.puntoVentaId, emisor.puntoVentaId),
-                  eq(comprobante.tipoComprobante, receptor.tipoComprobante),
-                  inArray(comprobante.estado, ['emitiendo', 'incierto']),
-                ),
-              ),
-          )
-          if (enVuelo) throw new ErrorComprobantes('SERIE_OCUPADA', { comprobanteId: enVuelo.id })
+          const id = await serieOcupada()
+          if (id) throw new ErrorComprobantes('SERIE_OCUPADA', { comprobanteId: id })
           throw new ErrorComprobantes('AFIP_NO_RESPONDE', {})
         }
         throw error
@@ -424,7 +580,14 @@ export class ServicioComprobantes {
             actualizadoEn: new Date(),
           })
           .where(eq(comprobante.id, comprobanteId))
-        await this.auditar(tx, sesion, comprobanteId, receptor, solicitud, ip)
+        await this.auditar(
+          tx,
+          sesion,
+          comprobanteId,
+          { nombre: receptor.nombre, nombreComprobante: c.nombreComprobante },
+          solicitud,
+          ip,
+        )
         return this.detalle(tx, comprobanteId)
       })
     } catch (error) {
@@ -570,6 +733,12 @@ export class ServicioComprobantes {
           importeTotal: comprobante.importeTotal,
           cae: comprobante.cae,
           entorno: comprobante.entorno,
+          anuladoPor: sql<string | null>`(
+            select n.id from comprobante n
+            where n.comprobante_asociado_id = ${comprobante.id}
+              and n.estado in ('autorizado', 'emitiendo', 'incierto')
+            limit 1
+          )`,
         })
         .from(comprobante)
         .innerJoin(tipoComprobante, eq(tipoComprobante.codigo, comprobante.tipoComprobante))
@@ -580,8 +749,9 @@ export class ServicioComprobantes {
 
       return {
         total: total?.n ?? 0,
-        datos: filas.map((f) => ({
+        datos: filas.map(({ anuladoPor, ...f }) => ({
           ...f,
+          anulado: Boolean(anuladoPor),
           letra: f.letra ?? '',
           estado: f.estado as 'autorizado',
           entorno: f.entorno as Entorno,
@@ -866,7 +1036,28 @@ export class ServicioComprobantes {
       .orderBy(asc(comprobanteRenglon.orden))
 
     const x = c.c
+    // La factura que anula esta nota, o la nota que anula esta factura.
+    const vinculo = async (condicion: ReturnType<typeof eq>) => {
+      const [v] = await tx
+        .select({
+          id: comprobante.id,
+          nombre: tipoComprobante.descripcion,
+          puntoVenta: comprobante.puntoVenta,
+          numero: comprobante.numero,
+          estado: comprobante.estado,
+        })
+        .from(comprobante)
+        .innerJoin(tipoComprobante, eq(tipoComprobante.codigo, comprobante.tipoComprobante))
+        .where(and(condicion, inArray(comprobante.estado, ['autorizado', 'emitiendo', 'incierto'])))
+      return v ? { id: v.id, nombre: v.nombre, puntoVenta: v.puntoVenta, numero: v.numero } : null
+    }
+    const comprobanteAsociado = x.comprobanteAsociadoId
+      ? await vinculo(eq(comprobante.id, x.comprobanteAsociadoId))
+      : null
+    const anuladoPor = await vinculo(eq(comprobante.comprobanteAsociadoId, x.id))
     return {
+      comprobanteAsociado,
+      anuladoPor,
       id: x.id,
       estado: x.estado as 'autorizado' | 'emitiendo' | 'rechazado' | 'incierto',
       tipoComprobante: x.tipoComprobante,

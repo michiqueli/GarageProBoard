@@ -9,6 +9,7 @@ import { Boton, clasesBoton } from '../../componentes/Boton.tsx'
 import { Campo } from '../../componentes/Campo.tsx'
 import {
   IconoAgregar,
+  IconoAnular,
   IconoBorrar,
   IconoCertificado,
   IconoImprimir,
@@ -644,6 +645,9 @@ async function verificar(
   }
 }
 
+/** Facturas A, B y C: lo único que se anula con una nota de crédito. */
+const esFactura = (c: { tipoComprobante: number }) => [1, 6, 11].includes(c.tipoComprobante)
+
 const ESTADOS: Record<Resumen['estado'], { texto: string; clase: string } | null> = {
   // Autorizada es lo normal: no reclama nada.
   autorizado: null,
@@ -658,6 +662,50 @@ function Ultimos() {
   const cache = useQueryClient()
   const esEscritorio = useMedia(ES_ESCRITORIO)
   const puedeFacturar = usePuedeUsar(contrato.comprobantes.verificar)
+  const puedeAnular = usePuedeUsar(contrato.comprobantes.anular)
+
+  const anular = useMutation({
+    mutationFn: (c: Resumen) => api.comprobantes.anular({ id: c.id }),
+    onSuccess: async (nota) => {
+      notificar.ok(`${nombreComprobante(nota)} emitida, CAE ${nota.cae}`, {
+        accion: { texto: 'Abrir el PDF', alHacer: () => void abrirPdf(nota.id) },
+      })
+      await cache.invalidateQueries({ queryKey: ['comprobantes', tenantId] })
+    },
+    meta: {
+      error: (error) => {
+        void cache.invalidateQueries({ queryKey: ['comprobantes', tenantId] })
+        if (error instanceof ORPCError) {
+          const datos = error.data as
+            | { motivo?: string; errores?: Array<{ codigo: number; mensaje: string }> }
+            | undefined
+          if (error.code === 'NO_ANULABLE' && datos?.motivo) return datos.motivo
+          if (error.code === 'RECHAZADO') {
+            return {
+              texto: 'AFIP rechazó la nota de crédito. La factura sigue sin anular.',
+              detalle: datos?.errores?.map((e) => `${e.codigo}: ${e.mensaje}`).join(' · '),
+            }
+          }
+        }
+        return mensajeGeneral(error)
+      },
+    },
+  })
+
+  async function pedirAnular(c: Resumen) {
+    if (
+      await confirmar({
+        titulo: `¿Anular la ${nombreComprobante(c)}?`,
+        texto: `Se emite una nota de crédito por $ ${formatearImporte(c.importeTotal)} a ${c.receptorNombre}${
+          c.entorno === 'produccion' ? ', que queda registrada en AFIP y no se puede deshacer' : ''
+        }.`,
+        confirmar: 'Emitir la nota de crédito',
+        peligro: true,
+      })
+    ) {
+      anular.mutate(c)
+    }
+  }
   const consulta = useQuery({
     queryKey: ['comprobantes', tenantId, 'ultimos'],
     queryFn: () => api.comprobantes.listar({ pagina: 1, porPagina: 20 }),
@@ -669,6 +717,17 @@ function Ultimos() {
       {c.estado === 'autorizado' && (
         <Boton tamano="chico" icono={<IconoImprimir />} onClick={() => void abrirPdf(c.id)}>
           PDF
+        </Boton>
+      )}
+      {puedeAnular && esFactura(c) && c.estado === 'autorizado' && !c.anulado && (
+        <Boton
+          tamano="chico"
+          variante="sutil"
+          icono={<IconoAnular />}
+          deshabilitado={anular.isPending}
+          onClick={() => void pedirAnular(c)}
+        >
+          Anular
         </Boton>
       )}
       {puedeFacturar && (c.estado === 'incierto' || c.estado === 'emitiendo') && (
@@ -684,6 +743,8 @@ function Ultimos() {
   )
 
   const estado = (c: Resumen) => {
+    // Anulada ya no reclama nada: se dice con palabras, sin píldora.
+    if (c.anulado) return <span className="text-etiqueta text-texto-tenue">Anulada</span>
     const e = ESTADOS[c.estado]
     return e ? (
       <span className={`inline-flex rounded-full px-2 text-etiqueta font-semibold ${e.clase}`}>

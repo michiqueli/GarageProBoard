@@ -106,6 +106,20 @@ describe('el formato de WSFE', () => {
     })
   })
 
+  it('una nota de crédito lleva la factura que anula', () => {
+    const v = aVoucherWsfe(
+      armarComprobante({
+        ...BASE,
+        tipoComprobante: 8,
+        asociado: { tipo: 6, puntoVenta: 8, numero: 7, cuit: '30712345671', fecha: '2026-09-16' },
+      }),
+    )
+    expect(v).toMatchObject({
+      CbteTipo: 8,
+      CbtesAsoc: [{ Tipo: 6, PtoVta: 8, Nro: 7, Cuit: '30712345671', CbteFch: '20260916' }],
+    })
+  })
+
   it('una C no manda el bloque de IVA', () => {
     expect(aVoucherWsfe(armarComprobante({ ...BASE, tipoComprobante: 11 }))).not.toHaveProperty(
       'Iva',

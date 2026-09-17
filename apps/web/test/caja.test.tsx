@@ -12,6 +12,7 @@ const comprobantes = {
   listar: vi.fn(),
   verificar: vi.fn(),
   pdf: vi.fn(),
+  anular: vi.fn(),
 }
 const renovar = vi.fn()
 
@@ -196,5 +197,61 @@ describe('facturar', () => {
     entraComo(SESION_MECANICO)
     await montarApp('/caja')
     expect(await screen.findByRole('heading', { name: /No tenés permiso/ })).toBeDefined()
+  })
+})
+
+describe('anular', () => {
+  const FACTURA = {
+    id: '55555555-5555-4555-8555-555555555555',
+    estado: 'autorizado',
+    tipoComprobante: 6,
+    nombre: 'Factura B',
+    letra: 'B',
+    puntoVenta: 5,
+    numero: 42,
+    fecha: '2026-09-16',
+    receptorNombre: 'Consumidor Final',
+    importeTotal: '1234.50',
+    cae: '70000000000042',
+    entorno: 'produccion',
+    anulado: false,
+  }
+
+  it('pide confirmar con el importe, y emite la nota de crédito', async () => {
+    comprobantes.listar.mockResolvedValue({ datos: [FACTURA], total: 1 })
+    comprobantes.anular.mockResolvedValue({
+      id: '66666666-6666-4666-8666-666666666666',
+      nombre: 'Nota de Crédito B',
+      puntoVenta: 5,
+      numero: 3,
+      cae: '70000000000003',
+    })
+    entraComo(SESION)
+    await montarApp('/caja')
+
+    const fila = (await screen.findByText('Factura B 00005-00000042')).closest('tr') as HTMLElement
+    await userEvent.click(within(fila).getByRole('button', { name: 'Anular' }))
+    const dialogo = await screen.findByRole('alertdialog', {
+      name: '¿Anular la Factura B 00005-00000042?',
+    })
+    expect(dialogo.textContent).toMatch(/nota de crédito por \$ 1\.234,50/)
+    expect(comprobantes.anular).not.toHaveBeenCalled()
+
+    await confirmarDialogo('Emitir la nota de crédito')
+    await waitFor(() => expect(comprobantes.anular).toHaveBeenCalledWith({ id: FACTURA.id }))
+    expect(
+      await screen.findByRole('listitem', {
+        name: 'Listo: Nota de Crédito B 00005-00000003 emitida, CAE 70000000000003',
+      }),
+    ).toBeDefined()
+  })
+
+  it('una anulada no se vuelve a anular, y lo dice', async () => {
+    comprobantes.listar.mockResolvedValue({ datos: [{ ...FACTURA, anulado: true }], total: 1 })
+    entraComo(SESION)
+    await montarApp('/caja')
+    const fila = (await screen.findByText('Factura B 00005-00000042')).closest('tr') as HTMLElement
+    expect(within(fila).getByText('Anulada')).toBeDefined()
+    expect(within(fila).queryByRole('button', { name: 'Anular' })).toBeNull()
   })
 })
