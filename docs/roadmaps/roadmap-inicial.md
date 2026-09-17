@@ -1,6 +1,6 @@
 # Roadmap inicial
 
-Estado al 16/09/2026. Los hitos están ordenados por dependencia, no por deseo: cada
+Estado al 17/09/2026. Los hitos están ordenados por dependencia, no por deseo: cada
 uno necesita el anterior. Lo que no está acá no está decidido todavía.
 
 Leyenda: ✅ hecho · 🔨 en curso · ⬜ pendiente
@@ -55,6 +55,11 @@ Sin esto no hay pantalla que mostrar a nadie.
 - ✅ Enrutado con TanStack Router: guardias de sesión y sucursal, `volver` al entrar,
       búsqueda en la URL y el módulo del teclado declarado por la ruta. 21 tests nuevos.
 - ✅ Barra de estado inferior con las teclas activas del contexto
+- ✅ **Todo con teclado**: listados con ↑ ↓ y Enter (también desde el buscador), pestañas con
+      ← →, fichas que vuelven con Esc o ⌫ sin estar escribiendo, caja que marca y carga con F4,
+      Alt+C y Alt+P para copiar chasis y patente. Registro de atajos en pila
+- ✅ Menú y buscador del sistema en el teléfono
+- ✅ Pantallas con carga diferida y librerías en archivos aparte
 - ✅ Cookie httpOnly para el refresco, con entrega por cuerpo para clientes sin cookies
 - ✅ Login sólo con correo y contraseña: el tenant sale del usuario
 - ⬜ Auditoría automática de altas, modificaciones y bajas
@@ -233,7 +238,8 @@ verdad. Qué se trae y qué cambia ahora que el DMS es nuestro, en
 Cosas que sabemos que faltan, para que no se descubran de golpe:
 
 
-- **Backups de Postgres antes del primer cliente en producción.** Vamos a guardar
+- **Backups de Postgres antes del primer cliente en producción.** Pendiente de decidir dónde
+  corre producción; si no, se arma y se prueba el circuito en local primero. Vamos a guardar
   comprobantes fiscales de terceros con obligación legal de conservación. `pgBackRest`
   o `wal-g` contra un bucket S3-compatible, con restauración **probada**, no solo
   configurada. Un VPS autogestionado sin backup probado es la forma de perder el
