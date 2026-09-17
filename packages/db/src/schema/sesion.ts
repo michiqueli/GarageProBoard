@@ -1,5 +1,5 @@
 import { sql } from 'drizzle-orm'
-import { index, pgTable, text, timestamp, uuid } from 'drizzle-orm/pg-core'
+import { boolean, index, pgTable, text, timestamp, uuid } from 'drizzle-orm/pg-core'
 import { creadoEn, pk, tenantId } from './_comunes.ts'
 import { usuario } from './acceso.ts'
 import { sucursal } from './organizacion.ts'
@@ -68,6 +68,12 @@ export const sesion = pgTable(
 
     /** La sucursal elegida al entrar. Viaja en el token para acotar los permisos. */
     sucursalId: uuid().references(() => sucursal.id),
+    /**
+     * Todavía falta que elija a qué sucursal entra: tiene varias y ninguna predeterminada. Lo
+     * guarda el servidor y no la pestaña, para que recargar la página en la pantalla de elección
+     * no la saltee entrando a la primera.
+     */
+    sucursalPendiente: boolean().notNull().default(false),
 
     expiraEn: timestamp({ withTimezone: true }).notNull(),
     /** Se completa al rotar o al cerrar sesión. Una fila con fecha acá ya no sirve. */

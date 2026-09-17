@@ -1,0 +1,1 @@
+ALTER TABLE "sesion" ADD COLUMN "sucursal_pendiente" boolean DEFAULT false NOT NULL;

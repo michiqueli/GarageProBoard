@@ -118,6 +118,8 @@ export class ServicioAuth {
           tenantId: partido.tenantId,
           usuarioId: actual.usuarioId,
           sucursalPedida: sucursalPedida ?? actual.sucursalId ?? undefined,
+          // Elegir sucursal la confirma; renovar la sesión conserva lo que había.
+          pendiente: sucursalPedida ? false : actual.sucursalPendiente,
           familia: actual.familia,
           agente: actual.agente ?? undefined,
           ip: actual.ip ?? undefined,
@@ -168,7 +170,13 @@ export class ServicioAuth {
 
   /** El estado de la sesión sin emitir tokens nuevos. */
   async describir(s: Sesion) {
-    return conTenant(this.db, s.tenantId, (tx) => this.armarPayload(tx, s.usuarioId, s.sucursalId))
+    return conTenant(this.db, s.tenantId, async (tx) => {
+      const [actual] = await tx
+        .select({ pendiente: sesion.sucursalPendiente })
+        .from(sesion)
+        .where(eq(sesion.id, s.sesionId))
+      return this.armarPayload(tx, s.usuarioId, s.sucursalId, actual?.pendiente ?? false)
+    })
   }
 
   /**
@@ -200,6 +208,8 @@ export class ServicioAuth {
       tenantId: string
       usuarioId: string
       sucursalPedida?: string | undefined
+      /** Sin valor, se decide como al entrar: varias sucursales, ninguna predeterminada y ninguna pedida. */
+      pendiente?: boolean | undefined
       familia: string
       agente?: string | undefined
       ip?: string | undefined
@@ -224,6 +234,9 @@ export class ServicioAuth {
         disponibles[0]
 
       if (!elegida) throw new ErrorAuth('SIN_ACCESO')
+      const sucursalPendiente =
+        datos.pendiente ??
+        (!datos.sucursalPedida && disponibles.length > 1 && !config?.sucursalPredeterminadaId)
       if (datos.sucursalPedida && elegida.id !== datos.sucursalPedida) {
         throw new ErrorAuth('SIN_ACCESO')
       }
@@ -241,6 +254,7 @@ export class ServicioAuth {
           hashRefresco: hashearRefresco(refresh),
           familia: datos.familia,
           sucursalId: elegida.id,
+          sucursalPendiente,
           expiraEn: new Date(Date.now() + diasRefresco * 24 * 60 * 60 * 1000),
           agente: datos.agente ?? null,
           ip: datos.ip ?? null,
@@ -264,7 +278,7 @@ export class ServicioAuth {
 
       const minutosAcceso = 15
       const access = await this.jwt.signAsync(claims, { expiresIn: `${minutosAcceso}m` })
-      const payload = await this.armarPayload(tx, datos.usuarioId, elegida.id)
+      const payload = await this.armarPayload(tx, datos.usuarioId, elegida.id, sucursalPendiente)
 
       return {
         access,
@@ -336,7 +350,12 @@ export class ServicioAuth {
       .where(and(eq(usuarioSucursal.usuarioId, usuarioId), eq(sucursal.activa, true)))
   }
 
-  private async armarPayload(tx: Db, usuarioId: string, sucursalId: string) {
+  private async armarPayload(
+    tx: Db,
+    usuarioId: string,
+    sucursalId: string,
+    sucursalPendiente: boolean,
+  ) {
     const [u] = await tx.select().from(usuario).where(eq(usuario.id, usuarioId)).limit(1)
     if (!u) throw new ErrorAuth('CREDENCIALES_INVALIDAS')
 
@@ -375,6 +394,7 @@ export class ServicioAuth {
       tenant: { id: t.id, nombre: t.nombre, slug: t.slug },
       sucursalActiva: activa,
       sucursales: disponibles,
+      sucursalPendiente,
       modulos: await modulosVigentes(tx),
       avisos: pendientes.map((a) => ({ ...a, creadoEn: a.creadoEn.toISOString() })),
       habilidades,

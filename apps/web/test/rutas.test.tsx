@@ -113,6 +113,14 @@ describe('al recargar la página', () => {
     expect(renovar).toHaveBeenCalledOnce()
   })
 
+  it('recargar en la pantalla de elección vuelve a preguntar, no entra a la primera', async () => {
+    conCookie(SESION_VARIAS)
+    const router = await montarApp('/ordenes')
+
+    expect(await screen.findByRole('heading', { name: '¿A qué sucursal entrás?' })).toBeDefined()
+    expect(router.state.location.pathname).toBe('/sucursal')
+  })
+
   it('no le vuelve a preguntar la sucursal a quien ya eligió', async () => {
     conCookie(EN_NORTE)
     const router = await montarApp('/ordenes')
@@ -156,7 +164,7 @@ describe('la sucursal', () => {
   })
 
   it('F6 lleva a cambiarla y vuelve a la misma pantalla, con su búsqueda', async () => {
-    conCookie(SESION_VARIAS)
+    conCookie({ ...SESION_VARIAS, sucursalPendiente: false })
     cambiarSucursal.mockResolvedValue(EN_NORTE)
     const router = await montarApp('/vehiculos?buscar=AB1')
     await screen.findByRole('heading', { name: 'Vehículos', level: 1 })

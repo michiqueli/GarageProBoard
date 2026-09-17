@@ -60,6 +60,7 @@ const BASE: DatosSesion = {
   tenant: { id: 't1', nombre: 'Litoral', slug: 'litoral' },
   sucursalActiva: CENTRAL,
   sucursales: [CENTRAL],
+  sucursalPendiente: false,
   modulos: [...MODULOS],
   avisos: [],
   habilidades: GERENTE,
@@ -76,9 +77,9 @@ const BASE: DatosSesion = {
 export const SESION = { access: 'un-access', ...BASE }
 
 /** Dos sucursales de dos SAS distintas y ninguna predeterminada: el caso incómodo. */
-export const SESION_VARIAS = { ...SESION, sucursales: [CENTRAL, NORTE] }
+export const SESION_VARIAS = { ...SESION, sucursales: [CENTRAL, NORTE], sucursalPendiente: true }
 
-export const EN_NORTE = { ...SESION_VARIAS, sucursalActiva: NORTE }
+export const EN_NORTE = { ...SESION_VARIAS, sucursalActiva: NORTE, sucursalPendiente: false }
 
 /** La misma forma, de otra persona. */
 export const OTRA_PERSONA = {

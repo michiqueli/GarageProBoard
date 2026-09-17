@@ -56,6 +56,11 @@ export const sesionSalida = z.object({
   tenant: z.object({ id: z.uuid(), nombre: z.string(), slug: z.string() }),
   sucursalActiva: sucursalSalida,
   sucursales: z.array(sucursalSalida),
+  /**
+   * Todavía tiene que elegir a qué sucursal entra: tiene varias y ninguna predeterminada, y no
+   * eligió. Lo recuerda el servidor, así que sobrevive a recargar la página.
+   */
+  sucursalPendiente: z.boolean(),
 
   /**
    * Los módulos que la concesionaria tiene prendidos hoy. Se evalúan antes que los

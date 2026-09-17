@@ -232,9 +232,6 @@ verdad. Qué se trae y qué cambia ahora que el DMS es nuestro, en
 
 Cosas que sabemos que faltan, para que no se descubran de golpe:
 
-- **Recargar antes de elegir sucursal entra a la primera.** Si alguien recarga la página
-  justo en «¿A qué sucursal entrás?», la sesión recuperada no sabe que faltaba elegir.
-  Cerrarlo del todo requiere que el servidor recuerde que la elección está pendiente.
 
 - **Backups de Postgres antes del primer cliente en producción.** Vamos a guardar
   comprobantes fiscales de terceros con obligación legal de conservación. `pgBackRest`

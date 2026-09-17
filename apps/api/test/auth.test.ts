@@ -157,6 +157,48 @@ describe('elección de sucursal', () => {
     expect(r.statusCode).toBe(200)
     expect(r.json().sucursalActiva.id).toBe(otra.id)
   })
+
+  it('la elección pendiente sobrevive a recargar la página, hasta que elige', async () => {
+    const entrada = (await iniciar('admin@litoral.test')).json()
+    expect(entrada.sucursalPendiente).toBe(true)
+
+    // Recargar en la pantalla de elección es renovar la sesión: sigue faltando elegir.
+    const renovada = (
+      await app.inject({
+        method: 'POST',
+        url: '/api/auth/refrescar',
+        payload: { refresh: entrada.refresh },
+      })
+    ).json()
+    expect(renovada.sucursalPendiente).toBe(true)
+    const yo = await app.inject({
+      method: 'GET',
+      url: '/api/auth/yo',
+      headers: { authorization: `Bearer ${renovada.access}` },
+    })
+    expect(yo.json().sucursalPendiente).toBe(true)
+
+    const elegida = (
+      await app.inject({
+        method: 'POST',
+        url: '/api/auth/sucursal',
+        payload: { refresh: renovada.refresh, sucursalId: renovada.sucursalActiva.id },
+      })
+    ).json()
+    expect(elegida.sucursalPendiente).toBe(false)
+    const despues = (
+      await app.inject({
+        method: 'POST',
+        url: '/api/auth/refrescar',
+        payload: { refresh: elegida.refresh },
+      })
+    ).json()
+    expect(despues.sucursalPendiente).toBe(false)
+
+    // Pedida al entrar, ya está elegida.
+    const directa = (await iniciar('admin@litoral.test', CLAVE, entrada.sucursalActiva.id)).json()
+    expect(directa.sucursalPendiente).toBe(false)
+  })
 })
 
 describe('rotación del token de refresco', () => {

@@ -13,6 +13,8 @@ export interface DatosSesion {
   tenant: { id: string; nombre: string; slug: string }
   sucursalActiva: Sucursal
   sucursales: Sucursal[]
+  /** Falta elegir a qué sucursal entra. Lo recuerda el servidor: sobrevive a recargar. */
+  sucursalPendiente: boolean
   /** Los módulos que la concesionaria tiene prendidos. Se miran antes que los permisos. */
   modulos: Modulo[]
   /** Lo que le pasó y todavía no leyó: «Tu contraseña la cambió Juan Pérez». */
@@ -74,8 +76,9 @@ interface EstadoSesion {
   limpiar(): void
 }
 
+/** Lo decide el servidor: así sobrevive a recargar la página en la pantalla de elección. */
 function debeElegir(datos: DatosSesion): boolean {
-  return datos.sucursales.length > 1 && datos.config.sucursalPredeterminadaId === null
+  return datos.sucursalPendiente
 }
 
 export const usarSesion = create<EstadoSesion>((set) => ({
@@ -89,10 +92,11 @@ export const usarSesion = create<EstadoSesion>((set) => ({
     set((actual) => ({
       access,
       datos,
+      // Si el servidor dice que falta elegir, falta —recargar no lo saltea—. Si no, se respeta
+      // lo que ya pasaba en esta pestaña: alguien que apretó «Cambiar sucursal» sigue eligiendo.
       eligiendoSucursal:
-        actual.datos && actual.datos.usuario.id !== datos.usuario.id
-          ? debeElegir(datos)
-          : actual.eligiendoSucursal,
+        debeElegir(datos) ||
+        (actual.datos?.usuario.id === datos.usuario.id && actual.eligiendoSucursal),
     })),
 
   sucursalElegida: () => set({ eligiendoSucursal: false }),
