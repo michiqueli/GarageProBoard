@@ -1,4 +1,4 @@
-import { type KeyboardEvent, useEffect, useId, useRef } from 'react'
+import { type KeyboardEvent, useEffect, useId, useRef, useState } from 'react'
 import { usarAvisos } from './avisos.ts'
 import { Tecla } from './Tecla.tsx'
 
@@ -22,16 +22,34 @@ export function DialogoConfirmacion() {
   const panel = useRef<HTMLDivElement>(null)
   const cancelar = useRef<HTMLButtonElement>(null)
   const aceptar = useRef<HTMLButtonElement>(null)
+  const entrada = useRef<HTMLInputElement>(null)
+  const [valor, setValor] = useState('')
+  const [tocado, setTocado] = useState(false)
 
   useEffect(() => {
     if (!pregunta) return
+    setValor(pregunta.campo?.valor ?? '')
+    setTocado(false)
     const antes = document.activeElement as HTMLElement | null
-    ;(pregunta.peligro ? cancelar : aceptar).current?.focus()
+    // Con un dato para escribir, el foco va al campo; si no, como siempre.
+    if (pregunta.campo) {
+      entrada.current?.focus()
+      entrada.current?.select()
+    } else {
+      ;(pregunta.peligro ? cancelar : aceptar).current?.focus()
+    }
     // Al cerrar, el foco vuelve adonde estaba: quien opera con teclado sigue donde iba.
     return () => antes?.focus()
   }, [pregunta])
 
   if (!pregunta) return null
+
+  const problema = pregunta.campo?.validar?.(valor) ?? null
+  function responderSi() {
+    setTocado(true)
+    if (problema) return
+    pregunta?.responder(true, valor)
+  }
 
   function teclas(evento: KeyboardEvent) {
     // Que nada de lo que se aprieta acá llegue a los atajos de la pantalla de atrás.
@@ -42,7 +60,9 @@ export function DialogoConfirmacion() {
       return
     }
     if (evento.key === 'Tab') {
-      const botones = [cancelar.current, aceptar.current].filter(Boolean) as HTMLElement[]
+      const botones = [entrada.current, cancelar.current, aceptar.current].filter(
+        Boolean,
+      ) as HTMLElement[]
       const i = botones.indexOf(document.activeElement as HTMLElement)
       evento.preventDefault()
       botones[(i + (evento.shiftKey ? -1 : 1) + botones.length) % botones.length]?.focus()
@@ -68,6 +88,28 @@ export function DialogoConfirmacion() {
             {pregunta.texto}
           </p>
         )}
+        {pregunta.campo && (
+          <label className="grid gap-1">
+            <span className="text-etiqueta font-medium text-texto-suave">
+              {pregunta.campo.etiqueta}
+            </span>
+            <input
+              ref={entrada}
+              type={pregunta.campo.tipo ?? 'text'}
+              value={valor}
+              onChange={(e) => setValor(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault()
+                  responderSi()
+                }
+              }}
+              aria-invalid={tocado && Boolean(problema)}
+              className="h-campo rounded-base border border-borde bg-superficie-2 px-2 text-dato text-texto outline-none focus-visible:border-marca"
+            />
+            {tocado && problema && <span className="text-etiqueta text-critico">{problema}</span>}
+          </label>
+        )}
         <div className="mt-1 flex flex-wrap justify-end gap-2">
           <button
             ref={cancelar}
@@ -80,7 +122,7 @@ export function DialogoConfirmacion() {
           <button
             ref={aceptar}
             type="button"
-            onClick={() => pregunta.responder(true)}
+            onClick={responderSi}
             className={`inline-flex h-campo items-center gap-2 rounded-base border px-3 text-dato font-semibold ${
               pregunta.peligro
                 ? 'border-critico bg-critico text-fondo'

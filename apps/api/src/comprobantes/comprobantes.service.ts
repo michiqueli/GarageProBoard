@@ -26,13 +26,16 @@ import {
   tipoComprobante,
   usuario,
 } from '@gpb/db/schema'
+import { generarFacturaPdf } from '@gpb/pdf'
 import { Inject, Injectable } from '@nestjs/common'
 import { contextoClave } from '../certificados/certificados.service.ts'
 import type { Sesion } from '../comun/contexto.ts'
+import { CorreoNoConfigurado, type ServicioCorreo } from '../comun/correo.ts'
 import { DatosDelTenant } from '../comun/datos.ts'
 import { CajaFuerte } from '../comun/secretos.ts'
-import { FISCAL } from '../comun/simbolos.ts'
+import { CORREO, FISCAL } from '../comun/simbolos.ts'
 import { ServicioConsultaPadron } from '../padron/padron.service.ts'
+import { aImpresion } from './impresion.ts'
 
 type Codigo =
   | 'NO_ENCONTRADO'
@@ -50,6 +53,8 @@ type Codigo =
   | 'SIN_CAE'
   | 'NUMERACION_DESFASADA'
   | 'NO_ANULABLE'
+  | 'CORREO_NO_CONFIGURADO'
+  | 'CORREO_NO_ENVIADO'
 
 export class ErrorComprobantes extends Error {
   constructor(
@@ -168,7 +173,60 @@ export class ServicioComprobantes {
     @Inject(CajaFuerte) private readonly caja: CajaFuerte,
     @Inject(FISCAL) private readonly fiscal: (entorno: Entorno) => ServicioFiscal,
     @Inject(ServicioConsultaPadron) private readonly padron: ServicioConsultaPadron,
+    @Inject(CORREO) private readonly correo: ServicioCorreo,
   ) {}
+
+  /** El PDF de un comprobante autorizado, con su nombre de archivo. */
+  async pdf(id: string) {
+    const datos = await this.paraImprimir(id)
+    const d = datos.comprobante
+    return {
+      bytes: await generarFacturaPdf(aImpresion(datos)),
+      nombre: `${d.nombre.replace(/ /g, '-')}-${String(d.puntoVenta).padStart(5, '0')}-${String(d.numero).padStart(8, '0')}.pdf`,
+      datos,
+    }
+  }
+
+  /**
+   * Manda el PDF por mail. El correo se elige al enviar —por omisión, el del cliente—, y
+   * queda en la auditoría a quién se mandó: «¿le llegó la factura?» se contesta mirando ahí.
+   */
+  async enviar(id: string, para: string, ip?: string) {
+    const { bytes, nombre, datos } = await this.pdf(id)
+    const d = datos.comprobante
+    const titulo = `${d.nombre} ${String(d.puntoVenta).padStart(5, '0')}-${String(d.numero).padStart(8, '0')}`
+    try {
+      await this.correo.enviar({
+        para,
+        asunto: `${titulo} de ${datos.emisor.nombreFantasia ?? datos.emisor.razonSocial}`,
+        texto: [
+          `Hola, ${d.receptorNombre}:`,
+          '',
+          `Te enviamos la ${titulo} por $ ${Number(d.importeTotal).toLocaleString('es-AR', { minimumFractionDigits: 2 })}, emitida el ${d.fecha.split('-').reverse().join('/')}.`,
+          'Va adjunta en PDF.',
+          '',
+          datos.emisor.nombreFantasia ?? datos.emisor.razonSocial,
+        ].join('\n'),
+        adjuntos: [{ nombre, contenido: bytes, tipo: 'application/pdf' }],
+      })
+    } catch (error) {
+      if (error instanceof CorreoNoConfigurado) throw new ErrorComprobantes('CORREO_NO_CONFIGURADO')
+      throw new ErrorComprobantes('CORREO_NO_ENVIADO')
+    }
+    await this.datos.transaccion((tx, sesion) =>
+      tx.insert(auditoria).values({
+        tenantId: sesion.tenantId,
+        usuarioId: sesion.usuarioId,
+        tabla: 'comprobante',
+        registroId: id,
+        accion: 'modificacion',
+        datosAntes: null,
+        datosDespues: { comprobante: titulo, enviadoA: para },
+        ip: ip ?? null,
+      }),
+    )
+    return { enviadoA: para }
+  }
 
   // ── opciones y receptor ─────────────────────────────────────────────────────
 
@@ -1055,7 +1113,14 @@ export class ServicioComprobantes {
       ? await vinculo(eq(comprobante.id, x.comprobanteAsociadoId))
       : null
     const anuladoPor = await vinculo(eq(comprobante.comprobanteAsociadoId, x.id))
+    const [contacto] = x.clienteId
+      ? await tx
+          .select({ email: entidadComercial.email })
+          .from(entidadComercial)
+          .where(eq(entidadComercial.id, x.clienteId))
+      : []
     return {
+      receptorEmail: contacto?.email ?? null,
       comprobanteAsociado,
       anuladoPor,
       id: x.id,

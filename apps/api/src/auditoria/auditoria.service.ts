@@ -296,6 +296,7 @@ export function describirCambio(
   if (tabla === 'cliente') return describirCliente(accion, antes, despues, nombres)
   if (tabla === 'certificado_afip') return describirCertificado(despues)
   if (tabla === 'comprobante') {
+    if (despues?.enviadoA) return `La mandó por mail a ${String(despues.enviadoA)}`
     return despues?.verificado
       ? 'Lo verificó contra AFIP: había quedado emitido'
       : String(despues?.comprobante ?? '').startsWith('Nota de Crédito')

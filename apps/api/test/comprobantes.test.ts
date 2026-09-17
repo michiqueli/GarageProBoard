@@ -11,7 +11,8 @@ import { eq } from '@gpb/db'
 import { comprobante, entidadComercial, cliente as tablaCliente } from '@gpb/db/schema'
 import type { NestFastifyApplication } from '@nestjs/platform-fastify'
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
-import { FISCAL } from '../src/comun/simbolos.ts'
+import type { Mensaje } from '../src/comun/correo.ts'
+import { CORREO, FISCAL } from '../src/comun/simbolos.ts'
 import { PADRON } from '../src/padron/padron.service.ts'
 import { type ApiDePrueba, CLAVE, levantarApi, sembrarConcesionaria } from './fixture.ts'
 
@@ -34,6 +35,7 @@ const afip = {
   consultar: vi.fn(),
 }
 const padron = new Map<string, Contribuyente | null | 'caido'>()
+const enviados: Mensaje[] = []
 
 function contribuyente(
   cuit: string,
@@ -83,6 +85,12 @@ beforeAll(async () => {
         consultarComprobante: (_: unknown, pv: number, tipo: number, numero: number) =>
           afip.consultar(pv, tipo, numero),
       }))
+      .overrideProvider(CORREO)
+      .useValue({
+        enviar: async (m: Mensaje) => {
+          enviados.push(m)
+        },
+      })
       .overrideProvider(PADRON)
       .useValue({
         consultar: async (cuit: string) => {
@@ -499,5 +507,40 @@ describe('anular con nota de crédito', () => {
     afip.ultimo = 800
     const factura = (await emitir({ consumidorFinal: {} })).json()
     expect((await anular(factura.id, cajero)).statusCode).toBe(403)
+  })
+})
+
+describe('mandar por mail', () => {
+  it('manda el PDF adjunto, y queda en la auditoría a quién', async () => {
+    afip.ultimo = 900
+    const d = (await emitir({ consumidorFinal: { nombre: 'Juan Pérez' } })).json()
+    const r = await pedir(gerente, 'POST', `/comprobantes/${d.id}/enviar`, {
+      email: 'juan@correo.test',
+    })
+    expect(r.statusCode).toBe(200)
+    expect(r.json()).toEqual({ enviadoA: 'juan@correo.test' })
+
+    const m = enviados.at(-1)
+    expect(m).toMatchObject({
+      para: 'juan@correo.test',
+      asunto: 'Factura B 00005-00000901 de facturacion SAS',
+    })
+    expect(m?.texto).toMatch(/Hola, Juan Pérez/)
+    expect(m?.adjuntos?.[0]?.nombre).toBe('Factura-B-00005-00000901.pdf')
+    expect(
+      Buffer.from(m?.adjuntos?.[0]?.contenido ?? [])
+        .subarray(0, 5)
+        .toString(),
+    ).toBe('%PDF-')
+
+    const cambios = (await pedir(gerente, 'GET', '/auditoria/cambios?porPagina=200')).json()
+    expect(JSON.stringify(cambios)).toContain('La mandó por mail a juan@correo.test')
+  })
+
+  it('un correo mal escrito no se manda', async () => {
+    afip.ultimo = 950
+    const d = (await emitir({ consumidorFinal: {} })).json()
+    const r = await pedir(gerente, 'POST', `/comprobantes/${d.id}/enviar`, { email: 'no-es-mail' })
+    expect(r.statusCode).toBe(400)
   })
 })

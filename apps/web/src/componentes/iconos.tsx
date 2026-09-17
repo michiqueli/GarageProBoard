@@ -124,3 +124,12 @@ export function IconoAnular() {
     </svg>
   )
 }
+
+export function IconoMail() {
+  return (
+    <svg {...trazo} aria-hidden="true">
+      <rect x="2" y="3.5" width="12" height="9" rx="1" />
+      <path d="M2.5 4.5L8 9l5.5-4.5" />
+    </svg>
+  )
+}

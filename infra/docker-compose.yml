@@ -44,6 +44,16 @@ services:
       timeout: 3s
       retries: 10
 
+  # Atrapa los mails que manda el sistema en desarrollo: nada le llega a nadie de verdad, y
+  # se ven en http://localhost:8025 con sus adjuntos.
+  mailpit:
+    image: axllent/mailpit:latest
+    container_name: gpb-mailpit
+    restart: unless-stopped
+    ports:
+      - "1025:1025"
+      - "8025:8025"
+
 volumes:
   pgdata:
   redisdata:

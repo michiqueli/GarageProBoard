@@ -13,6 +13,8 @@ const comprobantes = {
   verificar: vi.fn(),
   pdf: vi.fn(),
   anular: vi.fn(),
+  enviar: vi.fn(),
+  ficha: vi.fn(),
 }
 const renovar = vi.fn()
 
@@ -253,5 +255,61 @@ describe('anular', () => {
     const fila = (await screen.findByText('Factura B 00005-00000042')).closest('tr') as HTMLElement
     expect(within(fila).getByText('Anulada')).toBeDefined()
     expect(within(fila).queryByRole('button', { name: 'Anular' })).toBeNull()
+  })
+})
+
+describe('mandar por mail', () => {
+  it('ofrece el correo del cliente, deja cambiarlo y manda', async () => {
+    comprobantes.listar.mockResolvedValue({
+      datos: [
+        {
+          id: '77777777-7777-4777-8777-777777777777',
+          estado: 'autorizado',
+          tipoComprobante: 1,
+          nombre: 'Factura A',
+          letra: 'A',
+          puntoVenta: 5,
+          numero: 9,
+          fecha: '2026-09-16',
+          receptorNombre: 'Transportes del Sur SRL',
+          importeTotal: '121.00',
+          cae: '70000000000009',
+          entorno: 'produccion',
+          anulado: false,
+        },
+      ],
+      total: 1,
+    })
+    comprobantes.ficha.mockResolvedValue({ receptorEmail: 'compras@transportes.test' })
+    comprobantes.enviar.mockResolvedValue({ enviadoA: 'pagos@transportes.test' })
+    entraComo(SESION)
+    await montarApp('/caja')
+
+    const fila = (await screen.findByText('Factura A 00005-00000009')).closest('tr') as HTMLElement
+    await userEvent.click(within(fila).getByRole('button', { name: 'Mail' }))
+    const dialogo = await screen.findByRole('alertdialog', {
+      name: '¿A qué correo mando la Factura A 00005-00000009?',
+    })
+    const campo = within(dialogo).getByLabelText('Correo') as HTMLInputElement
+    await waitFor(() => expect(campo.value).toBe('compras@transportes.test'))
+
+    await userEvent.clear(campo)
+    await userEvent.type(campo, 'no-es-correo{Enter}')
+    expect(within(dialogo).getByText('Escribí un correo, como nombre@dominio.com')).toBeDefined()
+    expect(comprobantes.enviar).not.toHaveBeenCalled()
+
+    await userEvent.clear(campo)
+    await userEvent.type(campo, 'pagos@transportes.test{Enter}')
+    await waitFor(() =>
+      expect(comprobantes.enviar).toHaveBeenCalledWith({
+        id: '77777777-7777-4777-8777-777777777777',
+        email: 'pagos@transportes.test',
+      }),
+    )
+    expect(
+      await screen.findByRole('listitem', {
+        name: 'Listo: Mandada por mail a pagos@transportes.test',
+      }),
+    ).toBeDefined()
   })
 })

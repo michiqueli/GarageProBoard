@@ -122,6 +122,8 @@ export const comprobanteDetalle = comprobanteResumen.omit({ anulado: true }).ext
   numeroDocReceptor: z.string(),
   receptorCondicionIva: z.number().int(),
   receptorDomicilio: z.string().nullable(),
+  /** El correo del cliente, para ofrecerlo al mandar el PDF. */
+  receptorEmail: z.string().nullable(),
   condicionVenta: z.string(),
   importeNeto: z.string(),
   importeIva: z.string(),
@@ -322,6 +324,29 @@ export const contratoComprobantes = {
       },
     })
     .output(comprobanteDetalle),
+
+  enviar: conPermiso('contable', 'ver', 'Comprobante')
+    .route({
+      method: 'POST',
+      path: '/comprobantes/{id}/enviar',
+      tags: [TAG],
+      operationId: 'enviarComprobante',
+      summary: 'Mandar el PDF del comprobante por mail',
+    })
+    .input(conId.extend({ email: z.email('Ese correo no es válido') }))
+    .errors({
+      NO_ENCONTRADO: { status: 404, message: 'Ese comprobante no existe' },
+      SIN_CAE: { status: 409, message: 'El comprobante no está autorizado por AFIP' },
+      CORREO_NO_CONFIGURADO: {
+        status: 503,
+        message: 'El servidor no tiene configurado el correo saliente. Avisale a soporte',
+      },
+      CORREO_NO_ENVIADO: {
+        status: 502,
+        message: 'El servidor de correo no aceptó el mensaje. Probá de nuevo en un rato',
+      },
+    })
+    .output(z.object({ enviadoA: z.string() })),
 
   verificar: conPermiso('contable', 'facturar', 'Comprobante')
     .route({

@@ -4,7 +4,7 @@ import { ORPCError } from '@orpc/client'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link } from '@tanstack/react-router'
 import { useMemo, useState } from 'react'
-import { confirmar, notificar } from '../../componentes/avisos.ts'
+import { confirmar, notificar, preguntar } from '../../componentes/avisos.ts'
 import { Boton, clasesBoton } from '../../componentes/Boton.tsx'
 import { Campo } from '../../componentes/Campo.tsx'
 import {
@@ -13,6 +13,7 @@ import {
   IconoBorrar,
   IconoCertificado,
   IconoImprimir,
+  IconoMail,
   IconoVerificar,
 } from '../../componentes/iconos.tsx'
 import { Selector } from '../../componentes/Selector.tsx'
@@ -692,6 +693,31 @@ function Ultimos() {
     },
   })
 
+  const enviar = useMutation({
+    mutationFn: (x: { id: string; email: string }) => api.comprobantes.enviar(x),
+    meta: { exito: (r) => `Mandada por mail a ${(r as { enviadoA: string }).enviadoA}` },
+  })
+
+  async function pedirMail(c: Resumen) {
+    // El correo del cliente, si lo tiene cargado: se ofrece, y se puede cambiar.
+    const ficha = await api.comprobantes.ficha({ id: c.id }).catch(() => null)
+    const email = await preguntar({
+      titulo: `¿A qué correo mando la ${nombreComprobante(c)}?`,
+      texto: `Va el PDF adjunto, a nombre de ${c.receptorNombre}.`,
+      confirmar: 'Mandar',
+      campo: {
+        etiqueta: 'Correo',
+        tipo: 'email',
+        valor: ficha?.receptorEmail ?? '',
+        validar: (v) =>
+          /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v.trim())
+            ? null
+            : 'Escribí un correo, como nombre@dominio.com',
+      },
+    })
+    if (email) enviar.mutate({ id: c.id, email })
+  }
+
   async function pedirAnular(c: Resumen) {
     if (
       await confirmar({
@@ -717,6 +743,16 @@ function Ultimos() {
       {c.estado === 'autorizado' && (
         <Boton tamano="chico" icono={<IconoImprimir />} onClick={() => void abrirPdf(c.id)}>
           PDF
+        </Boton>
+      )}
+      {c.estado === 'autorizado' && (
+        <Boton
+          tamano="chico"
+          icono={<IconoMail />}
+          deshabilitado={enviar.isPending}
+          onClick={() => void pedirMail(c)}
+        >
+          Mail
         </Boton>
       )}
       {puedeAnular && esFactura(c) && c.estado === 'autorizado' && !c.anulado && (

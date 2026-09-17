@@ -31,8 +31,17 @@ export interface OpcionesConfirmacion {
   peligro?: boolean | undefined
 }
 
+export interface CampoPregunta {
+  etiqueta: string
+  valor: string
+  tipo?: 'text' | 'email' | undefined
+  /** Qué está mal, o `null` si sirve. Mientras esté mal, no se confirma. */
+  validar?: ((valor: string) => string | null) | undefined
+}
+
 interface Pendiente extends OpcionesConfirmacion {
-  responder: (si: boolean) => void
+  campo?: CampoPregunta | undefined
+  responder: (si: boolean, valor?: string) => void
 }
 
 interface EstadoAvisos {
@@ -89,6 +98,27 @@ export function confirmar(opciones: OpcionesConfirmacion): Promise<boolean> {
         responder: (si) => {
           usarAvisos.setState({ confirmacion: null })
           resolver(si)
+        },
+      },
+    })
+  })
+}
+
+/**
+ * Lo mismo que confirmar, pero pidiendo un dato: «¿A qué correo la mando?». Resuelve el
+ * valor escrito, o `null` si se canceló.
+ */
+export function preguntar(
+  opciones: OpcionesConfirmacion & { campo: CampoPregunta },
+): Promise<string | null> {
+  return new Promise((resolver) => {
+    usarAvisos.getState().confirmacion?.responder(false)
+    usarAvisos.setState({
+      confirmacion: {
+        ...opciones,
+        responder: (si, valor) => {
+          usarAvisos.setState({ confirmacion: null })
+          resolver(si ? (valor ?? '').trim() : null)
         },
       },
     })
