@@ -32,7 +32,8 @@
     "build": "tsc -p tsconfig.json",
     "sembrar": "tsx --env-file=../../.env scripts/sembrar.ts",
     "operador": "tsx --env-file=../../.env scripts/operador.ts",
-    "ordenes-prueba": "tsx --env-file=../../.env scripts/ordenes-de-prueba.ts"
+    "ordenes-prueba": "tsx --env-file=../../.env scripts/ordenes-de-prueba.ts",
+    "repuestos-prueba": "tsx --env-file=../../.env scripts/repuestos-de-prueba.ts"
   },
   "dependencies": {
     "drizzle-orm": "0.45.2",

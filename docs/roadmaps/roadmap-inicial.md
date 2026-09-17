@@ -124,8 +124,8 @@ Las entidades ya están modeladas; falta poder operarlas.
 - ✅ Consulta al padrón de AFIP por CUIT: constancia de inscripción y A13 de respaldo,
       condición frente al IVA informada o deducida, probada contra AFIP
 - 🔨 ABM de entidades comerciales, usando la consulta al padrón: clientes ✅, con el
-      documento validado según su tipo y sin duplicar al que ya es proveedor. Proveedores,
-      con el módulo de repuestos
+      documento validado según su tipo y sin duplicar al que ya es proveedor. Proveedores ✅,
+      en Repuestos
 - ✅ ABM de vehículos: alta con marca, modelo y titular, edición sin tocar el chasis, y
       transferencia de titular que cierra la anterior sin borrarla
 - ✅ Búsqueda única en el encabezado (`F3`): por patente, por chasis, por cliente, por CUIT,
@@ -189,7 +189,9 @@ verdad. Qué se trae y qué cambia ahora que el DMS es nuestro, en
 - ⬜ Esperas con motivo: sin eso no se explica por qué un auto estuvo seis días
 - ⬜ Auto-cierre de fin de turno, también al arrancar el servidor
 - ⬜ Correcciones de tiempo con auditoría y motivo obligatorio
-- ⬜ Repuestos consumidos, con descuento de stock
+- ✅ Repuestos consumidos, con descuento de stock: la orden busca en el catálogo y el stock
+      sigue a sus renglones; los pedidos de repuestos del taller pasan a la orden al entregarlos.
+      Ver [repuestos](../tecnicos/repuestos.md)
 - 🔨 Trabajos y repuestos con precio final, estados del taller y cierre (terminar → caja) ✅.
       Falta presupuesto y autorización del cliente
 - ⬜ **Catálogo de services**: los services de cada marca (10.000, 20.000, …) con sus trabajos,
@@ -211,7 +213,10 @@ verdad. Qué se trae y qué cambia ahora que el DMS es nuestro, en
       (`GT1:M:…`, en `packages/core/src/qr.ts`) marca la entrada y la salida de todos los
       empleados, no sólo el fichaje de los mecánicos en las órdenes
 
-- **Repuestos**: stock, pedidos a fábrica, mostrador
+- **Repuestos** 🔨: catálogo, stock por sucursal con movimientos, ajustes y transferencias,
+      pedidos (con chasis; a una orden, a un cliente o de mostrador) facturados en caja, compras
+      a proveedores con recepción, y proveedores ✅. Falta importar la lista de precios de la
+      terminal, reservas y el pedido a fábrica desde el mínimo
 - **Garantías**: reclamos a terminal, cada una con su formato y su portal
 - **Cuenta corriente y cobranzas**: recibos, retenciones, compensación de saldos
 - **Ventas 0km y usados**: prospectos, planes de ahorro, patentamiento, prenda
