@@ -1,5 +1,6 @@
 import { sql } from 'drizzle-orm'
 import {
+  type AnyPgColumn,
   bigint,
   check,
   date,
@@ -18,6 +19,7 @@ import { actualizadoEn, creadoEn, pk, tenantId } from './_comunes.ts'
 import { usuario } from './acceso.ts'
 import { entidadComercial } from './comercial.ts'
 import { sucursal } from './organizacion.ts'
+import { repuesto } from './repuestos.ts'
 import { tenant } from './tenant.ts'
 import { vehiculo } from './vehiculo.ts'
 
@@ -127,6 +129,8 @@ export const ordenItem = pgTable(
       .references(() => orden.id),
     tipo: text().notNull(),
     orden: smallint().notNull(),
+    /** Si la pieza es del catálogo: cargarla descuenta el stock de la sucursal, sacarla lo devuelve. */
+    repuestoId: uuid().references((): AnyPgColumn => repuesto.id),
     codigo: text(),
     descripcion: text().notNull(),
     cantidad: numeric({ precision: 18, scale: 4 }).notNull().default('1'),

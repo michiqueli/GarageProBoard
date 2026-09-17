@@ -85,6 +85,13 @@
       "when": 1789608574671,
       "tag": "0011_comprobante_orden",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1789611280829,
+      "tag": "0012_repuestos",
+      "breakpoints": true
     }
   ]
 }

@@ -19,6 +19,7 @@ import { usuario } from './acceso.ts'
 import { condicionIva, tipoComprobante } from './catalogos.ts'
 import { entidadComercial } from './comercial.ts'
 import { orden } from './orden.ts'
+import { pedidoRepuestos } from './repuestos.ts'
 import { empresa, puntoVenta, sucursal } from './organizacion.ts'
 import { tenant } from './tenant.ts'
 
@@ -83,6 +84,8 @@ export const comprobante = pgTable(
     comprobanteAsociadoId: uuid().references((): AnyPgColumn => comprobante.id),
     /** La orden de trabajo que se factura, si viene del taller. */
     ordenId: uuid().references((): AnyPgColumn => orden.id),
+    /** El pedido de repuestos de mostrador que se factura. */
+    pedidoRepuestosId: uuid().references((): AnyPgColumn => pedidoRepuestos.id),
 
     importeNeto: importe('importe_neto').notNull(),
     importeIva: importe('importe_iva').notNull(),
@@ -122,6 +125,11 @@ export const comprobante = pgTable(
       .on(t.ordenId)
       .where(
         sql`estado in ('emitiendo', 'autorizado', 'incierto') and orden_id is not null and comprobante_asociado_id is null`,
+      ),
+    uniqueIndex('comprobante_pedido_repuestos_uq')
+      .on(t.pedidoRepuestosId)
+      .where(
+        sql`estado in ('emitiendo', 'autorizado', 'incierto') and pedido_repuestos_id is not null and comprobante_asociado_id is null`,
       ),
     uniqueIndex('comprobante_anulacion_uq')
       .on(t.comprobanteAsociadoId)
