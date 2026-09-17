@@ -10,7 +10,7 @@ import { usarSesion } from '../../sesion/almacen.ts'
 import { api } from '../../sesion/cliente.ts'
 import { usePuedeUsar } from '../../sesion/permisos.ts'
 
-type Pestania = 'ingresos' | 'cambios' | 'computadoras'
+type Pestania = 'ingresos' | 'cambios' | 'crudos' | 'computadoras'
 type Dispositivo = { id: string; nombre: string | null; agente: string | null }
 
 const FECHA = new Intl.DateTimeFormat('es-AR', { dateStyle: 'short', timeStyle: 'short' })
@@ -72,6 +72,7 @@ export function PantallaAuditoria() {
   const pestanias: Array<{ id: Pestania; etiqueta: string }> = [
     { id: 'ingresos', etiqueta: 'Ingresos' },
     { id: 'cambios', etiqueta: 'Cambios' },
+    { id: 'crudos', etiqueta: 'Cambios en la base' },
     { id: 'computadoras', etiqueta: 'Computadoras' },
   ]
 
@@ -102,6 +103,7 @@ export function PantallaAuditoria() {
       >
         {pestania === 'ingresos' && <Ingresos />}
         {pestania === 'cambios' && <Cambios />}
+        {pestania === 'crudos' && <Crudos />}
         {pestania === 'computadoras' && <Computadoras />}
       </section>
     </Shell>
@@ -176,6 +178,62 @@ function Cambios() {
           // El detalle ya dice qué pasó —«Lo dio de baja», «Le agregó el rol…»—: anteponerle
           // «Modificación» sólo lo alarga.
           <span key="d">{c.detalle}</span>,
+          <span key="i" className="font-mono text-etiqueta text-texto-suave">
+            {c.ip ?? '—'}
+          </span>,
+        ],
+      }))}
+    />
+  )
+}
+
+/**
+ * Todo lo que cambió en la base, lo escriba quien lo escriba.
+ *
+ * Existe porque la otra pestaña depende de que cada operación se acuerde de contar lo que
+ * hace, y con veinte módulos más por delante esa disciplina no escala. Ésta la llena un
+ * trigger de Postgres: está aunque nadie diga una palabra, y la aplicación no la puede
+ * escribir ni borrar.
+ *
+ * **No esconde nada.** Cuando la operación además contó lo que hacía, la frase va al lado —
+ * pero la fila aparece igual, también cuando no hay frase, que es justo el caso que hay que
+ * poder ver.
+ */
+function Crudos() {
+  const tenantId = usarSesion((e) => e.datos?.tenant.id)
+  const consulta = useQuery({
+    queryKey: ['auditoria', tenantId, 'crudos'],
+    queryFn: () => api.auditoria.cambiosCrudos({ pagina: 1, porPagina: 100 }),
+  })
+
+  return (
+    <Listado
+      consulta={consulta}
+      vacio="Todavía no cambió nada en la base."
+      columnas={['Fecha', 'Quién', 'Sobre qué', 'Qué cambió', 'IP']}
+      filas={(consulta.data?.datos ?? []).map((c, i) => ({
+        clave: `${c.fecha}-${i}`,
+        celdas: [
+          <span key="f" className="font-mono text-etiqueta">
+            {FECHA.format(new Date(c.fecha))}
+          </span>,
+          <span key="q">{c.autor ?? <Tenue>Sin autor</Tenue>}</span>,
+          <span key="s" className="text-texto-suave">
+            {c.sobre}
+            <span className="ml-2 text-etiqueta text-texto-tenue">{c.tabla}</span>
+          </span>,
+          <span key="d" className="grid gap-0.5">
+            {c.narracion && <b className="font-medium">{c.narracion}</b>}
+            {c.campos.length === 0 ? (
+              <Tenue>{c.accion === 'baja' ? 'Se borró la fila' : 'Sin campos que mostrar'}</Tenue>
+            ) : (
+              c.campos.map((campo) => (
+                <span key={campo} className="text-etiqueta text-texto-suave">
+                  {campo}
+                </span>
+              ))
+            )}
+          </span>,
           <span key="i" className="font-mono text-etiqueta text-texto-suave">
             {c.ip ?? '—'}
           </span>,

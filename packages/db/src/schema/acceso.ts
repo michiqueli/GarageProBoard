@@ -97,8 +97,13 @@ export const usuarioSucursal = pgTable(
 )
 
 /**
- * Auditoría. Un sistema que maneja comprobantes fiscales y legajos tiene que poder
- * responder quién cambió qué y cuándo, aunque nadie lo pida hasta el día que lo piden.
+ * Auditoría **narrada**: lo que la operación quiso contar.
+ *
+ * La escribe la aplicación, y por eso guarda lo que una foto de la fila no tiene: los
+ * nombres de los roles que se le dieron a un usuario, el medio por el que autorizaron un
+ * presupuesto, que un comprobante se mandó por mail —que no cambia una sola columna—.
+ *
+ * Es la mitad linda del registro. La que no se puede perder es `auditoria_cambio`.
  */
 export const auditoria = pgTable(
   'auditoria',
@@ -112,12 +117,62 @@ export const auditoria = pgTable(
     datosAntes: jsonb(),
     datosDespues: jsonb(),
     ip: text(),
+    /**
+     * La transacción que la produjo (`pg_current_xact_id()`), como texto.
+     *
+     * Es lo que junta esta narración con los cambios crudos que la misma operación dejó en
+     * `auditoria_cambio`. Sin esto habría que adivinar por fecha, y un registro de
+     * auditoría no se arma adivinando.
+     */
+    transaccion: text(),
     creadoEn: creadoEn(),
   },
   (t) => [
     index('auditoria_tabla_registro_idx').on(t.tenantId, t.tabla, t.registroId),
     index('auditoria_fecha_idx').on(t.tenantId, t.creadoEn),
+    index('auditoria_transaccion_idx').on(t.tenantId, t.transaccion),
     check('auditoria_accion_valida', sql`${t.accion} in ('alta', 'modificacion', 'baja')`),
+  ],
+)
+
+/**
+ * Auditoría **cruda**: lo que efectivamente cambió en la base.
+ *
+ * La escribe un trigger de Postgres, tabla por tabla, con la fila entera antes y después.
+ * No depende de que nadie se acuerde de llamar a nada: es la misma idea que RLS, y por el
+ * mismo motivo —vamos a seguir sumando módulos, y la disciplina no escala—.
+ *
+ * **La aplicación la lee y no la escribe.** El rol `gpb_app` no tiene `insert`, `update` ni
+ * `delete` sobre esta tabla; sólo el trigger, que corre como dueño. Una bitácora que el
+ * mismo proceso auditado puede reescribir no prueba nada.
+ *
+ * Las claves de los campos vienen en el vocabulario de la aplicación y no en el de
+ * Postgres (`razonSocial`, no `razon_social`), para que la pantalla las cuente con las
+ * mismas frases que las narradas. Los secretos —el hash de la contraseña, la clave privada
+ * del certificado— no entran nunca: ver `TABLAS_AUDITADAS` en `rls/auditoria.ts`.
+ */
+export const auditoriaCambio = pgTable(
+  'auditoria_cambio',
+  {
+    id: pk(),
+    tenantId: tenantId().references(() => tenant.id),
+    /** Quién lo hizo, según la sesión. Vacío si el cambio no salió de un pedido con sesión. */
+    usuarioId: uuid(),
+    tabla: text().notNull(),
+    registroId: uuid(),
+    accion: text().notNull(),
+    antes: jsonb(),
+    despues: jsonb(),
+    ip: text(),
+    /** La misma transacción que la fila narrada, cuando la operación narró algo. */
+    transaccion: text().notNull(),
+    creadoEn: creadoEn(),
+  },
+  (t) => [
+    index('auditoria_cambio_fecha_idx').on(t.tenantId, t.creadoEn),
+    index('auditoria_cambio_registro_idx').on(t.tenantId, t.tabla, t.registroId),
+    index('auditoria_cambio_transaccion_idx').on(t.tenantId, t.transaccion),
+    check('auditoria_cambio_accion_valida', sql`${t.accion} in ('alta', 'modificacion', 'baja')`),
   ],
 )
 

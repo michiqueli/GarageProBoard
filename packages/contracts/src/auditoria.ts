@@ -45,6 +45,27 @@ export const dispositivoListado = dispositivoResumen.extend({
   usuarios: z.array(z.string()),
 })
 
+/**
+ * Un cambio tal como lo dejó Postgres: la fila entera, antes y después.
+ *
+ * Es la otra mitad del registro y **no reemplaza a la narrada**: ninguna esconde a la otra,
+ * porque la única forma de fundirlas sería adivinar cuál fila del trigger corresponde a cada
+ * frase, y un registro de auditoría no se arma adivinando.
+ */
+export const cambioCrudo = z.object({
+  fecha: z.iso.datetime(),
+  autor: z.string().nullable(),
+  /** El nombre de la tabla, dicho como en la pantalla: «vehículo», «orden de trabajo». */
+  tabla: z.string(),
+  sobre: z.string(),
+  accion: z.enum(['alta', 'modificacion', 'baja']),
+  /** Campo por campo, ya en palabras: «color: «vacío» → «Rojo»». */
+  campos: z.array(z.string()),
+  ip: z.string().nullable(),
+  /** Si la operación además contó lo que hacía, la frase que dejó. */
+  narracion: z.string().nullable(),
+})
+
 export const contratoAuditoria = {
   ingresos: conPermiso('nucleo', 'ver', 'Auditoria')
     .route({
@@ -80,6 +101,20 @@ export const contratoAuditoria = {
       summary: 'Las computadoras desde las que se entra',
     })
     .output(z.object({ datos: z.array(dispositivoListado) })),
+
+  cambiosCrudos: conPermiso('nucleo', 'ver', 'Auditoria')
+    .route({
+      method: 'GET',
+      path: '/auditoria/cambios-crudos',
+      tags: [TAG],
+      operationId: 'listarCambiosCrudos',
+      summary: 'Todo lo que cambió en la base, lo haya contado alguien o no',
+      description:
+        'Lo escribe un trigger de Postgres, así que está aunque la operación no haya dicho ' +
+        'una palabra. La aplicación lo lee y no lo puede escribir.',
+    })
+    .input(paginado)
+    .output(z.object({ datos: z.array(cambioCrudo), total: z.number().int() })),
 
   nombrarDispositivo: conPermiso('nucleo', 'editar', 'Auditoria')
     .route({

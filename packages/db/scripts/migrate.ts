@@ -2,7 +2,7 @@ import { dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { migrate } from 'drizzle-orm/node-postgres/migrator'
 import { crearDb, crearPool } from '../src/index.ts'
-import { ddlAislamiento } from '../src/rls/index.ts'
+import { ddlAislamiento, ddlAuditoria, ROL_APP } from '../src/rls/index.ts'
 
 const aqui = dirname(fileURLToPath(import.meta.url))
 
@@ -22,6 +22,9 @@ try {
 
   console.log('› Aplicando políticas de aislamiento…')
   await pool.query(ddlAislamiento())
+
+  console.log('› Aplicando la auditoría por trigger…')
+  await pool.query(ddlAuditoria(ROL_APP))
 
   console.log('✓ Base al día.')
 } catch (error) {

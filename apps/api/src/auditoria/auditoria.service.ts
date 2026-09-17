@@ -538,6 +538,77 @@ export class ServicioAuditoria {
     })
   }
 
+  /**
+   * Todo lo que cambió en la base, lo haya contado alguien o no.
+   *
+   * Al lado de cada cambio va la frase que dejó la operación, cuando dejó alguna: se juntan
+   * por la transacción que las produjo, que las dos firman. Pero se devuelven **todas** las
+   * filas, también las que nadie narró — que son justamente las que hay que poder ver.
+   */
+  cambiosCrudos(entrada: { pagina: number; porPagina: number }) {
+    return this.datos.transaccion(async (tx) => {
+      const nombres = await cargarNombres(tx)
+
+      const { rows } = await tx.execute<{
+        fecha: Date
+        autor: string | null
+        tabla: string
+        antes: Foto
+        despues: Foto
+        accion: 'alta' | 'modificacion' | 'baja'
+        ip: string | null
+        narracion: Foto
+        narracion_tabla: string | null
+        narracion_accion: string | null
+        total: string
+      }>(sql`
+        select c.creado_en as fecha,
+               autor.nombre || ' ' || autor.apellido as autor,
+               c.tabla, c.antes, c.despues, c.accion, c.ip,
+               n.datos_despues as narracion,
+               n.tabla as narracion_tabla,
+               n.accion as narracion_accion,
+               count(*) over () as total
+          from auditoria_cambio c
+          left join usuario autor on autor.id = c.usuario_id
+          -- La frase de la misma operación, si la hubo. Por transacción y por registro: una
+          -- operación puede tocar varias cosas, y cada una tiene la suya.
+          left join lateral (
+            select a.tabla, a.accion, a.datos_despues
+              from auditoria a
+             where a.transaccion = c.transaccion
+               and a.registro_id = c.registro_id
+             order by a.creado_en
+             limit 1
+          ) n on true
+         order by c.creado_en desc, c.id
+         limit ${entrada.porPagina} offset ${(entrada.pagina - 1) * entrada.porPagina}
+      `)
+
+      return {
+        datos: rows.map((r) => ({
+          fecha: new Date(r.fecha).toISOString(),
+          autor: r.autor,
+          tabla: NOMBRE_TABLA[r.tabla] ?? r.tabla,
+          sobre: sobreQue(r.tabla, r.antes, r.despues),
+          accion: r.accion,
+          campos: camposQueCambiaron(r.antes, r.despues, nombres),
+          ip: r.ip,
+          narracion: r.narracion
+            ? describirCambio(
+                r.narracion_tabla ?? r.tabla,
+                r.narracion_accion ?? r.accion,
+                null,
+                r.narracion,
+                nombres,
+              )
+            : null,
+        })),
+        total: Number(rows[0]?.total ?? 0),
+      }
+    })
+  }
+
   dispositivos() {
     return this.datos.transaccion(async (tx) => ({ datos: await this.listarDispositivos(tx) }))
   }
@@ -595,4 +666,90 @@ export class ServicioAuditoria {
       usuarios: r.usuarios ?? [],
     }))
   }
+}
+
+// ── El registro crudo ─────────────────────────────────────────────────────────
+
+/**
+ * El nombre de cada tabla como lo diría una persona. La que no esté acá se muestra con su
+ * propio nombre, que es feo pero honesto: preferimos eso a esconder el cambio.
+ */
+const NOMBRE_TABLA: Record<string, string> = {
+  empresa: 'la empresa',
+  sucursal: 'la sucursal',
+  punto_venta: 'el punto de venta',
+  certificado_afip: 'el certificado de AFIP',
+  comprobante: 'el comprobante',
+  comprobante_renglon: 'un renglón de un comprobante',
+  orden: 'la orden de trabajo',
+  orden_presupuesto: 'el presupuesto',
+  repuesto: 'el repuesto',
+  repuesto_stock: 'la ubicación y el mínimo del repuesto',
+  movimiento_stock: 'un movimiento de stock',
+  pedido_repuestos: 'el pedido de repuestos',
+  compra: 'la compra',
+  entidad_comercial: 'los datos fiscales',
+  cliente: 'el cliente',
+  proveedor: 'el proveedor',
+  empleado: 'el empleado',
+  marca: 'la marca',
+  modelo: 'el modelo',
+  vehiculo: 'el vehículo',
+  titularidad: 'la titularidad del vehículo',
+  usuario: 'el usuario',
+  rol: 'el rol',
+  usuario_rol: 'los roles de un usuario',
+  usuario_sucursal: 'el acceso de un usuario a una sucursal',
+  dispositivo: 'la computadora',
+}
+
+/** Todos los campos que sabemos nombrar, juntos: el crudo puede traer cualquiera. */
+const CAMPOS_CONOCIDOS: Record<string, string> = {
+  ...CAMPOS_ORGANIZACION,
+  ...CAMPOS_VEHICULO,
+  ...CAMPOS_CLIENTE,
+  chasis: 'chasis',
+  codigo: 'código',
+  descripcion: 'descripción',
+  estado: 'estado',
+  numero: 'número',
+  total: 'total',
+  activo: 'activo',
+  activa: 'activa',
+  ubicacion: 'ubicación',
+  minimo: 'mínimo',
+  precioVenta: 'precio de venta',
+  costo: 'costo',
+  hasta: 'hasta',
+  desde: 'desde',
+  legajo: 'legajo',
+}
+
+/** «código» si lo sabemos decir; si no, el nombre del campo tal cual. */
+function nombreDeCampo(clave: string): string {
+  return CAMPOS_CONOCIDOS[clave] ?? clave
+}
+
+/**
+ * Qué cambió, campo por campo, sobre la foto cruda de la fila.
+ *
+ * A diferencia de la narrada, acá **no se elige qué mostrar**: se recorre todo lo que vino,
+ * porque el sentido de este registro es que no haya nada escondido. Lo que no sabemos
+ * nombrar sale con el nombre del campo.
+ */
+function camposQueCambiaron(antes: Foto, despues: Foto, nombres: Nombres): string[] {
+  if (!antes) {
+    return Object.entries(despues ?? {})
+      .filter(([, v]) => v !== null && v !== '')
+      .map(([k, v]) => `${nombreDeCampo(k)}: «${legible(k, v, nombres)}»`)
+  }
+  if (!despues) return []
+
+  const claves = new Set([...Object.keys(antes), ...Object.keys(despues)])
+  return [...claves]
+    .filter((k) => (antes[k] ?? null) !== (despues[k] ?? null))
+    .map(
+      (k) =>
+        `${nombreDeCampo(k)}: «${legible(k, antes[k], nombres)}» → «${legible(k, despues[k], nombres)}»`,
+    )
 }

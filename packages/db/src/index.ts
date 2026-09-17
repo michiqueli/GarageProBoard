@@ -1,7 +1,7 @@
 import { sql } from 'drizzle-orm'
 import { drizzle, type NodePgDatabase } from 'drizzle-orm/node-postgres'
 import { Pool, type PoolConfig } from 'pg'
-import { VAR_TENANT } from './rls/tablas.ts'
+import { VAR_IP, VAR_TENANT, VAR_USUARIO } from './rls/tablas.ts'
 import * as schema from './schema/index.ts'
 
 // Reexportado a propósito: la API construye consultas sin depender de drizzle ni
@@ -56,13 +56,25 @@ export function crearDb(pool: Pool): Db {
  *  - El `true` final lo hace local a la transacción, así la conexión vuelve limpia
  *    al pool y no se lleva el tenant puesto a la consulta del siguiente request.
  */
+export interface QuienPide {
+  /** Para que el trigger de auditoría sepa de quién fue el cambio. */
+  usuarioId?: string | undefined
+  ip?: string | undefined
+}
+
 export async function conTenant<T>(
   db: Db,
   tenantId: string,
   fn: (tx: Db) => Promise<T>,
+  quien: QuienPide = {},
 ): Promise<T> {
   return db.transaction(async (tx) => {
     await tx.execute(sql`select set_config(${VAR_TENANT}, ${tenantId}, true)`)
+    // Opcionales: una migración o una semilla cambian datos sin que haya nadie sentado.
+    // El trigger escribe la fila igual, sin autor — perder el cambio porque no sabemos
+    // quién fue sería exactamente al revés.
+    await tx.execute(sql`select set_config(${VAR_USUARIO}, ${quien.usuarioId ?? ''}, true)`)
+    await tx.execute(sql`select set_config(${VAR_IP}, ${quien.ip ?? ''}, true)`)
     return fn(tx as unknown as Db)
   })
 }

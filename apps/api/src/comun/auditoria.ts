@@ -1,4 +1,4 @@
-import type { Db } from '@gpb/db'
+import { type Db, sql } from '@gpb/db'
 import { auditoria } from '@gpb/db/schema'
 import type { Sesion } from './contexto.ts'
 
@@ -73,7 +73,10 @@ export async function auditar(
       accion: a.accion,
       datosAntes: a.antes ?? null,
       datosDespues: a.despues ?? null,
-      ip: a.ip ?? null,
+      ip: a.ip ?? sesion.ip ?? null,
+      // La misma transacción que firmó el trigger: es lo que junta esta narración con los
+      // cambios crudos que dejó la misma operación, sin tener que adivinar por fecha.
+      transaccion: sql<string>`pg_current_xact_id()::text`,
     })),
   )
 }

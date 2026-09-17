@@ -9,7 +9,8 @@ Son dos cosas distintas, en la misma pantalla:
 | Pestaña | De dónde sale | Qué contesta |
 | --- | --- | --- |
 | Ingresos | La tabla `sesion` | Quién entró, cuándo, desde qué computadora y con qué IP |
-| Cambios | La tabla `auditoria` | Quién modificó qué |
+| Cambios | La tabla `auditoria` | Qué quiso contar la operación: «le agregó el rol Mecánico» |
+| Cambios en la base | La tabla `auditoria_cambio` | Todo lo que cambió, lo haya contado alguien o no |
 | Computadoras | La tabla `dispositivo` | Desde qué máquinas se entra, con el nombre que les puso la concesionaria |
 
 Los **ingresos no pasan por `auditoria`** y es a propósito: `sesion` ya guarda más —la
@@ -54,46 +55,65 @@ cambio que alguien tenga que auditar.
 Lo que el test **no** garantiza: que una ruta clasificada como «audita» efectivamente
 audite. Obliga a detenerse y decidir, que es lo que antes no pasaba —así apareció
 `repuestos.ubicar`, la única ruta que mutaba sin dejar huella, y el mínimo de un repuesto es
-justamente lo que después dispara un pedido a fábrica—, pero la garantía de verdad tiene que
-venir de la base.
+justamente lo que después dispara un pedido a fábrica—, pero la garantía de verdad la da el
+trigger, que es de lo que habla la sección siguiente.
 
-## Por qué todavía no son triggers de Postgres
+## La otra mitad: lo que escribe Postgres
 
-El plan es un trigger por tabla que escriba la fila sola, como RLS: la disciplina del
-programador no es una garantía, el trigger sí. El lugar está listo —`ddlAislamiento()` se
-aplica al final de cada corrida de migraciones como estado convergente derivado de una
-lista, así que una tabla nueva quedaría cubierta sin acordarse de nada—.
+`auditoria_cambio` la llena un **trigger por tabla**, con la fila entera antes y después. No
+depende de que nadie llame a nada: es la misma idea que RLS y por el mismo motivo —vamos a
+seguir sumando módulos, y la disciplina no escala—.
 
-**El obstáculo es que la fila que escribe un trigger no alcanza para contar el cambio**, y
-no por comodidad: hay datos en `datos_despues` que un trigger sobre una sola tabla no puede
-ver.
+**La aplicación la lee y no la escribe.** El rol `gpb_app` no tiene `insert`, `update` ni
+`delete` sobre esa tabla; la única forma de que entre una fila es cambiando un dato de
+verdad. Una bitácora que el mismo proceso auditado puede reescribir no prueba nada.
 
-- El alta de un usuario se cuenta «lo dio de alta con el rol Mecánico, en Casa Central».
-  `rolIds` y `sucursalIds` salen de `usuario_rol` y `usuario_sucursal`. Un trigger sobre
-  `usuario` no los tiene; triggers sobre las dos tablas de relación convertirían «le agregó
-  el rol Mecánico y le quitó Cajero» en tres filas sueltas.
-- El certificado de AFIP se cuenta por **evento** —pedido, importado, activado—, y varios de
-  esos eventos no son un `update` a ninguna fila.
-- Mandar un comprobante por mail no cambia una sola columna, y es de lo que más se consulta.
+Quién y desde dónde salen de dos variables de sesión (`app.usuario_id`, `app.ip`) que fija
+`conTenant()`, igual que el tenant. Si no hay —una migración, una semilla—, **la fila se
+escribe igual, sin autor**: perder el cambio porque no sabemos quién fue sería exactamente
+al revés.
 
-De ahí que la idea de «el trigger escribe y el servicio deja una nota con `set_config`» no
-cierre tal cual: **la nota tendría que fijarse antes del `update`**, y hoy los treinta y
-pico de llamadas anotan después del cambio, que es el orden natural de leer el código.
+Las claves vienen en el vocabulario de la aplicación y no en el de Postgres —`razonSocial`,
+no `razon_social`—, así la pantalla cuenta con las mismas frases lo que escribió el trigger
+y lo que escribió la API.
 
-Las salidas que quedan, para decidir:
+### Ninguna esconde a la otra
 
-1. **Triggers sólo sobre las tablas de ABM plano** —empresa, sucursal, punto de venta,
-   cliente, proveedor, vehículo, repuesto, rol— donde la foto cruda alcanza, y dejar las
-   curadas para los eventos. Cubre la mayoría con poco riesgo, al precio de que la garantía
-   sea parcial y haya que saber cuál es cuál.
-2. **El trigger escribe siempre la foto cruda y `auditar()` pasa a ser un `update`** que le
-   pega la narración y los datos derivados a la fila que el trigger acaba de escribir en esta
-   misma transacción. Una fila por cambio, garantizada por la base, sin invertir ninguna
-   llamada. Hay que resolver cómo encontrar esa fila sin adivinar —la última de esta
-   transacción para esa tabla y ese registro—, y «casi siempre la correcta» no sirve para un
-   registro de auditoría.
-3. **Invertir el orden en las llamadas**: anotar la nota antes de escribir. Es el diseño más
-   simple del lado de la base y el más incómodo del lado del código.
+El primer intento fue fundirlas: que el trigger escriba la fila y que `auditar()` le pegue
+encima la narración. Se cae con el caso más común. **«El cliente» son dos tablas**
+—`entidad_comercial` y `cliente`—, así que no hay *una* fila del trigger a la que pegarle la
+frase, y elegir «la más parecida» es adivinar. Un registro de auditoría no se arma
+adivinando.
 
-Mientras no esté decidido, la garantía es el punto único de escritura más el test de
-cobertura, y queda anotado acá para que no se redescubra en marzo.
+Así que son dos, con una pestaña cada una: **Cambios** (lo que la operación quiso contar) y
+**Cambios en la base** (todo, lo haya contado alguien o no). Las dos filas firman la
+transacción que las produjo, así que la cruda muestra la frase al lado cuando la hubo —pero
+aparece igual cuando no la hay, que es justo el caso que hay que poder ver.
+
+### Qué se audita y qué no
+
+Las listas viven en `packages/db/src/rls/auditoria.ts` y se aplican como **estado
+convergente** al final de cada corrida de migraciones, igual que las políticas de
+aislamiento. La tabla de un módulo nuevo queda cubierta con sólo clasificarla, y un test
+falla si queda alguna sin clasificar. Eso es lo que hace que esto escale.
+
+Tres decisiones que no son obvias:
+
+- **Los secretos no entran.** `usuario.hash_password` y
+  `certificado_afip.clave_privada_cifrada` se excluyen por nombre. Hay un test que recorre
+  las columnas de toda tabla auditada y se planta si aparece una nueva con pinta de secreto:
+  el día que alguien agregue `token_mercadopago` se entera ahí, y no cuando un volcado de la
+  auditoría valga más que la base.
+- **Guardar no es cambiar.** Un `update` que deja la fila igual no escribe nada. Sin eso,
+  `actualizado_en` ensuciaría el registro con cambios que no son cambios, y se vuelve
+  ilegible justo el día que hay que leerlo.
+- **Hay tablas donde interesa lo que no debería pasar.** De `movimiento_stock` sólo se
+  registra el `delete`: es un libro de sólo agregar, y el dato es que alguien borre una
+  línea. De `comprobante_renglon`, el `update` y el `delete`: un renglón de un comprobante
+  emitido no se toca.
+
+Y una que sí es una concesión: **los renglones no se auditan uno por uno**. La orden, el
+pedido y la compra se guardan enteros en cada edición, así que auditar cada renglón sería
+una fila por renglón en cada guardado. Lo material —el total y el estado— cambia en la
+cabecera, y lo presupuestado queda en `orden_presupuesto`. Está escrito en la lista, con el
+motivo, para poder revisarlo cuando haga falta.

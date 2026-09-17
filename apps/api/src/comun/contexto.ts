@@ -14,6 +14,11 @@ export interface Sesion {
   tenantId: string
   sucursalId: string
   sesionId: string
+  /**
+   * Desde dónde llegó el pedido. La anota el trigger de auditoría sin que ninguna
+   * operación tenga que acordarse de pasarla.
+   */
+  ip?: string | undefined
 }
 
 /** Quién está pidiendo, y qué puede hacer. Lo arma la guardia de acceso. */

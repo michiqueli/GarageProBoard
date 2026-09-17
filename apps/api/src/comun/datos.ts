@@ -24,6 +24,12 @@ export class DatosDelTenant {
 
   transaccion<T>(fn: (tx: Db, sesion: Sesion) => Promise<T>): Promise<T> {
     const { sesion } = contextoDelPedido()
-    return conTenant(this.db, sesion.tenantId, (tx) => fn(tx, sesion))
+    // Quién y desde dónde van a la sesión de Postgres, no a cada consulta: es lo que lee
+    // el trigger de auditoría para firmar el cambio. Por el mismo motivo que el tenant,
+    // acá no hay parámetro que equivocar ni llamada que olvidar.
+    return conTenant(this.db, sesion.tenantId, (tx) => fn(tx, sesion), {
+      usuarioId: sesion.usuarioId,
+      ip: sesion.ip,
+    })
   }
 }

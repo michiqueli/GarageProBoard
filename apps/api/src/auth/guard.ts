@@ -71,7 +71,9 @@ export class GuardiaAcceso implements CanActivate {
     if (acceso === 'publico') return true
 
     const pedido = contexto.switchToHttp().getRequest<PedidoConSesion>()
-    const sesion = await this.autenticar(pedido.headers.authorization)
+    // La IP se pega a la sesión acá y no en cada operación: de ahí la toma el trigger de
+    // auditoría, y una operación nueva la anota sin tener que acordarse de nada.
+    const sesion = { ...(await this.autenticar(pedido.headers.authorization)), ip: pedido.ip }
 
     // Las reglas se leen de la base **en cada pedido**, no del token. Guardarlas en el
     // token ahorraría esta consulta, pero un usuario dado de baja o al que le sacaron un

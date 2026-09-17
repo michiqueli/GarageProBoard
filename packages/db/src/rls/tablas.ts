@@ -40,6 +40,7 @@ export const TABLAS_CON_TENANT = [
   'usuario_config',
   'usuario_atajo',
   'auditoria',
+  'auditoria_cambio',
   'sesion',
   'tenant_modulo',
   'dispositivo',
@@ -62,6 +63,10 @@ export const ROL_APP = 'gpb_app'
 
 /** Variable de sesión que las políticas comparan contra `tenant_id`. */
 export const VAR_TENANT = 'app.tenant_id'
+
+/** Quién está pidiendo y desde dónde. Las lee el trigger de auditoría; RLS no las mira. */
+export const VAR_USUARIO = 'app.usuario_id'
+export const VAR_IP = 'app.ip'
 
 /**
  * Tablas con datos de un cliente que la aplicación **lee pero no escribe**.

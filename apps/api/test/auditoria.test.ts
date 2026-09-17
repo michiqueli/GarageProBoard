@@ -186,3 +186,62 @@ describe('sin permiso', () => {
     expect((await pedir(access, 'GET', '/auditoria/ingresos')).statusCode).toBe(403)
   })
 })
+
+describe('el registro crudo, el que escribe Postgres', () => {
+  it('deja la fila aunque la operación no cuente nada', async () => {
+    // Éste es el punto de todo: el trigger no depende de que nadie se acuerde de llamarlo.
+    const { access } = await entrar('gerente@auditoria.test')
+    await pedir(access, 'POST', '/vehiculos', {
+      chasis: '8AWZZZ377KA555001',
+      dominio: 'CR111CR',
+      anio: 2021,
+    })
+
+    const r = await pedir(access, 'GET', '/auditoria/cambios-crudos?pagina=1&porPagina=100')
+    expect(r.statusCode).toBe(200)
+
+    const { datos } = r.json() as {
+      datos: Array<{ tabla: string; accion: string; campos: string[]; autor: string | null }>
+    }
+    const alta = datos.find((d) => d.campos.some((c) => c.includes('8AWZZZ377KA555001')))
+    expect(alta).toBeDefined()
+    expect(alta?.accion).toBe('alta')
+    expect(alta?.tabla).toBe('el vehículo')
+    // Firmado: el trigger lee de la sesión de Postgres quién está pidiendo.
+    expect(alta?.autor).toBe('Prueba Gerente')
+  })
+
+  it('cuenta los campos uno por uno, con los nombres de la pantalla', async () => {
+    const { access } = await entrar('gerente@auditoria.test')
+    const creado = await pedir(access, 'POST', '/vehiculos', {
+      chasis: '8AWZZZ377KA555002',
+      dominio: 'CR222CR',
+    })
+    const id = (creado.json() as { id: string }).id
+
+    await pedir(access, 'PUT', `/vehiculos/${id}`, { color: 'Rojo' })
+
+    const r = await pedir(access, 'GET', '/auditoria/cambios-crudos?pagina=1&porPagina=100')
+    const { datos } = r.json() as { datos: Array<{ accion: string; campos: string[] }> }
+    const cambio = datos.find(
+      (d) => d.accion === 'modificacion' && d.campos.some((c) => c.startsWith('color')),
+    )
+
+    expect(cambio?.campos).toContain('color: «vacío» → «Rojo»')
+  })
+
+  it('cuando la operación además contó lo que hacía, va la frase al lado', async () => {
+    const { access } = await entrar('gerente@auditoria.test')
+    const r = await pedir(access, 'GET', '/auditoria/cambios-crudos?pagina=1&porPagina=100')
+    const { datos } = r.json() as { datos: Array<{ narracion: string | null }> }
+
+    // Las altas de vehículo sí se narran: las dos mitades del registro conviven.
+    expect(datos.some((d) => d.narracion !== null)).toBe(true)
+  })
+
+  it('no lo ve quien no puede ver la auditoría', async () => {
+    const { access } = await entrar('asesor@auditoria.test')
+    const r = await pedir(access, 'GET', '/auditoria/cambios-crudos?pagina=1&porPagina=100')
+    expect(r.statusCode).toBe(403)
+  })
+})

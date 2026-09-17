@@ -26,6 +26,11 @@ export class ControladorAuditoria {
     return implement(c.dispositivos).handler(() => this.auditoria.dispositivos())
   }
 
+  @Operacion(c.cambiosCrudos)
+  cambiosCrudos() {
+    return implement(c.cambiosCrudos).handler(({ input }) => this.auditoria.cambiosCrudos(input))
+  }
+
   @Operacion(c.nombrarDispositivo)
   nombrarDispositivo(@Req() pedido: FastifyRequest) {
     return implement(c.nombrarDispositivo).handler(({ input, errors }) =>

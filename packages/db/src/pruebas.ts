@@ -3,7 +3,7 @@ import { fileURLToPath } from 'node:url'
 import { PostgreSqlContainer, type StartedPostgreSqlContainer } from '@testcontainers/postgresql'
 import { migrate } from 'drizzle-orm/node-postgres/migrator'
 import { crearDb, crearPool, type Db } from './index.ts'
-import { ddlAislamiento, ROL_APP, ROL_BACKOFFICE } from './rls/index.ts'
+import { ddlAislamiento, ddlAuditoria, ROL_APP, ROL_BACKOFFICE } from './rls/index.ts'
 
 const aqui = dirname(fileURLToPath(import.meta.url))
 
@@ -47,6 +47,7 @@ export async function levantarPostgres(): Promise<PostgresDePrueba> {
 
   await migrate(dbDuenio, { migrationsFolder: resolve(aqui, '../migrations') })
   await poolDuenio.query(ddlAislamiento())
+  await poolDuenio.query(ddlAuditoria(ROL_APP))
   await poolDuenio.query(`alter role ${ROL_APP} with login password '${PASSWORD_APP}'`)
   await poolDuenio.query(
     `alter role ${ROL_BACKOFFICE} with login password '${PASSWORD_BACKOFFICE}'`,

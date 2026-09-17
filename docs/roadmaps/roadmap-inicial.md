@@ -65,11 +65,12 @@ Sin esto no hay pantalla que mostrar a nadie.
 - ✅ Pantallas con carga diferida y librerías en archivos aparte
 - ✅ Cookie httpOnly para el refresco, con entrega por cuerpo para clientes sin cookies
 - ✅ Login sólo con correo y contraseña: el tenant sale del usuario
-- 🔨 Auditoría automática de altas, modificaciones y bajas. **Un solo lugar escribe la
-      tabla** (`auditar()` en `comun/auditoria.ts`, antes once copias del mismo insert) y hay
-      un test que recorre el contrato y falla si una ruta que muta no está clasificada. Falta
-      el trigger de Postgres, que es lo que lo vuelve una garantía y no una disciplina; el
-      obstáculo está anotado en [auditoría](../tecnicos/auditoria.md)
+- ✅ **Auditoría automática de altas, modificaciones y bajas**, en dos mitades que no se
+      esconden: `auditoria` la narra —un solo lugar la escribe, con un test que recorre el
+      contrato y falla si una ruta que muta no está clasificada— y **`auditoria_cambio` la
+      garantiza**, llenada por un trigger de Postgres por tabla, que la aplicación lee y no
+      puede escribir. Las listas se aplican como estado convergente, así que la tabla de un
+      módulo nuevo queda cubierta con clasificarla. En [auditoría](../tecnicos/auditoria.md)
 - ✅ Pantalla de configuración: tema, densidad, filas por página y a qué sucursal entrar.
       Va con `conSesion` y **sin permiso**: es lo propio de cada uno. El cambio se ve en el
       momento, sin recargar
