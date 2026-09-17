@@ -4,6 +4,7 @@ import {
   createRoute,
   createRouter,
   Link,
+  lazyRouteComponent,
   Outlet,
   type ParsedLocation,
   type RouterHistory,
@@ -19,34 +20,17 @@ import { Notificaciones } from './componentes/Notificaciones.tsx'
 import { Shell } from './componentes/Shell.tsx'
 import { useCacheDeSesion } from './ganchos/useCacheDeSesion.ts'
 import { useTema } from './ganchos/useTema.ts'
-import { PantallaAuditoria } from './modulos/auditoria/PantallaAuditoria.tsx'
 import { PantallaLogin } from './modulos/auth/PantallaLogin.tsx'
 import { PantallaSucursal } from './modulos/auth/PantallaSucursal.tsx'
-import { PantallaCaja } from './modulos/caja/PantallaCaja.tsx'
-import { PantallaClientes } from './modulos/clientes/PantallaClientes.tsx'
-import { PantallaFichaCliente } from './modulos/clientes/PantallaFichaCliente.tsx'
-import { PantallaCertificadoAfip } from './modulos/empresas/PantallaCertificadoAfip.tsx'
-import { PantallaEmpresas } from './modulos/empresas/PantallaEmpresas.tsx'
-import { PantallaFichaOrden } from './modulos/ordenes/PantallaFichaOrden.tsx'
-import { PantallaOrdenes } from './modulos/ordenes/PantallaOrdenes.tsx'
-import { PantallaRecepcion } from './modulos/ordenes/PantallaRecepcion.tsx'
-import { PantallaCompra } from './modulos/repuestos/PantallaCompra.tsx'
-import { PantallaCompras } from './modulos/repuestos/PantallaCompras.tsx'
-import { PantallaFichaRepuesto } from './modulos/repuestos/PantallaFichaRepuesto.tsx'
-import { PantallaNuevoPedido } from './modulos/repuestos/PantallaNuevoPedido.tsx'
-import { PantallaPedido } from './modulos/repuestos/PantallaPedido.tsx'
-import { PantallaPedidos } from './modulos/repuestos/PantallaPedidos.tsx'
-import { PantallaProveedores } from './modulos/repuestos/PantallaProveedores.tsx'
-import { PantallaRepuestos } from './modulos/repuestos/PantallaRepuestos.tsx'
-import { PantallaRoles } from './modulos/roles/PantallaRoles.tsx'
-import { PantallaUsuarios } from './modulos/usuarios/PantallaUsuarios.tsx'
-import { PantallaFichaVehiculo } from './modulos/vehiculos/PantallaFichaVehiculo.tsx'
-import { PantallaVehiculos } from './modulos/vehiculos/PantallaVehiculos.tsx'
 import { primeraPantalla } from './navegacion.tsx'
 import { usarSesion } from './sesion/almacen.ts'
 import { renovar } from './sesion/cliente.ts'
 import { autorizacionActual } from './sesion/permisos.ts'
 import { ProveedorTeclado } from './teclado/index.ts'
+
+// Cada pantalla se descarga recién cuando se abre (`lazyRouteComponent`): quien sólo usa el
+// taller no baja caja ni roles, y la primera carga no crece con cada pantalla nueva. Lo que
+// comparten —React, el router, el contrato— queda en su propio archivo y se cachea aparte.
 
 /**
  * Las rutas de la aplicación.
@@ -162,21 +146,30 @@ const rutaOrdenes = createRoute({
   getParentRoute: () => conSesion,
   path: 'ordenes',
   staticData: { pantalla: 'ordenes' },
-  component: PantallaOrdenes,
+  component: lazyRouteComponent(
+    () => import('./modulos/ordenes/PantallaOrdenes.tsx'),
+    'PantallaOrdenes',
+  ),
 })
 
 const rutaRecepcion = createRoute({
   getParentRoute: () => conSesion,
   path: 'ordenes/nueva',
   staticData: { pantalla: 'ordenes' },
-  component: PantallaRecepcion,
+  component: lazyRouteComponent(
+    () => import('./modulos/ordenes/PantallaRecepcion.tsx'),
+    'PantallaRecepcion',
+  ),
 })
 
 const rutaFichaOrden = createRoute({
   getParentRoute: () => conSesion,
   path: 'ordenes/$id',
   staticData: { pantalla: 'ordenes' },
-  component: PantallaFichaOrden,
+  component: lazyRouteComponent(
+    () => import('./modulos/ordenes/PantallaFichaOrden.tsx'),
+    'PantallaFichaOrden',
+  ),
 })
 
 const rutaVehiculos = createRoute({
@@ -188,7 +181,10 @@ const rutaVehiculos = createRoute({
   validateSearch: z.object({
     buscar: z.string().optional().catch(undefined),
   }),
-  component: PantallaVehiculos,
+  component: lazyRouteComponent(
+    () => import('./modulos/vehiculos/PantallaVehiculos.tsx'),
+    'PantallaVehiculos',
+  ),
 })
 
 const rutaClientes = createRoute({
@@ -198,66 +194,90 @@ const rutaClientes = createRoute({
   validateSearch: z.object({
     buscar: z.string().optional().catch(undefined),
   }),
-  component: PantallaClientes,
+  component: lazyRouteComponent(
+    () => import('./modulos/clientes/PantallaClientes.tsx'),
+    'PantallaClientes',
+  ),
 })
 
 const rutaFichaVehiculo = createRoute({
   getParentRoute: () => conSesion,
   path: 'vehiculos/$id',
   staticData: { pantalla: 'vehiculos' },
-  component: PantallaFichaVehiculo,
+  component: lazyRouteComponent(
+    () => import('./modulos/vehiculos/PantallaFichaVehiculo.tsx'),
+    'PantallaFichaVehiculo',
+  ),
 })
 
 const rutaFichaCliente = createRoute({
   getParentRoute: () => conSesion,
   path: 'clientes/$id',
   staticData: { pantalla: 'clientes' },
-  component: PantallaFichaCliente,
+  component: lazyRouteComponent(
+    () => import('./modulos/clientes/PantallaFichaCliente.tsx'),
+    'PantallaFichaCliente',
+  ),
 })
 
 const rutaUsuarios = createRoute({
   getParentRoute: () => conSesion,
   path: 'usuarios',
-  component: PantallaUsuarios,
+  component: lazyRouteComponent(
+    () => import('./modulos/usuarios/PantallaUsuarios.tsx'),
+    'PantallaUsuarios',
+  ),
 })
 
 const rutaRoles = createRoute({
   getParentRoute: () => conSesion,
   path: 'roles',
-  component: PantallaRoles,
+  component: lazyRouteComponent(() => import('./modulos/roles/PantallaRoles.tsx'), 'PantallaRoles'),
 })
 
 const rutaAuditoria = createRoute({
   getParentRoute: () => conSesion,
   path: 'auditoria',
-  component: PantallaAuditoria,
+  component: lazyRouteComponent(
+    () => import('./modulos/auditoria/PantallaAuditoria.tsx'),
+    'PantallaAuditoria',
+  ),
 })
 
 const rutaEmpresas = createRoute({
   getParentRoute: () => conSesion,
   path: 'empresas',
-  component: PantallaEmpresas,
+  component: lazyRouteComponent(
+    () => import('./modulos/empresas/PantallaEmpresas.tsx'),
+    'PantallaEmpresas',
+  ),
 })
 
 const rutaCaja = createRoute({
   getParentRoute: () => conSesion,
   path: 'caja',
   staticData: { pantalla: 'caja' },
-  component: PantallaCaja,
+  component: lazyRouteComponent(() => import('./modulos/caja/PantallaCaja.tsx'), 'PantallaCaja'),
 })
 
 const rutaRepuestos = createRoute({
   getParentRoute: () => conSesion,
   path: 'repuestos',
   staticData: { pantalla: 'repuestos' },
-  component: PantallaRepuestos,
+  component: lazyRouteComponent(
+    () => import('./modulos/repuestos/PantallaRepuestos.tsx'),
+    'PantallaRepuestos',
+  ),
 })
 
 const rutaPedidosRepuestos = createRoute({
   getParentRoute: () => conSesion,
   path: 'repuestos/pedidos',
   staticData: { pantalla: 'repuestos' },
-  component: PantallaPedidos,
+  component: lazyRouteComponent(
+    () => import('./modulos/repuestos/PantallaPedidos.tsx'),
+    'PantallaPedidos',
+  ),
 })
 
 const rutaNuevoPedido = createRoute({
@@ -268,48 +288,69 @@ const rutaNuevoPedido = createRoute({
   validateSearch: z.object({
     ordenId: z.uuid().optional().catch(undefined),
   }),
-  component: PantallaNuevoPedido,
+  component: lazyRouteComponent(
+    () => import('./modulos/repuestos/PantallaNuevoPedido.tsx'),
+    'PantallaNuevoPedido',
+  ),
 })
 
 const rutaPedido = createRoute({
   getParentRoute: () => conSesion,
   path: 'repuestos/pedidos/$id',
   staticData: { pantalla: 'repuestos' },
-  component: PantallaPedido,
+  component: lazyRouteComponent(
+    () => import('./modulos/repuestos/PantallaPedido.tsx'),
+    'PantallaPedido',
+  ),
 })
 
 const rutaCompras = createRoute({
   getParentRoute: () => conSesion,
   path: 'repuestos/compras',
   staticData: { pantalla: 'repuestos' },
-  component: PantallaCompras,
+  component: lazyRouteComponent(
+    () => import('./modulos/repuestos/PantallaCompras.tsx'),
+    'PantallaCompras',
+  ),
 })
 
 const rutaCompra = createRoute({
   getParentRoute: () => conSesion,
   path: 'repuestos/compras/$id',
   staticData: { pantalla: 'repuestos' },
-  component: PantallaCompra,
+  component: lazyRouteComponent(
+    () => import('./modulos/repuestos/PantallaCompra.tsx'),
+    'PantallaCompra',
+  ),
 })
 
 const rutaProveedores = createRoute({
   getParentRoute: () => conSesion,
   path: 'repuestos/proveedores',
   staticData: { pantalla: 'repuestos' },
-  component: PantallaProveedores,
+  component: lazyRouteComponent(
+    () => import('./modulos/repuestos/PantallaProveedores.tsx'),
+    'PantallaProveedores',
+  ),
 })
 
 const rutaFichaRepuesto = createRoute({
   getParentRoute: () => conSesion,
   path: 'repuestos/$id',
   staticData: { pantalla: 'repuestos' },
-  component: PantallaFichaRepuesto,
+  component: lazyRouteComponent(
+    () => import('./modulos/repuestos/PantallaFichaRepuesto.tsx'),
+    'PantallaFichaRepuesto',
+  ),
 })
 
 const rutaCertificadoAfip = createRoute({
   getParentRoute: () => conSesion,
   path: 'empresas/$id/certificado-afip',
-  component: PantallaCertificadoAfip,
+  component: lazyRouteComponent(
+    () => import('./modulos/empresas/PantallaCertificadoAfip.tsx'),
+    'PantallaCertificadoAfip',
+  ),
 })
 
 const arbol = raiz.addChildren([

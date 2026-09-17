@@ -59,6 +59,10 @@ describe('en el teléfono', () => {
 
     // El primer Esc cierra la lista del buscador; el segundo, el menú.
     await userEvent.keyboard('{Escape}')
+    await waitFor(() =>
+      expect(screen.queryByRole('list', { name: 'Lugares del sistema' })).toBeNull(),
+    )
+    await waitFor(() => expect(menu.contains(document.activeElement)).toBe(true))
     await userEvent.keyboard('{Escape}')
     await waitFor(() => expect(screen.queryByRole('dialog', { name: 'Menú' })).toBeNull())
     expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Abrir el menú' }))

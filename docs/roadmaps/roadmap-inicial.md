@@ -232,8 +232,6 @@ verdad. Qué se trae y qué cambia ahora que el DMS es nuestro, en
 
 Cosas que sabemos que faltan, para que no se descubran de golpe:
 
-- **El bundle del front pesa 518 kB.** Con el router puesto, partirlo por ruta es
-  declarar las pantallas como carga diferida; conviene hacerlo antes de que crezca.
 - **Recargar antes de elegir sucursal entra a la primera.** Si alguien recarga la página
   justo en «¿A qué sucursal entrás?», la sesión recuperada no sabe que faltaba elegir.
   Cerrarlo del todo requiere que el servidor recuerde que la elección está pendiente.
