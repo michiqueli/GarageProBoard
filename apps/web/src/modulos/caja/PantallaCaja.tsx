@@ -88,24 +88,26 @@ function totalDe(r: Renglon) {
 export function PantallaCaja() {
   const puedeFacturar = usePuedeUsar(contrato.comprobantes.emitir)
   const puedeVerOrdenes = usePuedeUsar(contrato.ordenes.listar)
+  const puedeVerPedidos = usePuedeUsar(contrato.pedidosRepuestos.listar)
   const [precarga, setPrecarga] = useState<Precarga | null>(null)
+  const elegir = (p: Precarga) => {
+    setPrecarga(p)
+    requestAnimationFrame(() =>
+      document.getElementById('facturar')?.scrollIntoView({ block: 'start' }),
+    )
+  }
 
   return (
     <Shell titulo="Caja" requiere={accesoDeRuta(contrato.comprobantes.listar)}>
       {puedeFacturar && puedeVerOrdenes && (
-        <OrdenesParaFacturar
-          elegida={precarga?.ordenId ?? null}
-          alElegir={(p) => {
-            setPrecarga(p)
-            requestAnimationFrame(() =>
-              document.getElementById('facturar')?.scrollIntoView({ block: 'start' }),
-            )
-          }}
-        />
+        <OrdenesParaFacturar elegida={precarga?.id ?? null} alElegir={elegir} />
+      )}
+      {puedeFacturar && puedeVerPedidos && (
+        <PedidosParaFacturar elegida={precarga?.id ?? null} alElegir={elegir} />
       )}
       {puedeFacturar && (
         <Facturar
-          key={precarga?.ordenId ?? 'mostrador'}
+          key={precarga?.id ?? 'mostrador'}
           precarga={precarga}
           alTerminarOrden={() => setPrecarga(null)}
         />
@@ -115,9 +117,13 @@ export function PantallaCaja() {
   )
 }
 
-/** Lo que trae una orden terminada a la caja: a quién facturarle y qué cobrar. */
+/**
+ * Lo que trae a la caja una orden terminada o un pedido de repuestos de mostrador: a quién
+ * facturarle y qué cobrar.
+ */
 interface Precarga {
-  ordenId: string
+  tipo: 'orden' | 'pedido'
+  id: string
   numero: number
   paga: ClienteElegido | null
   renglones: Renglon[]
@@ -149,7 +155,8 @@ function OrdenesParaFacturar({
     try {
       const o = await api.ordenes.ficha({ id })
       alElegir({
-        ordenId: o.id,
+        tipo: 'orden',
+        id: o.id,
         numero: o.numero,
         paga: o.paga,
         renglones: o.items.map((i) => ({
@@ -194,6 +201,90 @@ function OrdenesParaFacturar({
               onClick={() => void elegir(o.id)}
             >
               {elegida === o.id ? 'Facturando' : 'Facturar'}
+            </Boton>
+          </li>
+        ))}
+      </ul>
+    </section>
+  )
+}
+
+/**
+ * Los pedidos de repuestos de mostrador que el repuestero mandó a caja. Los repuestos ya
+ * salieron del stock; al emitirse la factura, el pedido pasa a facturado.
+ */
+function PedidosParaFacturar({
+  elegida,
+  alElegir,
+}: {
+  elegida: string | null
+  alElegir: (p: Precarga) => void
+}) {
+  const tenantId = usarSesion((e) => e.datos?.tenant.id)
+  const sucursalId = usarSesion((e) => e.datos?.sucursalActiva.id)
+  const consulta = useQuery({
+    queryKey: ['pedidos-repuestos', tenantId, sucursalId, 'en_caja', ''],
+    queryFn: () => api.pedidosRepuestos.listar({ pagina: 1, porPagina: 50, estado: 'en_caja' }),
+  })
+  const [cargando, setCargando] = useState<string | null>(null)
+  const datos = consulta.data?.datos ?? []
+  if (!consulta.data || datos.length === 0) return null
+
+  async function elegir(id: string) {
+    setCargando(id)
+    try {
+      const p = await api.pedidosRepuestos.ficha({ id })
+      alElegir({
+        tipo: 'pedido',
+        id: p.id,
+        numero: p.numero,
+        paga: p.cliente,
+        renglones: p.items.map((i) => ({
+          ...renglonVacio(),
+          descripcion: i.codigo ? `${i.codigo} · ${i.descripcion}` : i.descripcion,
+          cantidad: i.cantidad,
+          precioUnitario: i.precioUnitario.replace(/\.?0+$/, ''),
+          codigoAlicuota: i.codigoAlicuota as Renglon['codigoAlicuota'],
+        })),
+      })
+    } catch (error) {
+      notificar.error(`No se pudo traer el pedido. ${mensajeGeneral(error)}`)
+    } finally {
+      setCargando(null)
+    }
+  }
+
+  return (
+    <section
+      aria-label="Repuestos para facturar"
+      className="overflow-hidden rounded-base border border-ok bg-superficie"
+    >
+      <header className="flex items-center gap-2 border-b border-borde px-3 py-2">
+        <h2 className="font-display text-dato font-semibold">
+          Repuestos de mostrador para facturar
+        </h2>
+        <span className="rounded-full bg-ok px-2 text-etiqueta font-semibold text-fondo">
+          {datos.length}
+        </span>
+      </header>
+      <ul className="divide-y divide-borde-suave">
+        {datos.map((p) => (
+          <li key={p.id} className="flex flex-wrap items-center gap-x-3 gap-y-1 px-3 py-2">
+            <span className="font-mono text-dato">Pedido {String(p.numero).padStart(6, '0')}</span>
+            <span className="text-dato">{p.cliente?.razonSocial ?? 'Consumidor final'}</span>
+            <span className="text-etiqueta text-texto-tenue">
+              {p.items} {p.items === 1 ? 'repuesto' : 'repuestos'}
+            </span>
+            <span className="tabular ml-auto font-mono text-dato">
+              $ {formatearImporte(p.total)}
+            </span>
+            <Boton
+              tamano="chico"
+              variante={elegida === p.id ? 'principal' : 'normal'}
+              deshabilitado={cargando === p.id}
+              onClick={() => void elegir(p.id)}
+            >
+              {elegida === p.id ? 'Facturando' : 'Facturar'}
             </Boton>
           </li>
         ))}
@@ -290,7 +381,8 @@ function Facturar({
         concepto,
         servicio: concepto === 1 ? null : servicio,
         condicionVenta,
-        ordenId: precarga?.ordenId ?? null,
+        ordenId: precarga?.tipo === 'orden' ? precarga.id : null,
+        pedidoRepuestosId: precarga?.tipo === 'pedido' ? precarga.id : null,
         renglones: renglones.map((r) => ({
           descripcion: r.descripcion.trim(),
           cantidad: aDecimal(r.cantidad),
@@ -306,7 +398,9 @@ function Facturar({
       })
       await cache.invalidateQueries({ queryKey: ['comprobantes', tenantId] })
       if (precarga) {
-        await cache.invalidateQueries({ queryKey: ['ordenes', tenantId] })
+        await cache.invalidateQueries({
+          queryKey: [precarga.tipo === 'orden' ? 'ordenes' : 'pedidos-repuestos', tenantId],
+        })
         alTerminarOrden()
       }
       setRenglones([renglonVacio()])
@@ -426,11 +520,13 @@ function Facturar({
     >
       <header className="flex flex-wrap items-center gap-x-3 gap-y-2">
         <h2 className="font-display text-dato font-semibold">
-          {precarga ? `Facturar la OT ${String(precarga.numero).padStart(6, '0')}` : 'Facturar'}
+          {precarga
+            ? `Facturar ${precarga.tipo === 'orden' ? 'la OT' : 'el pedido'} ${String(precarga.numero).padStart(6, '0')}`
+            : 'Facturar'}
         </h2>
         {precarga && (
           <Boton tamano="chico" variante="sutil" onClick={alTerminarOrden}>
-            Dejar la orden para después
+            Dejar {precarga.tipo === 'orden' ? 'la orden' : 'el pedido'} para después
           </Boton>
         )}
         {(opciones.data?.puntosVenta.length ?? 0) > 1 ? (

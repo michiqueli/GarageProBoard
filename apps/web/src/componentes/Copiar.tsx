@@ -35,13 +35,16 @@ export async function copiarAlPortapapeles(texto: string): Promise<boolean> {
 }
 
 /** Copia y avisa: lo usan el botón y los atajos de teclado. */
-export async function copiarConAviso(valor: string, que: 'Patente' | 'Chasis'): Promise<boolean> {
+export async function copiarConAviso(
+  valor: string,
+  que: 'Patente' | 'Chasis' | 'Código',
+): Promise<boolean> {
   if (await copiarAlPortapapeles(valor)) {
     notificar.ok(`${que} ${valor} copiad${que === 'Patente' ? 'a' : 'o'}`)
     return true
   }
   notificar.error(
-    `No se pudo copiar. Seleccioná ${que === 'Patente' ? 'la patente' : 'el chasis'} y usá Ctrl + C.`,
+    `No se pudo copiar. Seleccioná ${que === 'Patente' ? 'la patente' : que === 'Chasis' ? 'el chasis' : 'el código'} y usá Ctrl + C.`,
   )
   return false
 }
@@ -54,7 +57,13 @@ export async function copiarConAviso(valor: string, que: 'Patente' | 'Chasis'): 
  * Va al lado y no adentro del enlace: un botón dentro de un enlace es HTML inválido, y el
  * clic haría las dos cosas a la vez.
  */
-export function BotonCopiar({ valor, que }: { valor: string; que: 'Patente' | 'Chasis' }) {
+export function BotonCopiar({
+  valor,
+  que,
+}: {
+  valor: string
+  que: 'Patente' | 'Chasis' | 'Código'
+}) {
   const [copiado, setCopiado] = useState(false)
 
   useEffect(() => {

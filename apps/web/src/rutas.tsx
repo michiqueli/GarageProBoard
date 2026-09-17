@@ -30,6 +30,14 @@ import { PantallaEmpresas } from './modulos/empresas/PantallaEmpresas.tsx'
 import { PantallaFichaOrden } from './modulos/ordenes/PantallaFichaOrden.tsx'
 import { PantallaOrdenes } from './modulos/ordenes/PantallaOrdenes.tsx'
 import { PantallaRecepcion } from './modulos/ordenes/PantallaRecepcion.tsx'
+import { PantallaCompra } from './modulos/repuestos/PantallaCompra.tsx'
+import { PantallaCompras } from './modulos/repuestos/PantallaCompras.tsx'
+import { PantallaFichaRepuesto } from './modulos/repuestos/PantallaFichaRepuesto.tsx'
+import { PantallaNuevoPedido } from './modulos/repuestos/PantallaNuevoPedido.tsx'
+import { PantallaPedido } from './modulos/repuestos/PantallaPedido.tsx'
+import { PantallaPedidos } from './modulos/repuestos/PantallaPedidos.tsx'
+import { PantallaProveedores } from './modulos/repuestos/PantallaProveedores.tsx'
+import { PantallaRepuestos } from './modulos/repuestos/PantallaRepuestos.tsx'
 import { PantallaRoles } from './modulos/roles/PantallaRoles.tsx'
 import { PantallaUsuarios } from './modulos/usuarios/PantallaUsuarios.tsx'
 import { PantallaFichaVehiculo } from './modulos/vehiculos/PantallaFichaVehiculo.tsx'
@@ -238,6 +246,66 @@ const rutaCaja = createRoute({
   component: PantallaCaja,
 })
 
+const rutaRepuestos = createRoute({
+  getParentRoute: () => conSesion,
+  path: 'repuestos',
+  staticData: { pantalla: 'repuestos' },
+  component: PantallaRepuestos,
+})
+
+const rutaPedidosRepuestos = createRoute({
+  getParentRoute: () => conSesion,
+  path: 'repuestos/pedidos',
+  staticData: { pantalla: 'repuestos' },
+  component: PantallaPedidos,
+})
+
+const rutaNuevoPedido = createRoute({
+  getParentRoute: () => conSesion,
+  path: 'repuestos/pedidos/nuevo',
+  staticData: { pantalla: 'repuestos' },
+  // Desde la ficha de una orden se llega con la orden elegida.
+  validateSearch: z.object({
+    ordenId: z.uuid().optional().catch(undefined),
+  }),
+  component: PantallaNuevoPedido,
+})
+
+const rutaPedido = createRoute({
+  getParentRoute: () => conSesion,
+  path: 'repuestos/pedidos/$id',
+  staticData: { pantalla: 'repuestos' },
+  component: PantallaPedido,
+})
+
+const rutaCompras = createRoute({
+  getParentRoute: () => conSesion,
+  path: 'repuestos/compras',
+  staticData: { pantalla: 'repuestos' },
+  component: PantallaCompras,
+})
+
+const rutaCompra = createRoute({
+  getParentRoute: () => conSesion,
+  path: 'repuestos/compras/$id',
+  staticData: { pantalla: 'repuestos' },
+  component: PantallaCompra,
+})
+
+const rutaProveedores = createRoute({
+  getParentRoute: () => conSesion,
+  path: 'repuestos/proveedores',
+  staticData: { pantalla: 'repuestos' },
+  component: PantallaProveedores,
+})
+
+const rutaFichaRepuesto = createRoute({
+  getParentRoute: () => conSesion,
+  path: 'repuestos/$id',
+  staticData: { pantalla: 'repuestos' },
+  component: PantallaFichaRepuesto,
+})
+
 const rutaCertificadoAfip = createRoute({
   getParentRoute: () => conSesion,
   path: 'empresas/$id/certificado-afip',
@@ -262,6 +330,14 @@ const arbol = raiz.addChildren([
     rutaEmpresas,
     rutaCertificadoAfip,
     rutaCaja,
+    rutaRepuestos,
+    rutaFichaRepuesto,
+    rutaPedidosRepuestos,
+    rutaNuevoPedido,
+    rutaPedido,
+    rutaCompras,
+    rutaCompra,
+    rutaProveedores,
   ]),
 ])
 

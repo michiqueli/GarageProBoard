@@ -9,6 +9,7 @@ import { Boton, clasesBoton } from '../../componentes/Boton.tsx'
 import { Campo } from '../../componentes/Campo.tsx'
 import { BotonCopiar } from '../../componentes/Copiar.tsx'
 import { EstadoOT } from '../../componentes/EstadoOT.tsx'
+import { EstadoPedido } from '../../componentes/EstadoPedido.tsx'
 import {
   IconoAgregar,
   IconoAnular,
@@ -20,6 +21,7 @@ import {
 import { Patente } from '../../componentes/Patente.tsx'
 import { Selector } from '../../componentes/Selector.tsx'
 import { type ClienteElegido, SelectorCliente } from '../../componentes/SelectorCliente.tsx'
+import { type RepuestoElegido, SelectorRepuesto } from '../../componentes/SelectorRepuesto.tsx'
 import { Shell } from '../../componentes/Shell.tsx'
 import { usarSesion } from '../../sesion/almacen.ts'
 import { api } from '../../sesion/cliente.ts'
@@ -44,6 +46,9 @@ type EstadoTaller = (typeof ESTADOS_EN_TALLER)[number]['valor']
 interface Item {
   clave: number
   tipo: 'trabajo' | 'repuesto'
+  /** La pieza del catálogo: cargarla descuenta el stock, quitarla lo devuelve. */
+  repuestoId: string | null
+  codigo: string | null
   descripcion: string
   cantidad: string
   precioUnitario: string
@@ -54,6 +59,8 @@ let proxima = 1
 const itemNuevo = (tipo: Item['tipo']): Item => ({
   clave: proxima++,
   tipo,
+  repuestoId: null,
+  codigo: null,
   descripcion: '',
   cantidad: '1',
   precioUnitario: '',
@@ -282,6 +289,7 @@ export function PantallaFichaOrden() {
           )}
 
           <Items orden={o} editable={puedeEditar && enTaller} guardada={actualizar} />
+          <PedidosDeLaOrden orden={o} />
         </>
       )}
     </Shell>
@@ -493,6 +501,8 @@ function Items({
     o.items.map((i) => ({
       clave: proxima++,
       tipo: i.tipo,
+      repuestoId: i.repuestoId,
+      codigo: i.codigo,
       descripcion: i.descripcion,
       cantidad: sinCeros(i.cantidad),
       precioUnitario: sinCeros(i.precioUnitario),
@@ -533,6 +543,8 @@ function Items({
         id: o.id,
         items: items.map((i) => ({
           tipo: i.tipo,
+          repuestoId: i.repuestoId,
+          codigo: i.codigo,
           descripcion: i.descripcion.trim(),
           cantidad: aDecimal(i.cantidad),
           precioUnitario: aDecimal(i.precioUnitario),
@@ -554,6 +566,31 @@ function Items({
     setCambios(true)
     setItems((xs) => [...xs, itemNuevo(tipo)])
   }
+  function agregarDelCatalogo(r: RepuestoElegido) {
+    setCambios(true)
+    setItems((xs) => {
+      const ya = xs.find((x) => x.repuestoId === r.id)
+      if (ya && esNumero(ya.cantidad)) {
+        return xs.map((x) =>
+          x === ya ? { ...x, cantidad: String(Number(aDecimal(x.cantidad)) + 1) } : x,
+        )
+      }
+      return [
+        ...xs,
+        {
+          clave: proxima++,
+          tipo: 'repuesto',
+          repuestoId: r.id,
+          codigo: r.codigo,
+          descripcion: r.descripcion,
+          cantidad: '1',
+          precioUnitario: sinCeros(r.precioVenta),
+          codigoAlicuota: r.codigoAlicuota as Item['codigoAlicuota'],
+        },
+      ]
+    })
+  }
+
   async function quitar(i: Item) {
     if (
       (i.descripcion.trim() || i.precioUnitario.trim()) &&
@@ -583,6 +620,11 @@ function Items({
         </span>
       }
     >
+      {editable && (
+        <div className="border-b border-borde-suave px-3 py-2.5">
+          <SelectorRepuesto etiqueta="Repuesto del catálogo" alElegir={agregarDelCatalogo} />
+        </div>
+      )}
       {items.length === 0 && (
         <p className="px-3 py-4 text-dato text-texto-suave">
           Todavía no se cargó nada para cobrar.
@@ -605,7 +647,14 @@ function Items({
                   <span className="w-20 text-etiqueta text-texto-tenue">
                     {i.tipo === 'trabajo' ? 'Trabajo' : 'Repuesto'}
                   </span>
-                  <span className="flex-1">{i.descripcion}</span>
+                  <span className="flex-1">
+                    {i.codigo && (
+                      <span className="mr-2 font-mono text-etiqueta text-texto-suave">
+                        {i.codigo}
+                      </span>
+                    )}
+                    {i.descripcion}
+                  </span>
                   <span className="font-mono text-texto-suave">× {i.cantidad}</span>
                   <span className="tabular w-32 text-right font-mono">
                     {subtotal ? `$ ${formatearImporte(subtotal)}` : '—'}
@@ -620,7 +669,7 @@ function Items({
                 className="grid items-end gap-2 md:grid-cols-[7rem_1fr_5rem_8rem_6rem_7rem_auto]"
               >
                 <Selector
-                  etiqueta="Tipo"
+                  etiqueta={i.codigo ? `Tipo · ${i.codigo}` : 'Tipo'}
                   valor={i.tipo}
                   onChange={(v) => cambiar(i.clave, { tipo: v ?? 'trabajo' })}
                   opciones={[
@@ -706,6 +755,73 @@ function Items({
             </span>
           )}
         </footer>
+      )}
+    </Seccion>
+  )
+}
+
+/**
+ * Los pedidos de repuestos de la orden: lo que el taller le pidió al mostrador. Los entregados
+ * ya están en la lista de arriba; los abiertos, todavía no.
+ */
+function PedidosDeLaOrden({ orden: o }: { orden: Orden }) {
+  const tenantId = usarSesion((e) => e.datos?.tenant.id)
+  const puedeVer = usePuedeUsar(contrato.pedidosRepuestos.listar)
+  const puedeAbrir = usePuedeUsar(contrato.pedidosRepuestos.abrir)
+  const enTaller = EN_TALLER.includes(o.estado)
+  const consulta = useQuery({
+    queryKey: ['pedidos-repuestos', tenantId, 'orden', o.id],
+    queryFn: () =>
+      api.pedidosRepuestos.listar({ pagina: 1, porPagina: 50, estado: 'todos', ordenId: o.id }),
+    enabled: puedeVer,
+  })
+  if (!puedeVer) return null
+  const datos = consulta.data?.datos ?? []
+  if (!datos.length && !(puedeAbrir && enTaller)) return null
+
+  return (
+    <Seccion
+      titulo="Pedidos de repuestos"
+      accion={
+        puedeAbrir && enTaller ? (
+          <Link
+            to="/repuestos/pedidos/nuevo"
+            search={{ ordenId: o.id }}
+            className={clasesBoton('normal', 'chico')}
+          >
+            <IconoAgregar />
+            Pedir repuestos
+          </Link>
+        ) : undefined
+      }
+    >
+      {datos.length === 0 ? (
+        <p className="px-3 py-3 text-dato text-texto-suave">
+          No se pidió nada al mostrador para esta orden.
+        </p>
+      ) : (
+        <ul className="divide-y divide-borde-suave">
+          {datos.map((p) => (
+            <li
+              key={p.id}
+              className="flex flex-wrap items-center gap-x-3 gap-y-1 px-3 py-2 text-dato"
+            >
+              <Link
+                to="/repuestos/pedidos/$id"
+                params={{ id: p.id }}
+                className="font-mono text-marca hover:underline"
+              >
+                Pedido {String(p.numero).padStart(6, '0')}
+              </Link>
+              <EstadoPedido estado={p.estado} />
+              <span className="text-texto-suave">
+                {p.items} {p.items === 1 ? 'repuesto' : 'repuestos'}
+                {p.solicitante ? ` · ${p.solicitante}` : ''}
+              </span>
+              <span className="tabular ml-auto font-mono">$ {formatearImporte(p.total)}</span>
+            </li>
+          ))}
+        </ul>
       )}
     </Seccion>
   )

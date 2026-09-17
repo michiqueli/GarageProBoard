@@ -43,6 +43,7 @@ const MECANICO: ReglaPermiso[] = [{ action: 'ver', subject: ['Orden', 'Vehiculo'
 
 const REPUESTERO: ReglaPermiso[] = [
   { action: ['ver', 'crear', 'editar'], subject: ['Repuesto', 'Proveedor'] },
+  { action: 'anular', subject: 'Repuesto' },
   { action: 'ver', subject: ['Orden', 'Cliente'] },
 ]
 

@@ -183,3 +183,39 @@ describe('la ficha', () => {
     expect(await screen.findByText('Está en caja, esperando que la facturen.')).toBeDefined()
   })
 })
+
+describe('los repuestos de la orden', () => {
+  it('guardar los renglones no pierde la pieza del catálogo: si se perdiera, volvería al stock', async () => {
+    const REPUESTO = '55555555-5555-4555-8555-555555555555'
+    ordenes.ficha.mockResolvedValue({
+      ...FICHA,
+      items: [
+        {
+          ...FICHA.items[0],
+          tipo: 'repuesto',
+          repuestoId: REPUESTO,
+          codigo: '7701208174',
+          descripcion: 'Filtro de aceite',
+        },
+      ],
+    })
+    ordenes.items.mockResolvedValue(FICHA)
+    await montarApp(`/ordenes/${ORDEN.id}`)
+    await screen.findByRole('listitem', { name: 'Item 1' })
+    await userEvent.keyboard('{Insert}')
+    const nuevo = await screen.findByRole('listitem', { name: 'Item 2' })
+    await userEvent.type(within(nuevo).getByLabelText('Descripción'), 'Mano de obra')
+    await userEvent.type(within(nuevo).getByLabelText('Precio final'), '1000')
+    await userEvent.keyboard('{F2}')
+    await waitFor(() =>
+      expect(ordenes.items).toHaveBeenCalledWith(
+        expect.objectContaining({
+          items: [
+            expect.objectContaining({ repuestoId: REPUESTO, codigo: '7701208174' }),
+            expect.objectContaining({ repuestoId: null, descripcion: 'Mano de obra' }),
+          ],
+        }),
+      ),
+    )
+  })
+})
