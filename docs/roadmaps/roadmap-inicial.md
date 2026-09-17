@@ -150,10 +150,19 @@ La barrera de entrada más alta. Nada se vende sin esto.
       guía los pasos en ARCA y verifica el certificado contra AFIP antes de aceptarlo. Ver
       [certificados de AFIP](../tecnicos/afip-certificados.md)
 - ✅ Almacenamiento cifrado de certificados por empresa, en Postgres con AES-256-GCM
-- ⬜ WSAA: token y sign, con caché hasta el vencimiento
-- ⬜ Numeración sin huecos: `select ... for update` en la misma transacción que el CAE
-- ⬜ Matriz emisor × receptor como tabla de reglas
-- 🔨 PDF del comprobante con QR (`@gpb/pdf`: el formato de «Comprobantes en línea»; sin código de barras, que la RG 4.892 reemplazó por el QR). Falta conectarlo a la emisión y al mail
+- ✅ WSAA: token y sign, con caché hasta el vencimiento (lo hace el SDK, un ticket por CUIT)
+- ✅ Numeración sin huecos: el número se le pide a AFIP y un índice único impide dos
+      comprobantes en vuelo por serie, sin transacciones abiertas mientras AFIP contesta. Si
+      AFIP no contesta, el comprobante queda incierto y se verifica con `FECompConsultar`
+- ✅ Matriz emisor × receptor como tabla de reglas, con el control de la RG 5.616. Con
+      CUIT, la condición del receptor sale del padrón al emitir
+- ✅ PDF del comprobante con QR (`@gpb/pdf`: el formato de «Comprobantes en línea»; sin
+      código de barras, que la RG 4.892 reemplazó por el QR), conectado a la emisión
+- ⬜ Mandar el PDF por mail al receptor
+- ⬜ Notas de crédito y débito, con el comprobante asociado
+- ✅ Pantalla de Caja: facturar a consumidor final, a un cliente o a un CUIT; últimos
+      comprobantes con PDF y verificación de inciertos
+- ✅ Importar un certificado que ya se usa en otro sistema
 - ⬜ Cola de reintentos en BullMQ para cuando AFIP no responde
 - 🔨 Circuito probado contra AFIP: una Factura B real en producción (16/09/2026, punto de
       venta 8). Falta hacerlo desde la aplicación, con numeración, comprobante guardado y PDF
