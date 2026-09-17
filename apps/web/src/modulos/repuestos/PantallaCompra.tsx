@@ -2,7 +2,7 @@ import { accesoDeRuta, contrato } from '@gpb/contracts'
 import { formatearImporte } from '@gpb/core'
 import { ORPCError } from '@orpc/client'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { getRouteApi, Link } from '@tanstack/react-router'
+import { getRouteApi, Link, useNavigate } from '@tanstack/react-router'
 import { useState } from 'react'
 import { confirmar } from '../../componentes/avisos.ts'
 import { Boton, clasesBoton } from '../../componentes/Boton.tsx'
@@ -14,6 +14,7 @@ import { usarSesion } from '../../sesion/almacen.ts'
 import { api } from '../../sesion/cliente.ts'
 import { mensajeGeneral } from '../../sesion/consultas.ts'
 import { usePuedeUsar } from '../../sesion/permisos.ts'
+import { useVolver } from '../../teclado/index.ts'
 import { Dato, Seccion } from './PantallaFichaRepuesto.tsx'
 import { aDecimal, type Compra, esNumero, nombreCompra, sinCeros } from './repuestos.ts'
 
@@ -27,6 +28,9 @@ const fecha = (iso: string | null) =>
  * y, renglón por renglón, lo que llegó de verdad y a qué costo.
  */
 export function PantallaCompra() {
+  const irAlListado = useNavigate()
+  // Esc o ⌫, sin estar escribiendo, vuelven a donde se venía.
+  useVolver(() => void irAlListado({ to: '/repuestos/compras' }))
   const { id } = ruta.useParams()
   const tenantId = usarSesion((e) => e.datos?.tenant.id)
   const cache = useQueryClient()

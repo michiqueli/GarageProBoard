@@ -25,6 +25,7 @@ import {
   ordenItem,
   ordenPresupuesto,
   ordenSecuencia,
+  pedidoRepuestos,
   sucursal,
   tipoComprobante,
   titularidad,
@@ -496,6 +497,30 @@ export class ServicioOrdenes {
           ordenId: id,
           motivo: 'Orden anulada',
         })
+        // Lo que se le había pedido al mostrador para esta orden ya no hace falta. Los pedidos
+        // abiertos no movieron stock; los entregados ya están en la orden y vuelven con ella.
+        const abiertos = await tx
+          .update(pedidoRepuestos)
+          .set({ estado: 'anulado', actualizadoEn: new Date() })
+          .where(and(eq(pedidoRepuestos.ordenId, id), eq(pedidoRepuestos.estado, 'abierto')))
+          .returning({ id: pedidoRepuestos.id, numero: pedidoRepuestos.numero })
+        if (abiertos.length) {
+          await tx.insert(auditoria).values(
+            abiertos.map((x) => ({
+              tenantId: sesion.tenantId,
+              usuarioId: sesion.usuarioId,
+              tabla: 'pedido_repuestos',
+              registroId: x.id,
+              accion: 'baja',
+              datosAntes: null,
+              datosDespues: {
+                numero: x.numero,
+                texto: `Lo anuló al anular la OT ${String(o.numero).padStart(6, '0')}`,
+              },
+              ip: ip ?? null,
+            })),
+          )
+        }
         await tx
           .update(orden)
           .set({ estado: 'anulada', actualizadoEn: new Date() })

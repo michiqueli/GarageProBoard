@@ -2,12 +2,12 @@ import { accesoDeRuta, contrato } from '@gpb/contracts'
 import { formatearImporte, plata } from '@gpb/core'
 import { ORPCError } from '@orpc/client'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { getRouteApi, Link } from '@tanstack/react-router'
+import { getRouteApi, Link, useNavigate } from '@tanstack/react-router'
 import { type ReactNode, useEffect, useMemo, useState } from 'react'
 import { confirmar, notificar, preguntar } from '../../componentes/avisos.ts'
 import { Boton, clasesBoton } from '../../componentes/Boton.tsx'
 import { Campo } from '../../componentes/Campo.tsx'
-import { BotonCopiar } from '../../componentes/Copiar.tsx'
+import { BotonCopiar, copiarConAviso } from '../../componentes/Copiar.tsx'
 import { EstadoOT } from '../../componentes/EstadoOT.tsx'
 import { EstadoPedido } from '../../componentes/EstadoPedido.tsx'
 import {
@@ -28,7 +28,7 @@ import { usarSesion } from '../../sesion/almacen.ts'
 import { api } from '../../sesion/cliente.ts'
 import { mensajeGeneral } from '../../sesion/consultas.ts'
 import { usePuedeUsar } from '../../sesion/permisos.ts'
-import { useAtajo } from '../../teclado/index.ts'
+import { useAtajo, useCambiosSinGuardar, useVolver } from '../../teclado/index.ts'
 import { ALICUOTAS, abrirPdf, nombreComprobante } from '../caja/comprobantes.ts'
 import {
   COMBUSTIBLES,
@@ -89,6 +89,9 @@ const EN_TALLER = ['recibida', 'en_proceso', 'esperando_repuesto', 'esperando_au
  * confirmación, porque desde ahí ya no se cambia qué se cobra sin reabrirla—; `F7` la imprime.
  */
 export function PantallaFichaOrden() {
+  const irAlListado = useNavigate()
+  // Esc o ⌫, sin estar escribiendo, vuelven a donde se venía.
+  useVolver(() => void irAlListado({ to: '/ordenes' }))
   const { id } = ruta.useParams()
   const tenantId = usarSesion((e) => e.datos?.tenant.id)
   const cache = useQueryClient()
@@ -148,6 +151,17 @@ export function PantallaFichaOrden() {
   }
 
   useAtajo('global.imprimir', () => void imprimirOrden(id), Boolean(o))
+  // Alt+C y Alt+P: el chasis y la patente del vehículo, sin buscar el botón.
+  useAtajo(
+    'ordenes.copiarChasis',
+    () => void copiarConAviso(o?.vehiculo.chasis as string, 'Chasis'),
+    Boolean(o),
+  )
+  useAtajo(
+    'ordenes.copiarPatente',
+    () => void copiarConAviso(o?.vehiculo.dominio as string, 'Patente'),
+    Boolean(o?.vehiculo.dominio),
+  )
   useAtajo('ordenes.cerrar', () => void terminar(), Boolean(o && enTaller && puedeEditar))
 
   const titulo = o
@@ -346,6 +360,7 @@ function Recepcion({ orden: o, accion }: { orden: Orden; accion?: ReactNode }) {
               <Link to="/vehiculos/$id" params={{ id: o.vehiculo.id }} className="inline-flex">
                 <Patente dominio={o.vehiculo.dominio} />
               </Link>
+              {o.vehiculo.dominio && <BotonCopiar valor={o.vehiculo.dominio} que="Patente" />}
               {[o.vehiculo.marca, o.vehiculo.modelo].filter(Boolean).join(' ')}
             </span>
           </Dato>
@@ -536,6 +551,7 @@ function Items({
     }))
   const [items, setItems] = useState<Item[]>(desdeOrden)
   const [cambios, setCambios] = useState(false)
+  useCambiosSinGuardar(cambios)
 
   // Si la orden cambia desde afuera (otro puesto, un estado), se toma la nueva versión
   // mientras no haya cambios sin guardar acá.

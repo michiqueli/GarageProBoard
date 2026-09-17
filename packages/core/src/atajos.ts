@@ -192,6 +192,21 @@ const POR_PANTALLA: readonly DefinicionAccion[] = [
     porOmision: 'Alt+R',
     reasignable: true,
   },
+  {
+    accion: 'ordenes.copiarChasis',
+    ambito: 'ordenes',
+    etiqueta: 'Copiar chasis',
+    porOmision: 'Alt+C',
+    reasignable: true,
+    descripcion: 'Del vehículo marcado o abierto: para pegarlo en la base de la marca.',
+  },
+  {
+    accion: 'ordenes.copiarPatente',
+    ambito: 'ordenes',
+    etiqueta: 'Copiar patente',
+    porOmision: 'Alt+P',
+    reasignable: true,
+  },
 
   {
     accion: 'entregas.entregar',
@@ -222,6 +237,21 @@ const POR_PANTALLA: readonly DefinicionAccion[] = [
     ambito: 'repuestos',
     etiqueta: 'Ver stock en otras sucursales',
     porOmision: 'F9',
+    reasignable: true,
+  },
+  {
+    accion: 'repuestos.copiarChasis',
+    ambito: 'repuestos',
+    etiqueta: 'Copiar chasis',
+    porOmision: 'Alt+C',
+    reasignable: true,
+    descripcion: 'Del vehículo marcado o abierto: para pegarlo en la base de la marca.',
+  },
+  {
+    accion: 'repuestos.copiarPatente',
+    ambito: 'repuestos',
+    etiqueta: 'Copiar patente',
+    porOmision: 'Alt+P',
     reasignable: true,
   },
 
@@ -445,6 +475,7 @@ export function mostrarTecla(tecla: string): string {
     .replace('ArrowUp', '↑')
     .replace('ArrowLeft', '←')
     .replace('ArrowRight', '→')
+    .replace('Backspace', '⌫')
     .replace('Insert', 'Ins')
     .replace('Delete', 'Supr')
     .replace('Escape', 'Esc')

@@ -5,7 +5,7 @@ import { getRouteApi, Link } from '@tanstack/react-router'
 import { type FormEvent, useEffect, useRef, useState } from 'react'
 import { Boton } from '../../componentes/Boton.tsx'
 import { Campo } from '../../componentes/Campo.tsx'
-import { BotonCopiar } from '../../componentes/Copiar.tsx'
+import { BotonCopiar, copiarConAviso } from '../../componentes/Copiar.tsx'
 import { clicEnFila, FILA_CLICABLE } from '../../componentes/filas.ts'
 import { Patente } from '../../componentes/Patente.tsx'
 import { type ClienteElegido, SelectorCliente } from '../../componentes/SelectorCliente.tsx'
@@ -14,7 +14,7 @@ import { ES_ESCRITORIO, useMedia } from '../../ganchos/useMedia.ts'
 import { usarSesion } from '../../sesion/almacen.ts'
 import { api } from '../../sesion/cliente.ts'
 import { usePuedeUsar } from '../../sesion/permisos.ts'
-import { useFilasConTeclado } from '../../teclado/index.ts'
+import { useAtajo, useFilasConTeclado } from '../../teclado/index.ts'
 import {
   CamposVehiculo,
   DATOS_VACIOS,
@@ -75,9 +75,21 @@ export function PantallaVehiculos() {
 
   const datos = consulta.data?.datos ?? []
   // ↑ ↓ marcan una fila y Enter la abre, también desde el buscador.
-  const { propsFila } = useFilasConTeclado(
+  const { activa, propsFila } = useFilasConTeclado(
     datos,
     (x) => void navegar({ to: '/vehiculos/$id', params: { id: x.id } }),
+  )
+  // Alt+C y Alt+P copian el chasis y la patente de la fila marcada, sin entrar a la ficha.
+  const marcado = activa === null ? undefined : datos[activa]
+  useAtajo(
+    'vehiculos.copiarChasis',
+    () => marcado && void copiarConAviso(marcado.chasis, 'Chasis'),
+    Boolean(marcado),
+  )
+  useAtajo(
+    'vehiculos.copiarPatente',
+    () => marcado?.dominio && void copiarConAviso(marcado.dominio, 'Patente'),
+    Boolean(marcado?.dominio),
   )
 
   return (

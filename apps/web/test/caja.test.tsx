@@ -17,11 +17,16 @@ const comprobantes = {
   ficha: vi.fn(),
 }
 const renovar = vi.fn()
+const ordenes = { listar: vi.fn(), ficha: vi.fn() }
 
 vi.mock('../src/sesion/cliente.ts', () => ({
   api: {
     auth: { iniciar: vi.fn(), cerrar: vi.fn().mockResolvedValue({}), cambiarSucursal: vi.fn() },
     clientes: { listar: vi.fn().mockResolvedValue({ datos: [], total: 0 }) },
+    ordenes: {
+      listar: (x: unknown) => ordenes.listar(x),
+      ficha: (x: unknown) => ordenes.ficha(x),
+    },
     comprobantes: Object.fromEntries(
       Object.keys(comprobantes).map((nombre) => [
         nombre,
@@ -66,7 +71,9 @@ function entraComo(sesion: typeof SESION) {
 }
 
 beforeEach(() => {
-  for (const f of [...Object.values(comprobantes), renovar]) f.mockReset()
+  for (const f of [...Object.values(comprobantes), ...Object.values(ordenes), renovar])
+    f.mockReset()
+  ordenes.listar.mockResolvedValue({ datos: [], total: 0 })
   usarSesion.getState().limpiar()
   comprobantes.opciones.mockResolvedValue({ puntosVenta: [PV] })
   comprobantes.receptor.mockResolvedValue(RECEPTOR_CF)
@@ -80,6 +87,66 @@ async function cargarRenglon(descripcion: string, precio: string) {
   await userEvent.type(within(renglon).getByLabelText('Descripción'), descripcion)
   await userEvent.type(within(renglon).getByLabelText('Precio unitario'), precio)
 }
+
+describe('las órdenes para facturar, con el teclado', () => {
+  it('↓ marca la orden, F4 la carga en el formulario y el siguiente F4 factura', async () => {
+    const OT = {
+      id: '44444444-4444-4444-8444-444444444444',
+      numero: 3,
+      estado: 'terminada',
+      vehiculo: {
+        id: 'v',
+        dominio: 'MFV872',
+        chasis: '8AFDR5AD3G6123456',
+        marca: 'Ford',
+        modelo: 'Ranger',
+      },
+      titular: null,
+      paga: null,
+      pedido: 'Alineación',
+      asesor: 'Martín',
+      mecanico: null,
+      prometidaPara: null,
+      creadoEn: '2026-09-16T12:00:00.000Z',
+      total: '48000.00',
+    }
+    ordenes.listar.mockResolvedValue({ datos: [OT], total: 1 })
+    ordenes.ficha.mockResolvedValue({
+      ...OT,
+      items: [
+        {
+          id: '55555555-5555-4555-8555-555555555555',
+          tipo: 'trabajo',
+          repuestoId: null,
+          codigo: null,
+          descripcion: 'Alineación y balanceo',
+          cantidad: '1.0000',
+          precioUnitario: '48000.0000',
+          codigoAlicuota: 5,
+          total: '48000.00',
+          autorizacion: null,
+          presupuestoId: null,
+        },
+      ],
+    })
+    entraComo(SESION)
+    await montarApp('/caja')
+    await screen.findByRole('region', { name: 'Órdenes para facturar' })
+    await screen.findByText('Factura B', { selector: 'b' })
+
+    await userEvent.keyboard('{ArrowDown}')
+    expect(await screen.findByRole('button', { name: /Cargar la OT 000003/ })).toBeDefined()
+    await userEvent.keyboard('{F4}')
+    expect(await screen.findByRole('heading', { name: 'Facturar la OT 000003' })).toBeDefined()
+    expect(ordenes.ficha).toHaveBeenCalledWith({ id: OT.id })
+    expect(comprobantes.emitir).not.toHaveBeenCalled()
+
+    await userEvent.keyboard('{F4}')
+    expect(
+      await screen.findByRole('alertdialog', { name: '¿Emitir Factura B por $ 48.000,00?' }),
+    ).toBeDefined()
+  })
+})
 
 describe('facturar', () => {
   it('a consumidor final: F4 pide confirmar con el resumen, y recién ahí emite', async () => {

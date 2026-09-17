@@ -192,6 +192,52 @@ describe('con el teclado', () => {
   })
 })
 
+describe('volver y copiar con el teclado', () => {
+  it('Esc en la ficha vuelve al listado con la búsqueda que tenía', async () => {
+    entraComo(SESION)
+    const router = await montarApp('/vehiculos?buscar=AE')
+    await userEvent.click(await screen.findByText('Gómez, Ana'))
+    await screen.findByRole('heading', { name: 'AE 123 BC · Toyota Hilux', level: 1 })
+
+    await userEvent.keyboard('{Escape}')
+    await waitFor(() => expect(router.state.location.pathname).toBe('/vehiculos'))
+    expect(router.state.location.search).toEqual({ buscar: 'AE' })
+  })
+
+  it('escribiendo en un campo, ⌫ borra y no vuelve; afuera, ⌫ vuelve', async () => {
+    entraComo(SESION)
+    const router = await montarApp('/vehiculos')
+    await userEvent.click(await screen.findByText('Gómez, Ana'))
+    await screen.findByRole('heading', { name: 'AE 123 BC · Toyota Hilux', level: 1 })
+
+    const buscador = screen.getByPlaceholderText(/patente, chasis/i)
+    await userEvent.type(buscador, 'ab{Backspace}')
+    expect(router.state.location.pathname).toBe(`/vehiculos/${ID}`)
+
+    buscador.blur()
+    await userEvent.keyboard('{Backspace}')
+    await waitFor(() => expect(router.state.location.pathname).toBe('/vehiculos'))
+  })
+
+  it('Alt+C y Alt+P copian el chasis y la patente de la fila marcada', async () => {
+    // En jsdom no hay portapapeles seguro: se copia por el camino viejo, que acá se simula.
+    const copiar = vi.fn(() => true)
+    document.execCommand = copiar
+    entraComo(SESION)
+    await montarApp('/vehiculos')
+    await screen.findByRole('link', { name: 'AE 123 BC' })
+
+    await userEvent.keyboard('{ArrowDown}{Alt>}c{/Alt}')
+    expect(
+      await screen.findByRole('listitem', { name: 'Listo: Chasis 8AJFB8CD5N1234567 copiado' }),
+    ).toBeDefined()
+    await userEvent.keyboard('{Alt>}p{/Alt}')
+    expect(
+      await screen.findByRole('listitem', { name: 'Listo: Patente AE123BC copiada' }),
+    ).toBeDefined()
+  })
+})
+
 describe('el alta', () => {
   async function abrirAlta() {
     entraComo(SESION)

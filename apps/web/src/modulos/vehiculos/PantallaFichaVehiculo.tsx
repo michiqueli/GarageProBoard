@@ -2,7 +2,7 @@ import { accesoDeRuta, contrato } from '@gpb/contracts'
 import { formatearCuit } from '@gpb/core'
 import { ORPCError } from '@orpc/client'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { getRouteApi, Link } from '@tanstack/react-router'
+import { getRouteApi, Link, useNavigate } from '@tanstack/react-router'
 import { type FormEvent, type ReactNode, useRef, useState } from 'react'
 import { Boton, clasesBoton } from '../../componentes/Boton.tsx'
 import { Campo } from '../../componentes/Campo.tsx'
@@ -14,7 +14,7 @@ import { Shell } from '../../componentes/Shell.tsx'
 import { usarSesion } from '../../sesion/almacen.ts'
 import { api } from '../../sesion/cliente.ts'
 import { usePuedeUsar } from '../../sesion/permisos.ts'
-import { useAtajo } from '../../teclado/index.ts'
+import { useAtajo, useVolver } from '../../teclado/index.ts'
 import {
   CamposVehiculo,
   COMBUSTIBLE,
@@ -43,6 +43,9 @@ type Edicion = null | 'datos' | 'transferir'
  * contesta mirando esta lista.
  */
 export function PantallaFichaVehiculo() {
+  const irAlListado = useNavigate()
+  // Esc o ⌫, sin estar escribiendo, vuelven a donde se venía.
+  useVolver(() => void irAlListado({ to: '/vehiculos' }))
   const { id } = ruta.useParams()
   const tenantId = usarSesion((e) => e.datos?.tenant.id)
   const puedeVer = usePuedeUsar(contrato.vehiculos.ficha)

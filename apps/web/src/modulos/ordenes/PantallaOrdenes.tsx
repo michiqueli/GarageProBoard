@@ -4,6 +4,7 @@ import { useQuery } from '@tanstack/react-query'
 import { Link, useNavigate } from '@tanstack/react-router'
 import { useState } from 'react'
 import { Boton } from '../../componentes/Boton.tsx'
+import { BotonCopiar, copiarConAviso } from '../../componentes/Copiar.tsx'
 import { EstadoOT } from '../../componentes/EstadoOT.tsx'
 import { clicEnFila, FILA_CLICABLE } from '../../componentes/filas.ts'
 import { IconoAgregar } from '../../componentes/iconos.tsx'
@@ -14,7 +15,7 @@ import { usarSesion } from '../../sesion/almacen.ts'
 import { api } from '../../sesion/cliente.ts'
 import { mensajeGeneral } from '../../sesion/consultas.ts'
 import { usePuedeUsar } from '../../sesion/permisos.ts'
-import { useFilasConTeclado, useFlechasPestanas } from '../../teclado/index.ts'
+import { useAtajo, useFilasConTeclado, useFlechasPestanas } from '../../teclado/index.ts'
 import { nombreOrden } from './ordenes.ts'
 
 type Orden = Awaited<ReturnType<typeof api.ordenes.listar>>['datos'][number]
@@ -58,9 +59,21 @@ export function PantallaOrdenes() {
   })
   const datos = consulta.data?.datos ?? []
   // ↑ ↓ marcan una fila y Enter la abre, también desde el buscador.
-  const { propsFila } = useFilasConTeclado(
+  const { activa, propsFila } = useFilasConTeclado(
     datos,
     (x) => void navegar({ to: '/ordenes/$id', params: { id: x.id } }),
+  )
+  const marcada = activa === null ? undefined : datos[activa]
+  // Alt+C y Alt+P: el chasis y la patente del vehículo, sin buscar el botón.
+  useAtajo(
+    'ordenes.copiarChasis',
+    () => void copiarConAviso(marcada?.vehiculo.chasis as string, 'Chasis'),
+    Boolean(marcada),
+  )
+  useAtajo(
+    'ordenes.copiarPatente',
+    () => void copiarConAviso(marcada?.vehiculo.dominio as string, 'Patente'),
+    Boolean(marcada?.vehiculo.dominio),
   )
 
   // El resumen cuenta el taller entero, sea cual sea la pestaña: si dependiera de lo que se
@@ -180,7 +193,16 @@ export function PantallaOrdenes() {
           <table className="w-full text-dato">
             <thead>
               <tr className="text-left text-etiqueta text-texto-tenue">
-                {['Orden', 'Vehículo', 'Paga', 'Pedido', 'Mecánico', 'Estado', 'Total'].map((c) => (
+                {[
+                  'Orden',
+                  'Vehículo',
+                  'Chasis',
+                  'Paga',
+                  'Pedido',
+                  'Mecánico',
+                  'Estado',
+                  'Total',
+                ].map((c) => (
                   <th
                     key={c}
                     className={`border-b border-borde px-3 py-1.5 font-medium ${c === 'Total' ? 'text-right' : ''}`}
@@ -211,10 +233,21 @@ export function PantallaOrdenes() {
                   </td>
                   <td className="h-fila border-b border-borde-suave px-3 py-1">
                     <span className="inline-flex items-center gap-2">
-                      <Patente dominio={o.vehiculo.dominio} />
+                      <span className="inline-flex items-center gap-1">
+                        <Patente dominio={o.vehiculo.dominio} />
+                        {o.vehiculo.dominio && (
+                          <BotonCopiar valor={o.vehiculo.dominio} que="Patente" />
+                        )}
+                      </span>
                       <span className="text-texto-suave">
                         {[o.vehiculo.marca, o.vehiculo.modelo].filter(Boolean).join(' ')}
                       </span>
+                    </span>
+                  </td>
+                  <td className="h-fila border-b border-borde-suave px-3 font-mono text-etiqueta">
+                    <span className="inline-flex items-center gap-1">
+                      {o.vehiculo.chasis}
+                      <BotonCopiar valor={o.vehiculo.chasis} que="Chasis" />
                     </span>
                   </td>
                   <td className="h-fila border-b border-borde-suave px-3">
@@ -263,6 +296,10 @@ export function PantallaOrdenes() {
                   </span>
                 </div>
                 <span className="truncate text-etiqueta text-texto-suave">{o.pedido}</span>
+                <span className="inline-flex items-center gap-1 font-mono text-etiqueta text-texto-tenue">
+                  {o.vehiculo.chasis}
+                  <BotonCopiar valor={o.vehiculo.chasis} que="Chasis" />
+                </span>
               </li>
             ))}
           </ul>

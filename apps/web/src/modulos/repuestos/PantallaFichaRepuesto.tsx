@@ -2,7 +2,7 @@ import { accesoDeRuta, contrato } from '@gpb/contracts'
 import { formatearImporte } from '@gpb/core'
 import { ORPCError } from '@orpc/client'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { getRouteApi, Link } from '@tanstack/react-router'
+import { getRouteApi, Link, useNavigate } from '@tanstack/react-router'
 import { type ReactNode, useState } from 'react'
 import { confirmar } from '../../componentes/avisos.ts'
 import { Boton, clasesBoton } from '../../componentes/Boton.tsx'
@@ -16,7 +16,7 @@ import { usarSesion } from '../../sesion/almacen.ts'
 import { api } from '../../sesion/cliente.ts'
 import { mensajeGeneral } from '../../sesion/consultas.ts'
 import { usePuedeUsar } from '../../sesion/permisos.ts'
-import { useAtajo } from '../../teclado/index.ts'
+import { useAtajo, useVolver } from '../../teclado/index.ts'
 import { ALICUOTAS } from '../caja/comprobantes.ts'
 import { FormularioRepuesto, Stock } from './PantallaRepuestos.tsx'
 import { aDecimal, cantidad, esNumero, TIPOS_MOVIMIENTO } from './repuestos.ts'
@@ -35,6 +35,9 @@ const fechaHora = (iso: string) =>
  * sucursal (`F9` muestra el stock de las demás).
  */
 export function PantallaFichaRepuesto() {
+  const irAlListado = useNavigate()
+  // Esc o ⌫, sin estar escribiendo, vuelven a donde se venía.
+  useVolver(() => void irAlListado({ to: '/repuestos' }))
   const { id } = ruta.useParams()
   const tenantId = usarSesion((e) => e.datos?.tenant.id)
   const sucursal = usarSesion((e) => e.datos?.sucursalActiva)

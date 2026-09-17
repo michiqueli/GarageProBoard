@@ -359,10 +359,19 @@ describe('la orden de trabajo mueve el stock', () => {
     const orden = (await pedir(gerente, 'GET', `/ordenes/${ordenId}`)).json()
     expect(orden.items.at(-1)).toMatchObject({ repuestoId: pastillas.id, tipo: 'repuesto' })
 
+    // Un segundo pedido, todavía abierto cuando se anula la orden.
+    const abierto = (
+      await pedir(repuestero, 'POST', '/repuestos/pedidos', { ordenId, items: [] })
+    ).json()
+
     // Anular la orden devuelve todo lo que tenía cargado.
     const anulada = await pedir(gerente, 'POST', `/ordenes/${ordenId}/anular`)
     expect(anulada.statusCode, anulada.body).toBe(200)
     expect(await stockDe(pastillas.id)).toBe('0')
+
+    // El pedido que no se había entregado ya no hace falta: se anula con la orden.
+    const despues = (await pedir(gerente, 'GET', `/repuestos/pedidos/${abierto.id}`)).json()
+    expect(despues.estado).toBe('anulado')
   })
 
   it('a una orden cerrada no se le piden repuestos', async () => {

@@ -4,6 +4,7 @@ import { useQuery } from '@tanstack/react-query'
 import { Link, useNavigate } from '@tanstack/react-router'
 import { useState } from 'react'
 import { Boton } from '../../componentes/Boton.tsx'
+import { copiarConAviso } from '../../componentes/Copiar.tsx'
 import { EstadoPedido } from '../../componentes/EstadoPedido.tsx'
 import { clicEnFila, FILA_CLICABLE } from '../../componentes/filas.ts'
 import { IconoAgregar } from '../../componentes/iconos.tsx'
@@ -14,7 +15,7 @@ import { usarSesion } from '../../sesion/almacen.ts'
 import { api } from '../../sesion/cliente.ts'
 import { mensajeGeneral } from '../../sesion/consultas.ts'
 import { usePuedeUsar } from '../../sesion/permisos.ts'
-import { useFilasConTeclado } from '../../teclado/index.ts'
+import { useAtajo, useFilasConTeclado } from '../../teclado/index.ts'
 import { PestanasRepuestos } from './Pestanas.tsx'
 import { nombrePedido, type PedidoResumen, seis } from './repuestos.ts'
 
@@ -61,9 +62,21 @@ export function PantallaPedidos() {
   })
   const datos = consulta.data?.datos ?? []
   // ↑ ↓ marcan una fila y Enter la abre, también desde el buscador.
-  const { propsFila } = useFilasConTeclado(
+  const { activa, propsFila } = useFilasConTeclado(
     datos,
     (x) => void navegar({ to: '/repuestos/pedidos/$id', params: { id: x.id } }),
+  )
+  const marcado = activa === null ? undefined : datos[activa]
+  // Alt+C y Alt+P: el chasis y la patente del vehículo, sin buscar el botón.
+  useAtajo(
+    'repuestos.copiarChasis',
+    () => void copiarConAviso(marcado?.chasis as string, 'Chasis'),
+    Boolean(marcado),
+  )
+  useAtajo(
+    'repuestos.copiarPatente',
+    () => void copiarConAviso(marcado?.vehiculo?.dominio as string, 'Patente'),
+    Boolean(marcado?.vehiculo?.dominio),
   )
 
   return (

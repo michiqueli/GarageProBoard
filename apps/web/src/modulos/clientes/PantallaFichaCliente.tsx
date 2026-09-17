@@ -1,7 +1,7 @@
 import { accesoDeRuta, contrato } from '@gpb/contracts'
 import { ORPCError } from '@orpc/client'
 import { useQuery } from '@tanstack/react-query'
-import { getRouteApi, Link } from '@tanstack/react-router'
+import { getRouteApi, Link, useNavigate } from '@tanstack/react-router'
 import { type ReactNode, useState } from 'react'
 import { Boton, clasesBoton } from '../../componentes/Boton.tsx'
 import { BotonCopiar } from '../../componentes/Copiar.tsx'
@@ -11,6 +11,7 @@ import { Shell } from '../../componentes/Shell.tsx'
 import { usarSesion } from '../../sesion/almacen.ts'
 import { api } from '../../sesion/cliente.ts'
 import { usePuedeUsar } from '../../sesion/permisos.ts'
+import { useVolver } from '../../teclado/index.ts'
 import { formatearFecha } from '../vehiculos/datos-vehiculo.tsx'
 import { Formulario, formatearDocumento, IIBB, Marcas, nombreTipo } from './PantallaClientes.tsx'
 
@@ -24,6 +25,9 @@ const ruta = getRouteApi('/con-sesion/clientes/$id')
  * atiende clientes en el mostrador, pero el parque no es asunto suyo.
  */
 export function PantallaFichaCliente() {
+  const irAlListado = useNavigate()
+  // Esc o ⌫, sin estar escribiendo, vuelven a donde se venía.
+  useVolver(() => void irAlListado({ to: '/clientes' }))
   const { id } = ruta.useParams()
   const tenantId = usarSesion((e) => e.datos?.tenant.id)
   const puedeVer = usePuedeUsar(contrato.clientes.ficha)

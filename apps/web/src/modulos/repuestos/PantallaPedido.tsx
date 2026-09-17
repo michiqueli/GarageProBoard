@@ -2,12 +2,12 @@ import { accesoDeRuta, contrato } from '@gpb/contracts'
 import { formatearImporte, plata } from '@gpb/core'
 import { ORPCError } from '@orpc/client'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { getRouteApi, Link } from '@tanstack/react-router'
+import { getRouteApi, Link, useNavigate } from '@tanstack/react-router'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { confirmar } from '../../componentes/avisos.ts'
 import { Boton, clasesBoton } from '../../componentes/Boton.tsx'
 import { Campo } from '../../componentes/Campo.tsx'
-import { BotonCopiar } from '../../componentes/Copiar.tsx'
+import { BotonCopiar, copiarConAviso } from '../../componentes/Copiar.tsx'
 import { EstadoPedido } from '../../componentes/EstadoPedido.tsx'
 import {
   IconoAgregar,
@@ -25,6 +25,7 @@ import { usarSesion } from '../../sesion/almacen.ts'
 import { api } from '../../sesion/cliente.ts'
 import { mensajeGeneral } from '../../sesion/consultas.ts'
 import { usePuedeUsar } from '../../sesion/permisos.ts'
+import { useAtajo, useCambiosSinGuardar, useVolver } from '../../teclado/index.ts'
 import { ALICUOTAS, abrirPdf, nombreComprobante } from '../caja/comprobantes.ts'
 import { Dato, Seccion } from './PantallaFichaRepuesto.tsx'
 import { destinoPedido } from './PantallaPedidos.tsx'
@@ -60,6 +61,9 @@ let proxima = 1
  * lo entrega al taller si va a una orden, o lo manda a caja si es de mostrador.
  */
 export function PantallaPedido() {
+  const irAlListado = useNavigate()
+  // Esc o ⌫, sin estar escribiendo, vuelven a donde se venía.
+  useVolver(() => void irAlListado({ to: '/repuestos/pedidos' }))
   const { id } = ruta.useParams()
   const tenantId = usarSesion((e) => e.datos?.tenant.id)
   const cache = useQueryClient()
@@ -69,6 +73,17 @@ export function PantallaPedido() {
   const clave = ['pedidos-repuestos', tenantId, 'ficha', id]
   const consulta = useQuery({ queryKey: clave, queryFn: () => api.pedidosRepuestos.ficha({ id }) })
   const p = consulta.data
+  // Alt+C y Alt+P: el chasis y la patente del vehículo, sin buscar el botón.
+  useAtajo(
+    'repuestos.copiarChasis',
+    () => void copiarConAviso(p?.chasis as string, 'Chasis'),
+    Boolean(p),
+  )
+  useAtajo(
+    'repuestos.copiarPatente',
+    () => void copiarConAviso(p?.vehiculo?.dominio as string, 'Patente'),
+    Boolean(p?.vehiculo?.dominio),
+  )
 
   const actualizar = async (nuevo: Pedido) => {
     cache.setQueryData(clave, nuevo)
@@ -282,6 +297,7 @@ function Items({
   const [nuevo, setNuevo] = useState<number | null>(() => items0(p, editable))
   const [cliente, setCliente] = useState<ClienteElegido | null>(p.cliente)
   const [cambios, setCambios] = useState(false)
+  useCambiosSinGuardar(cambios)
 
   // Al montar ya están los renglones del pedido: rearmarlos cambiaría las claves y el renglón
   // vacío perdería el foco.

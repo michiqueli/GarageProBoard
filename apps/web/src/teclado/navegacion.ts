@@ -1,4 +1,6 @@
+import { useRouter } from '@tanstack/react-router'
 import { useEffect, useRef, useState } from 'react'
+import { confirmar } from '../componentes/avisos.ts'
 import { useTeclado } from './contexto.tsx'
 
 /**
@@ -134,4 +136,64 @@ export function useFilasConTeclado<T>(filas: readonly T[], abrir: (fila: T) => v
     activa,
     propsFila: (i: number) => ({ 'data-activa': i === activa ? 'true' : undefined }),
   }
+}
+
+/**
+ * Cuántas partes de la pantalla tienen cambios sin guardar. Volver con Esc o ⌫ los perdería:
+ * con alguno pendiente, primero se pregunta.
+ */
+let cambiosPendientes = 0
+
+/** Mientras `hay` sea verdadero, volver con el teclado pide confirmación. */
+export function useCambiosSinGuardar(hay: boolean) {
+  useEffect(() => {
+    if (!hay) return
+    cambiosPendientes++
+    return () => {
+      cambiosPendientes--
+    }
+  }, [hay])
+}
+
+/**
+ * En una ficha, Esc o ⌫ vuelven a la pantalla anterior —con su búsqueda y sus filtros—, o al
+ * listado si se llegó directo por un enlace.
+ *
+ * Nunca con el foco en un campo: ahí Esc y ⌫ son de lo que se está escribiendo. Y si hay un
+ * formulario abierto que se cierra con Esc, gana el formulario: el atajo de cancelar llega antes
+ * y marca el evento. Con cambios sin guardar, pregunta.
+ */
+export function useVolver(listado: () => void, activo = true) {
+  const { registrarAyuda } = useTeclado()
+  const router = useRouter()
+  const ultimo = useRef({ listado, activo })
+  ultimo.current = { listado, activo }
+
+  useEffect(() => {
+    async function alPresionar(e: KeyboardEvent) {
+      if (e.key !== 'Escape' && e.key !== 'Backspace') return
+      if (!ultimo.current.activo) return
+      if (e.defaultPrevented || conModificador(e) || escribiendo(e.target) || hayModal()) return
+      e.preventDefault()
+      if (
+        cambiosPendientes > 0 &&
+        !(await confirmar({
+          titulo: '¿Salir sin guardar?',
+          texto: 'Hay cambios que todavía no se guardaron y se van a perder.',
+          confirmar: 'Salir sin guardar',
+          peligro: true,
+        }))
+      ) {
+        return
+      }
+      if (router.history.canGoBack()) router.history.back()
+      else ultimo.current.listado()
+    }
+    document.addEventListener('keydown', alPresionar)
+    const quitar = registrarAyuda({ id: 'volver', teclas: ['Backspace'], etiqueta: 'Volver' })
+    return () => {
+      document.removeEventListener('keydown', alPresionar)
+      quitar()
+    }
+  }, [registrarAyuda, router])
 }

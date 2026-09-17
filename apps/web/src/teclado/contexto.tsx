@@ -56,7 +56,11 @@ export function ProveedorTeclado({
 
   // Los manejadores viven en una ref para que registrar uno no vuelva a renderizar
   // el árbol entero. El Set de activas sí es estado, porque la barra de estado lo mira.
-  const manejadores = useRef(new Map<string, () => void>())
+  //
+  // Cada acción guarda una pila: gana el último que se registró. La ficha registra Esc para
+  // volver, el formulario que abre adentro registra Esc para cerrarse; al cerrarlo, Esc vuelve
+  // a ser de la ficha. Con un solo manejador por acción, cerrar el formulario borraba el Esc.
+  const manejadores = useRef(new Map<string, Array<{ fn: () => void }>>())
   const [activas, setActivas] = useState<ReadonlySet<string>>(new Set())
   const [ayudas, setAyudas] = useState<readonly Ayuda[]>([])
 
@@ -66,11 +70,15 @@ export function ProveedorTeclado({
   }, [])
 
   const registrar = useCallback((accion: string, manejador: () => void) => {
-    manejadores.current.set(accion, manejador)
+    const entrada = { fn: manejador }
+    const pila = manejadores.current.get(accion) ?? []
+    manejadores.current.set(accion, [...pila, entrada])
     setActivas(new Set(manejadores.current.keys()))
 
     return () => {
-      manejadores.current.delete(accion)
+      const quedan = (manejadores.current.get(accion) ?? []).filter((e) => e !== entrada)
+      if (quedan.length) manejadores.current.set(accion, quedan)
+      else manejadores.current.delete(accion)
       setActivas(new Set(manejadores.current.keys()))
     }
   }, [])
@@ -89,7 +97,7 @@ export function ProveedorTeclado({
       for (const [accion, asignada] of Object.entries(mapa)) {
         if (asignada !== tecla) continue
 
-        const manejador = manejadores.current.get(accion)
+        const manejador = manejadores.current.get(accion)?.at(-1)?.fn
         if (!manejador) return // La acción existe pero esta pantalla no la ofrece.
 
         if (debePrevenir(tecla)) evento.preventDefault()

@@ -3,10 +3,11 @@ import { cuitValido, formatearCuit, formatearImporte, normalizarCuit, plata } fr
 import { ORPCError } from '@orpc/client'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link } from '@tanstack/react-router'
-import { useMemo, useState } from 'react'
+import { type ReactNode, useMemo, useState } from 'react'
 import { confirmar, notificar, preguntar } from '../../componentes/avisos.ts'
 import { Boton, clasesBoton } from '../../componentes/Boton.tsx'
 import { Campo } from '../../componentes/Campo.tsx'
+import { clicEnFila, FILA_CLICABLE } from '../../componentes/filas.ts'
 import {
   IconoAgregar,
   IconoAnular,
@@ -25,7 +26,7 @@ import { usarSesion } from '../../sesion/almacen.ts'
 import { api } from '../../sesion/cliente.ts'
 import { mensajeGeneral } from '../../sesion/consultas.ts'
 import { usePuedeUsar } from '../../sesion/permisos.ts'
-import { useAtajo } from '../../teclado/index.ts'
+import { useAtajo, useFilasConTeclado } from '../../teclado/index.ts'
 import { ALICUOTAS, abrirPdf, CONDICIONES_VENTA, nombreComprobante } from './comprobantes.ts'
 
 type Opciones = Awaited<ReturnType<typeof api.comprobantes.opciones>>
@@ -89,32 +90,161 @@ export function PantallaCaja() {
   const puedeFacturar = usePuedeUsar(contrato.comprobantes.emitir)
   const puedeVerOrdenes = usePuedeUsar(contrato.ordenes.listar)
   const puedeVerPedidos = usePuedeUsar(contrato.pedidosRepuestos.listar)
+  const tenantId = usarSesion((e) => e.datos?.tenant.id)
+  const sucursalId = usarSesion((e) => e.datos?.sucursalActiva.id)
   const [precarga, setPrecarga] = useState<Precarga | null>(null)
-  const elegir = (p: Precarga) => {
-    setPrecarga(p)
-    requestAnimationFrame(() =>
-      document.getElementById('facturar')?.scrollIntoView({ block: 'start' }),
-    )
+  const [cargando, setCargando] = useState<string | null>(null)
+
+  const ordenes = useQuery({
+    queryKey: ['ordenes', tenantId, sucursalId, 'terminada', ''],
+    queryFn: () => api.ordenes.listar({ pagina: 1, porPagina: 50, estado: 'terminada' }),
+    enabled: puedeFacturar && puedeVerOrdenes,
+  })
+  const pedidos = useQuery({
+    queryKey: ['pedidos-repuestos', tenantId, sucursalId, 'en_caja', ''],
+    queryFn: () => api.pedidosRepuestos.listar({ pagina: 1, porPagina: 50, estado: 'en_caja' }),
+    enabled: puedeFacturar && puedeVerPedidos,
+  })
+  const listaOrdenes = ordenes.data?.datos ?? []
+  const listaPedidos = pedidos.data?.datos ?? []
+
+  // Una sola lista para el teclado: primero las órdenes, después los pedidos.
+  const pendientes: Pendiente[] = [
+    ...listaOrdenes.map((o) => ({ tipo: 'orden' as const, id: o.id, numero: o.numero })),
+    ...listaPedidos.map((x) => ({ tipo: 'pedido' as const, id: x.id, numero: x.numero })),
+  ]
+
+  /** Trae lo que se cobra y lo carga en el formulario de facturación. */
+  async function elegir(item: Pendiente) {
+    setCargando(item.id)
+    try {
+      if (item.tipo === 'orden') {
+        const o = await api.ordenes.ficha({ id: item.id })
+        setPrecarga({
+          tipo: 'orden',
+          id: o.id,
+          numero: o.numero,
+          paga: o.paga,
+          // Lo que el cliente rechazó en un presupuesto no se cobra.
+          renglones: o.items
+            .filter((i) => i.autorizacion !== 'rechazado')
+            .map((i) => ({
+              ...renglonVacio(),
+              descripcion: i.descripcion,
+              cantidad: i.cantidad.replace(/\.?0+$/, ''),
+              precioUnitario: i.precioUnitario.replace(/\.?0+$/, ''),
+              codigoAlicuota: i.codigoAlicuota as Renglon['codigoAlicuota'],
+            })),
+        })
+      } else {
+        const x = await api.pedidosRepuestos.ficha({ id: item.id })
+        setPrecarga({
+          tipo: 'pedido',
+          id: x.id,
+          numero: x.numero,
+          paga: x.cliente,
+          renglones: x.items.map((i) => ({
+            ...renglonVacio(),
+            descripcion: i.codigo ? `${i.codigo} · ${i.descripcion}` : i.descripcion,
+            cantidad: i.cantidad,
+            precioUnitario: i.precioUnitario.replace(/\.?0+$/, ''),
+            codigoAlicuota: i.codigoAlicuota as Renglon['codigoAlicuota'],
+          })),
+        })
+      }
+      requestAnimationFrame(() =>
+        document.getElementById('facturar')?.scrollIntoView?.({ block: 'start' }),
+      )
+    } catch (error) {
+      notificar.error(
+        `No se pudo traer ${item.tipo === 'orden' ? 'la orden' : 'el pedido'}. ${mensajeGeneral(error)}`,
+      )
+    } finally {
+      setCargando(null)
+    }
   }
+
+  // ↑ ↓ marcan una orden o un pedido; Enter lo carga. F4 también: carga el marcado si todavía
+  // no está en el formulario, y si ya está, factura.
+  const { activa, propsFila } = useFilasConTeclado(pendientes, (item) => void elegir(item))
+  const marcado = activa === null ? null : pendientes[activa]
+  const porCargar =
+    marcado && marcado.id !== precarga?.id
+      ? {
+          texto: `Cargar ${marcado.tipo === 'orden' ? 'la OT' : 'el pedido'} ${String(marcado.numero).padStart(6, '0')}`,
+          cargar: () => void elegir(marcado),
+        }
+      : null
+  // Sin punto de venta el formulario no tiene botón de emitir: F4 igual carga la marcada.
+  useAtajo('caja.facturar', () => porCargar?.cargar(), Boolean(porCargar))
 
   return (
     <Shell titulo="Caja" requiere={accesoDeRuta(contrato.comprobantes.listar)}>
-      {puedeFacturar && puedeVerOrdenes && (
-        <OrdenesParaFacturar elegida={precarga?.id ?? null} alElegir={elegir} />
+      {listaOrdenes.length > 0 && (
+        <ParaFacturar titulo="Órdenes para facturar" cantidad={listaOrdenes.length}>
+          {listaOrdenes.map((o, i) => (
+            <FilaParaFacturar
+              key={o.id}
+              props={propsFila(i)}
+              elegida={precarga?.id === o.id}
+              cargando={cargando === o.id}
+              alElegir={() => void elegir(pendientes[i] as Pendiente)}
+            >
+              <span className="font-mono text-dato">OT {String(o.numero).padStart(6, '0')}</span>
+              <Patente dominio={o.vehiculo.dominio} />
+              <span className="text-dato">{o.paga?.razonSocial ?? 'Sin quien pague'}</span>
+              <span className="tabular ml-auto font-mono text-dato">
+                $ {formatearImporte(o.total)}
+              </span>
+            </FilaParaFacturar>
+          ))}
+        </ParaFacturar>
       )}
-      {puedeFacturar && puedeVerPedidos && (
-        <PedidosParaFacturar elegida={precarga?.id ?? null} alElegir={elegir} />
+      {listaPedidos.length > 0 && (
+        <ParaFacturar titulo="Repuestos de mostrador para facturar" cantidad={listaPedidos.length}>
+          {listaPedidos.map((x, i) => {
+            const n = listaOrdenes.length + i
+            return (
+              <FilaParaFacturar
+                key={x.id}
+                props={propsFila(n)}
+                elegida={precarga?.id === x.id}
+                cargando={cargando === x.id}
+                alElegir={() => void elegir(pendientes[n] as Pendiente)}
+              >
+                <span className="font-mono text-dato">
+                  Pedido {String(x.numero).padStart(6, '0')}
+                </span>
+                <span className="text-dato">{x.cliente?.razonSocial ?? 'Consumidor final'}</span>
+                <span className="text-etiqueta text-texto-tenue">
+                  {x.items} {x.items === 1 ? 'repuesto' : 'repuestos'}
+                </span>
+                <span className="tabular ml-auto font-mono text-dato">
+                  $ {formatearImporte(x.total)}
+                </span>
+              </FilaParaFacturar>
+            )
+          })}
+        </ParaFacturar>
       )}
       {puedeFacturar && (
         <Facturar
           key={precarga?.id ?? 'mostrador'}
           precarga={precarga}
+          porCargar={porCargar}
           alTerminarOrden={() => setPrecarga(null)}
         />
       )}
       <Ultimos />
     </Shell>
   )
+}
+
+/** Una orden o un pedido esperando caja, como lo recorre el teclado. */
+interface Pendiente {
+  tipo: 'orden' | 'pedido'
+  id: string
+  numero: number
 }
 
 /**
@@ -130,177 +260,75 @@ interface Precarga {
 }
 
 /**
- * Las órdenes que el taller terminó y esperan caja. Facturar una precarga la factura con
- * quien paga y sus trabajos y repuestos; al emitirse, la orden pasa a facturada sola.
+ * Lo que espera caja: las órdenes que el taller terminó y los pedidos que el repuestero mandó.
+ * Facturar uno lo carga con quien paga y lo que se cobra; al emitirse, pasa a facturado solo.
  */
-function OrdenesParaFacturar({
-  elegida,
-  alElegir,
+function ParaFacturar({
+  titulo,
+  cantidad,
+  children,
 }: {
-  elegida: string | null
-  alElegir: (p: Precarga) => void
+  titulo: string
+  cantidad: number
+  children: ReactNode
 }) {
-  const tenantId = usarSesion((e) => e.datos?.tenant.id)
-  const sucursalId = usarSesion((e) => e.datos?.sucursalActiva.id)
-  const consulta = useQuery({
-    queryKey: ['ordenes', tenantId, sucursalId, 'terminada', ''],
-    queryFn: () => api.ordenes.listar({ pagina: 1, porPagina: 50, estado: 'terminada' }),
-  })
-  const [cargando, setCargando] = useState<string | null>(null)
-  const datos = consulta.data?.datos ?? []
-  if (!consulta.data || datos.length === 0) return null
-
-  async function elegir(id: string) {
-    setCargando(id)
-    try {
-      const o = await api.ordenes.ficha({ id })
-      alElegir({
-        tipo: 'orden',
-        id: o.id,
-        numero: o.numero,
-        paga: o.paga,
-        // Lo que el cliente rechazó en un presupuesto no se cobra.
-        renglones: o.items
-          .filter((i) => i.autorizacion !== 'rechazado')
-          .map((i) => ({
-            ...renglonVacio(),
-            descripcion: i.descripcion,
-            cantidad: i.cantidad.replace(/\.?0+$/, ''),
-            precioUnitario: i.precioUnitario.replace(/\.?0+$/, ''),
-            codigoAlicuota: i.codigoAlicuota as Renglon['codigoAlicuota'],
-          })),
-      })
-    } catch (error) {
-      notificar.error(`No se pudo traer la orden. ${mensajeGeneral(error)}`)
-    } finally {
-      setCargando(null)
-    }
-  }
-
   return (
     <section
-      aria-label="Órdenes para facturar"
+      aria-label={titulo}
       className="overflow-hidden rounded-base border border-ok bg-superficie"
     >
       <header className="flex items-center gap-2 border-b border-borde px-3 py-2">
-        <h2 className="font-display text-dato font-semibold">Órdenes para facturar</h2>
+        <h2 className="font-display text-dato font-semibold">{titulo}</h2>
         <span className="rounded-full bg-ok px-2 text-etiqueta font-semibold text-fondo">
-          {datos.length}
+          {cantidad}
         </span>
       </header>
-      <ul className="divide-y divide-borde-suave">
-        {datos.map((o) => (
-          <li key={o.id} className="flex flex-wrap items-center gap-x-3 gap-y-1 px-3 py-2">
-            <span className="font-mono text-dato">OT {String(o.numero).padStart(6, '0')}</span>
-            <Patente dominio={o.vehiculo.dominio} />
-            <span className="text-dato">{o.paga?.razonSocial ?? 'Sin quien pague'}</span>
-            <span className="tabular ml-auto font-mono text-dato">
-              $ {formatearImporte(o.total)}
-            </span>
-            <Boton
-              tamano="chico"
-              variante={elegida === o.id ? 'principal' : 'normal'}
-              deshabilitado={cargando === o.id}
-              onClick={() => void elegir(o.id)}
-            >
-              {elegida === o.id ? 'Facturando' : 'Facturar'}
-            </Boton>
-          </li>
-        ))}
-      </ul>
+      <ul className="divide-y divide-borde-suave">{children}</ul>
     </section>
   )
 }
 
-/**
- * Los pedidos de repuestos de mostrador que el repuestero mandó a caja. Los repuestos ya
- * salieron del stock; al emitirse la factura, el pedido pasa a facturado.
- */
-function PedidosParaFacturar({
+function FilaParaFacturar({
+  props,
   elegida,
+  cargando,
   alElegir,
+  children,
 }: {
-  elegida: string | null
-  alElegir: (p: Precarga) => void
+  props: { 'data-activa': string | undefined }
+  elegida: boolean
+  cargando: boolean
+  alElegir: () => void
+  children: ReactNode
 }) {
-  const tenantId = usarSesion((e) => e.datos?.tenant.id)
-  const sucursalId = usarSesion((e) => e.datos?.sucursalActiva.id)
-  const consulta = useQuery({
-    queryKey: ['pedidos-repuestos', tenantId, sucursalId, 'en_caja', ''],
-    queryFn: () => api.pedidosRepuestos.listar({ pagina: 1, porPagina: 50, estado: 'en_caja' }),
-  })
-  const [cargando, setCargando] = useState<string | null>(null)
-  const datos = consulta.data?.datos ?? []
-  if (!consulta.data || datos.length === 0) return null
-
-  async function elegir(id: string) {
-    setCargando(id)
-    try {
-      const p = await api.pedidosRepuestos.ficha({ id })
-      alElegir({
-        tipo: 'pedido',
-        id: p.id,
-        numero: p.numero,
-        paga: p.cliente,
-        renglones: p.items.map((i) => ({
-          ...renglonVacio(),
-          descripcion: i.codigo ? `${i.codigo} · ${i.descripcion}` : i.descripcion,
-          cantidad: i.cantidad,
-          precioUnitario: i.precioUnitario.replace(/\.?0+$/, ''),
-          codigoAlicuota: i.codigoAlicuota as Renglon['codigoAlicuota'],
-        })),
-      })
-    } catch (error) {
-      notificar.error(`No se pudo traer el pedido. ${mensajeGeneral(error)}`)
-    } finally {
-      setCargando(null)
-    }
-  }
-
   return (
-    <section
-      aria-label="Repuestos para facturar"
-      className="overflow-hidden rounded-base border border-ok bg-superficie"
+    // biome-ignore lint/a11y/useKeyWithClickEvents: con teclado se marca con las flechas y se carga con Enter o F4
+    <li
+      {...props}
+      onClick={clicEnFila(alElegir)}
+      className={`flex flex-wrap items-center gap-x-3 gap-y-1 px-3 py-2 ${FILA_CLICABLE}`}
     >
-      <header className="flex items-center gap-2 border-b border-borde px-3 py-2">
-        <h2 className="font-display text-dato font-semibold">
-          Repuestos de mostrador para facturar
-        </h2>
-        <span className="rounded-full bg-ok px-2 text-etiqueta font-semibold text-fondo">
-          {datos.length}
-        </span>
-      </header>
-      <ul className="divide-y divide-borde-suave">
-        {datos.map((p) => (
-          <li key={p.id} className="flex flex-wrap items-center gap-x-3 gap-y-1 px-3 py-2">
-            <span className="font-mono text-dato">Pedido {String(p.numero).padStart(6, '0')}</span>
-            <span className="text-dato">{p.cliente?.razonSocial ?? 'Consumidor final'}</span>
-            <span className="text-etiqueta text-texto-tenue">
-              {p.items} {p.items === 1 ? 'repuesto' : 'repuestos'}
-            </span>
-            <span className="tabular ml-auto font-mono text-dato">
-              $ {formatearImporte(p.total)}
-            </span>
-            <Boton
-              tamano="chico"
-              variante={elegida === p.id ? 'principal' : 'normal'}
-              deshabilitado={cargando === p.id}
-              onClick={() => void elegir(p.id)}
-            >
-              {elegida === p.id ? 'Facturando' : 'Facturar'}
-            </Boton>
-          </li>
-        ))}
-      </ul>
-    </section>
+      {children}
+      <Boton
+        tamano="chico"
+        variante={elegida ? 'principal' : 'normal'}
+        deshabilitado={cargando}
+        onClick={alElegir}
+      >
+        {elegida ? 'Facturando' : 'Facturar'}
+      </Boton>
+    </li>
   )
 }
 
 function Facturar({
   precarga,
+  porCargar,
   alTerminarOrden,
 }: {
   precarga: Precarga | null
+  /** Hay una orden o un pedido marcado con las flechas que todavía no está cargado: F4 lo carga. */
+  porCargar: { texto: string; cargar: () => void } | null
   alTerminarOrden: () => void
 }) {
   const tenantId = usarSesion((e) => e.datos?.tenant.id)
@@ -462,7 +490,6 @@ function Facturar({
     if (si) emitir.mutate()
   }
 
-  useAtajo('caja.facturar', () => void facturar(), Boolean(pv))
   useAtajo('global.nuevo', () => setRenglones((rs) => [...rs, renglonVacio()]), Boolean(pv))
 
   async function quitar(r: Renglon) {
@@ -782,18 +809,25 @@ function Facturar({
                 $ {formatearImporte(totales.total.toFixed(2))}
               </b>
             </span>
-            <Boton
-              accion="caja.facturar"
-              variante="principal"
-              deshabilitado={emitir.isPending || !receptor.data}
-              onClick={() => void facturar()}
-            >
-              {emitir.isPending
-                ? 'Emitiendo…'
-                : receptor.data
-                  ? `Emitir ${receptor.data.nombreComprobante}`
-                  : 'Emitir'}
-            </Boton>
+            {/* F4 es uno solo: con una orden marcada y sin cargar, la carga; si no, factura. */}
+            {porCargar ? (
+              <Boton accion="caja.facturar" variante="principal" onClick={porCargar.cargar}>
+                {porCargar.texto}
+              </Boton>
+            ) : (
+              <Boton
+                accion="caja.facturar"
+                variante="principal"
+                deshabilitado={emitir.isPending || !receptor.data}
+                onClick={() => void facturar()}
+              >
+                {emitir.isPending
+                  ? 'Emitiendo…'
+                  : receptor.data
+                    ? `Emitir ${receptor.data.nombreComprobante}`
+                    : 'Emitir'}
+              </Boton>
+            )}
           </footer>
         </>
       )}

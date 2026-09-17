@@ -2,7 +2,7 @@ import { accesoDeRuta, contrato } from '@gpb/contracts'
 import { formatearCuit } from '@gpb/core'
 import { ORPCError } from '@orpc/client'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { getRouteApi, Link } from '@tanstack/react-router'
+import { getRouteApi, Link, useNavigate } from '@tanstack/react-router'
 import { type FormEvent, type ReactNode, useState } from 'react'
 import { confirmar } from '../../componentes/avisos.ts'
 import { Boton, clasesBoton } from '../../componentes/Boton.tsx'
@@ -13,6 +13,7 @@ import { usarSesion } from '../../sesion/almacen.ts'
 import { api } from '../../sesion/cliente.ts'
 import { type MensajeError, mensajeGeneral } from '../../sesion/consultas.ts'
 import { usePuedeUsar } from '../../sesion/permisos.ts'
+import { useVolver } from '../../teclado/index.ts'
 
 const ruta = getRouteApi('/con-sesion/empresas/$id/certificado-afip')
 
@@ -92,6 +93,9 @@ function descargar(nombre: string, contenido: string) {
  * clave, que no se descarga nunca, y revisa el certificado antes de aceptarlo.
  */
 export function PantallaCertificadoAfip() {
+  const irAlListado = useNavigate()
+  // Esc o ⌫, sin estar escribiendo, vuelven a donde se venía.
+  useVolver(() => void irAlListado({ to: '/empresas' }))
   const { id } = ruta.useParams()
   const tenantId = usarSesion((e) => e.datos?.tenant.id)
   const puedeVer = usePuedeUsar(contrato.certificados.estado)
