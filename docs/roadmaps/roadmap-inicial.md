@@ -180,22 +180,22 @@ verdad. Qué se trae y qué cambia ahora que el DMS es nuestro, en
 [control de tiempos de taller](../tecnicos/taller-control-de-tiempos.md).
 
 - ⬜ Turnos y agenda
-- ⬜ Apertura de OT con los cuatro roles (titular, quien trae, quien autoriza,
-      quien paga)
+- 🔨 Apertura de OT con los roles: titular, quien trae y quien paga ✅. Falta quien autoriza
 - ⬜ Operaciones con tiempos de referencia por terminal
 - ⬜ Fichaje de mecánicos por QR: dos escaneos, tres segundos, sin login. Tiempo real
       contra tiempo de referencia
-- ⬜ QR firmado impreso en la propia OT, con fallback numérico
+- ✅ QR firmado impreso en la propia OT (`GT1:O:…`), con el número para tipear. Copia taller y
+      copia cliente con firma de conformidad
 - ⬜ Esperas con motivo: sin eso no se explica por qué un auto estuvo seis días
 - ⬜ Auto-cierre de fin de turno, también al arrancar el servidor
 - ⬜ Correcciones de tiempo con auditoría y motivo obligatorio
 - ⬜ Repuestos consumidos, con descuento de stock
-- ⬜ Presupuesto, autorización y cierre
-- ⬜ Facturación de la OT
+- 🔨 Trabajos y repuestos con precio final, estados del taller y cierre (terminar → caja) ✅.
+      Falta presupuesto y autorización del cliente
+- ✅ Facturación de la OT: panel «Órdenes para facturar» en caja; anular la factura la devuelve
 - ⬜ **Tablero de piso en tiempo real**: qué auto, quién lo tiene, cuánto lleva.
       Es la pantalla que vende el producto en una demo.
-- ⬜ Flujo de recepción **sin tocar el mouse**: el asesor compite con la velocidad
-      del operador de Oversoft y esto no se puede agregar después
+- ✅ Flujo de recepción **sin tocar el mouse**: patente, Enter, Tab, F2
 
 **Criterio de terminado:** una orden entra, se trabaja, se factura y se cobra.
 

@@ -1,140 +1,241 @@
+import { accesoDeRuta, contrato } from '@gpb/contracts'
 import { formatearImporte } from '@gpb/core'
+import { useQuery } from '@tanstack/react-query'
+import { Link, useNavigate } from '@tanstack/react-router'
 import { useState } from 'react'
 import { Boton } from '../../componentes/Boton.tsx'
 import { EstadoOT } from '../../componentes/EstadoOT.tsx'
+import { IconoAgregar } from '../../componentes/iconos.tsx'
+import { Patente } from '../../componentes/Patente.tsx'
 import { Shell } from '../../componentes/Shell.tsx'
 import { ES_ESCRITORIO, useMedia } from '../../ganchos/useMedia.ts'
-import { usePuede } from '../../sesion/permisos.ts'
-import { useAtajo } from '../../teclado/index.ts'
-import { ORDENES, type OrdenListada } from './datos-de-ejemplo.ts'
+import { usarSesion } from '../../sesion/almacen.ts'
+import { api } from '../../sesion/cliente.ts'
+import { mensajeGeneral } from '../../sesion/consultas.ts'
+import { usePuedeUsar } from '../../sesion/permisos.ts'
+import { nombreOrden } from './ordenes.ts'
 
-const COLUMNAS = ['OT', 'Patente', 'Vehículo', 'Cliente', 'Ingreso', 'Mecánico', 'Estado'] as const
+type Orden = Awaited<ReturnType<typeof api.ordenes.listar>>['datos'][number]
+type Filtro = 'en_taller' | 'terminada' | 'todas'
 
+const FILTROS: Array<{ valor: Filtro; texto: string }> = [
+  { valor: 'en_taller', texto: 'En el taller' },
+  { valor: 'terminada', texto: 'Para facturar' },
+  { valor: 'todas', texto: 'Todas' },
+]
+
+/**
+ * Las órdenes de la sucursal: qué autos están en el taller, en qué estado y quién los tiene.
+ * `Ins` recibe un auto nuevo; la ficha de cada orden es donde se trabaja.
+ */
 export function PantallaOrdenes() {
-  const [seleccionada, setSeleccionada] = useState(ORDENES[0]?.numero ?? '')
+  const tenantId = usarSesion((e) => e.datos?.tenant.id)
+  const sucursalId = usarSesion((e) => e.datos?.sucursalActiva.id)
   const esEscritorio = useMedia(ES_ESCRITORIO)
+  const navegar = useNavigate()
+  const puedeVer = usePuedeUsar(contrato.ordenes.listar)
+  const puedeAbrir = usePuedeUsar(contrato.ordenes.abrir)
+  const [filtro, setFiltro] = useState<Filtro>('en_taller')
+  const [buscar, setBuscar] = useState('')
 
-  // Todavía sin contrato: cuando exista la ruta de OT, estos permisos van a salir de
-  // ahí, como los de vehículos. La acción y el sujeto son los mismos que va a declarar.
-  const puedeCerrar = usePuede({ modulo: 'servicios', accion: 'editar', sujeto: 'Orden' })
-  const puedeCrear = usePuede({ modulo: 'servicios', accion: 'crear', sujeto: 'Orden' })
+  const consulta = useQuery({
+    queryKey: ['ordenes', tenantId, sucursalId, filtro, buscar.trim()],
+    queryFn: () =>
+      api.ordenes.listar({
+        pagina: 1,
+        porPagina: 100,
+        estado: filtro,
+        ...(buscar.trim() ? { buscar: buscar.trim() } : {}),
+      }),
+    enabled: puedeVer,
+  })
+  const datos = consulta.data?.datos ?? []
 
-  // Sin permiso para cerrar, F4 no se registra: la barra de estado la muestra atenuada
-  // en vez de anunciar un verbo que no va a hacer nada.
-  useAtajo(
-    'ordenes.cerrar',
-    () => {
-      // Abre la confirmación, nunca ejecuta: F4 está pegada a F3 y alguien le va a errar.
-      window.alert(`Cerrar la orden ${seleccionada}\n\n(la confirmación va acá)`)
-    },
-    puedeCerrar,
-  )
+  // El resumen cuenta el taller entero, sea cual sea la pestaña: si dependiera de lo que se
+  // está mirando, «Para facturar» daría cero justo en la pestaña de todas.
+  const resumen = useQuery({
+    queryKey: ['ordenes', tenantId, sucursalId, 'resumen'],
+    queryFn: () => api.ordenes.listar({ pagina: 1, porPagina: 200, estado: 'en_taller' }),
+    enabled: puedeVer,
+  })
+  const cuenta = (estados: Orden['estado'][]) =>
+    (resumen.data?.datos ?? []).filter((o) => estados.includes(o.estado)).length
 
   return (
     <Shell
       titulo="Órdenes de trabajo"
-      requiere={{ modulo: 'servicios', accion: 'ver', sujeto: 'Orden' }}
+      requiere={accesoDeRuta(contrato.ordenes.listar)}
       acciones={
-        puedeCerrar ? (
-          <Boton accion="ordenes.cerrar" variante="principal" onClick={() => {}}>
-            Cerrar la orden
+        puedeAbrir ? (
+          <Boton
+            accion="global.nuevo"
+            variante="principal"
+            icono={<IconoAgregar />}
+            onClick={() => void navegar({ to: '/ordenes/nueva' })}
+          >
+            Recibir un vehículo
           </Boton>
         ) : undefined
       }
     >
-      <section className="grid grid-cols-[repeat(auto-fit,minmax(10.5rem,1fr))] gap-2.5">
-        <Kpi titulo="En proceso" valor="12" pie="3 sobre tiempo estimado" />
-        <Kpi titulo="Esperando autorización" valor="3" pie="la más vieja, 2 días" alerta />
-        <Kpi titulo="Esperando repuesto" valor="5" pie="2 con pedido a fábrica" alerta />
-        <Kpi titulo="Terminadas hoy" valor="8" pie="facturado $ 4.182.940,00" />
-      </section>
+      {resumen.data && (
+        <section
+          aria-label="Resumen"
+          className="grid grid-cols-[repeat(auto-fit,minmax(10.5rem,1fr))] gap-2.5"
+        >
+          <Kpi
+            titulo="Recibidas"
+            valor={cuenta(['recibida'])}
+            alElegir={() => setFiltro('en_taller')}
+          />
+          <Kpi
+            titulo="En proceso"
+            valor={cuenta(['en_proceso'])}
+            alElegir={() => setFiltro('en_taller')}
+          />
+          <Kpi
+            titulo="Esperando"
+            valor={cuenta(['esperando_repuesto', 'esperando_autorizacion'])}
+            alerta
+            alElegir={() => setFiltro('en_taller')}
+          />
+          <Kpi
+            titulo="Para facturar"
+            valor={cuenta(['terminada'])}
+            alerta
+            alElegir={() => setFiltro('terminada')}
+          />
+        </section>
+      )}
 
       <section className="overflow-hidden rounded-base border border-borde bg-superficie">
-        <header className="flex items-center gap-2.5 border-b border-borde px-3 py-2">
-          <h2 className="font-display text-dato font-semibold">Piso de taller</h2>
-          <span className="font-mono text-etiqueta text-texto-tenue">
-            {ORDENES.length} abiertas
-          </span>
-          {/* Se dice en la pantalla y no sólo en el código: una demo con datos
-              inventados sin avisar es una demo que engaña. */}
-          <span className="rounded-full border border-atencion px-2 py-px text-[10.5px] font-semibold text-atencion">
-            datos de ejemplo
-          </span>
-          {puedeCrear && (
-            <span className="ml-auto">
-              <Boton accion="global.nuevo" onClick={() => {}}>
-                Nueva orden
-              </Boton>
-            </span>
-          )}
+        <header className="flex flex-wrap items-center gap-2 border-b border-borde px-3 py-2">
+          <div role="radiogroup" aria-label="Qué órdenes" className="flex gap-1">
+            {FILTROS.map((f) => (
+              <label
+                key={f.valor}
+                className={`inline-flex h-7 cursor-pointer items-center rounded-base border px-2.5 text-etiqueta ${
+                  filtro === f.valor
+                    ? 'border-marca bg-marca-suave font-semibold text-marca'
+                    : 'border-borde text-texto-suave'
+                }`}
+              >
+                <input
+                  type="radio"
+                  name="filtro-ordenes"
+                  className="sr-only"
+                  checked={filtro === f.valor}
+                  onChange={() => setFiltro(f.valor)}
+                />
+                {f.texto}
+              </label>
+            ))}
+          </div>
+          <input
+            type="search"
+            aria-label="Buscar órdenes"
+            placeholder="Número, patente o pedido"
+            value={buscar}
+            onChange={(e) => setBuscar(e.target.value)}
+            className="ml-auto h-7 w-56 rounded-base border border-borde bg-superficie-2 px-2 text-dato outline-none placeholder:text-texto-tenue focus-visible:border-marca"
+          />
         </header>
 
-        {/*
-          El patrón de listado, que heredan todas las pantallas: tabla densa en
-          escritorio y tarjetas en teléfono. Una tabla con scroll horizontal en un
-          celular es una tabla rota, no una versión móvil.
+        {consulta.isPending && (
+          <div className="m-3 h-24 animate-pulse rounded-base bg-superficie-2" />
+        )}
+        {consulta.isError && (
+          <p role="alert" className="px-3 py-3 text-dato text-critico">
+            {mensajeGeneral(consulta.error)}
+          </p>
+        )}
+        {consulta.data && datos.length === 0 && (
+          <p className="px-3 py-4 text-dato text-texto-suave">
+            {buscar
+              ? `Ninguna orden coincide con «${buscar}».`
+              : filtro === 'terminada'
+                ? 'No hay órdenes esperando caja.'
+                : 'No hay autos en el taller.'}
+            {puedeAbrir &&
+              filtro === 'en_taller' &&
+              !buscar &&
+              ' Recibí uno con el botón de arriba.'}
+          </p>
+        )}
 
-          Se elige cuál renderizar en vez de ocultar una con CSS: armar las dos y
-          esconder una duplica el DOM, y sobre quinientas filas virtualizadas eso se
-          paga en la máquina del mostrador.
-        */}
-        {esEscritorio ? (
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-[56rem] border-collapse text-dato">
-              <thead>
-                <tr>
-                  {COLUMNAS.map((c) => (
-                    <th
-                      key={c}
-                      className="border-b border-borde bg-superficie-2 px-3 py-1.5 text-left text-[10.5px] font-semibold tracking-wider text-texto-tenue uppercase whitespace-nowrap"
-                    >
-                      {c}
-                    </th>
-                  ))}
-                  <th className="border-b border-borde bg-superficie-2 px-3 py-1.5 text-right text-[10.5px] font-semibold tracking-wider text-texto-tenue uppercase">
-                    Total
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {ORDENES.map((o) => (
-                  <tr
-                    key={o.numero}
-                    onClick={() => setSeleccionada(o.numero)}
-                    className={[
-                      'cursor-pointer',
-                      o.numero === seleccionada
-                        ? 'bg-marca-suave shadow-[inset_2px_0_0_var(--color-marca)]'
-                        : 'hover:bg-superficie-2',
-                    ].join(' ')}
+        {datos.length > 0 && esEscritorio && (
+          <table className="w-full text-dato">
+            <thead>
+              <tr className="text-left text-etiqueta text-texto-tenue">
+                {['Orden', 'Vehículo', 'Paga', 'Pedido', 'Mecánico', 'Estado', 'Total'].map((c) => (
+                  <th
+                    key={c}
+                    className={`border-b border-borde px-3 py-1.5 font-medium ${c === 'Total' ? 'text-right' : ''}`}
                   >
-                    <Celda mono>{o.numero}</Celda>
-                    <Celda mono>{o.dominio}</Celda>
-                    <Celda>{o.vehiculo}</Celda>
-                    <Celda>{o.cliente}</Celda>
-                    <Celda mono suave>
-                      {o.ingreso}
-                    </Celda>
-                    <Celda suave>{o.mecanico}</Celda>
-                    <Celda>
-                      <EstadoOT estado={o.estado} />
-                    </Celda>
-                    <td className="h-fila border-b border-borde-suave px-3 text-right font-mono whitespace-nowrap">
-                      {o.total ? (
-                        formatearImporte(o.total)
-                      ) : (
-                        <span className="text-texto-tenue">—</span>
-                      )}
-                    </td>
-                  </tr>
+                    {c}
+                  </th>
                 ))}
-              </tbody>
-            </table>
-          </div>
-        ) : (
+              </tr>
+            </thead>
+            <tbody>
+              {datos.map((o) => (
+                <tr key={o.id} className="hover:bg-superficie-2">
+                  <td className="h-fila border-b border-borde-suave px-3 py-1 font-mono">
+                    <Link
+                      to="/ordenes/$id"
+                      params={{ id: o.id }}
+                      className="text-marca hover:underline focus-visible:underline"
+                    >
+                      {nombreOrden(o.numero)}
+                    </Link>
+                  </td>
+                  <td className="h-fila border-b border-borde-suave px-3 py-1">
+                    <span className="inline-flex items-center gap-2">
+                      <Patente dominio={o.vehiculo.dominio} />
+                      <span className="text-texto-suave">
+                        {[o.vehiculo.marca, o.vehiculo.modelo].filter(Boolean).join(' ')}
+                      </span>
+                    </span>
+                  </td>
+                  <td className="h-fila border-b border-borde-suave px-3">
+                    {o.paga?.razonSocial ?? '—'}
+                  </td>
+                  <td className="h-fila max-w-72 truncate border-b border-borde-suave px-3 text-texto-suave">
+                    {o.pedido}
+                  </td>
+                  <td className="h-fila border-b border-borde-suave px-3 text-texto-suave">
+                    {o.mecanico?.nombre ?? '—'}
+                  </td>
+                  <td className="h-fila border-b border-borde-suave px-3">
+                    <EstadoOT estado={o.estado} />
+                  </td>
+                  <td className="tabular h-fila border-b border-borde-suave px-3 text-right font-mono">
+                    {o.total === '0.00' ? '—' : `$ ${formatearImporte(o.total)}`}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+        {datos.length > 0 && !esEscritorio && (
           <ul className="divide-y divide-borde-suave">
-            {ORDENES.map((o) => (
-              <Tarjeta key={o.numero} orden={o} />
+            {datos.map((o) => (
+              <li key={o.id} className="grid gap-1 px-3 py-2.5">
+                <div className="flex items-center gap-2">
+                  <Link
+                    to="/ordenes/$id"
+                    params={{ id: o.id }}
+                    className="font-mono text-dato text-marca"
+                  >
+                    {nombreOrden(o.numero)}
+                  </Link>
+                  <Patente dominio={o.vehiculo.dominio} />
+                  <span className="ml-auto">
+                    <EstadoOT estado={o.estado} />
+                  </span>
+                </div>
+                <span className="truncate text-etiqueta text-texto-suave">{o.pedido}</span>
+              </li>
             ))}
           </ul>
         )}
@@ -143,71 +244,30 @@ export function PantallaOrdenes() {
   )
 }
 
-function Celda({
-  children,
-  mono = false,
-  suave = false,
-}: {
-  children: React.ReactNode
-  mono?: boolean
-  suave?: boolean
-}) {
-  return (
-    <td
-      className={[
-        'h-fila border-b border-borde-suave px-3 whitespace-nowrap',
-        mono ? 'font-mono text-etiqueta' : '',
-        suave ? 'text-texto-suave' : '',
-      ].join(' ')}
-    >
-      {children}
-    </td>
-  )
-}
-
-/** La misma fila, en teléfono: sólo lo que se necesita para reconocerla y decidir. */
-function Tarjeta({ orden }: { orden: OrdenListada }) {
-  return (
-    <li className="grid gap-1 px-3 py-2.5">
-      <div className="flex items-baseline gap-2">
-        <span className="font-mono text-dato font-semibold">{orden.dominio}</span>
-        <span className="truncate text-dato text-texto-suave">{orden.vehiculo}</span>
-        <span className="ml-auto font-mono text-dato">
-          {orden.total ? formatearImporte(orden.total) : '—'}
-        </span>
-      </div>
-      <div className="flex items-center gap-2">
-        <EstadoOT estado={orden.estado} />
-        <span className="truncate text-etiqueta text-texto-suave">{orden.cliente}</span>
-        <span className="ml-auto font-mono text-etiqueta text-texto-tenue">{orden.ingreso}</span>
-      </div>
-    </li>
-  )
-}
-
 function Kpi({
   titulo,
   valor,
-  pie,
   alerta = false,
+  alElegir,
 }: {
   titulo: string
-  valor: string
-  pie: string
+  valor: number
   alerta?: boolean
+  /** Tocar el número muestra esas órdenes. */
+  alElegir: () => void
 }) {
   return (
-    <div className="grid gap-0.5 rounded-base border border-borde bg-superficie px-3 py-2.5">
-      <span className="text-[11.5px] text-texto-suave">{titulo}</span>
+    <button
+      type="button"
+      onClick={alElegir}
+      className="grid gap-0.5 rounded-base border border-borde bg-superficie px-3 py-2.5 text-left hover:bg-superficie-2"
+    >
+      <span className="text-etiqueta text-texto-suave">{titulo}</span>
       <b
-        className={[
-          'font-display text-2xl leading-tight font-semibold',
-          alerta ? 'text-atencion' : '',
-        ].join(' ')}
+        className={`font-display text-2xl leading-tight font-semibold ${alerta && valor > 0 ? 'text-atencion' : ''}`}
       >
         {valor}
       </b>
-      <small className="font-mono text-[10.5px] text-texto-tenue">{pie}</small>
-    </div>
+    </button>
   )
 }

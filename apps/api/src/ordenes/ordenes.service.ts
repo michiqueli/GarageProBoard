@@ -28,6 +28,7 @@ import {
   tipoComprobante,
   titularidad,
   usuario,
+  usuarioSucursal,
   vehiculo,
 } from '@gpb/db/schema'
 import { Inject, Injectable } from '@nestjs/common'
@@ -154,6 +155,19 @@ export class ServicioOrdenes {
           filas.map((f) => f.id),
         ),
       }
+    })
+  }
+
+  /** Los usuarios activos que entran a la sucursal activa: a quién se le asigna una orden. */
+  personal() {
+    return this.datos.transaccion(async (tx, sesion) => {
+      const filas = await tx
+        .select({ id: usuario.id, nombre: usuario.nombre, apellido: usuario.apellido })
+        .from(usuario)
+        .innerJoin(usuarioSucursal, eq(usuarioSucursal.usuarioId, usuario.id))
+        .where(and(eq(usuarioSucursal.sucursalId, sesion.sucursalId), eq(usuario.activo, true)))
+        .orderBy(asc(usuario.apellido), asc(usuario.nombre))
+      return { datos: filas.map((u) => ({ id: u.id, nombre: `${u.nombre} ${u.apellido}`.trim() })) }
     })
   }
 

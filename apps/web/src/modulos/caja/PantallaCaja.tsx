@@ -16,6 +16,7 @@ import {
   IconoMail,
   IconoVerificar,
 } from '../../componentes/iconos.tsx'
+import { Patente } from '../../componentes/Patente.tsx'
 import { Selector } from '../../componentes/Selector.tsx'
 import { type ClienteElegido, SelectorCliente } from '../../componentes/SelectorCliente.tsx'
 import { Shell } from '../../componentes/Shell.tsx'
@@ -86,16 +87,128 @@ function totalDe(r: Renglon) {
  */
 export function PantallaCaja() {
   const puedeFacturar = usePuedeUsar(contrato.comprobantes.emitir)
+  const puedeVerOrdenes = usePuedeUsar(contrato.ordenes.listar)
+  const [precarga, setPrecarga] = useState<Precarga | null>(null)
 
   return (
     <Shell titulo="Caja" requiere={accesoDeRuta(contrato.comprobantes.listar)}>
-      {puedeFacturar && <Facturar />}
+      {puedeFacturar && puedeVerOrdenes && (
+        <OrdenesParaFacturar
+          elegida={precarga?.ordenId ?? null}
+          alElegir={(p) => {
+            setPrecarga(p)
+            requestAnimationFrame(() =>
+              document.getElementById('facturar')?.scrollIntoView({ block: 'start' }),
+            )
+          }}
+        />
+      )}
+      {puedeFacturar && (
+        <Facturar
+          key={precarga?.ordenId ?? 'mostrador'}
+          precarga={precarga}
+          alTerminarOrden={() => setPrecarga(null)}
+        />
+      )}
       <Ultimos />
     </Shell>
   )
 }
 
-function Facturar() {
+/** Lo que trae una orden terminada a la caja: a quién facturarle y qué cobrar. */
+interface Precarga {
+  ordenId: string
+  numero: number
+  paga: ClienteElegido | null
+  renglones: Renglon[]
+}
+
+/**
+ * Las órdenes que el taller terminó y esperan caja. Facturar una precarga la factura con
+ * quien paga y sus trabajos y repuestos; al emitirse, la orden pasa a facturada sola.
+ */
+function OrdenesParaFacturar({
+  elegida,
+  alElegir,
+}: {
+  elegida: string | null
+  alElegir: (p: Precarga) => void
+}) {
+  const tenantId = usarSesion((e) => e.datos?.tenant.id)
+  const sucursalId = usarSesion((e) => e.datos?.sucursalActiva.id)
+  const consulta = useQuery({
+    queryKey: ['ordenes', tenantId, sucursalId, 'terminada', ''],
+    queryFn: () => api.ordenes.listar({ pagina: 1, porPagina: 50, estado: 'terminada' }),
+  })
+  const [cargando, setCargando] = useState<string | null>(null)
+  const datos = consulta.data?.datos ?? []
+  if (!consulta.data || datos.length === 0) return null
+
+  async function elegir(id: string) {
+    setCargando(id)
+    try {
+      const o = await api.ordenes.ficha({ id })
+      alElegir({
+        ordenId: o.id,
+        numero: o.numero,
+        paga: o.paga,
+        renglones: o.items.map((i) => ({
+          ...renglonVacio(),
+          descripcion: i.descripcion,
+          cantidad: i.cantidad.replace(/\.?0+$/, ''),
+          precioUnitario: i.precioUnitario.replace(/\.?0+$/, ''),
+          codigoAlicuota: i.codigoAlicuota as Renglon['codigoAlicuota'],
+        })),
+      })
+    } catch (error) {
+      notificar.error(`No se pudo traer la orden. ${mensajeGeneral(error)}`)
+    } finally {
+      setCargando(null)
+    }
+  }
+
+  return (
+    <section
+      aria-label="Órdenes para facturar"
+      className="overflow-hidden rounded-base border border-ok bg-superficie"
+    >
+      <header className="flex items-center gap-2 border-b border-borde px-3 py-2">
+        <h2 className="font-display text-dato font-semibold">Órdenes para facturar</h2>
+        <span className="rounded-full bg-ok px-2 text-etiqueta font-semibold text-fondo">
+          {datos.length}
+        </span>
+      </header>
+      <ul className="divide-y divide-borde-suave">
+        {datos.map((o) => (
+          <li key={o.id} className="flex flex-wrap items-center gap-x-3 gap-y-1 px-3 py-2">
+            <span className="font-mono text-dato">OT {String(o.numero).padStart(6, '0')}</span>
+            <Patente dominio={o.vehiculo.dominio} />
+            <span className="text-dato">{o.paga?.razonSocial ?? 'Sin quien pague'}</span>
+            <span className="tabular ml-auto font-mono text-dato">
+              $ {formatearImporte(o.total)}
+            </span>
+            <Boton
+              tamano="chico"
+              variante={elegida === o.id ? 'principal' : 'normal'}
+              deshabilitado={cargando === o.id}
+              onClick={() => void elegir(o.id)}
+            >
+              {elegida === o.id ? 'Facturando' : 'Facturar'}
+            </Boton>
+          </li>
+        ))}
+      </ul>
+    </section>
+  )
+}
+
+function Facturar({
+  precarga,
+  alTerminarOrden,
+}: {
+  precarga: Precarga | null
+  alTerminarOrden: () => void
+}) {
   const tenantId = usarSesion((e) => e.datos?.tenant.id)
   const sucursalId = usarSesion((e) => e.datos?.sucursalActiva.id)
   const cache = useQueryClient()
@@ -106,15 +219,17 @@ function Facturar() {
   })
 
   const [puntoVentaId, setPuntoVentaId] = useState<string | null>(null)
-  const [modo, setModo] = useState<Modo>('consumidor')
-  const [cliente, setCliente] = useState<ClienteElegido | null>(null)
+  const [modo, setModo] = useState<Modo>(precarga?.paga ? 'cliente' : 'consumidor')
+  const [cliente, setCliente] = useState<ClienteElegido | null>(precarga?.paga ?? null)
   const [cuit, setCuit] = useState('')
   const [nombreCf, setNombreCf] = useState('')
   const [dniCf, setDniCf] = useState('')
   const [concepto, setConcepto] = useState<1 | 2 | 3>(1)
   const [servicio, setServicio] = useState({ desde: '', hasta: '', vencimientoPago: '' })
   const [condicionVenta, setCondicionVenta] = useState<string>('Contado')
-  const [renglones, setRenglones] = useState<Renglon[]>([renglonVacio()])
+  const [renglones, setRenglones] = useState<Renglon[]>(
+    precarga?.renglones.length ? precarga.renglones : [renglonVacio()],
+  )
   const [tocado, setTocado] = useState(false)
 
   const pv: PuntoVenta | undefined =
@@ -175,6 +290,7 @@ function Facturar() {
         concepto,
         servicio: concepto === 1 ? null : servicio,
         condicionVenta,
+        ordenId: precarga?.ordenId ?? null,
         renglones: renglones.map((r) => ({
           descripcion: r.descripcion.trim(),
           cantidad: aDecimal(r.cantidad),
@@ -189,6 +305,10 @@ function Facturar() {
         accion: { texto: 'Abrir el PDF', alHacer: () => void abrirPdf(d.id) },
       })
       await cache.invalidateQueries({ queryKey: ['comprobantes', tenantId] })
+      if (precarga) {
+        await cache.invalidateQueries({ queryKey: ['ordenes', tenantId] })
+        alTerminarOrden()
+      }
       setRenglones([renglonVacio()])
       setNombreCf('')
       setDniCf('')
@@ -300,11 +420,19 @@ function Facturar() {
 
   return (
     <section
+      id="facturar"
       aria-label="Facturar"
       className="grid gap-3 rounded-base border border-borde bg-superficie p-3"
     >
       <header className="flex flex-wrap items-center gap-x-3 gap-y-2">
-        <h2 className="font-display text-dato font-semibold">Facturar</h2>
+        <h2 className="font-display text-dato font-semibold">
+          {precarga ? `Facturar la OT ${String(precarga.numero).padStart(6, '0')}` : 'Facturar'}
+        </h2>
+        {precarga && (
+          <Boton tamano="chico" variante="sutil" onClick={alTerminarOrden}>
+            Dejar la orden para después
+          </Boton>
+        )}
         {(opciones.data?.puntosVenta.length ?? 0) > 1 ? (
           <div className="w-72">
             <Selector

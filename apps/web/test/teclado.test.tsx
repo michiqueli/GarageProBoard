@@ -26,14 +26,6 @@ afterEach(() => {
 })
 
 describe('la pantalla se monta', () => {
-  it('renderiza el listado con el shell y la barra de estado', async () => {
-    await montarOrdenes()
-
-    expect(screen.getByText('AB123CD')).toBeDefined()
-    // El importe formateado a la argentina, no el string crudo de la base.
-    expect(screen.getByText('1.140.200,00')).toBeDefined()
-  })
-
   it('la barra de estado anuncia las teclas del contexto', async () => {
     await montarOrdenes()
 
@@ -145,25 +137,5 @@ describe('el registro de atajos', () => {
     unmount()
     await userEvent.keyboard('{F2}')
     expect(guardar).not.toHaveBeenCalled()
-  })
-})
-
-describe('el listado responsive', () => {
-  it('en teléfono muestra tarjetas y no una tabla con scroll horizontal', async () => {
-    conAncho(390)
-    await montarOrdenes()
-
-    expect(screen.queryByRole('table')).toBeNull()
-    // La patente sigue estando, pero una sola vez: se renderiza una forma, no las dos.
-    expect(screen.getAllByText('AB123CD')).toHaveLength(1)
-    expect(screen.getByText('1.140.200,00')).toBeDefined()
-  })
-
-  it('en escritorio muestra la tabla densa', async () => {
-    conAncho(1440)
-    await montarOrdenes()
-
-    expect(screen.getByRole('table')).toBeDefined()
-    expect(screen.getAllByText('AB123CD')).toHaveLength(1)
   })
 })

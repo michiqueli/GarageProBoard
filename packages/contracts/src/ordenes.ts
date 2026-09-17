@@ -138,6 +138,16 @@ export const contratoOrdenes = {
     )
     .output(z.object({ datos: z.array(ordenResumen), total: z.number().int() })),
 
+  personal: conPermiso('servicios', 'ver', 'Orden')
+    .route({
+      method: 'GET',
+      path: '/ordenes/personal',
+      tags: [TAG],
+      operationId: 'personalOrdenes',
+      summary: 'Quiénes trabajan en la sucursal activa, para asignarles una orden',
+    })
+    .output(z.object({ datos: z.array(z.object({ id: z.uuid(), nombre: z.string() })) })),
+
   ficha: conPermiso('servicios', 'ver', 'Orden')
     .route({
       method: 'GET',

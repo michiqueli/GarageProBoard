@@ -27,7 +27,9 @@ import { PantallaClientes } from './modulos/clientes/PantallaClientes.tsx'
 import { PantallaFichaCliente } from './modulos/clientes/PantallaFichaCliente.tsx'
 import { PantallaCertificadoAfip } from './modulos/empresas/PantallaCertificadoAfip.tsx'
 import { PantallaEmpresas } from './modulos/empresas/PantallaEmpresas.tsx'
+import { PantallaFichaOrden } from './modulos/ordenes/PantallaFichaOrden.tsx'
 import { PantallaOrdenes } from './modulos/ordenes/PantallaOrdenes.tsx'
+import { PantallaRecepcion } from './modulos/ordenes/PantallaRecepcion.tsx'
 import { PantallaRoles } from './modulos/roles/PantallaRoles.tsx'
 import { PantallaUsuarios } from './modulos/usuarios/PantallaUsuarios.tsx'
 import { PantallaFichaVehiculo } from './modulos/vehiculos/PantallaFichaVehiculo.tsx'
@@ -155,6 +157,20 @@ const rutaOrdenes = createRoute({
   component: PantallaOrdenes,
 })
 
+const rutaRecepcion = createRoute({
+  getParentRoute: () => conSesion,
+  path: 'ordenes/nueva',
+  staticData: { pantalla: 'ordenes' },
+  component: PantallaRecepcion,
+})
+
+const rutaFichaOrden = createRoute({
+  getParentRoute: () => conSesion,
+  path: 'ordenes/$id',
+  staticData: { pantalla: 'ordenes' },
+  component: PantallaFichaOrden,
+})
+
 const rutaVehiculos = createRoute({
   getParentRoute: () => conSesion,
   path: 'vehiculos',
@@ -234,6 +250,8 @@ const arbol = raiz.addChildren([
   conSesion.addChildren([
     rutaInicio,
     rutaOrdenes,
+    rutaRecepcion,
+    rutaFichaOrden,
     rutaVehiculos,
     rutaFichaVehiculo,
     rutaClientes,

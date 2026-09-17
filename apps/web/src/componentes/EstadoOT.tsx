@@ -5,6 +5,7 @@ export type Estado =
   | 'esperando_repuesto'
   | 'en_proceso'
   | 'terminada'
+  | 'facturada'
   | 'entregada'
   | 'anulada'
 
@@ -43,7 +44,10 @@ const PRESENTACION: Record<Estado, Presentacion> = {
     reloj: true,
   },
   en_proceso: { etiqueta: 'En proceso', forma: 'llena', clase: 'bg-marca text-fondo' },
-  terminada: { etiqueta: 'Terminada', forma: 'llena', clase: 'bg-ok text-fondo' },
+  // Terminada espera a caja: alguien tiene que facturarla.
+  terminada: { etiqueta: 'Para facturar', forma: 'llena', clase: 'bg-ok text-fondo' },
+  // Facturada espera que el cliente la retire: en curso normal.
+  facturada: { etiqueta: 'Facturada', forma: 'contorno', clase: 'text-ok' },
   entregada: { etiqueta: 'Entregada', forma: 'texto', clase: 'text-texto-tenue' },
   anulada: { etiqueta: 'Anulada', forma: 'texto', clase: 'text-critico line-through' },
 }

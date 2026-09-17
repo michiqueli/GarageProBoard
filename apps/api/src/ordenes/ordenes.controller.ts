@@ -50,6 +50,11 @@ export class ControladorOrdenes {
     return implement(c.listar).handler(({ input }) => this.servicio.listar(input))
   }
 
+  @Operacion(c.personal)
+  personal() {
+    return implement(c.personal).handler(() => this.servicio.personal())
+  }
+
   @Operacion(c.ficha)
   ficha() {
     return implement(c.ficha).handler(({ input, errors }) =>
