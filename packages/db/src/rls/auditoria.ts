@@ -83,6 +83,26 @@ export const TABLAS_AUDITADAS: readonly TablaAuditada[] = [
   { tabla: 'cliente' },
   { tabla: 'proveedor' },
   { tabla: 'empleado' },
+  {
+    tabla: 'credencial',
+    nota: 'Quién emitió y quién revocó una credencial, y cuándo. Es la mitad de poder explicar un fichaje raro.',
+  },
+  {
+    tabla: 'estacion_fichaje',
+    sinColumnas: ['token_hash'],
+    nota: 'El token no entra: con él se ficha sin sesión, así que en la auditoría sería la fila más valiosa de la base.',
+  },
+  {
+    tabla: 'jornada',
+    solo: ['update', 'delete'],
+    nota: 'Marcar entrada es lo normal y no se audita. Lo que sí: que alguien cambie o borre una marca después.',
+  },
+  {
+    tabla: 'sesion_trabajo',
+    solo: ['update', 'delete'],
+    cuandoActualiza: 'old.fin is not null',
+    nota: 'Cerrar una sesión abierta es un escaneo más. Tocar una ya cerrada es corregir mano de obra, y eso no pasa sin quedar escrito.',
+  },
   { tabla: 'marca' },
   { tabla: 'modelo' },
   { tabla: 'vehiculo' },
@@ -123,6 +143,9 @@ export const TABLAS_SIN_AUDITAR: Readonly<
     'renovación, cada quince minutos, por usuario.',
   tenant_modulo: 'La escribe el back-office, con su propia auditoría y su propio rol.',
   aviso: 'Marcar como leído un aviso propio no es un cambio que nadie audite.',
+  evento_escaneo:
+    'Es la bitácora cruda de cada escaneo, y auditar una bitácora es una recursión. Lo que hay ' +
+    'que poder contestar —«yo fiché»— se contesta leyéndola, no auditándola.',
 }
 
 /** Nombres de columna que huelen a secreto: el test se planta si alguna queda adentro. */

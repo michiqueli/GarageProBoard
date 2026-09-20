@@ -13,6 +13,7 @@ import {
   uuid,
 } from 'drizzle-orm/pg-core'
 import { actualizadoEn, creadoEn, pk, tenantId } from './_comunes.ts'
+import { empleado } from './comercial.ts'
 import { sucursal } from './organizacion.ts'
 import { tenant } from './tenant.ts'
 
@@ -26,6 +27,15 @@ export const usuario = pgTable(
     hashPassword: text().notNull(),
     nombre: text().notNull(),
     apellido: text().notNull(),
+    /**
+     * Su legajo, si además de entrar al sistema trabaja acá. Opcional en los dos sentidos:
+     * el contador externo entra y no es empleado, y el lavador es empleado y no entra.
+     *
+     * Es lo que hace que una persona sea una sola: el mecánico que ficha con su credencial y
+     * el que abre la pantalla de sus órdenes son la misma fila de `empleado`, así que la
+     * condición «sólo las mías» se evalúa contra un solo identificador.
+     */
+    empleadoId: uuid().references(() => empleado.id),
     activo: boolean().notNull().default(true),
     ultimoAcceso: timestamp({ withTimezone: true }),
     creadoEn: creadoEn(),
@@ -43,6 +53,9 @@ export const usuario = pgTable(
     // concesionarias necesita dos correos. Es el precio de no armar un modelo de
     // identidad global, que para este producto sería complicarse de más.
     uniqueIndex('usuario_email_uq').on(t.email),
+    // Un legajo, una cuenta. Dos usuarios sobre el mismo empleado harían que «sus órdenes»
+    // dependiera de con cuál de las dos entró.
+    unique('usuario_empleado_uq').on(t.empleadoId),
     // En minúsculas siempre: sin esto, Admin@taller.com y admin@taller.com serían dos
     // usuarios distintos y uno de los dos no podría entrar nunca.
     check('usuario_email_minuscula', sql`${t.email} = lower(${t.email})`),

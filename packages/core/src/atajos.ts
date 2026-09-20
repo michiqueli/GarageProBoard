@@ -23,6 +23,7 @@ export const PANTALLAS = [
   'caja',
   'clientes',
   'vehiculos',
+  'personal',
 ] as const
 
 export type Pantalla = (typeof PANTALLAS)[number]
@@ -38,6 +39,7 @@ export const ETIQUETA_AMBITO: Readonly<Record<Ambito, string>> = {
   caja: 'Caja y facturación',
   clientes: 'Clientes',
   vehiculos: 'Vehículos',
+  personal: 'Personal y credenciales',
 }
 
 export interface DefinicionAccion {
@@ -310,6 +312,25 @@ const POR_PANTALLA: readonly DefinicionAccion[] = [
     etiqueta: 'Copiar patente',
     porOmision: 'Alt+P',
     reasignable: true,
+  },
+
+  {
+    accion: 'personal.emitirCredencial',
+    principal: true,
+    ambito: 'personal',
+    etiqueta: 'Emitir la credencial',
+    porOmision: 'F4',
+    reasignable: true,
+    descripcion:
+      'Del empleado marcado. Si ya tenía una, pide el motivo del reemplazo antes de revocarla.',
+  },
+  {
+    accion: 'personal.revocarCredencial',
+    ambito: 'personal',
+    etiqueta: 'Revocar la credencial',
+    porOmision: 'F9',
+    reasignable: true,
+    descripcion: 'Queda sin poder fichar hasta que se le emita otra.',
   },
 ]
 

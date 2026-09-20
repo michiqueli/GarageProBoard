@@ -7,10 +7,12 @@ import {
   type ReglaPermiso,
   ROLES_PREDEFINIDOS,
 } from '@gpb/core'
-import { type Db, sembrarCatalogos } from '@gpb/db'
+import { type Db, eq, sembrarCatalogos } from '@gpb/db'
 import { levantarPostgres, type PostgresDePrueba } from '@gpb/db/pruebas'
 import {
+  empleado,
   empresa,
+  entidadComercial,
   rol,
   sucursal,
   tenant,
@@ -191,4 +193,65 @@ export async function sembrarConcesionaria(db: Db, s: Semilla) {
   }
 
   return { tenant: t, empresa: e, sucursales, roles, usuario: u }
+}
+
+/** Un CUIL de persona física al azar, con el dígito verificador bien calculado. */
+function cuilAlAzar(): string {
+  for (;;) {
+    const cuil = `20${String(Math.floor(Math.random() * 1e8)).padStart(8, '0')}`
+    for (let dv = 0; dv <= 9; dv++) if (cuitValido(cuil + dv)) return cuil + dv
+  }
+}
+
+/**
+ * Un empleado, que es quien ficha y quien puede tener una orden asignada.
+ *
+ * Con `usuarioId` se lo engancha a una cuenta, y **ahí aparece la regla que importa**: la
+ * condición del rol Mecánico —«sólo mis órdenes»— se evalúa contra el legajo, así que una
+ * cuenta de mecánico sin empleado no puede editar ninguna orden. Sembrarlo es lo que hace
+ * que el test pruebe el caso real y no una cuenta a medio armar.
+ */
+export async function sembrarEmpleado(
+  db: Db,
+  datos: {
+    tenantId: string
+    legajo: string
+    nombre: string
+    apellido: string
+    puesto?: string
+    sucursalId?: string | undefined
+    usuarioId?: string | undefined
+  },
+): Promise<string> {
+  const [identidad] = await db
+    .insert(entidadComercial)
+    .values({
+      tenantId: datos.tenantId,
+      tipoDocumento: 86,
+      numeroDocumento: cuilAlAzar(),
+      tipoPersona: 'fisica',
+      razonSocial: `${datos.apellido}, ${datos.nombre}`,
+      nombre: datos.nombre,
+      apellido: datos.apellido,
+      condicionIva: 5,
+    })
+    .returning({ id: entidadComercial.id })
+  if (!identidad) throw new Error('sin identidad del empleado')
+
+  await db.insert(empleado).values({
+    id: identidad.id,
+    tenantId: datos.tenantId,
+    legajo: datos.legajo,
+    puesto: datos.puesto ?? 'mecanico',
+    sucursalId: datos.sucursalId ?? null,
+  })
+
+  if (datos.usuarioId) {
+    await db
+      .update(usuario)
+      .set({ empleadoId: identidad.id })
+      .where(eq(usuario.id, datos.usuarioId))
+  }
+
+  return identidad.id
 }

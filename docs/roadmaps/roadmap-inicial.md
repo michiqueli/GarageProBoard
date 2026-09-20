@@ -202,12 +202,22 @@ verdad. Qué se trae y qué cambia ahora que el DMS es nuestro, en
 - ⬜ Turnos y agenda
 - ✅ Apertura de OT con los cuatro roles: titular, quien trae, quien autoriza y quien paga
 - ⬜ Operaciones con tiempos de referencia por terminal
-- ⬜ Fichaje de mecánicos por QR: dos escaneos, tres segundos, sin login. Tiempo real
-      contra tiempo de referencia
+- ✅ **Fichaje de mecánicos por QR**: dos escaneos, tres segundos, sin login. La PC del taller
+      se registra como estación y se autentica sola; la credencial abre y cierra la sesión de
+      trabajo sobre la orden, con fallback numérico y todo escaneo registrado. Falta comparar
+      contra el tiempo de referencia, que llega con el catálogo de services
+- ✅ **Reloj de entrada y salida** para todo el personal, con la misma credencial, y la
+      asistencia del día en RRHH
 - ✅ QR firmado impreso en la propia OT (`GT1:O:…`), con el número para tipear. Copia taller y
       copia cliente con firma de conformidad
+- ✅ **Credenciales del personal** (`GT1:M:…`): cada empleado con su legajo y su QR firmado, que
+      se emite, se reemplaza y se revoca **con motivo**, y se imprime de a diez por hoja para
+      recortar. Es la mitad del fichaje que no es el kiosco, y el legajo grande en la tarjeta es
+      lo que se tipea cuando el QR se ensucia. En RRHH → Personal
 - ⬜ Esperas con motivo: sin eso no se explica por qué un auto estuvo seis días
-- ⬜ Auto-cierre de fin de turno, también al arrancar el servidor
+- ✅ Auto-cierre de fin de turno, colgado del primer escaneo del día: un trabajo programado
+      no sirve si el proceso se reinició antes de la hora, y además tendría que recorrer todas
+      las concesionarias, que es justo lo que RLS le impide al rol de la aplicación
 - ⬜ Correcciones de tiempo con auditoría y motivo obligatorio
 - ✅ Repuestos consumidos, con descuento de stock: la orden busca en el catálogo y el stock
       sigue a sus renglones; los pedidos de repuestos del taller pasan a la orden al entregarlos.
@@ -359,10 +369,14 @@ compra en vez de un inventario.
 es de las cosas que más atan a un cliente. Con contabilidad, tesorería y sueldos adentro no
 queda nada afuera que justifique un segundo proveedor.
 
-- ⬜ Legajo del empleado
-- ⬜ **Asistencia con el mismo QR firmado del taller** (`GT1:M:…`, en
-      `packages/core/src/qr.ts`): la credencial marca entrada y salida de **todos** los
-      empleados, no sólo el fichaje de los mecánicos en las órdenes
+- 🔨 Legajo del empleado: documento, legajo, puesto, sucursal, convenio, categoría y fechas
+      de ingreso y egreso, desde el 18/09/2026. Falta lo que depende de la liquidación
+- ✅ **La credencial** (`GT1:M:…`, en `packages/core/src/qr.ts`) ya está emitida e impresa para
+      **todos** los empleados, no sólo los mecánicos: es la misma para el fichaje del taller y
+      para la asistencia
+- ✅ **Asistencia**: la credencial marca entrada y salida en el reloj de la puerta, y la
+      jornada del día se ve en RRHH → Asistencia. Falta corregirla a mano, que lleva motivo y
+      auditoría
 - ⬜ **Liquidación de sueldos** con convenio SMATA y el personal fuera de convenio
 - ⬜ Recibos, cargas sociales, libro de sueldos digital, F.931
 - ⬜ ART, obra social y sindicato
@@ -373,6 +387,11 @@ queda nada afuera que justifique un segundo proveedor.
 ### Transversal — `apps/mobile` ⬜
 
 La app nativa, que se integra con todo lo anterior en vez de ser un sistema aparte.
+
+**Va después de un piloto, y está razonado**: la recepción en tablet se hace primero como
+una sección más de la web, con la persona identificada por su credencial y el modo táctil
+puesto por el dispositivo. Por qué no una app ahora y por qué no un usuario compartido, en
+[la recepción en tablet](../tecnicos/recepcion-en-tablet.md).
 
 - ⬜ **Peritaje digital** en recepción: fotos del vehículo, daños marcados y **firma del
       cliente en pantalla**, y la orden se abre sola desde ahí

@@ -7,9 +7,11 @@ import { contratoCertificados } from './certificados.ts'
 import { contratoClientes } from './clientes.ts'
 import { contratoComprobantes } from './comprobantes.ts'
 import { contratoConfiguracion } from './configuracion.ts'
+import { contratoFichaje } from './fichaje.ts'
 import { contratoOrdenes } from './ordenes.ts'
 import { contratoOrganizacion } from './organizacion.ts'
 import { contratoPadron } from './padron.ts'
+import { contratoPersonal } from './personal.ts'
 import { contratoProveedores } from './proveedores.ts'
 import { contratoCompras, contratoPedidosRepuestos, contratoRepuestos } from './repuestos.ts'
 import { contratoRoles } from './roles.ts'
@@ -24,9 +26,11 @@ export * from './clientes.ts'
 export * from './comprobantes.ts'
 export * from './comunes.ts'
 export * from './configuracion.ts'
+export * from './fichaje.ts'
 export * from './ordenes.ts'
 export * from './organizacion.ts'
 export * from './padron.ts'
+export * from './personal.ts'
 export * from './proveedores.ts'
 export * from './repuestos.ts'
 export * from './roles.ts'
@@ -49,6 +53,8 @@ export const contrato = {
   roles: contratoRoles,
   organizacion: contratoOrganizacion,
   padron: contratoPadron,
+  personal: contratoPersonal,
+  fichaje: contratoFichaje,
   clientes: contratoClientes,
   certificados: contratoCertificados,
   configuracion: contratoConfiguracion,

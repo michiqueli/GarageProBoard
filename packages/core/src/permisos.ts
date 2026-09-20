@@ -250,8 +250,13 @@ export const ROLES_PREDEFINIDOS: RolPredefinido[] = [
       { action: 'ver', subject: ['Orden', 'Vehiculo', 'Repuesto'] },
       // Sólo edita las órdenes que tiene asignadas: la condición se evalúa contra el
       // objeto, así que no puede tocar el trabajo de otro aunque conozca el número.
+      //
+      // Va contra su **legajo** y no contra su usuario: el mecánico de una orden es un
+      // empleado, que es el mismo que ficha con la credencial. Si esta cuenta no tiene
+      // legajo, el marcador queda sin resolver y la regla no da nada — ver
+      // `resolverCondiciones`.
       // biome-ignore lint/suspicious/noTemplateCurlyInString: marcador que resuelve resolverCondiciones() al iniciar sesión, no una interpolación olvidada
-      { action: 'editar', subject: 'Orden', conditions: { mecanicoId: '${usuarioId}' } },
+      { action: 'editar', subject: 'Orden', conditions: { mecanicoId: '${empleadoId}' } },
     ],
   },
   {
@@ -298,23 +303,46 @@ export const ROLES_PREDEFINIDOS: RolPredefinido[] = [
 
 /**
  * Reemplaza los marcadores de las condiciones con los datos de quien está usando el
- * sistema. `{ mecanicoId: '${usuarioId}' }` sólo sirve una vez que sabemos quién es.
+ * sistema. `{ mecanicoId: '${empleadoId}' }` sólo sirve una vez que sabemos quién es.
+ *
+ * **Un marcador sin valor no se resuelve a `null`: se resuelve para el lado de negar.**
+ * Es la parte que importa. «Las órdenes mías» dicho por alguien que no tiene legajo no son
+ * las órdenes sin mecánico asignado — son ninguna. Resolverlo a `null`, que es lo que hacía
+ * antes, convertía una cuenta sin legajo en la que puede editar **todas** las órdenes que
+ * todavía no tienen mecánico, que en un taller son justamente las recién recibidas.
+ *
+ * Por eso los dos casos caen del mismo lado: un permiso condicional que no se puede evaluar
+ * se descarta, y una prohibición condicional que no se puede evaluar pasa a prohibir todo.
  */
 export function resolverCondiciones(
   reglas: readonly ReglaPermiso[],
-  contexto: Readonly<Record<string, string>>,
+  contexto: Readonly<Record<string, string | null | undefined>>,
 ): ReglaPermiso[] {
-  return reglas.map((regla) => {
-    if (!regla.conditions) return regla
+  const resueltas: ReglaPermiso[] = []
 
-    const resueltas: Record<string, unknown> = {}
-    for (const [clave, valor] of Object.entries(regla.conditions)) {
-      resueltas[clave] =
-        typeof valor === 'string' && valor.startsWith('${') && valor.endsWith('}')
-          ? (contexto[valor.slice(2, -1)] ?? null)
-          : valor
+  for (const regla of reglas) {
+    if (!regla.conditions) {
+      resueltas.push(regla)
+      continue
     }
 
-    return { ...regla, conditions: resueltas }
-  })
+    const condiciones: Record<string, unknown> = {}
+    let faltaAlguno = false
+
+    for (const [clave, valor] of Object.entries(regla.conditions)) {
+      const esMarcador = typeof valor === 'string' && valor.startsWith('${') && valor.endsWith('}')
+      if (!esMarcador) {
+        condiciones[clave] = valor
+        continue
+      }
+      const dato = contexto[valor.slice(2, -1)]
+      if (dato === undefined || dato === null) faltaAlguno = true
+      condiciones[clave] = dato ?? null
+    }
+
+    if (!faltaAlguno) resueltas.push({ ...regla, conditions: condiciones })
+    else if (regla.inverted) resueltas.push({ ...regla, conditions: undefined })
+  }
+
+  return resueltas
 }

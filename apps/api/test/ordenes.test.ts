@@ -3,7 +3,13 @@ import { eq } from '@gpb/db'
 import { cliente, entidadComercial, titularidad, usuario, vehiculo } from '@gpb/db/schema'
 import type { NestFastifyApplication } from '@nestjs/platform-fastify'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
-import { type ApiDePrueba, CLAVE, levantarApi, sembrarConcesionaria } from './fixture.ts'
+import {
+  type ApiDePrueba,
+  CLAVE,
+  levantarApi,
+  sembrarConcesionaria,
+  sembrarEmpleado,
+} from './fixture.ts'
 
 /**
  * Órdenes de trabajo: la recepción, lo que se carga, los estados y quién puede qué. El paso a
@@ -55,7 +61,16 @@ beforeAll(async () => {
     .values({ tenantId, vehiculoId, clienteId: titularId, desde: '2024-01-01' })
 
   const [m] = await db.select().from(usuario).where(eq(usuario.email, 'mecanico@ordenes.test'))
-  mecanicoId = m?.id as string
+  // El mecánico de una orden es un **empleado**, no una cuenta: el que la ficha con su
+  // credencial y el que la tiene asignada son el mismo. La cuenta queda enganchada a su
+  // legajo, que es contra lo que se evalúa «sólo mis órdenes».
+  mecanicoId = await sembrarEmpleado(db, {
+    tenantId,
+    legajo: '0001',
+    nombre: 'Pedro',
+    apellido: 'Sosa',
+    usuarioId: m?.id as string,
+  })
   gerente = await entrar('gerente@ordenes.test')
   mecanico = await entrar('mecanico@ordenes.test')
 }, 180_000)

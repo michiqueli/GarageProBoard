@@ -14,11 +14,17 @@ import { ServicioComprobantes } from './comprobantes/comprobantes.service.ts'
 import { ModuloBase } from './comun/base.module.ts'
 import { ControladorConfiguracion } from './configuracion/configuracion.controller.ts'
 import { ServicioConfiguracion } from './configuracion/configuracion.service.ts'
+import { DatosDeLaEstacion } from './fichaje/estacion.ts'
+import { ServicioEstaciones } from './fichaje/estaciones.service.ts'
+import { ControladorFichaje } from './fichaje/fichaje.controller.ts'
+import { ServicioFichaje } from './fichaje/fichaje.service.ts'
 import { ControladorOrdenes } from './ordenes/ordenes.controller.ts'
 import { ServicioOrdenes } from './ordenes/ordenes.service.ts'
 import { ControladorOrganizacion } from './organizacion/organizacion.controller.ts'
 import { ServicioOrganizacion } from './organizacion/organizacion.service.ts'
 import { ModuloPadron } from './padron/padron.module.ts'
+import { ControladorPersonal } from './personal/personal.controller.ts'
+import { ServicioPersonal } from './personal/personal.service.ts'
 import { ServicioCompras } from './repuestos/compras.service.ts'
 import { ServicioPedidosRepuestos } from './repuestos/pedidos.service.ts'
 import { ServicioProveedores } from './repuestos/proveedores.service.ts'
@@ -75,6 +81,8 @@ import { ServicioVehiculos } from './vehiculos/vehiculos.service.ts'
     ControladorPedidosRepuestos,
     ControladorCompras,
     ControladorProveedores,
+    ControladorPersonal,
+    ControladorFichaje,
   ],
   providers: [
     ServicioUsuarios,
@@ -91,6 +99,10 @@ import { ServicioVehiculos } from './vehiculos/vehiculos.service.ts'
     ServicioPedidosRepuestos,
     ServicioCompras,
     ServicioProveedores,
+    ServicioPersonal,
+    ServicioFichaje,
+    ServicioEstaciones,
+    DatosDeLaEstacion,
   ],
 })
 export class ModuloPrincipal {}

@@ -16,6 +16,7 @@ import {
 import {
   cliente,
   comprobante,
+  empleado,
   empresa,
   entidadComercial,
   marca,
@@ -29,7 +30,6 @@ import {
   tipoComprobante,
   titularidad,
   usuario,
-  usuarioSucursal,
   vehiculo,
 } from '@gpb/db/schema'
 import { generarPresupuestoPdf } from '@gpb/pdf'
@@ -41,6 +41,14 @@ import { DatosDelTenant } from '../comun/datos.ts'
 import { generarCodigoQr } from '../comun/qr.ts'
 import { CORREO } from '../comun/simbolos.ts'
 import { moverDiferencia, porRepuesto, repuestosExisten } from '../repuestos/stock.ts'
+
+/**
+ * Los puestos que trabajan un auto. Es lo que separa «el personal de la concesionaria» de
+ * «a quién le puedo asignar esta orden»: el cajero está en la lista de personal y no acá.
+ *
+ * El lavador entra: el lavado es un renglón de la orden y alguien lo ficha.
+ */
+const PUESTOS_DE_TALLER = ['mecanico', 'lavador'] as const
 
 type Codigo =
   | 'NO_ENCONTRADA'
@@ -187,15 +195,39 @@ export class ServicioOrdenes {
   }
 
   /** Los usuarios activos que entran a la sucursal activa: a quién se le asigna una orden. */
+  /**
+   * A quién se le puede asignar una orden en esta sucursal.
+   *
+   * Los del taller, no todo el personal: el cajero y el administrativo no arreglan autos, y un
+   * selector con la concesionaria entera adentro obliga a buscar en una lista de cuarenta para
+   * elegir entre seis. Los que no tienen sucursal asignada aparecen igual — en una
+   * concesionaria de una sola boca nadie la carga.
+   */
   personal() {
     return this.datos.transaccion(async (tx, sesion) => {
       const filas = await tx
-        .select({ id: usuario.id, nombre: usuario.nombre, apellido: usuario.apellido })
-        .from(usuario)
-        .innerJoin(usuarioSucursal, eq(usuarioSucursal.usuarioId, usuario.id))
-        .where(and(eq(usuarioSucursal.sucursalId, sesion.sucursalId), eq(usuario.activo, true)))
-        .orderBy(asc(usuario.apellido), asc(usuario.nombre))
-      return { datos: filas.map((u) => ({ id: u.id, nombre: `${u.nombre} ${u.apellido}`.trim() })) }
+        .select({
+          id: empleado.id,
+          nombre: entidadComercial.nombre,
+          apellido: entidadComercial.apellido,
+          razonSocial: entidadComercial.razonSocial,
+        })
+        .from(empleado)
+        .innerJoin(entidadComercial, eq(entidadComercial.id, empleado.id))
+        .where(
+          and(
+            eq(empleado.activo, true),
+            inArray(empleado.puesto, PUESTOS_DE_TALLER),
+            or(isNull(empleado.sucursalId), eq(empleado.sucursalId, sesion.sucursalId)),
+          ),
+        )
+        .orderBy(asc(entidadComercial.razonSocial))
+      return {
+        datos: filas.map((e) => ({
+          id: e.id,
+          nombre: `${e.nombre ?? ''} ${e.apellido ?? ''}`.trim() || e.razonSocial,
+        })),
+      }
     })
   }
 
@@ -891,11 +923,13 @@ export class ServicioOrdenes {
       if (!c) throw new ErrorOrdenes('NO_ENCONTRADO')
     }
     if (mecanicoId) {
-      const [u] = await tx
-        .select({ id: usuario.id })
-        .from(usuario)
-        .where(and(eq(usuario.id, mecanicoId), eq(usuario.activo, true)))
-      if (!u) throw new ErrorOrdenes('NO_ENCONTRADO')
+      // Un empleado, no un usuario: el que figura acá es el mismo que ficha con su
+      // credencial, y hay mecánicos que no entran al sistema.
+      const [e] = await tx
+        .select({ id: empleado.id })
+        .from(empleado)
+        .where(and(eq(empleado.id, mecanicoId), eq(empleado.activo, true)))
+      if (!e) throw new ErrorOrdenes('NO_ENCONTRADO')
     }
   }
 
@@ -1039,18 +1073,23 @@ export class ServicioOrdenes {
       .leftJoin(marca, eq(marca.id, modelo.marcaId))
       .where(inArray(orden.id, ids))
 
+    // El mecánico entra acá y no entre los usuarios: un empleado comparte el id con su
+    // identidad fiscal, así que se resuelve con la misma consulta que el titular.
     const entidades = [
-      ...new Set(filas.flatMap((f) => [f.o.titularId, f.o.pagaId]).filter(Boolean)),
+      ...new Set(filas.flatMap((f) => [f.o.titularId, f.o.pagaId, f.o.mecanicoId]).filter(Boolean)),
     ] as string[]
     const personas = entidades.length
       ? await tx
-          .select({ id: entidadComercial.id, razonSocial: entidadComercial.razonSocial })
+          .select({
+            id: entidadComercial.id,
+            razonSocial: entidadComercial.razonSocial,
+            nombre: entidadComercial.nombre,
+            apellido: entidadComercial.apellido,
+          })
           .from(entidadComercial)
           .where(inArray(entidadComercial.id, entidades))
       : []
-    const usuarios = [
-      ...new Set(filas.flatMap((f) => [f.o.asesorId, f.o.mecanicoId]).filter(Boolean)),
-    ] as string[]
+    const usuarios = [...new Set(filas.map((f) => f.o.asesorId).filter(Boolean))] as string[]
     const gente = usuarios.length
       ? await tx
           .select({ id: usuario.id, nombre: usuario.nombre, apellido: usuario.apellido })
@@ -1074,6 +1113,12 @@ export class ServicioOrdenes {
       const u = id ? gente.find((x) => x.id === id) : undefined
       return u ? `${u.nombre} ${u.apellido}`.trim() : ''
     }
+    /** «Jorge Pérez» y no «Pérez, Jorge»: es alguien con quien se habla, no un renglón fiscal. */
+    const nombrePersona = (id: string) => {
+      const p = personas.find((x) => x.id === id)
+      if (!p) return ''
+      return `${p.nombre ?? ''} ${p.apellido ?? ''}`.trim() || p.razonSocial
+    }
 
     return ids
       .map((id) => filas.find((f) => f.o.id === id))
@@ -1093,7 +1138,9 @@ export class ServicioOrdenes {
         paga: persona(f.o.pagaId),
         pedido: f.o.pedido,
         asesor: nombre(f.o.asesorId),
-        mecanico: f.o.mecanicoId ? { id: f.o.mecanicoId, nombre: nombre(f.o.mecanicoId) } : null,
+        mecanico: f.o.mecanicoId
+          ? { id: f.o.mecanicoId, nombre: nombrePersona(f.o.mecanicoId) }
+          : null,
         prometidaPara: f.o.prometidaPara,
         creadoEn: f.o.creadoEn.toISOString(),
         total: plata(totales.find((t) => t.ordenId === f.o.id)?.total ?? '0').toFixed(2),

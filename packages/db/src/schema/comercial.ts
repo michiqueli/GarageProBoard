@@ -109,6 +109,15 @@ export const empleado = pgTable(
     tenantId: tenantId().references(() => tenant.id),
     legajo: text().notNull(),
     sucursalId: uuid().references(() => sucursal.id),
+    /**
+     * Qué hace en la concesionaria. **No es su rol en el sistema**: el rol dice qué pantallas
+     * puede abrir, el puesto dice a qué entra todos los días. Un jefe de taller es mecánico de
+     * puesto y gerente de rol, y el lavador tiene puesto y no tiene rol porque no entra.
+     *
+     * Lista cerrada porque de acá sale a quién se le ofrece una orden: con texto libre, el día
+     * que alguien escriba «mecanico » con un espacio, ese mecánico desaparece del selector.
+     */
+    puesto: text().notNull().default('otro'),
     /** El convenio del sector es SMATA; hay personal fuera de convenio también. */
     convenio: text(),
     categoria: text(),
@@ -117,5 +126,11 @@ export const empleado = pgTable(
     activo: boolean().notNull().default(true),
     creadoEn: creadoEn(),
   },
-  (t) => [unique('empleado_legajo_uq').on(t.tenantId, t.legajo)],
+  (t) => [
+    unique('empleado_legajo_uq').on(t.tenantId, t.legajo),
+    check(
+      'empleado_puesto_valido',
+      sql`${t.puesto} in ('mecanico', 'asesor', 'repuestero', 'cajero', 'administrativo', 'lavador', 'chofer', 'vendedor', 'gerente', 'otro')`,
+    ),
+  ],
 )

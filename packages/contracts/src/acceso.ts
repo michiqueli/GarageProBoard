@@ -19,6 +19,10 @@ import { z } from 'zod'
  *
  * - `publico`: sin sesión. El login, el refresco, el chequeo de vida.
  * - `sesion`: alcanza con estar adentro. Datos de la propia sesión.
+ * - `estacion`: **no hay persona**. La PC del taller presenta el token de su estación de
+ *   fichaje y nada más. Es un acceso aparte y no un `publico` porque la guardia sí verifica
+ *   algo, y no un `sesion` porque no hay usuario ni permisos que evaluar: lo que se autentica
+ *   es el aparato. Ver `docs/tecnicos/taller-control-de-tiempos.md`, regla 10.
  * - `{ modulo, accion, sujeto }`: el módulo que la concesionaria tiene que tener
  *   contratado y el permiso de CASL que habilita la operación. Van juntos porque toda
  *   operación con permiso es de algún módulo: declararla sin módulo no compila.
@@ -29,6 +33,7 @@ import { z } from 'zod'
 export type Acceso =
   | 'publico'
   | 'sesion'
+  | 'estacion'
   | { modulo: Modulo; accion: AccionPermiso; sujeto: Sujeto }
 
 export interface MetaRuta {
@@ -53,6 +58,21 @@ export const publico = base.meta({ acceso: 'publico' })
 
 /** Rutas que sólo piden estar adentro, sin un permiso en particular. */
 export const conSesion = base.meta({ acceso: 'sesion' }).errors(ERRORES_DE_SESION)
+
+/**
+ * Rutas de la pantalla de fichaje, que se autentica con el token de su estación.
+ *
+ * El 401 dice otra cosa que el de siempre: al mecánico parado frente al lector no se le puede
+ * pedir que inicie sesión — el login es el anti-feature número uno—, así que el mensaje va
+ * dirigido a quien tiene que arreglarlo.
+ */
+export const conEstacion = base.meta({ acceso: 'estacion' }).errors({
+  ESTACION_NO_AUTORIZADA: {
+    status: 401,
+    message:
+      'Esta pantalla no está registrada como estación de fichaje. Avisale a quien configura el taller.',
+  },
+})
 
 /**
  * Rutas de un módulo que piden un permiso. Los dos 403 quedan documentados junto con el
@@ -148,7 +168,10 @@ export type Veredicto = 'permitido' | 'modulo-apagado' | 'sin-permiso'
  * acá. Y ocultar no es proteger — el front oculta, la API decide.
  */
 export function evaluarAcceso(autorizacion: Autorizacion, acceso: Acceso): Veredicto {
-  if (acceso === 'publico' || acceso === 'sesion') return 'permitido'
+  // `estacion` cae acá con las otras dos: no hay habilidades que mirar porque no hay persona.
+  // Quien decide es la guardia, contra el token; esto sólo existe para que el front no tenga
+  // que tratar un caso más al dibujar.
+  if (acceso === 'publico' || acceso === 'sesion' || acceso === 'estacion') return 'permitido'
   if (!autorizacion.modulos.includes(acceso.modulo)) return 'modulo-apagado'
   if (!autorizacion.habilidades.can(acceso.accion, acceso.sujeto)) return 'sin-permiso'
   return 'permitido'

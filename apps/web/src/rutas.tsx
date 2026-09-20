@@ -230,6 +230,45 @@ const rutaUsuarios = createRoute({
   ),
 })
 
+/**
+ * La pantalla de fichaje del taller.
+ *
+ * Cuelga de la raíz y **no de `conSesion`**: ahí no hay usuario. La PC se autentica con el
+ * token de su estación, que es toda la idea (ver `docs/tecnicos/taller-control-de-tiempos.md`,
+ * regla 10). Si colgara de `conSesion`, la guardia mandaría al mecánico a iniciar sesión, que
+ * es exactamente lo que este módulo existe para evitar.
+ */
+const rutaFichaje = createRoute({
+  getParentRoute: () => raiz,
+  path: 'fichaje',
+  component: lazyRouteComponent(
+    () => import('./modulos/fichaje/PantallaFichaje.tsx'),
+    'PantallaFichaje',
+  ),
+})
+
+const rutaEstaciones = createRoute({
+  getParentRoute: () => conSesion,
+  path: 'estaciones',
+  component: lazyRouteComponent(
+    () => import('./modulos/fichaje/PantallaEstaciones.tsx'),
+    'PantallaEstaciones',
+  ),
+})
+
+const rutaRrhh = createRoute({
+  getParentRoute: () => conSesion,
+  path: 'rrhh',
+  staticData: { pantalla: 'personal' },
+  validateSearch: z.object({
+    ver: z.enum(['personal', 'asistencia']).optional().catch(undefined),
+  }),
+  component: lazyRouteComponent(
+    () => import('./modulos/personal/PantallaRrhh.tsx'),
+    'PantallaRrhh',
+  ),
+})
+
 const rutaRoles = createRoute({
   getParentRoute: () => conSesion,
   path: 'roles',
@@ -376,6 +415,7 @@ const rutaCertificadoAfip = createRoute({
 const arbol = raiz.addChildren([
   rutaEntrar,
   rutaSucursal,
+  rutaFichaje,
   conSesion.addChildren([
     rutaInicio,
     rutaOrdenes,
@@ -386,6 +426,8 @@ const arbol = raiz.addChildren([
     rutaClientes,
     rutaFichaCliente,
     rutaUsuarios,
+    rutaRrhh,
+    rutaEstaciones,
     rutaRoles,
     rutaAuditoria,
     rutaEmpresas,

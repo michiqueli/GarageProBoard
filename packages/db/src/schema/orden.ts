@@ -17,7 +17,7 @@ import {
 } from 'drizzle-orm/pg-core'
 import { actualizadoEn, creadoEn, pk, tenantId } from './_comunes.ts'
 import { usuario } from './acceso.ts'
-import { entidadComercial } from './comercial.ts'
+import { empleado, entidadComercial } from './comercial.ts'
 import { sucursal } from './organizacion.ts'
 import { repuesto } from './repuestos.ts'
 import { tenant } from './tenant.ts'
@@ -92,7 +92,13 @@ export const orden = pgTable(
     asesorId: uuid()
       .notNull()
       .references(() => usuario.id),
-    mecanicoId: uuid().references(() => usuario.id),
+    /**
+     * Quién la trabaja. Es un **empleado**, no un usuario del sistema: el que la ficha con su
+     * credencial y el que figura acá tienen que ser la misma persona, y hay mecánicos que
+     * nunca entran al sistema. `asesorId` sí es un usuario, porque el asesor la abre desde
+     * una pantalla y es su sesión la que queda registrada.
+     */
+    mecanicoId: uuid().references(() => empleado.id),
 
     terminadaEn: timestamp({ withTimezone: true }),
     entregadaEn: timestamp({ withTimezone: true }),

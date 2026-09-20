@@ -104,6 +104,33 @@ $$;
 revoke all on function autenticar_usuario(text) from public;
 grant execute on function autenticar_usuario(text) to ${ROL_APP};
 
+-- La misma escotilla, para la estación de fichaje.
+--
+-- La PC del taller no inicia sesión: presenta su token y nada más, así que acá tampoco hay
+-- tenant contra el cual filtrar. Recibe el **hash** del token —el token nunca llega a la
+-- base— y devuelve lo mínimo para abrir la pantalla: cuál es, de qué concesionaria, de qué
+-- sucursal y de qué tipo. Ni el nombre de la concesionaria, ni cuántas estaciones hay.
+--
+-- Una estación dada de baja no devuelve nada, que es lo mismo que devuelve un token
+-- inventado: desde afuera no se distingue «existía y la revocaron» de «nunca existió».
+create or replace function autenticar_estacion(p_token_hash text)
+returns table (estacion_id uuid, tenant_id uuid, sucursal_id uuid, tipo text, nombre text)
+language sql
+stable
+security definer
+set search_path = public, pg_temp
+as $$
+  select e.id, e.tenant_id, e.sucursal_id, e.tipo, e.nombre
+    from estacion_fichaje e
+    join tenant t on t.id = e.tenant_id
+   where e.token_hash = p_token_hash
+     and e.activa
+     and t.activo;
+$$;
+
+revoke all on function autenticar_estacion(text) from public;
+grant execute on function autenticar_estacion(text) to ${ROL_APP};
+
 -- Ya no se usa: el inicio de sesión dejó de pedir el nombre de la concesionaria. Cada
 -- función SECURITY DEFINER es superficie de ataque, así que las que sobran se borran.
 drop function if exists tenant_por_slug(text);`)

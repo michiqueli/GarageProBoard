@@ -2,7 +2,8 @@
 
 Estado: **construido**. Desde el 16/09/2026 hay alta, modificación, baja y contraseña nueva
 de usuarios, y crear, clonar y modificar roles, en la API y en la pantalla, con las reglas
-de abajo aplicadas por el servidor.
+de abajo aplicadas por el servidor. Desde el 18/09/2026 está también el **personal**, con su
+legajo y su credencial para fichar, en RRHH.
 
 ## Quién da de alta a los usuarios
 
@@ -22,15 +23,57 @@ concesionaria decide quién lo tiene, y si prefiere que lo haga el gerente, no l
 
 Son dos cosas, y se dan de alta por separado:
 
-| | Qué es | De qué módulo |
+| | Qué es | Dónde se carga |
 | --- | --- | --- |
-| **Usuario** | El acceso al sistema: correo, contraseña, rol, sucursales | Núcleo |
-| **Empleado** | El legajo: datos personales, categoría, convenio, sueldo | RRHH |
+| **Usuario** | El acceso al sistema: correo, contraseña, rol, sucursales | Usuarios |
+| **Empleado** | El legajo: documento, puesto, categoría, convenio, y la credencial para fichar | RRHH → Personal |
 
 Hay empleados que nunca van a entrar al sistema —un lavador, un cadete— y usuarios que
 no son empleados —el contador externo—. Si RRHH hace las dos cosas, es porque su rol
 tiene los dos permisos, no porque sean la misma pantalla. Y quien administra usuarios
 **no ve sueldos** por eso: el legajo está en otra tabla, con otro permiso.
+
+### Y sin embargo son la misma persona
+
+`usuario.empleado_id` las une, y es opcional en los dos sentidos. Lo que ese vínculo
+resuelve no es cosmético: **la orden de trabajo apunta al empleado, no al usuario**, porque
+el mecánico que la ficha con su credencial y el que la tiene asignada tienen que ser el
+mismo. Si el mecánico fuera un usuario, el que ficha y no entra al sistema no podría tener
+una orden a su nombre; y si fueran dos identidades, «mis órdenes» dependería de cuál se mire.
+
+De ahí sale un detalle que estuvo mal hasta el 18/09/2026. La regla del rol Mecánico es
+`{ mecanicoId: '${empleadoId}' }`, y el marcador lo resuelve `resolverCondiciones()` al
+iniciar sesión. Cuando no había valor —una cuenta sin legajo— se resolvía a `null`, y CASL
+lo leía literal: «las órdenes cuyo mecánico es nadie», que en un taller son **las que se
+acaban de recibir**. Ahora un marcador sin valor no da permiso: una regla condicional que no
+se puede evaluar se descarta, y una prohibición condicional que no se puede evaluar pasa a
+prohibir todo. Los dos casos caen del lado de negar.
+
+### Módulo: el personal es núcleo, RRHH todavía no
+
+La pantalla vive en la sección RRHH porque es donde va a crecer —asistencia, liquidación de
+sueldos, recibos—, pero el permiso pide el módulo **núcleo** y no `rrhh`. Sin la lista de
+personal no se le asigna una orden a un mecánico ni se imprime una credencial para fichar, y
+las dos son cosas del taller: detrás del módulo de RRHH, una concesionaria que no lo contrató
+se quedaría sin fichaje. `rrhh` se va a pedir cuando llegue la liquidación.
+
+El permiso es `Empleado`, que ya existía y que el rol de asesor de servicios **prohíbe**
+explícitamente: el legajo lleva convenio y categoría, y va a llevar sueldos.
+
+### La credencial
+
+Cuelga del empleado, no de la cuenta, por lo mismo: la mayoría de los que fichan no entran al
+sistema, y pedirles un correo único y una contraseña para que puedan apoyar una tarjeta sobre
+un lector sería inventarles una identidad que no usan.
+
+Guarda el **código** de ocho caracteres y no el QR entero: el texto impreso es
+`GT1:M:<codigo>:<firma>` y la firma la calcula el servidor al imprimir. Guardar la firma
+haría que rotar `QR_SECRET` obligara a reescribir la tabla en vez de reimprimir tarjetas.
+
+No se borra: se revoca, **con motivo obligatorio**, y una sola puede estar vigente por
+empleado —un índice parcial lo garantiza—. Emitir una nueva revoca la anterior en la misma
+transacción. Dar de baja a un empleado también le revoca la credencial: el que se fue el
+viernes no ficha el lunes, y eso no puede depender de que alguien se acuerde.
 
 ## La trampa: quien reparte roles puede darse cualquiera
 

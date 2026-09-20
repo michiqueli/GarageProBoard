@@ -16,7 +16,13 @@ export async function reglasDelUsuario(
   datos: { usuarioId: string; sucursalId: string; tenantId: string },
 ): Promise<ReglaPermiso[] | null> {
   const [estado] = await tx
-    .select({ usuarioActivo: usuario.activo, tenantActivo: tenant.activo })
+    .select({
+      usuarioActivo: usuario.activo,
+      tenantActivo: tenant.activo,
+      // El legajo, para las condiciones que hablan de «lo mío»: el mecánico edita las
+      // órdenes que tiene asignadas, y esas apuntan al empleado, no a la cuenta.
+      empleadoId: usuario.empleadoId,
+    })
     .from(usuario)
     .innerJoin(tenant, eq(tenant.id, usuario.tenantId))
     .where(eq(usuario.id, datos.usuarioId))
@@ -34,6 +40,9 @@ export async function reglasDelUsuario(
   // ahora que sabemos quién es.
   return resolverCondiciones(
     roles.flatMap((r) => (r.habilidades as ReglaPermiso[]) ?? []),
-    datos,
+    {
+      ...datos,
+      empleadoId: estado.empleadoId,
+    },
   )
 }

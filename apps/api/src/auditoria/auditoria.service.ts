@@ -147,6 +147,9 @@ export function sobreQue(tabla: string, antes: Foto, despues: Foto): string {
   if (tabla === 'pedido_repuestos') return `el pedido de repuestos ${String(dato('numero'))}`
   if (tabla === 'compra') return `la compra ${String(dato('numero'))}`
   if (tabla === 'proveedor') return `el proveedor ${String(dato('razonSocial'))}`
+  if (tabla === 'empleado') return `el legajo de ${String(dato('razonSocial'))}`
+  if (tabla === 'credencial') return `la credencial de ${String(dato('empleado'))}`
+  if (tabla === 'estacion_fichaje') return `la estación de fichaje «${String(dato('nombre'))}»`
   if (tabla === 'rol') return `el rol ${String(dato('nombre'))}`
   if (tabla === 'vehiculo' || tabla === 'titularidad') {
     return `el vehículo ${String(dato('dominio') ?? dato('chasis'))}`
@@ -337,7 +340,17 @@ export function describirCambio(
   if (tabla === 'certificado_afip') return describirCertificado(despues)
   if (tabla === 'orden') return describirOrden(accion, despues)
   // Repuestos anota la frase al hacer el cambio: cada operación sabe mejor que nadie qué pasó.
-  if (['repuesto', 'pedido_repuestos', 'compra', 'proveedor'].includes(tabla)) {
+  if (
+    [
+      'repuesto',
+      'pedido_repuestos',
+      'compra',
+      'proveedor',
+      'empleado',
+      'credencial',
+      'estacion_fichaje',
+    ].includes(tabla)
+  ) {
     return String(despues?.texto ?? 'Lo modificó')
   }
   if (tabla === 'comprobante') {
@@ -692,6 +705,10 @@ const NOMBRE_TABLA: Record<string, string> = {
   cliente: 'el cliente',
   proveedor: 'el proveedor',
   empleado: 'el empleado',
+  credencial: 'la credencial para fichar',
+  estacion_fichaje: 'la estación de fichaje',
+  jornada: 'la jornada',
+  sesion_trabajo: 'una sesión de trabajo',
   marca: 'la marca',
   modelo: 'el modelo',
   vehiculo: 'el vehículo',
@@ -723,6 +740,13 @@ const CAMPOS_CONOCIDOS: Record<string, string> = {
   hasta: 'hasta',
   desde: 'desde',
   legajo: 'legajo',
+  puesto: 'puesto',
+  convenio: 'convenio',
+  categoria: 'categoría',
+  fechaIngreso: 'fecha de ingreso',
+  fechaEgreso: 'fecha de egreso',
+  revocadaEn: 'revocada el',
+  motivoRevocacion: 'motivo de la revocación',
 }
 
 /** «código» si lo sabemos decir; si no, el nombre del campo tal cual. */

@@ -1,5 +1,5 @@
 import PDFDocument from 'pdfkit'
-import QRCode from 'qrcode'
+import { dibujarQr } from './comun.ts'
 import { formatearImporte } from './factura.ts'
 
 /**
@@ -114,17 +114,6 @@ function caja(doc: Doc, y: number, alto: number, titulo?: string) {
       .text(titulo.toUpperCase(), IZQ + mm(3), y + mm(2))
     doc.fillColor('#000')
   }
-}
-
-function dibujarQr(doc: Doc, texto: string, x: number, y: number, lado: number) {
-  const m = QRCode.create(texto, { errorCorrectionLevel: 'M' }).modules
-  const celda = lado / m.size
-  for (let f = 0; f < m.size; f++) {
-    for (let c = 0; c < m.size; c++) {
-      if (m.get(c, f)) doc.rect(x + c * celda, y + f * celda, celda, celda)
-    }
-  }
-  doc.fill('#000')
 }
 
 function hoja(doc: Doc, o: DatosOrdenImpresa, copia: 'TALLER' | 'CLIENTE') {

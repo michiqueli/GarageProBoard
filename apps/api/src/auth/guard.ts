@@ -20,6 +20,7 @@ import { JwtService } from '@nestjs/jwt'
 import type { PedidoConSesion, Sesion } from '../comun/contexto.ts'
 import { accesoDe } from '../comun/operacion.ts'
 import { DB } from '../comun/simbolos.ts'
+import { AutenticadorDeEstaciones, type PedidoConEstacion } from '../fichaje/estacion.ts'
 import { reglasDelUsuario } from './permisos.ts'
 import type { ClaimsAcceso } from './tokens.ts'
 
@@ -32,7 +33,7 @@ import type { ClaimsAcceso } from './tokens.ts'
  */
 function rechazo(
   status: 401 | 403,
-  code: 'NO_AUTENTICADO' | 'MODULO_APAGADO' | 'SIN_PERMISO',
+  code: 'NO_AUTENTICADO' | 'MODULO_APAGADO' | 'SIN_PERMISO' | 'ESTACION_NO_AUTORIZADA',
   message: string,
   data?: unknown,
 ): HttpException {
@@ -58,6 +59,7 @@ export class GuardiaAcceso implements CanActivate {
   constructor(
     @Inject(JwtService) private readonly jwt: JwtService,
     @Inject(DB) private readonly db: Db,
+    @Inject(AutenticadorDeEstaciones) private readonly estaciones: AutenticadorDeEstaciones,
   ) {}
 
   async canActivate(contexto: ExecutionContext): Promise<boolean> {
@@ -69,6 +71,12 @@ export class GuardiaAcceso implements CanActivate {
       throw new InternalServerErrorException('Esta ruta no declara quién puede usarla.')
     }
     if (acceso === 'publico') return true
+
+    // La estación se resuelve antes que todo lo demás y por otro camino: no hay token de
+    // sesión que verificar ni permisos que evaluar, porque no hay persona.
+    if (acceso === 'estacion') {
+      return this.autenticarEstacion(contexto.switchToHttp().getRequest<PedidoConEstacion>())
+    }
 
     const pedido = contexto.switchToHttp().getRequest<PedidoConSesion>()
     // La IP se pega a la sesión acá y no en cada operación: de ahí la toma el trigger de
@@ -109,6 +117,28 @@ export class GuardiaAcceso implements CanActivate {
       case 'permitido':
         return true
     }
+  }
+
+  /**
+   * La pantalla del taller presenta `Authorization: Estacion <token>`.
+   *
+   * Un token que no existe y uno revocado dan el mismo rechazo: desde afuera no se distingue
+   * «la dieron de baja» de «nunca existió».
+   */
+  private async autenticarEstacion(pedido: PedidoConEstacion): Promise<boolean> {
+    const encabezado = pedido.headers.authorization
+    const token = encabezado?.startsWith('Estacion ') ? encabezado.slice(9).trim() : ''
+    const estacion = token ? await this.estaciones.resolver(token) : null
+    if (!estacion) {
+      throw rechazo(
+        401,
+        'ESTACION_NO_AUTORIZADA',
+        'Esta pantalla no está registrada como estación de fichaje. ' +
+          'Avisale a quien configura el taller.',
+      )
+    }
+    pedido.estacion = { ...estacion, ip: pedido.ip }
+    return true
   }
 
   private async autenticar(encabezado: string | undefined): Promise<Sesion> {

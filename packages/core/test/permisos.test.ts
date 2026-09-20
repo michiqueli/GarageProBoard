@@ -10,10 +10,12 @@ import {
 } from '../src/permisos.ts'
 
 /** Las habilidades de un rol predefinido, resueltas contra un usuario de ejemplo. */
-function habilidadesDe(nombre: string, usuarioId = 'u-1') {
+function habilidadesDe(nombre: string, contexto: Record<string, string | null> = {}) {
   const rol = ROLES_PREDEFINIDOS.find((r) => r.nombre === nombre)
   if (!rol) throw new Error(`No existe el rol ${nombre}`)
-  return construirHabilidades(resolverCondiciones(rol.habilidades, { usuarioId }))
+  return construirHabilidades(
+    resolverCondiciones(rol.habilidades, { usuarioId: 'u-1', empleadoId: 'e-1', ...contexto }),
+  )
 }
 
 describe('los roles predefinidos', () => {
@@ -47,10 +49,43 @@ describe('los roles predefinidos', () => {
   })
 
   it('el mecánico sólo edita las órdenes que tiene asignadas', () => {
-    const mecanico = habilidadesDe('Mecánico', 'u-1')
+    // Contra su legajo, no contra su cuenta: el mecánico de una orden es un empleado.
+    const mecanico = habilidadesDe('Mecánico')
 
-    expect(mecanico.can('editar', subject('Orden', { mecanicoId: 'u-1' }) as never)).toBe(true)
-    expect(mecanico.can('editar', subject('Orden', { mecanicoId: 'u-2' }) as never)).toBe(false)
+    expect(mecanico.can('editar', subject('Orden', { mecanicoId: 'e-1' }) as never)).toBe(true)
+    expect(mecanico.can('editar', subject('Orden', { mecanicoId: 'e-2' }) as never)).toBe(false)
+  })
+
+  /**
+   * La regresión que esto cuida: con el marcador resuelto a `null`, «mis órdenes» dichas por
+   * una cuenta sin legajo pasaban a ser **las órdenes sin mecánico asignado**, que en un
+   * taller son justo las que se acaban de recibir.
+   */
+  it('un mecánico sin legajo no edita ninguna orden, ni las que no tienen mecánico', () => {
+    const sinLegajo = habilidadesDe('Mecánico', { empleadoId: null })
+
+    expect(sinLegajo.can('editar', subject('Orden', { mecanicoId: null }) as never)).toBe(false)
+    expect(sinLegajo.can('editar', subject('Orden', { mecanicoId: 'e-1' }) as never)).toBe(false)
+    // Lo que no depende de su legajo lo sigue pudiendo.
+    expect(sinLegajo.can('ver', 'Orden')).toBe(true)
+  })
+
+  it('una prohibición con condición que no se puede evaluar prohíbe todo', () => {
+    const reglas = resolverCondiciones(
+      [
+        {
+          action: 'ver',
+          subject: 'Orden',
+          // biome-ignore lint/suspicious/noTemplateCurlyInString: marcador, no interpolación
+          conditions: { sucursalId: '${sucursalId}' },
+          inverted: true,
+        },
+      ],
+      {},
+    )
+
+    expect(reglas).toHaveLength(1)
+    expect(reglas[0]?.conditions).toBeUndefined()
   })
 
   it('el cajero factura pero no anula', () => {

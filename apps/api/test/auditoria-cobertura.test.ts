@@ -91,6 +91,12 @@ const AUDITAN: readonly string[] = [
   'pedidosRepuestos.aCaja',
   'pedidosRepuestos.reabrir',
   'pedidosRepuestos.anular',
+  'personal.crear',
+  'personal.editar',
+  'personal.emitirCredencial',
+  'personal.revocarCredencial',
+  'fichaje.registrarEstacion',
+  'fichaje.revocarEstacion',
   'proveedores.crear',
   'proveedores.editar',
   'repuestos.crear',
@@ -123,6 +129,12 @@ const NO_AUDITAN: Readonly<Record<string, string>> = {
   'auth.leerAvisos': 'Marcar como leído un aviso propio no es un cambio que nadie audite.',
   'configuracion.guardar': 'Son las preferencias propias: el tema de cada uno no es del resto.',
   'configuracion.guardarAtajos': 'El mapa de teclas es de quien lo usa, y de nadie más.',
+  'fichaje.escanear':
+    'Cada escaneo deja su propia fila en evento_escaneo, con el texto crudo, el resultado y la ' +
+    'latencia. Auditarlo además sería contar dos veces lo mismo, y en la tabla equivocada.',
+  'personal.pdfCredenciales':
+    'Es POST porque lleva la lista de a quiénes imprimir, pero no cambia un solo dato: arma ' +
+    'un PDF con credenciales que ya existen. Lo que sí queda auditado es haberlas emitido.',
 }
 
 describe('quién escribe la auditoría', () => {
@@ -182,6 +194,9 @@ describe('la pantalla sabe contar cada tabla auditada', () => {
     'punto_venta',
     'cliente',
     'proveedor',
+    'empleado',
+    'credencial',
+    'estacion_fichaje',
     'certificado_afip',
     'comprobante',
     'orden',

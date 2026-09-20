@@ -11,6 +11,29 @@ arquitectura, modelo de datos, plan por fases, investigación sobre Oversoft, pr
 y licencia). **No es parte del monorepo** — tiene su propio `.git` y su propio stack —;
 se conserva como material de referencia hasta que el módulo de servicios esté escrito.
 
+> **Estado: construido el 18/09/2026.** El modelo vive en `packages/db/src/schema/fichaje.ts`
+> (migración `0017_fichaje`), la lógica del escaneo en `apps/api/src/fichaje/fichaje.service.ts`
+> y la pantalla en `apps/web/src/modulos/fichaje/PantallaFichaje.tsx`.
+>
+> **Las diez reglas de abajo están implementadas, con estas cuatro salvedades escritas a
+> propósito**, porque una lista que dice «hecho» de más es peor que una que no dice nada:
+>
+> - **El presupuesto de 50 ms no se cumple**: la pantalla espera la respuesta del servidor y no
+>   tiene caché local. En una red de taller eso hoy son unas decenas de milisegundos y se siente
+>   bien, pero es otra cosa que lo que promete la tabla de más abajo, y con el wifi flojo se va
+>   a notar. La caché y la cola offline son trabajo aparte.
+> - **La concurrencia está fija en «única»** (regla 9) hasta que exista la pantalla de
+>   configuración del módulo. Es una constante, no una decisión enterrada.
+> - **Corregir un tiempo a mano** (regla 3) todavía no tiene pantalla. Lo que sí está es lo que
+>   la hace posible sin agujeros: el trigger de auditoría dispara al tocar una sesión ya
+>   cerrada, y no al cerrarla.
+> - **El sonido** (regla 8) no tiene test: es del navegador. Lo que sí se prueba es todo lo
+>   demás de la respuesta — el resultado, el texto y qué quedó escrito.
+>
+> El **auto-cierre** (regla 4) va colgado del primer escaneo del día y no de un trabajo a las
+> 20:00: si el proceso se reinició antes, el trabajo no corrió nunca, y además tendría que
+> recorrer todas las concesionarias, cosa que el rol de la aplicación no puede hacer.
+
 ## El requisito que manda, y sigue mandando
 
 > **No compite en funcionalidad. Compite en que fichar sean 2 escaneos, 3 segundos, sin

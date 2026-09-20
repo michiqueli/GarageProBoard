@@ -138,6 +138,38 @@ export const SECUNDARIAS: Seccion[] = [
     ),
   },
   {
+    // Se llama RRHH y no «Personal» porque es donde va a crecer: asistencia, liquidación de
+    // sueldos, recibos. Lo que hay hoy —el legajo y la credencial para fichar— pide permiso
+    // sobre Empleado, que es el que esconde los sueldos del asesor de servicios.
+    id: 'rrhh',
+    etiqueta: 'RRHH',
+    to: '/rrhh',
+    requiere: { modulo: 'nucleo', accion: 'ver', sujeto: 'Empleado' },
+    icono: (
+      <svg viewBox="0 0 16 16" {...trazo} aria-hidden="true">
+        <rect x="2.5" y="4" width="11" height="9" rx="1" />
+        <path d="M6 4V2.8h4V4" />
+        <circle cx="8" cy="7.6" r="1.4" />
+        <path d="M5.8 11.4c0-1.2 1-1.9 2.2-1.9s2.2.7 2.2 1.9" />
+      </svg>
+    ),
+  },
+  {
+    // Las PC que fichan. Va acá y no en RRHH porque es equipamiento del taller: quien lo
+    // configura es el que configura el módulo de servicios, no el que lleva los legajos.
+    id: 'estaciones',
+    etiqueta: 'Estaciones de fichaje',
+    to: '/estaciones',
+    requiere: { modulo: 'servicios', accion: 'configurar', sujeto: 'Orden' },
+    icono: (
+      <svg viewBox="0 0 16 16" {...trazo} aria-hidden="true">
+        <rect x="2" y="3" width="12" height="8" rx="1" />
+        <path d="M5.5 13.5h5M8 11v2.5" />
+        <path d="M5.5 6h1.2M9.3 6h1.2M5.5 8.2h5" />
+      </svg>
+    ),
+  },
+  {
     id: 'usuarios',
     etiqueta: 'Usuarios',
     to: '/usuarios',

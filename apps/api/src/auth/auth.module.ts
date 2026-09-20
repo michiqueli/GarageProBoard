@@ -3,6 +3,7 @@ import { APP_GUARD, APP_INTERCEPTOR, DiscoveryModule } from '@nestjs/core'
 import { JwtModule } from '@nestjs/jwt'
 import { InterceptorContexto } from '../comun/contexto.ts'
 import { VerificadorAcceso } from '../comun/operacion.ts'
+import { AutenticadorDeEstaciones, InterceptorEstacion } from '../fichaje/estacion.ts'
 import { ControladorAuth } from './auth.controller.ts'
 import { ServicioAuth } from './auth.service.ts'
 import { GuardiaAcceso } from './guard.ts'
@@ -26,11 +27,16 @@ import { GuardiaAcceso } from './guard.ts'
   providers: [
     ServicioAuth,
     VerificadorAcceso,
+    // La guardia lo necesita para resolver el token de una estación de fichaje.
+    AutenticadorDeEstaciones,
     // Global: toda ruta pasa por acá, y cada una se abre declarando su acceso en el
     // contrato. Al revés — abierto por omisión — el endpoint que alguien se olvida de
     // proteger queda expuesto sin que nada avise.
     { provide: APP_GUARD, useClass: GuardiaAcceso },
     { provide: APP_INTERCEPTOR, useClass: InterceptorContexto },
+    // El gemelo del anterior, para los pedidos que llegan de una estación: ahí no hay sesión
+    // ni permisos, hay un aparato registrado.
+    { provide: APP_INTERCEPTOR, useClass: InterceptorEstacion },
   ],
   exports: [ServicioAuth],
 })
