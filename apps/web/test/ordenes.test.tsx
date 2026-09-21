@@ -2,7 +2,7 @@ import { cleanup, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { usarSesion } from '../src/sesion/almacen.ts'
-import { confirmarDialogo, montarApp, SESION } from './montar.tsx'
+import { cacheDePrueba, confirmarDialogo, montarApp, SESION } from './montar.tsx'
 import { conAncho } from './preparar.ts'
 
 const ordenes = {
@@ -402,5 +402,29 @@ describe('anular la orden', () => {
     await confirmarDialogo('Anular la orden')
 
     expect(await within(pedidos).findByText('Anulado')).toBeDefined()
+  })
+
+  /**
+   * La regresión: se cambiaba el estado de una orden y el tablero del taller seguía diciendo lo
+   * de antes hasta recargar la página. Las dos pantallas son rutas distintas y no se montan
+   * juntas, así que lo único observable desde afuera es que la consulta del tablero quede
+   * marcada para volver a pedirse.
+   */
+  it('cambiar el estado marca el tablero del taller para volver a pedirlo', async () => {
+    ordenes.cambiarEstado.mockResolvedValue({ ...FICHA, estado: 'esperando_repuesto' })
+    await montarApp(`/ordenes/${ORDEN.id}`)
+    // La orden llega por red: el selector no existe hasta que llegó.
+    const estado = await screen.findByLabelText('Dónde está el auto')
+
+    const cache = cacheDePrueba()
+    // Como si el tablero se hubiera mirado hace un rato y estuviera en la caché.
+    cache.setQueryData(['tablero', 't1', 's1'], { autos: [] })
+    expect(cache.getQueryState(['tablero', 't1', 's1'])?.isInvalidated).toBe(false)
+
+    // Otro estado que el que tiene: elegir el mismo no cambia nada, y con razón.
+    await userEvent.selectOptions(estado, 'Esperando repuesto')
+    await waitFor(() =>
+      expect(cache.getQueryState(['tablero', 't1', 's1'])?.isInvalidated).toBe(true),
+    )
   })
 })

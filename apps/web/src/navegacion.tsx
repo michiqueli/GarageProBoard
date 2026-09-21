@@ -64,6 +64,22 @@ export const PRINCIPALES: Seccion[] = [
     ),
   },
   {
+    id: 'taller',
+    // «Taller» a secas, y no «Tablero de piso»: el menú ya tiene una sección «Tablero» —el de
+    // inicio, todavía sin construir— y dos entradas que arrancan igual se pisan. Además es la
+    // palabra que usa la gente: nadie dice «voy a ver el tablero de piso».
+    etiqueta: 'Taller',
+    to: '/taller',
+    requiere: { modulo: 'servicios', accion: 'ver', sujeto: 'Orden' },
+    icono: (
+      <svg viewBox="0 0 16 16" {...trazo} aria-hidden="true">
+        <rect x="2" y="2.5" width="12" height="11" rx="1" />
+        <path d="M2 6h12M6 6v7.5" />
+        <path d="M8 8.5h4M8 11h2.5" />
+      </svg>
+    ),
+  },
+  {
     id: 'vehiculos',
     etiqueta: 'Vehículos',
     to: '/vehiculos',

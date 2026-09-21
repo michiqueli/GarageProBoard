@@ -40,6 +40,7 @@ import { CorreoNoConfigurado, type ServicioCorreo } from '../comun/correo.ts'
 import { DatosDelTenant } from '../comun/datos.ts'
 import { generarCodigoQr } from '../comun/qr.ts'
 import { CORREO } from '../comun/simbolos.ts'
+import { cerrarSesionesDeLaOrden } from '../fichaje/tablero.ts'
 import { moverDiferencia, porRepuesto, repuestosExisten } from '../repuestos/stock.ts'
 
 /**
@@ -454,6 +455,9 @@ export class ServicioOrdenes {
           .update(orden)
           .set({ estado: 'terminada', terminadaEn: new Date(), actualizadoEn: new Date() })
           .where(eq(orden.id, id))
+        // El que se olvidó de pasar la credencial al terminar no puede quedar fichado toda la
+        // noche: su reloj seguiría corriendo y la mano de obra de esta orden crecería sola.
+        await cerrarSesionesDeLaOrden(tx, id)
         await this.auditar(
           tx,
           sesion,
@@ -473,16 +477,20 @@ export class ServicioOrdenes {
       'Sólo se reabre una orden terminada que no se facturó.',
       async (tx, sesion, o) => {
         await this.sinFacturaEnCurso(tx, id)
+        // Vuelve a **recibida** y no a en proceso: al reabrirla nadie empezó nada todavía, y
+        // «en proceso» con nadie fichado adentro es lo que hace que el tablero deje de
+        // creerse. La que la pasa a en proceso es la primera credencial que la escanee, igual
+        // que con una orden nueva — así el ciclo cierra por el mismo lado.
         await tx
           .update(orden)
-          .set({ estado: 'en_proceso', terminadaEn: null, actualizadoEn: new Date() })
+          .set({ estado: 'recibida', terminadaEn: null, actualizadoEn: new Date() })
           .where(eq(orden.id, id))
         await this.auditar(
           tx,
           sesion,
           id,
           'modificacion',
-          { numero: o.numero, estado: 'en_proceso', antes: 'terminada' },
+          { numero: o.numero, estado: 'recibida', antes: 'terminada', reabierta: true },
           ip,
         )
       },
@@ -529,6 +537,9 @@ export class ServicioOrdenes {
           ordenId: id,
           motivo: 'Orden anulada',
         })
+        // Por el mismo motivo que al terminarla: nadie puede quedar fichado en una orden
+        // anulada, ni seguir sumándole mano de obra a algo que no se va a cobrar.
+        await cerrarSesionesDeLaOrden(tx, id)
         // Lo que se le había pedido al mostrador para esta orden ya no hace falta. Los pedidos
         // abiertos no movieron stock; los entregados ya están en la orden y vuelven con ella.
         const abiertos = await tx

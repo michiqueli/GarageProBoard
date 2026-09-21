@@ -1,0 +1,2 @@
+ALTER TABLE "estacion_fichaje" DROP CONSTRAINT "estacion_tipo_valido";--> statement-breakpoint
+ALTER TABLE "estacion_fichaje" ADD CONSTRAINT "estacion_tipo_valido" CHECK ("estacion_fichaje"."tipo" in ('taller', 'reloj', 'tablero'));

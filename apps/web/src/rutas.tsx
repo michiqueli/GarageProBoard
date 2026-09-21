@@ -247,6 +247,16 @@ const rutaFichaje = createRoute({
   ),
 })
 
+const rutaTablero = createRoute({
+  getParentRoute: () => conSesion,
+  path: 'taller',
+  staticData: { pantalla: 'ordenes' },
+  component: lazyRouteComponent(
+    () => import('./modulos/fichaje/PantallaTablero.tsx'),
+    'PantallaTablero',
+  ),
+})
+
 const rutaEstaciones = createRoute({
   getParentRoute: () => conSesion,
   path: 'estaciones',
@@ -427,6 +437,7 @@ const arbol = raiz.addChildren([
     rutaFichaCliente,
     rutaUsuarios,
     rutaRrhh,
+    rutaTablero,
     rutaEstaciones,
     rutaRoles,
     rutaAuditoria,

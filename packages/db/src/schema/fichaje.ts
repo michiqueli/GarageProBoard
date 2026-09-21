@@ -32,7 +32,7 @@ import { tenant } from './tenant.ts'
  * Modelarlo mal hace que todos los números de productividad salgan basura.
  */
 
-export const TIPOS_ESTACION = ['taller', 'reloj'] as const
+export const TIPOS_ESTACION = ['taller', 'reloj', 'tablero'] as const
 export const RESULTADOS_ESCANEO = ['ok', 'rechazado', 'error'] as const
 export const CIERRES_SESION = ['mecanico', 'auto', 'jefe'] as const
 
@@ -58,7 +58,10 @@ export const estacionFichaje = pgTable(
       .references(() => sucursal.id),
     /** Lo pone la concesionaria: «Taller, al lado del elevador 2». */
     nombre: text().notNull(),
-    /** `taller` hace los dos escaneos; `reloj` marca entrada y salida y nada más. */
+    /**
+     * `taller` hace los dos escaneos; `reloj` marca entrada y salida; `tablero` no ficha
+     * nada — es el televisor colgado en el piso, que muestra y no se toca—.
+     */
     tipo: text().notNull(),
     /**
      * SHA-256 del token, nunca el token. Se muestra una sola vez al registrar la estación, y
@@ -73,7 +76,7 @@ export const estacionFichaje = pgTable(
   (t) => [
     unique('estacion_token_uq').on(t.tokenHash),
     index('estacion_sucursal_idx').on(t.tenantId, t.sucursalId),
-    check('estacion_tipo_valido', sql`${t.tipo} in ('taller', 'reloj')`),
+    check('estacion_tipo_valido', sql`${t.tipo} in ('taller', 'reloj', 'tablero')`),
   ],
 )
 

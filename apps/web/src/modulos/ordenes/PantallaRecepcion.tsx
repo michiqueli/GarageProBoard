@@ -70,7 +70,11 @@ export function PantallaRecepcion() {
         items: [],
       }),
     onSuccess: async (o) => {
-      await cache.invalidateQueries({ queryKey: ['ordenes', tenantId] })
+      await Promise.all([
+        cache.invalidateQueries({ queryKey: ['ordenes', tenantId] }),
+        // El auto que se acaba de recibir tiene que aparecer en el taller sin recargar.
+        cache.invalidateQueries({ queryKey: ['tablero', tenantId], exact: false }),
+      ])
       notificar.ok(`${nombreOrden(o.numero)} abierta`, {
         accion: { texto: 'Imprimir la orden', alHacer: () => void imprimirOrden(o.id) },
       })

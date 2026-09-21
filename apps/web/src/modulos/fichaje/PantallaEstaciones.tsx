@@ -18,10 +18,26 @@ type Registro = Awaited<ReturnType<typeof api.fichaje.registrarEstacion>>
 
 const FECHA = new Intl.DateTimeFormat('es-AR', { dateStyle: 'short', timeStyle: 'short' })
 
+/** Cómo se lee cada tipo en la tabla, en dos palabras. */
+const QUE_ES: Record<'taller' | 'reloj' | 'tablero', string> = {
+  taller: 'Credencial y orden',
+  reloj: 'Entrada y salida',
+  tablero: 'Muestra el tablero',
+}
+
 const TIPOS = [
   { valor: 'taller' as const, texto: 'Taller: credencial y orden' },
   { valor: 'reloj' as const, texto: 'Reloj: entrada y salida' },
+  { valor: 'tablero' as const, texto: 'Tablero: el televisor del piso' },
 ]
+
+const QUE_HACE: Record<(typeof TIPOS)[number]['valor'], string> = {
+  taller:
+    'Dos escaneos: la credencial del mecánico y después la orden. Si esa orden estaba abierta para él, se cierra.',
+  reloj: 'Un escaneo: la credencial marca entrada, y la siguiente vez, salida.',
+  tablero:
+    'No ficha nada. Muestra qué autos hay en el taller, quién los tiene y cuánto llevan, con letra grande y refrescándose sola. Es para colgar, no para tocar.',
+}
 
 /**
  * Las PC que fichan.
@@ -138,7 +154,7 @@ export function PantallaEstaciones() {
                     {e.nombre}
                   </td>
                   <td className="h-fila border-b border-borde-suave px-3 text-texto-suave">
-                    {e.tipo === 'taller' ? 'Credencial y orden' : 'Entrada y salida'}
+                    {QUE_ES[e.tipo]}
                   </td>
                   <td className="h-fila border-b border-borde-suave px-3 text-texto-suave">
                     {e.sucursal ?? '—'}
@@ -178,7 +194,7 @@ export function PantallaEstaciones() {
                   </span>
                 </div>
                 <span className="text-etiqueta text-texto-suave">
-                  {e.tipo === 'taller' ? 'Credencial y orden' : 'Entrada y salida'}
+                  {QUE_ES[e.tipo]}
                   {e.sucursal ? ` · ${e.sucursal}` : ''}
                 </span>
                 <span className="text-etiqueta text-texto-tenue">
@@ -258,7 +274,7 @@ function Formulario({ alTerminar }: { alTerminar: (registro?: Registro) => void 
   const primerCampo = useRef<HTMLInputElement>(null)
 
   const [nombre, setNombre] = useState('')
-  const [tipo, setTipo] = useState<'taller' | 'reloj'>('taller')
+  const [tipo, setTipo] = useState<'taller' | 'reloj' | 'tablero'>('taller')
   const [sucursalId, setSucursalId] = useState<string | null>(null)
 
   useEffect(() => {
@@ -317,11 +333,7 @@ function Formulario({ alTerminar }: { alTerminar: (registro?: Registro) => void 
         />
       </div>
 
-      <p className="text-etiqueta text-texto-suave">
-        {tipo === 'taller'
-          ? 'Dos escaneos: la credencial del mecánico y después la orden. Si esa orden estaba abierta para él, se cierra.'
-          : 'Un escaneo: la credencial marca entrada, y la siguiente vez, salida.'}
-      </p>
+      <p className="text-etiqueta text-texto-suave">{QUE_HACE[tipo]}</p>
 
       <div className="flex flex-wrap gap-2">
         <Boton accion="global.guardar" variante="principal" onClick={() => enviar()}>

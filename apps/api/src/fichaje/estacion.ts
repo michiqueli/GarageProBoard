@@ -24,7 +24,7 @@ export interface Estacion {
   id: string
   tenantId: string
   sucursalId: string
-  tipo: 'taller' | 'reloj'
+  tipo: 'taller' | 'reloj' | 'tablero'
   nombre: string
   ip?: string | undefined
 }
@@ -114,7 +114,7 @@ export class AutenticadorDeEstaciones {
       id: fila.estacion_id,
       tenantId: fila.tenant_id,
       sucursalId: fila.sucursal_id,
-      tipo: fila.tipo === 'reloj' ? 'reloj' : 'taller',
+      tipo: fila.tipo === 'reloj' || fila.tipo === 'tablero' ? fila.tipo : 'taller',
       nombre: fila.nombre,
     }
   }

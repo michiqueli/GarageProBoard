@@ -16,6 +16,7 @@ import {
 import { Inject, Injectable } from '@nestjs/common'
 import { verificarQr } from '../comun/qr.ts'
 import { DatosDeLaEstacion, type Estacion } from './estacion.ts'
+import { armarTablero } from './tablero.ts'
 
 /**
  * El fichaje: lo que pasa cuando alguien apoya algo contra el lector.
@@ -121,6 +122,11 @@ export class ServicioFichaje {
         concesionaria: donde?.fantasia ?? donde?.razonSocial ?? '',
       }
     })
+  }
+
+  /** El tablero para la pantalla del piso. La sucursal es la de la estación, no la de nadie. */
+  tablero() {
+    return this.datos.transaccion((tx, estacion) => armarTablero(tx, estacion.sucursalId))
   }
 
   /**

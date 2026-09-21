@@ -114,6 +114,9 @@ export function PantallaFichaOrden() {
       cache.invalidateQueries({ queryKey: ['ordenes', tenantId], exact: false }),
       cache.invalidateQueries({ queryKey: ['pedidos-repuestos', tenantId], exact: false }),
       cache.invalidateQueries({ queryKey: ['repuestos', tenantId], exact: false }),
+      // El tablero muestra el estado de esta misma orden: cambiarlo acá y que allá siga
+      // diciendo lo de antes es la clase de cosa que hace desconfiar de la pantalla.
+      cache.invalidateQueries({ queryKey: ['tablero', tenantId], exact: false }),
     ])
   }
 

@@ -5,6 +5,7 @@ import { auditar } from '../comun/auditoria.ts'
 import { DatosDelTenant } from '../comun/datos.ts'
 import { generarToken, hashDeToken } from './estacion.ts'
 import { diaArgentino } from './fichaje.service.ts'
+import { armarTablero } from './tablero.ts'
 
 export class ErrorEstaciones extends Error {
   constructor(readonly codigo: 'NO_ENCONTRADA' | 'REFERENCIA_INVALIDA') {
@@ -36,7 +37,7 @@ export class ServicioEstaciones {
    * nosotros lo podemos volver a leer. Si se pierde, se registra la estación de nuevo.
    */
   registrar(
-    entrada: { nombre: string; tipo: 'taller' | 'reloj'; sucursalId: string },
+    entrada: { nombre: string; tipo: 'taller' | 'reloj' | 'tablero'; sucursalId: string },
     baseUrl: string,
     ip?: string,
   ) {
@@ -99,6 +100,11 @@ export class ServicioEstaciones {
 
       return this.una(tx, id)
     })
+  }
+
+  /** El tablero de piso de la sucursal en la que está parado quien lo pide. */
+  tablero() {
+    return this.datos.transaccion((tx, sesion) => armarTablero(tx, sesion.sucursalId))
   }
 
   /** Quién entró y quién salió, un día. Por omisión, hoy. */
@@ -185,7 +191,10 @@ function aSalida(f: {
   return {
     id: f.id,
     nombre: f.nombre,
-    tipo: f.tipo === 'reloj' ? ('reloj' as const) : ('taller' as const),
+    tipo:
+      f.tipo === 'reloj' || f.tipo === 'tablero'
+        ? (f.tipo as 'reloj' | 'tablero')
+        : ('taller' as const),
     sucursalId: f.sucursalId,
     sucursal: f.sucursal,
     activa: f.activa,

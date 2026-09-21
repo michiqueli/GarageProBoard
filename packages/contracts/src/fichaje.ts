@@ -1,14 +1,18 @@
 import { z } from 'zod'
 import { conEstacion, conPermiso } from './acceso.ts'
+import { ESTADOS_EN_TALLER } from './ordenes.ts'
 
 const TAG = 'Fichaje'
 
 export const TIPOS_ESTACION = {
   taller: 'Taller: credencial y orden',
   reloj: 'Reloj: entrada y salida',
+  tablero: 'Tablero: el televisor del piso',
 } as const
 
 export type TipoEstacion = keyof typeof TIPOS_ESTACION
+
+const tipoEstacion = z.enum(Object.keys(TIPOS_ESTACION) as [TipoEstacion, ...TipoEstacion[]])
 
 /**
  * Qué terminó pasando con un escaneo. Es lo que la pantalla convierte en verde o rojo.
@@ -37,12 +41,51 @@ export const respuestaEscaneo = z.object({
 export const estacionSalida = z.object({
   id: z.uuid(),
   nombre: z.string(),
-  tipo: z.enum(['taller', 'reloj']),
+  tipo: tipoEstacion,
   sucursalId: z.uuid(),
   sucursal: z.string().nullable(),
   activa: z.boolean(),
   ultimoVistoEn: z.iso.datetime().nullable(),
   creadoEn: z.iso.datetime(),
+})
+
+/**
+ * Un auto en el taller, como se ve en el tablero de piso.
+ *
+ * Los **dos relojes** que salen de acá son los que la concesionaria de verdad quiere ver, y no
+ * son el mismo: `manoDeObraMin` es lo que costó el trabajo —la suma de las sesiones— y
+ * `enTallerMin` es lo que el cliente percibió, de que entró el auto a ahora. La diferencia es
+ * el **tiempo muerto**, y es normalmente el número que más duele.
+ */
+export const tarjetaTablero = z.object({
+  id: z.uuid(),
+  numero: z.number().int(),
+  estado: z.enum(ESTADOS_EN_TALLER),
+  dominio: z.string().nullable(),
+  vehiculo: z.string().nullable(),
+  pedido: z.string(),
+  ingreso: z.iso.datetime(),
+  prometidaPara: z.string().nullable(),
+  /** El mecánico que tiene asignado, esté fichado o no. */
+  asignado: z.string().nullable(),
+  /** Quiénes lo están trabajando **ahora mismo**, con desde cuándo. Vacío: está parado. */
+  trabajando: z.array(z.object({ nombre: z.string(), desde: z.iso.datetime() })),
+  manoDeObraMin: z.number().int(),
+  enTallerMin: z.number().int(),
+  muertoMin: z.number().int(),
+})
+
+export const tableroSalida = z.object({
+  sucursal: z.string().nullable(),
+  /** Cuándo lo armó el servidor: la pantalla del piso muestra que está vivo. */
+  alMomento: z.iso.datetime(),
+  autos: z.array(tarjetaTablero),
+  /** Los tres números del encabezado, calculados una vez acá y no en cada pantalla. */
+  resumen: z.object({
+    enTaller: z.number().int(),
+    conAlguien: z.number().int(),
+    parados: z.number().int(),
+  }),
 })
 
 export const jornadaSalida = z.object({
@@ -84,7 +127,7 @@ export const contratoFichaje = {
       z.object({
         id: z.uuid(),
         nombre: z.string(),
-        tipo: z.enum(['taller', 'reloj']),
+        tipo: tipoEstacion,
         sucursal: z.string().nullable(),
         concesionaria: z.string(),
       }),
@@ -143,7 +186,7 @@ export const contratoFichaje = {
     .input(
       z.object({
         nombre: z.string().trim().min(1, 'Ponele un nombre: «Taller, al lado del elevador 2»'),
-        tipo: z.enum(['taller', 'reloj']),
+        tipo: tipoEstacion,
         sucursalId: z.uuid(),
       }),
     )
@@ -172,6 +215,38 @@ export const contratoFichaje = {
     .input(z.object({ id: z.uuid() }))
     .errors({ NO_ENCONTRADA: { status: 404, message: 'Esa estación no existe' } })
     .output(estacionSalida),
+
+  /**
+   * El tablero de piso, para el jefe de taller: qué auto, quién lo tiene y cuánto lleva.
+   *
+   * Es la misma consulta que `tableroEstacion`, con la diferencia que importa: acá hay una
+   * persona con permisos y una sucursal elegida en la sesión.
+   */
+  tablero: conPermiso('servicios', 'ver', 'Orden')
+    .route({
+      method: 'GET',
+      path: '/taller/tablero',
+      tags: [TAG],
+      operationId: 'tablero',
+      summary: 'Qué hay en el taller ahora mismo, y quién lo tiene',
+    })
+    .output(tableroSalida),
+
+  /**
+   * El mismo tablero, para el televisor colgado en el piso.
+   *
+   * Sin sesión: se autentica con el token de una estación de tipo `tablero`, que no ficha nada
+   * — muestra y no se toca —. La sucursal sale de la estación, no de nadie.
+   */
+  tableroEstacion: conEstacion
+    .route({
+      method: 'GET',
+      path: '/fichaje/tablero',
+      tags: [TAG],
+      operationId: 'tableroEstacion',
+      summary: 'El tablero para la pantalla del piso',
+    })
+    .output(tableroSalida),
 
   asistencia: conPermiso('nucleo', 'ver', 'Empleado')
     .route({

@@ -148,8 +148,18 @@ export function sobreQue(tabla: string, antes: Foto, despues: Foto): string {
   if (tabla === 'compra') return `la compra ${String(dato('numero'))}`
   if (tabla === 'proveedor') return `el proveedor ${String(dato('razonSocial'))}`
   if (tabla === 'empleado') return `el legajo de ${String(dato('razonSocial'))}`
-  if (tabla === 'credencial') return `la credencial de ${String(dato('empleado'))}`
+  // Ojo con estas tres: esta función la llaman **las dos pestañas**, y las filas que reciben
+  // no tienen la misma forma. La narrada trae lo que la operación quiso contar —el nombre del
+  // empleado—; la cruda trae la fila de la tabla, donde hay un `empleadoId` y ningún nombre.
+  // Por eso cada una se identifica primero por lo que la operación anotó y, si no está, por
+  // algo que sí esté en la fila.
+  if (tabla === 'credencial') {
+    const quien = dato('empleado')
+    return quien ? `la credencial de ${String(quien)}` : `la credencial ${String(dato('codigo'))}`
+  }
   if (tabla === 'estacion_fichaje') return `la estación de fichaje «${String(dato('nombre'))}»`
+  if (tabla === 'jornada') return `la jornada del ${fecha(dato('fecha'))}`
+  if (tabla === 'sesion_trabajo') return 'una sesión de trabajo'
   if (tabla === 'rol') return `el rol ${String(dato('nombre'))}`
   if (tabla === 'vehiculo' || tabla === 'titularidad') {
     return `el vehículo ${String(dato('dominio') ?? dato('chasis'))}`
@@ -270,6 +280,8 @@ function describirOrden(accion: string, despues: Foto): string {
     }
     return `Armó el presupuesto ${String(despues.presupuesto)} por $ ${String(despues.total).replace('.', ',')}, con ${String(despues.renglones)} renglones`
   }
+  // Reabrir la deja en recibida, pero contarlo como «la pasó a Recibida» esconde lo que pasó.
+  if (despues?.reabierta) return 'La reabrió: volvió al taller, esperando que alguien la agarre'
   if (despues?.estado)
     return `La pasó a ${ESTADOS_ORDEN[String(despues.estado)] ?? String(despues.estado)}`
   if (despues?.items !== undefined) return `Cargó ${String(despues.items)} trabajos y repuestos`

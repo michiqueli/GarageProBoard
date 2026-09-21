@@ -210,6 +210,37 @@ describe('la pantalla sabe contar cada tabla auditada', () => {
     'dispositivo',
   ] as const satisfies readonly TablaAuditada[]
 
+  /**
+   * La regresión: `sobreQue` la llaman **las dos pestañas**, y las filas no tienen la misma
+   * forma. La narrada trae lo que la operación anotó —«la credencial de Pérez, Jorge»—; la
+   * cruda trae la fila que escribió el trigger, con un `empleadoId` y ningún nombre. Leer sólo
+   * la primera hacía que la pestaña de cambios dijera «la credencial de undefined».
+   */
+  describe('con la fila cruda del trigger, que no tiene los nombres', () => {
+    it('la credencial se identifica por su código', () => {
+      const cruda = {
+        codigo: 'WXCK4CTP',
+        empleadoId: 'a3df1520-6461-4a8c-adfb-688c2d601007',
+        emitidaEn: '2026-09-18T11:41:34-03:00',
+      }
+      expect(sobreQue('credencial', null, cruda)).toBe('la credencial WXCK4CTP')
+    })
+
+    it('y con la narrada sigue diciendo de quién es', () => {
+      expect(sobreQue('credencial', null, { empleado: 'Pérez, Jorge' })).toBe(
+        'la credencial de Pérez, Jorge',
+      )
+    })
+
+    it('ninguna tabla del fichaje sale con su nombre de Postgres', () => {
+      const crudas = ['credencial', 'estacion_fichaje', 'jornada', 'sesion_trabajo'].filter(
+        (tabla) =>
+          sobreQue(tabla, null, { nombre: 'x', codigo: 'x', fecha: '2026-09-18' }) === tabla,
+      )
+      expect(crudas).toEqual([])
+    })
+  })
+
   it('ninguna se muestra como el nombre pelado de una tabla de Postgres', () => {
     // `usuario` y `dispositivo` los arma la consulta de la pantalla, con el correo y el
     // nombre de la computadora, así que no pasan por `sobreQue`.

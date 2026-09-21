@@ -232,8 +232,11 @@ verdad. Qué se trae y qué cambia ahora que el DMS es nuestro, en
       en una OT la completa de un toque, y el tiempo estipulado sirve para comparar con el real.
       Hay un Excel de Renault con los tiempos para importar como primer catálogo
 - ✅ Facturación de la OT: panel «Órdenes para facturar» en caja; anular la factura la devuelve
-- ⬜ **Tablero de piso en tiempo real**: qué auto, quién lo tiene, cuánto lleva.
-      Es la pantalla que vende el producto en una demo.
+- ✅ **Tablero de piso en tiempo real**: qué auto, quién lo tiene, cuánto lleva. En dos vistas
+      del mismo tablero: la del jefe de taller, con sesión y desde donde se abre la orden, y el
+      televisor colgado en el piso, que se autentica con el token de una estación de tipo
+      `tablero` y no se toca. Con los **dos relojes** —mano de obra y tiempo en taller— y el
+      tiempo muerto, que es la diferencia
 - ✅ Flujo de recepción **sin tocar el mouse**: patente, Enter, Tab, F2
 
 **Criterio de terminado:** una orden entra, se trabaja, se factura y se cobra.

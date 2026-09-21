@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { apiEstacion, olvidarEstacion, tokenDeLaEstacion, tomarTokenDeLaUrl } from './estacion.ts'
+import { TableroDelPiso } from './TableroDelPiso.tsx'
 
 type Respuesta = Awaited<ReturnType<typeof apiEstacion.fichaje.escanear>>
 type Estacion = Awaited<ReturnType<typeof apiEstacion.fichaje.estacion>>
@@ -134,6 +135,10 @@ export function PantallaFichaje() {
 
   if (problema) return <Aviso texto={problema} />
   if (!estacion) return <Aviso texto="Conectando…" />
+
+  // Una estación de tipo tablero no ficha nada: es el televisor del piso. Cuelga de la misma
+  // ruta porque se registra y se autentica igual — lo único que cambia es qué muestra.
+  if (estacion.tipo === 'tablero') return <TableroDelPiso estacion={estacion} />
 
   const esperando = Boolean(pendiente)
 

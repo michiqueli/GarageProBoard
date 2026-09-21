@@ -207,8 +207,10 @@ describe('en el taller', () => {
     expect(tarde.statusCode).toBe(409)
     expect(tarde.json().data.motivo).toMatch(/reabrila/)
 
+    // Recibida y no en proceso: al reabrirla nadie empezó nada. La pasa a en proceso la
+    // primera credencial que la escanee, igual que con una orden nueva.
     const reabierta = await pedir(gerente, 'POST', `/ordenes/${ordenId}/reabrir`)
-    expect(reabierta.json().estado).toBe('en_proceso')
+    expect(reabierta.json().estado).toBe('recibida')
     expect((await pedir(gerente, 'POST', `/ordenes/${ordenId}/terminar`)).json().estado).toBe(
       'terminada',
     )

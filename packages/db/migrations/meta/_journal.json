@@ -127,6 +127,13 @@
       "when": 1789743986642,
       "tag": "0017_fichaje",
       "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1789947623039,
+      "tag": "0018_estacion_tablero",
+      "breakpoints": true
     }
   ]
 }

@@ -43,6 +43,11 @@ export class ControladorFichaje {
     return implement(c.estacion).handler(() => this.fichaje.estacion())
   }
 
+  @Operacion(c.tableroEstacion)
+  tableroEstacion() {
+    return implement(c.tableroEstacion).handler(() => this.fichaje.tablero())
+  }
+
   @Operacion(c.escanear)
   escanear() {
     return implement(c.escanear).handler(({ input }) => this.fichaje.escanear(input))
@@ -67,6 +72,11 @@ export class ControladorFichaje {
     return implement(c.revocarEstacion).handler(({ input, errors }) =>
       this.estaciones.revocar(input.id, pedido.ip).catch((e) => traducir(e, errors)),
     )
+  }
+
+  @Operacion(c.tablero)
+  tablero() {
+    return implement(c.tablero).handler(() => this.estaciones.tablero())
   }
 
   @Operacion(c.asistencia)

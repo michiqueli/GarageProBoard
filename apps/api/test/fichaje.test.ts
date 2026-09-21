@@ -428,3 +428,210 @@ describe('el cierre de fin de turno', () => {
     expect(abierta).toBeDefined()
   })
 })
+
+describe('el tablero de piso', () => {
+  /**
+   * Los dos relojes son el punto entero: la mano de obra es lo que costó el trabajo y el
+   * tiempo en taller es lo que el cliente percibió. La diferencia es lo que explica por qué un
+   * auto estuvo seis días, y es el número que la concesionaria más quiere ver.
+   */
+  it('dice qué autos hay, quién los tiene y los dos relojes', async () => {
+    await escanear(tokenTaller, credencialQr)
+    await escanear(tokenTaller, ordenQr, credencialQr)
+
+    const gerente = await entrar('gerente@fichaje.test')
+    const r = await app.inject({
+      method: 'GET',
+      url: '/api/taller/tablero',
+      headers: { authorization: `Bearer ${gerente}` },
+    })
+
+    expect(r.statusCode, r.body).toBe(200)
+    const cuerpo = r.json()
+    expect(cuerpo.resumen).toMatchObject({ enTaller: 1, conAlguien: 1, parados: 0 })
+
+    const auto = cuerpo.autos[0]
+    expect(auto).toMatchObject({ numero: ordenNumero, estado: 'en_proceso' })
+    expect(auto.trabajando[0].nombre).toBe('Diego Sosa')
+    expect(auto.enTallerMin).toBeGreaterThanOrEqual(0)
+    expect(auto.muertoMin).toBeGreaterThanOrEqual(0)
+  })
+
+  it('sin nadie fichado, el auto figura parado', async () => {
+    const gerente = await entrar('gerente@fichaje.test')
+    const r = await app.inject({
+      method: 'GET',
+      url: '/api/taller/tablero',
+      headers: { authorization: `Bearer ${gerente}` },
+    })
+
+    expect(r.json().resumen).toMatchObject({ enTaller: 1, conAlguien: 0, parados: 1 })
+    expect(r.json().autos[0].trabajando).toEqual([])
+  })
+
+  /**
+   * La mano de obra de una sesión **abierta** cuenta lo que lleva hasta ahora. Si contara cero
+   * hasta que cierra, un auto con alguien trabajando desde hace tres horas figuraría sin una
+   * sola hora de trabajo y el tablero mentiría justo cuando más se lo mira.
+   */
+  it('lo que se está trabajando ahora ya suma', async () => {
+    await escanear(tokenTaller, credencialQr)
+    await escanear(tokenTaller, ordenQr, credencialQr)
+    await api.pg.dbDuenio
+      .update(sesionTrabajo)
+      .set({ inicio: new Date(Date.now() - 90 * 60 * 1000) })
+      .where(isNull(sesionTrabajo.fin))
+
+    const gerente = await entrar('gerente@fichaje.test')
+    const r = await app.inject({
+      method: 'GET',
+      url: '/api/taller/tablero',
+      headers: { authorization: `Bearer ${gerente}` },
+    })
+
+    expect(r.json().autos[0].manoDeObraMin).toBeGreaterThanOrEqual(89)
+  })
+
+  it('una orden terminada sale del tablero', async () => {
+    await api.pg.dbDuenio.update(orden).set({ estado: 'terminada' }).where(eq(orden.id, ordenId))
+    const gerente = await entrar('gerente@fichaje.test')
+    const r = await app.inject({
+      method: 'GET',
+      url: '/api/taller/tablero',
+      headers: { authorization: `Bearer ${gerente}` },
+    })
+    expect(r.json().autos).toEqual([])
+  })
+
+  it('el televisor del piso lo pide con el token de su estación, sin sesión', async () => {
+    const gerente = await entrar('gerente@fichaje.test')
+    const nueva = await app.inject({
+      method: 'POST',
+      url: '/api/fichaje/estaciones',
+      headers: { authorization: `Bearer ${gerente}` },
+      payload: { nombre: 'El televisor del piso', tipo: 'tablero', sucursalId },
+    })
+    expect(nueva.statusCode, nueva.body).toBe(201)
+
+    const r = await app.inject({
+      method: 'GET',
+      url: '/api/fichaje/tablero',
+      headers: { authorization: `Estacion ${nueva.json().token}` },
+    })
+    expect(r.statusCode, r.body).toBe(200)
+    expect(r.json()).toHaveProperty('resumen')
+  })
+
+  it('sin token no se ve el tablero del piso', async () => {
+    const r = await app.inject({ method: 'GET', url: '/api/fichaje/tablero' })
+    expect(r.statusCode).toBe(401)
+  })
+})
+
+describe('una orden que se reabre', () => {
+  /**
+   * El ciclo tiene que cerrar por el mismo lado: reabrir la deja **recibida** —nadie empezó
+   * nada— y es el primer escaneo el que la pasa a en proceso, igual que con una orden nueva.
+   * Si reabrir la dejara en proceso, el tablero mostraría un auto «en proceso» sin nadie
+   * adentro, que es exactamente lo que hace que se deje de creer en la pantalla.
+   */
+  it('vuelve a recibida, y el primer escaneo la pone en proceso otra vez', async () => {
+    const gerente = await entrar('gerente@fichaje.test')
+    // Sin nada que cobrar no se termina, así que primero lleva un trabajo.
+    const items = await app.inject({
+      method: 'PUT',
+      url: `/api/ordenes/${ordenId}/items`,
+      headers: { authorization: `Bearer ${gerente}` },
+      payload: {
+        items: [
+          {
+            tipo: 'trabajo',
+            descripcion: 'Cambio de pastillas',
+            cantidad: '1',
+            precioUnitario: '50000',
+          },
+        ],
+      },
+    })
+    expect(items.statusCode, items.body).toBe(200)
+
+    const terminada = await app.inject({
+      method: 'POST',
+      url: `/api/ordenes/${ordenId}/terminar`,
+      headers: { authorization: `Bearer ${gerente}` },
+    })
+    expect(terminada.statusCode, terminada.body).toBe(200)
+
+    const reabierta = await app.inject({
+      method: 'POST',
+      url: `/api/ordenes/${ordenId}/reabrir`,
+      headers: { authorization: `Bearer ${gerente}` },
+    })
+    expect(reabierta.statusCode, reabierta.body).toBe(200)
+    expect(reabierta.json().estado).toBe('recibida')
+
+    await escanear(tokenTaller, credencialQr)
+    await escanear(tokenTaller, ordenQr, credencialQr)
+
+    const [ot] = await api.pg.dbDuenio.select().from(orden).where(eq(orden.id, ordenId))
+    expect(ot?.estado).toBe('en_proceso')
+  })
+})
+
+describe('lo que pasa con las sesiones abiertas', () => {
+  /**
+   * El mecánico que se olvida de pasar la credencial al terminar es el caso normal, no el raro.
+   * Si su sesión quedara abierta, su reloj seguiría corriendo toda la noche y la mano de obra de
+   * esa orden crecería sola — y el tablero mostraría un auto terminado con alguien adentro.
+   */
+  it('terminar la orden cierra lo que quedó fichado, y queda marcado como cerrado por el jefe', async () => {
+    const gerente = await entrar('gerente@fichaje.test')
+    await escanear(tokenTaller, credencialQr)
+    await escanear(tokenTaller, ordenQr, credencialQr)
+
+    await app.inject({
+      method: 'PUT',
+      url: `/api/ordenes/${ordenId}/items`,
+      headers: { authorization: `Bearer ${gerente}` },
+      payload: {
+        items: [
+          { tipo: 'trabajo', descripcion: 'Revisión', cantidad: '1', precioUnitario: '10000' },
+        ],
+      },
+    })
+    const terminada = await app.inject({
+      method: 'POST',
+      url: `/api/ordenes/${ordenId}/terminar`,
+      headers: { authorization: `Bearer ${gerente}` },
+    })
+    expect(terminada.statusCode, terminada.body).toBe(200)
+
+    const abiertas = await api.pg.dbDuenio
+      .select()
+      .from(sesionTrabajo)
+      .where(isNull(sesionTrabajo.fin))
+    expect(abiertas).toHaveLength(0)
+
+    const [cerrada] = await api.pg.dbDuenio.select().from(sesionTrabajo)
+    expect(cerrada?.cerradaPor).toBe('jefe')
+  })
+
+  it('anularla también: no se le suma mano de obra a algo que no se va a cobrar', async () => {
+    const gerente = await entrar('gerente@fichaje.test')
+    await escanear(tokenTaller, credencialQr)
+    await escanear(tokenTaller, ordenQr, credencialQr)
+
+    const anulada = await app.inject({
+      method: 'POST',
+      url: `/api/ordenes/${ordenId}/anular`,
+      headers: { authorization: `Bearer ${gerente}` },
+    })
+    expect(anulada.statusCode, anulada.body).toBe(200)
+
+    const abiertas = await api.pg.dbDuenio
+      .select()
+      .from(sesionTrabajo)
+      .where(isNull(sesionTrabajo.fin))
+    expect(abiertas).toHaveLength(0)
+  })
+})

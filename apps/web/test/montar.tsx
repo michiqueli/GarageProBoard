@@ -1,4 +1,5 @@
 import { MODULOS, type ReglaPermiso } from '@gpb/core'
+import type { QueryClient } from '@tanstack/react-query'
 import { QueryClientProvider } from '@tanstack/react-query'
 import { createMemoryHistory, RouterProvider } from '@tanstack/react-router'
 import { render, screen, within } from '@testing-library/react'
@@ -13,6 +14,21 @@ import { crearConsultas } from '../src/sesion/consultas.ts'
  * El router se importa acá adentro y no arriba: así cada test puede mockear el cliente
  * de la API antes de que la aplicación lo cargue.
  */
+let ultima: QueryClient | null = null
+
+/**
+ * La caché de la aplicación que se acaba de montar.
+ *
+ * Existe para poder probar lo que una pantalla le hace a **otra**: cuando se cambia el estado
+ * de una orden, el tablero del taller tiene que quedar marcado para volver a pedirse. Las dos
+ * pantallas no se montan juntas —son rutas distintas—, así que lo único observable desde
+ * afuera es la caché.
+ */
+export function cacheDePrueba(): QueryClient {
+  if (!ultima) throw new Error('Montá la aplicación antes de mirar su caché.')
+  return ultima
+}
+
 export async function montarApp(ruta: string) {
   const { crearRouter } = await import('../src/rutas.tsx')
   const router = crearRouter({ history: createMemoryHistory({ initialEntries: [ruta] }) })
@@ -20,6 +36,7 @@ export async function montarApp(ruta: string) {
   // Sin reintentos: un error tiene que verse ya, no después de que el test espere.
   // La misma caché que la aplicación, con los avisos enchufados.
   const consultas = crearConsultas()
+  ultima = consultas
 
   render(
     <QueryClientProvider client={consultas}>

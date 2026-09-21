@@ -43,11 +43,16 @@ const PRESENTACION: Record<Estado, Presentacion> = {
     clase: 'text-atencion',
     reloj: true,
   },
-  en_proceso: { etiqueta: 'En proceso', forma: 'llena', clase: 'bg-marca text-fondo' },
+  // Verde y **contorneado**, no lleno: un auto que alguien está trabajando no reclama nada,
+  // está en curso normal, que es justo lo que dice la regla de arriba. Lleno y en ámbar —como
+  // estaba— lo dejaba casi idéntico a «Esperando autorización», que sí reclama: los dos tokens
+  // son ámbar (#f0a621 y #d9962b) y a tres metros son el mismo badge.
+  en_proceso: { etiqueta: 'En proceso', forma: 'contorno', clase: 'text-ok' },
   // Terminada espera a caja: alguien tiene que facturarla.
   terminada: { etiqueta: 'Para facturar', forma: 'llena', clase: 'bg-ok text-fondo' },
-  // Facturada espera que el cliente la retire: en curso normal.
-  facturada: { etiqueta: 'Facturada', forma: 'contorno', clase: 'text-ok' },
+  // Facturada espera que el cliente la retire: en curso normal. En azul y no en verde para no
+  // quedar igual que «En proceso», y porque es un estado administrativo y no del taller.
+  facturada: { etiqueta: 'Facturada', forma: 'contorno', clase: 'text-info' },
   entregada: { etiqueta: 'Entregada', forma: 'texto', clase: 'text-texto-tenue' },
   anulada: { etiqueta: 'Anulada', forma: 'texto', clase: 'text-critico line-through' },
 }
