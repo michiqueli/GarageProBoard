@@ -26,6 +26,7 @@ import {
   ordenPresupuesto,
   ordenSecuencia,
   pedidoRepuestos,
+  sesionTrabajo,
   sucursal,
   tipoComprobante,
   titularidad,
@@ -42,14 +43,6 @@ import { generarCodigoQr } from '../comun/qr.ts'
 import { CORREO } from '../comun/simbolos.ts'
 import { cerrarSesionesDeLaOrden } from '../fichaje/tablero.ts'
 import { moverDiferencia, porRepuesto, repuestosExisten } from '../repuestos/stock.ts'
-
-/**
- * Los puestos que trabajan un auto. Es lo que separa «el personal de la concesionaria» de
- * «a quién le puedo asignar esta orden»: el cajero está en la lista de personal y no acá.
- *
- * El lavador entra: el lavado es un renglón de la orden y alguien lo ficha.
- */
-const PUESTOS_DE_TALLER = ['mecanico', 'lavador'] as const
 
 type Codigo =
   | 'NO_ENCONTRADA'
@@ -102,8 +95,7 @@ export interface DatosRecepcion {
   combustible?: string | null | undefined
   pedido: string
   observaciones?: string | null | undefined
-  prometidaPara?: string | null | undefined
-  mecanicoId?: string | null | undefined
+  entregaEstimada?: string | null | undefined
 }
 
 export interface ItemEntrada {
@@ -195,43 +187,6 @@ export class ServicioOrdenes {
     })
   }
 
-  /** Los usuarios activos que entran a la sucursal activa: a quién se le asigna una orden. */
-  /**
-   * A quién se le puede asignar una orden en esta sucursal.
-   *
-   * Los del taller, no todo el personal: el cajero y el administrativo no arreglan autos, y un
-   * selector con la concesionaria entera adentro obliga a buscar en una lista de cuarenta para
-   * elegir entre seis. Los que no tienen sucursal asignada aparecen igual — en una
-   * concesionaria de una sola boca nadie la carga.
-   */
-  personal() {
-    return this.datos.transaccion(async (tx, sesion) => {
-      const filas = await tx
-        .select({
-          id: empleado.id,
-          nombre: entidadComercial.nombre,
-          apellido: entidadComercial.apellido,
-          razonSocial: entidadComercial.razonSocial,
-        })
-        .from(empleado)
-        .innerJoin(entidadComercial, eq(entidadComercial.id, empleado.id))
-        .where(
-          and(
-            eq(empleado.activo, true),
-            inArray(empleado.puesto, PUESTOS_DE_TALLER),
-            or(isNull(empleado.sucursalId), eq(empleado.sucursalId, sesion.sucursalId)),
-          ),
-        )
-        .orderBy(asc(entidadComercial.razonSocial))
-      return {
-        datos: filas.map((e) => ({
-          id: e.id,
-          nombre: `${e.nombre ?? ''} ${e.apellido ?? ''}`.trim() || e.razonSocial,
-        })),
-      }
-    })
-  }
-
   ficha(id: string) {
     return this.datos.transaccion((tx) => this.detalle(tx, id))
   }
@@ -264,7 +219,7 @@ export class ServicioOrdenes {
         .from(titularidad)
         .where(and(eq(titularidad.vehiculoId, auto.id), isNull(titularidad.hasta)))
       const pagaId = entrada.pagaId ?? titular?.id ?? null
-      await this.verificarReferencias(tx, pagaId, entrada.mecanicoId ?? null)
+      await this.verificarReferencias(tx, pagaId)
 
       // El número siguiente de la sucursal, atómico: dos recepciones a la vez no comparten.
       const [secuencia] = await tx
@@ -295,9 +250,8 @@ export class ServicioOrdenes {
           combustible: entrada.combustible ?? null,
           pedido: entrada.pedido,
           observaciones: entrada.observaciones ?? null,
-          prometidaPara: entrada.prometidaPara ?? null,
+          entregaEstimada: entrada.entregaEstimada ?? null,
           asesorId: sesion.usuarioId,
-          mecanicoId: entrada.mecanicoId ?? null,
         })
         .returning({ id: orden.id })
       if (!creada) throw new Error('No se pudo abrir la orden.')
@@ -337,7 +291,7 @@ export class ServicioOrdenes {
       CERRADA,
       'Una orden facturada, entregada o anulada ya no se modifica.',
       async (tx, sesion, o) => {
-        await this.verificarReferencias(tx, entrada.pagaId ?? null, entrada.mecanicoId ?? null)
+        await this.verificarReferencias(tx, entrada.pagaId ?? null)
         await tx
           .update(orden)
           .set({
@@ -350,8 +304,7 @@ export class ServicioOrdenes {
             combustible: entrada.combustible ?? null,
             pedido: entrada.pedido,
             observaciones: entrada.observaciones ?? null,
-            prometidaPara: entrada.prometidaPara ?? null,
-            mecanicoId: entrada.mecanicoId ?? null,
+            entregaEstimada: entrada.entregaEstimada ?? null,
             actualizadoEn: new Date(),
           })
           .where(eq(orden.id, id))
@@ -928,19 +881,10 @@ export class ServicioOrdenes {
     }
   }
 
-  private async verificarReferencias(tx: Db, pagaId: string | null, mecanicoId: string | null) {
+  private async verificarReferencias(tx: Db, pagaId: string | null) {
     if (pagaId) {
       const [c] = await tx.select({ id: cliente.id }).from(cliente).where(eq(cliente.id, pagaId))
       if (!c) throw new ErrorOrdenes('NO_ENCONTRADO')
-    }
-    if (mecanicoId) {
-      // Un empleado, no un usuario: el que figura acá es el mismo que ficha con su
-      // credencial, y hay mecánicos que no entran al sistema.
-      const [e] = await tx
-        .select({ id: empleado.id })
-        .from(empleado)
-        .where(and(eq(empleado.id, mecanicoId), eq(empleado.activo, true)))
-      if (!e) throw new ErrorOrdenes('NO_ENCONTRADO')
     }
   }
 
@@ -1011,6 +955,36 @@ export class ServicioOrdenes {
       .innerJoin(usuario, eq(usuario.id, ordenPresupuesto.creadoPor))
       .where(eq(ordenPresupuesto.ordenId, id))
       .orderBy(desc(ordenPresupuesto.numero))
+
+    // Lo que el fichaje registró. La abierta cuenta lo que lleva hasta ahora: si contara cero
+    // hasta cerrarse, la orden con alguien adentro figuraría sin una hora de trabajo.
+    const fichadas = await tx
+      .select({
+        id: sesionTrabajo.id,
+        inicio: sesionTrabajo.inicio,
+        fin: sesionTrabajo.fin,
+        cerradaPor: sesionTrabajo.cerradaPor,
+        legajo: empleado.legajo,
+        nombre: entidadComercial.nombre,
+        apellido: entidadComercial.apellido,
+        razonSocial: entidadComercial.razonSocial,
+      })
+      .from(sesionTrabajo)
+      .innerJoin(empleado, eq(empleado.id, sesionTrabajo.empleadoId))
+      .innerJoin(entidadComercial, eq(entidadComercial.id, empleado.id))
+      .where(eq(sesionTrabajo.ordenId, id))
+      .orderBy(desc(sesionTrabajo.inicio))
+
+    const ahora = Date.now()
+    const sesiones = fichadas.map((f) => ({
+      id: f.id,
+      nombre: `${f.nombre ?? ''} ${f.apellido ?? ''}`.trim() || f.razonSocial,
+      legajo: f.legajo,
+      inicio: f.inicio.toISOString(),
+      fin: f.fin?.toISOString() ?? null,
+      minutos: Math.max(0, Math.round(((f.fin?.getTime() ?? ahora) - f.inicio.getTime()) / 60_000)),
+      cerradaPor: f.cerradaPor as 'mecanico' | 'auto' | 'jefe' | null,
+    }))
     const [paga] = o.pagaId
       ? await tx
           .select({ email: entidadComercial.email })
@@ -1063,6 +1037,8 @@ export class ServicioOrdenes {
         nota: p.nota,
         respondidoEn: p.respondidoEn?.toISOString() ?? null,
       })),
+      sesiones,
+      manoDeObraMin: sesiones.reduce((a, x) => a + x.minutos, 0),
       factura: factura ?? null,
     }
   }
@@ -1152,7 +1128,7 @@ export class ServicioOrdenes {
         mecanico: f.o.mecanicoId
           ? { id: f.o.mecanicoId, nombre: nombrePersona(f.o.mecanicoId) }
           : null,
-        prometidaPara: f.o.prometidaPara,
+        entregaEstimada: f.o.entregaEstimada,
         creadoEn: f.o.creadoEn.toISOString(),
         total: plata(totales.find((t) => t.ordenId === f.o.id)?.total ?? '0').toFixed(2),
       }))

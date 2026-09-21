@@ -126,6 +126,16 @@ const EJEMPLOS: Concesionaria[] = [
       // gerente, un permiso mal aplicado no se nota nunca, porque el gerente puede todo.
       { email: 'taller@litoral.test', nombre: 'Diego', apellido: 'Sosa', rol: 'Mecánico' },
       { email: 'repuestos@litoral.test', nombre: 'Carla', apellido: 'Benítez', rol: 'Repuestero' },
+      // El que recibe los autos. Sin él, **todas las órdenes quedan a nombre del gerente**:
+      // el asesor de una orden no se elige, sale de la sesión de quien la abrió. Una demo
+      // donde el gerente recibió los siete autos no se parece a ninguna concesionaria.
+      {
+        email: 'asesor@litoral.test',
+        nombre: 'Andrea',
+        apellido: 'Villalba',
+        rol: 'Asesor de servicios',
+      },
+      { email: 'caja@litoral.test', nombre: 'Laura', apellido: 'Paz', rol: 'Cajero' },
     ],
     vehiculos: [
       { chasis: '8AWZZZ377KA123456', dominio: 'AB123CD', anio: 2019, color: 'Gris plata' },

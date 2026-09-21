@@ -16,7 +16,7 @@ writeFileSync(
     numero: 1234,
     qr: 'GT1:O:A7K2P9QX:4F8B2C1D9E',
     ingreso: '2026-09-16T09:42',
-    prometidaPara: '2026-09-18',
+    entregaEstimada: '2026-09-18',
     vehiculo: {
       dominio: 'AE123BC',
       marcaModelo: 'Toyota Hilux',

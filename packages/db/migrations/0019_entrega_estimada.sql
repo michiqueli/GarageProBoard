@@ -1,0 +1,1 @@
+ALTER TABLE "orden" RENAME COLUMN "prometida_para" TO "entrega_estimada";

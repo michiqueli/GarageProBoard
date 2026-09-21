@@ -87,7 +87,7 @@ export const orden = pgTable(
     pedido: text().notNull(),
     /** El estado del auto al recibirlo: rayones, golpes, lo que falta. */
     observaciones: text(),
-    prometidaPara: date(),
+    entregaEstimada: date(),
 
     asesorId: uuid()
       .notNull()

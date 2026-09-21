@@ -214,8 +214,10 @@ describe('los dos escaneos del taller', () => {
     await escanear(tokenTaller, credencialQr)
     const r = await escanear(tokenTaller, ordenQr, credencialQr)
 
-    expect(r.json()).toMatchObject({ resultado: 'ok', accion: 'abrio' })
-    expect(r.json().detalle).toContain('Abrió la OT')
+    // «Empezaste» y no el nombre: al que está parado frente al lector no hay que decirle
+    // quién es —lo vio en el paso 1— sino qué acaba de pasar.
+    expect(r.json()).toMatchObject({ resultado: 'ok', accion: 'abrio', titulo: 'Empezaste' })
+    expect(r.json().detalle).toContain('OT 000001')
 
     const [abierta] = await api.pg.dbDuenio
       .select()
@@ -233,7 +235,7 @@ describe('los dos escaneos del taller', () => {
     await escanear(tokenTaller, ordenQr, credencialQr)
 
     const r = await escanear(tokenTaller, ordenQr, credencialQr)
-    expect(r.json()).toMatchObject({ resultado: 'ok', accion: 'cerro' })
+    expect(r.json()).toMatchObject({ resultado: 'ok', accion: 'cerro', titulo: 'Terminaste' })
     expect(r.json().duracion).toBeTruthy()
 
     const [cerrada] = await api.pg.dbDuenio.select().from(sesionTrabajo)
@@ -633,5 +635,136 @@ describe('lo que pasa con las sesiones abiertas', () => {
       .from(sesionTrabajo)
       .where(isNull(sesionTrabajo.fin))
     expect(abiertas).toHaveLength(0)
+  })
+})
+
+describe('los tiempos en la ficha de la orden', () => {
+  /**
+   * La regresión que lo motivó: el mecánico escaneaba, la base guardaba los minutos, y en la
+   * pantalla de la orden no se enteraba nadie. El fichaje tiene que verse desde el sistema.
+   */
+  it('la orden muestra quién trabajó, cuánto, y la suma', async () => {
+    const gerente = await entrar('gerente@fichaje.test')
+    await escanear(tokenTaller, credencialQr)
+    await escanear(tokenTaller, ordenQr, credencialQr)
+
+    const abierta = await app.inject({
+      method: 'GET',
+      url: `/api/ordenes/${ordenId}`,
+      headers: { authorization: `Bearer ${gerente}` },
+    })
+    expect(abierta.statusCode, abierta.body).toBe(200)
+    expect(abierta.json().sesiones).toHaveLength(1)
+    expect(abierta.json().sesiones[0]).toMatchObject({
+      nombre: 'Diego Sosa',
+      legajo: '0007',
+      fin: null,
+      cerradaPor: null,
+    })
+
+    await escanear(tokenTaller, ordenQr, credencialQr)
+
+    const cerrada = await app.inject({
+      method: 'GET',
+      url: `/api/ordenes/${ordenId}`,
+      headers: { authorization: `Bearer ${gerente}` },
+    })
+    expect(cerrada.json().sesiones[0].fin).not.toBeNull()
+    expect(cerrada.json().sesiones[0].cerradaPor).toBe('mecanico')
+    expect(cerrada.json().manoDeObraMin).toBeGreaterThanOrEqual(0)
+  })
+
+  it('sin nadie que haya fichado, la orden lo dice con una lista vacía', async () => {
+    const gerente = await entrar('gerente@fichaje.test')
+    const r = await app.inject({
+      method: 'GET',
+      url: `/api/ordenes/${ordenId}`,
+      headers: { authorization: `Bearer ${gerente}` },
+    })
+    expect(r.json().sesiones).toEqual([])
+    expect(r.json().manoDeObraMin).toBe(0)
+  })
+})
+
+describe('cada uno cierra lo suyo', () => {
+  /**
+   * La garantía que hay que poder afirmar sin mirar el código: **nadie cierra el rato de otro**.
+   * Si escanear una orden cerrara la sesión de quien la tuviera abierta, cualquiera podría
+   * frenarle el reloj a un compañero sin enterarse, y los minutos de mano de obra terminarían
+   * en la persona equivocada.
+   *
+   * La concurrencia única es **por mecánico**, no por orden: dos pueden estar en el mismo auto.
+   */
+  it('escanear una orden que otro tiene abierta abre la propia, sin tocar la ajena', async () => {
+    const gerente = await entrar('gerente@fichaje.test')
+
+    // Un segundo mecánico, con su credencial.
+    const otroId = await sembrarEmpleado(api.pg.dbDuenio, {
+      tenantId,
+      legajo: '0099',
+      nombre: 'Ramón',
+      apellido: 'Quiroga',
+      sucursalId,
+    })
+    await app.inject({
+      method: 'POST',
+      url: `/api/personal/${otroId}/credencial`,
+      headers: { authorization: `Bearer ${gerente}` },
+    })
+    const [suya] = await api.pg.dbDuenio
+      .select({ codigo: credencial.codigo })
+      .from(credencial)
+      .where(and(eq(credencial.empleadoId, otroId), isNull(credencial.revocadaEn)))
+    const credencialOtro = qrFirmado(TIPOS_QR.credencial, suya?.codigo as string)
+
+    // Diego abre la orden.
+    await escanear(tokenTaller, credencialQr)
+    await escanear(tokenTaller, ordenQr, credencialQr)
+
+    // Ramón escanea la misma: abre la suya, no cierra la de Diego.
+    const r = await escanear(tokenTaller, ordenQr, credencialOtro)
+    expect(r.json()).toMatchObject({ resultado: 'ok', accion: 'abrio' })
+    expect(r.json().otros).toContain('Diego Sosa')
+
+    const abiertas = await api.pg.dbDuenio
+      .select()
+      .from(sesionTrabajo)
+      .where(isNull(sesionTrabajo.fin))
+    expect(abiertas).toHaveLength(2)
+  })
+})
+
+describe('el mecánico asignado', () => {
+  /**
+   * Asignado y fichado son dos cosas: el asignado lo decide recepción o el jefe de taller, el
+   * fichado es quien la trabajó de verdad. Que no coincidan es normal y lo cuentan los tiempos.
+   * Lo que no tiene sentido es una orden con horas trabajadas y **nadie** a cargo.
+   */
+  it('si la orden no tenía mecánico, queda el que la agarró', async () => {
+    await api.pg.dbDuenio.update(orden).set({ mecanicoId: null }).where(eq(orden.id, ordenId))
+
+    await escanear(tokenTaller, credencialQr)
+    await escanear(tokenTaller, ordenQr, credencialQr)
+
+    const [ot] = await api.pg.dbDuenio.select().from(orden).where(eq(orden.id, ordenId))
+    expect(ot?.mecanicoId).toBe(mecanicoId)
+  })
+
+  /** Y si ya tenía uno, el fichaje no lo pisa: es una decisión de otro, no un dato del lector. */
+  it('si ya tenía uno asignado, no se lo cambia aunque lo trabaje otro', async () => {
+    const otroId = await sembrarEmpleado(api.pg.dbDuenio, {
+      tenantId,
+      legajo: '0098',
+      nombre: 'Elsa',
+      apellido: 'Vera',
+      sucursalId,
+    })
+    await api.pg.dbDuenio.update(orden).set({ mecanicoId: otroId }).where(eq(orden.id, ordenId))
+
+    await escanear(tokenTaller, credencialQr)
+    await escanear(tokenTaller, ordenQr, credencialQr)
+
+    const [ot] = await api.pg.dbDuenio.select().from(orden).where(eq(orden.id, ordenId))
+    expect(ot?.mecanicoId).toBe(otroId)
   })
 })

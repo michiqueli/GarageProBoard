@@ -1,6 +1,6 @@
 import 'reflect-metadata'
 import { eq } from '@gpb/db'
-import { cliente, entidadComercial, titularidad, usuario, vehiculo } from '@gpb/db/schema'
+import { cliente, entidadComercial, orden, titularidad, usuario, vehiculo } from '@gpb/db/schema'
 import type { NestFastifyApplication } from '@nestjs/platform-fastify'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import {
@@ -115,7 +115,7 @@ describe('la recepción', () => {
       combustible: 'medio',
       pedido: 'Service de 50.000 km. Ruido al frenar.',
       observaciones: 'Rayón en paragolpes trasero',
-      prometidaPara: '2026-09-18',
+      entregaEstimada: '2026-09-18',
     })
     expect(r.statusCode).toBe(201)
     const o = r.json()
@@ -175,18 +175,19 @@ describe('en el taller', () => {
     expect(r.json().estado).toBe('esperando_repuesto')
   })
 
-  it('el mecánico no toca una orden que no tiene asignada; asignada, sí', async () => {
+  /**
+   * El mecánico de una orden **no se asigna**: lo pone el fichaje con el primero que la escanea.
+   * Por eso acá se escribe directo en la base — lo que se prueba es la regla de permisos, no
+   * cómo llegó el dato, y el camino de verdad pasa por el kiosco y se prueba en fichaje.test.ts.
+   */
+  it('el mecánico no toca una orden que no trabajó; la suya, sí', async () => {
     const ajena = await pedir(mecanico, 'POST', `/ordenes/${ordenId}/estado`, {
       estado: 'en_proceso',
     })
     expect(ajena.statusCode).toBe(404)
 
-    const orden = (await pedir(gerente, 'GET', `/ordenes/${ordenId}`)).json()
-    await pedir(gerente, 'PUT', `/ordenes/${ordenId}`, {
-      pedido: orden.pedido,
-      pagaId: orden.paga.id,
-      mecanicoId,
-    })
+    await api.pg.dbDuenio.update(orden).set({ mecanicoId }).where(eq(orden.id, ordenId))
+
     const propia = await pedir(mecanico, 'POST', `/ordenes/${ordenId}/estado`, {
       estado: 'en_proceso',
     })

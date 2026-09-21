@@ -199,7 +199,7 @@ export function PantallaOrdenes() {
                   'Chasis',
                   'Paga',
                   'Pedido',
-                  'Mecánico',
+                  'Mecánico asignado',
                   'Estado',
                   'Total',
                 ].map((c) => (

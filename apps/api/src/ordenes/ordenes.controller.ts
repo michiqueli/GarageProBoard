@@ -35,11 +35,6 @@ export class ControladorOrdenes {
     return implement(c.listar).handler(({ input }) => this.servicio.listar(input))
   }
 
-  @Operacion(c.personal)
-  personal() {
-    return implement(c.personal).handler(() => this.servicio.personal())
-  }
-
   @Operacion(c.ficha)
   ficha() {
     return implement(c.ficha).handler(({ input, errors }) =>
@@ -160,7 +155,7 @@ export class ControladorOrdenes {
           numero: o.numero,
           qr: qrFirmado(TIPOS_QR.orden, extra.codigoQr),
           ingreso: horaArgentina(new Date(o.creadoEn)),
-          prometidaPara: o.prometidaPara,
+          entregaEstimada: o.entregaEstimada,
           vehiculo: {
             dominio: o.vehiculo.dominio,
             marcaModelo: [o.vehiculo.marca, o.vehiculo.modelo].filter(Boolean).join(' ') || null,

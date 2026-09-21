@@ -444,7 +444,7 @@ async function abrirOrdenes(tx: Db, tenantId: string) {
         combustible: o.combustible,
         pedido: o.pedido,
         observaciones: o.observaciones,
-        prometidaPara: o.prometida === null ? null : fecha(o.prometida),
+        entregaEstimada: o.prometida === null ? null : fecha(o.prometida),
         asesorId: asesor.id,
         mecanicoId: o.conMecanico ? (mecanico?.id ?? null) : null,
         terminadaEn: o.estado === 'terminada' ? hace(0, 11) : null,

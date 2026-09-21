@@ -52,8 +52,15 @@ export const ordenResumen = z.object({
   paga: persona.nullable(),
   pedido: z.string(),
   asesor: z.string(),
+  /**
+   * Quién la trabaja. **No se asigna**: lo pone el fichaje, con el primero que la escanea.
+   *
+   * En una concesionaria no hay un paso donde recepción reparta autos entre mecánicos; el
+   * mecánico de una orden es, simplemente, el que la agarró. Por eso esto es de sólo lectura:
+   * quién trabajó y cuánto lo cuentan las sesiones de trabajo.
+   */
   mecanico: z.object({ id: z.uuid(), nombre: z.string() }).nullable(),
-  prometidaPara: z.iso.date().nullable(),
+  entregaEstimada: z.iso.date().nullable(),
   creadoEn: z.iso.datetime(),
   /** Con IVA: lo que se va a cobrar. */
   total: z.string(),
@@ -95,6 +102,24 @@ export const presupuestoOrden = z.object({
   respondidoEn: z.iso.datetime().nullable(),
 })
 
+/**
+ * Un rato que alguien trabajó en la orden, como lo dejó el fichaje.
+ *
+ * `cerradaPor` es el dato que parece de más y no lo es: distingue las que cerró el mecánico
+ * —las buenas— de las que cerró el trabajo de fin de turno o el jefe al terminar la orden. El
+ * jefe de taller tiene que poder mirar las segundas, porque son las que probablemente estén mal.
+ */
+export const sesionDeTrabajo = z.object({
+  id: z.uuid(),
+  nombre: z.string(),
+  legajo: z.string(),
+  inicio: z.iso.datetime(),
+  fin: z.iso.datetime().nullable(),
+  /** Minutos, o lo que lleva hasta ahora si todavía está abierta. */
+  minutos: z.number().int(),
+  cerradaPor: z.enum(['mecanico', 'auto', 'jefe']).nullable(),
+})
+
 export const ordenDetalle = ordenResumen.extend({
   traeNombre: z.string().nullable(),
   traeTelefono: z.string().nullable(),
@@ -109,6 +134,10 @@ export const ordenDetalle = ordenResumen.extend({
   entregadaEn: z.iso.datetime().nullable(),
   items: z.array(itemOrden),
   presupuestos: z.array(presupuestoOrden),
+  /** Lo que el fichaje registró: quién trabajó, cuándo y cuánto. */
+  sesiones: z.array(sesionDeTrabajo),
+  /** La suma, incluyendo lo que se está trabajando ahora mismo. */
+  manoDeObraMin: z.number().int(),
   /** La factura vigente, si ya se facturó. */
   factura: z
     .object({
@@ -130,8 +159,7 @@ const datosRecepcion = z.object({
   combustible: z.enum(NIVELES_COMBUSTIBLE).nullish(),
   pedido: z.string().trim().min(3, 'Anotá qué pide el cliente'),
   observaciones: opcional,
-  prometidaPara: z.iso.date().nullish(),
-  mecanicoId: z.uuid().nullish(),
+  entregaEstimada: z.iso.date().nullish(),
 })
 
 const itemEntrada = z.object({
@@ -177,16 +205,6 @@ export const contratoOrdenes = {
       }),
     )
     .output(z.object({ datos: z.array(ordenResumen), total: z.number().int() })),
-
-  personal: conPermiso('servicios', 'ver', 'Orden')
-    .route({
-      method: 'GET',
-      path: '/ordenes/personal',
-      tags: [TAG],
-      operationId: 'personalOrdenes',
-      summary: 'Quiénes trabajan en la sucursal activa, para asignarles una orden',
-    })
-    .output(z.object({ datos: z.array(z.object({ id: z.uuid(), nombre: z.string() })) })),
 
   ficha: conPermiso('servicios', 'ver', 'Orden')
     .route({

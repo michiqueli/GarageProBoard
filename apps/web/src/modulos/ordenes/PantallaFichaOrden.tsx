@@ -320,6 +320,7 @@ export function PantallaFichaOrden() {
           <Items orden={o} editable={puedeEditar && enTaller} guardada={actualizar} />
           <Presupuestos orden={o} editable={puedeEditar && enTaller} guardada={actualizar} />
           <PedidosDeLaOrden orden={o} />
+          <Tiempos orden={o} />
         </>
       )}
     </Shell>
@@ -393,8 +394,9 @@ function Recepcion({ orden: o, accion }: { orden: Orden; accion?: ReactNode }) {
         <dl className="grid grid-cols-[auto_1fr] content-start gap-x-4 gap-y-1.5 text-dato">
           <Dato nombre="Pedido">{o.pedido}</Dato>
           <Dato nombre="Estado al recibirlo">{o.observaciones}</Dato>
-          <Dato nombre="Prometida para">{o.prometidaPara?.split('-').reverse().join('/')}</Dato>
+          <Dato nombre="Entrega estimada">{o.entregaEstimada?.split('-').reverse().join('/')}</Dato>
           <Dato nombre="Asesor">{o.asesor}</Dato>
+          {/* No se elige: lo pone el fichaje con el primero que la escanea. */}
           <Dato nombre="Mecánico">{o.mecanico?.nombre}</Dato>
         </dl>
       </div>
@@ -411,7 +413,7 @@ function FormRecepcion({
   alTerminar: () => void
   guardada: (o: Orden) => Promise<void>
 }) {
-  const tenantId = usarSesion((e) => e.datos?.tenant.id)
+  const _tenantId = usarSesion((e) => e.datos?.tenant.id)
   const [paga, setPaga] = useState<ClienteElegido | null>(o.paga)
   const [traeNombre, setTraeNombre] = useState(o.traeNombre ?? '')
   const [traeTelefono, setTraeTelefono] = useState(o.traeTelefono ?? '')
@@ -421,14 +423,7 @@ function FormRecepcion({
   const [combustible, setCombustible] = useState<Combustible | null>(o.combustible)
   const [pedido, setPedido] = useState(o.pedido)
   const [observaciones, setObservaciones] = useState(o.observaciones ?? '')
-  const [prometidaPara, setPrometidaPara] = useState(o.prometidaPara ?? '')
-  const [mecanicoId, setMecanicoId] = useState<string | null>(o.mecanico?.id ?? null)
-
-  const personal = useQuery({
-    queryKey: ['ordenes', tenantId, 'personal'],
-    queryFn: () => api.ordenes.personal(),
-    staleTime: 5 * 60_000,
-  })
+  const [entregaEstimada, setPrometidaPara] = useState(o.entregaEstimada ?? '')
 
   const guardar = useMutation({
     mutationFn: () =>
@@ -443,8 +438,7 @@ function FormRecepcion({
         combustible,
         pedido,
         observaciones,
-        prometidaPara: prometidaPara || null,
-        mecanicoId,
+        entregaEstimada: entregaEstimada || null,
       }),
     onSuccess: async (nueva) => {
       await guardada(nueva)
@@ -494,13 +488,6 @@ function FormRecepcion({
             onChange={setCombustible}
             opciones={COMBUSTIBLES.map((c) => ({ valor: c.valor, texto: c.texto }))}
           />
-          <Selector
-            etiqueta="Mecánico"
-            valor={mecanicoId}
-            vacio="Sin asignar"
-            onChange={setMecanicoId}
-            opciones={(personal.data?.datos ?? []).map((p) => ({ valor: p.id, texto: p.nombre }))}
-          />
         </div>
         <div className="grid gap-3 md:grid-cols-2">
           <Texto etiqueta="Qué pide el cliente" valor={pedido} onChange={setPedido} />
@@ -512,9 +499,9 @@ function FormRecepcion({
         </div>
         <div className="grid gap-3 md:grid-cols-4">
           <Campo
-            etiqueta="Prometida para"
+            etiqueta="Entrega estimada"
             type="date"
-            value={prometidaPara}
+            value={entregaEstimada}
             onChange={(e) => setPrometidaPara(e.target.value)}
           />
         </div>
@@ -1276,4 +1263,82 @@ function ResponderPresupuesto({
       </div>
     </section>
   )
+}
+
+/**
+ * Los tiempos que registró el fichaje: quién trabajó en este auto, cuándo y cuánto.
+ *
+ * Es lo que hace visible el kiosco desde el sistema. Sin esta sección, el mecánico escanea, la
+ * base guarda los minutos y en la pantalla de la orden no se entera nadie — que es exactamente
+ * lo que pasaba.
+ *
+ * **Quién cerró cada rato importa** y por eso se muestra: la que cerró el mecánico es la buena;
+ * la que cerró el fin de turno o el jefe al terminar la orden es la que probablemente esté mal,
+ * y es la que el jefe de taller tiene que poder mirar.
+ */
+function Tiempos({ orden }: { orden: Orden }) {
+  if (orden.sesiones.length === 0) {
+    return (
+      <Seccion titulo="Tiempos de taller">
+        <p className="px-3 py-6 text-dato text-texto-suave">
+          Todavía nadie fichó en esta orden. Los minutos salen del puesto de fichaje: el mecánico
+          pasa su credencial y después el QR de la orden impresa.
+        </p>
+      </Seccion>
+    )
+  }
+
+  const abiertas = orden.sesiones.filter((s) => !s.fin).length
+
+  return (
+    <Seccion
+      titulo="Tiempos de taller"
+      accion={
+        <span className="flex items-baseline gap-2 text-etiqueta">
+          {abiertas > 0 && (
+            <span className="rounded-full border border-ok px-2 font-semibold text-ok">
+              {abiertas === 1 ? 'Alguien trabajando' : `${abiertas} trabajando`}
+            </span>
+          )}
+          <span className="text-texto-tenue">Mano de obra</span>
+          <span className="font-mono tabular-nums">{enHorasYMinutos(orden.manoDeObraMin)}</span>
+        </span>
+      }
+    >
+      <ul className="divide-y divide-borde-suave">
+        {orden.sesiones.map((s) => (
+          <li key={s.id} className="flex flex-wrap items-baseline gap-x-3 gap-y-1 px-3 py-2">
+            <span className="font-medium">{s.nombre}</span>
+            <span className="font-mono text-etiqueta text-texto-tenue">{s.legajo}</span>
+            <span className="text-etiqueta text-texto-suave">
+              {RELOJ.format(new Date(s.inicio))} →{' '}
+              {s.fin ? RELOJ.format(new Date(s.fin)) : 'sigue adentro'}
+            </span>
+            <span className="ml-auto flex items-baseline gap-2">
+              {s.cerradaPor === 'auto' && (
+                <span className="text-etiqueta text-atencion">cerrada al fin del turno</span>
+              )}
+              {s.cerradaPor === 'jefe' && (
+                <span className="text-etiqueta text-atencion">cerrada al terminar la orden</span>
+              )}
+              <span className="font-mono tabular-nums">{enHorasYMinutos(s.minutos)}</span>
+            </span>
+          </li>
+        ))}
+      </ul>
+    </Seccion>
+  )
+}
+
+const RELOJ = new Intl.DateTimeFormat('es-AR', {
+  day: '2-digit',
+  month: '2-digit',
+  hour: '2-digit',
+  minute: '2-digit',
+})
+
+/** «2 h 14 min». Lo que se mira de un trabajo es cuánto, no los minutos sueltos. */
+function enHorasYMinutos(minutos: number): string {
+  if (minutos < 60) return `${minutos} min`
+  return `${Math.floor(minutos / 60)} h ${String(minutos % 60).padStart(2, '0')} min`
 }

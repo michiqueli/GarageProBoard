@@ -1,13 +1,12 @@
 import { accesoDeRuta, contrato } from '@gpb/contracts'
 import { ORPCError } from '@orpc/client'
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useNavigate } from '@tanstack/react-router'
 import { type FormEvent, useId, useState } from 'react'
 import { notificar } from '../../componentes/avisos.ts'
 import { Boton } from '../../componentes/Boton.tsx'
 import { Campo } from '../../componentes/Campo.tsx'
 import { IconoImprimir } from '../../componentes/iconos.tsx'
-import { Selector } from '../../componentes/Selector.tsx'
 import { type ClienteElegido, SelectorCliente } from '../../componentes/SelectorCliente.tsx'
 import { SelectorVehiculo, type VehiculoElegido } from '../../componentes/SelectorVehiculo.tsx'
 import { Shell } from '../../componentes/Shell.tsx'
@@ -36,15 +35,8 @@ export function PantallaRecepcion() {
   const [combustible, setCombustible] = useState<Combustible | null>(null)
   const [pedido, setPedido] = useState('')
   const [observaciones, setObservaciones] = useState('')
-  const [prometidaPara, setPrometidaPara] = useState('')
-  const [mecanicoId, setMecanicoId] = useState<string | null>(null)
+  const [entregaEstimada, setPrometidaPara] = useState('')
   const [tocado, setTocado] = useState(false)
-
-  const personal = useQuery({
-    queryKey: ['ordenes', tenantId, 'personal'],
-    queryFn: () => api.ordenes.personal(),
-    staleTime: 5 * 60_000,
-  })
 
   function elegirVehiculo(v: VehiculoElegido | null) {
     setVehiculo(v)
@@ -65,8 +57,7 @@ export function PantallaRecepcion() {
         combustible,
         pedido,
         observaciones,
-        prometidaPara: prometidaPara || null,
-        mecanicoId,
+        entregaEstimada: entregaEstimada || null,
         items: [],
       }),
     onSuccess: async (o) => {
@@ -213,17 +204,10 @@ export function PantallaRecepcion() {
 
         <div className="grid gap-3 md:grid-cols-4">
           <Campo
-            etiqueta="Prometida para"
+            etiqueta="Entrega estimada"
             type="date"
-            value={prometidaPara}
+            value={entregaEstimada}
             onChange={(e) => setPrometidaPara(e.target.value)}
-          />
-          <Selector
-            etiqueta="Mecánico"
-            valor={mecanicoId}
-            vacio="Sin asignar"
-            onChange={setMecanicoId}
-            opciones={(personal.data?.datos ?? []).map((p) => ({ valor: p.id, texto: p.nombre }))}
           />
         </div>
 

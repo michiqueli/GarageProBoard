@@ -36,6 +36,24 @@ export const respuestaEscaneo = z.object({
   orden: z.object({ numero: z.number().int(), dominio: z.string().nullable() }).nullable(),
   /** Cuánto lleva abierta la sesión que se acaba de cerrar, ya en palabras: «2 h 14 min». */
   duracion: z.string().nullable(),
+  /**
+   * Qué tiene abierto esta persona, cuando se escanea su credencial en el taller.
+   *
+   * Es la mitad de que la pantalla enseñe sola: el mecánico ve que tiene la OT 45821 abierta
+   * hace dos horas y entiende, sin que nadie le explique, que escanear esa orden la cierra y
+   * escanear otra lo cambia de auto.
+   */
+  abiertas: z.array(
+    z.object({
+      numero: z.number().int(),
+      dominio: z.string().nullable(),
+      vehiculo: z.string().nullable(),
+      desde: z.iso.datetime(),
+      hace: z.string(),
+    }),
+  ),
+  /** Quiénes más están trabajando en esa orden. Vacío casi siempre; cuando no, hay que decirlo. */
+  otros: z.array(z.string()),
 })
 
 export const estacionSalida = z.object({
@@ -65,7 +83,7 @@ export const tarjetaTablero = z.object({
   vehiculo: z.string().nullable(),
   pedido: z.string(),
   ingreso: z.iso.datetime(),
-  prometidaPara: z.string().nullable(),
+  entregaEstimada: z.string().nullable(),
   /** El mecánico que tiene asignado, esté fichado o no. */
   asignado: z.string().nullable(),
   /** Quiénes lo están trabajando **ahora mismo**, con desde cuándo. Vacío: está parado. */

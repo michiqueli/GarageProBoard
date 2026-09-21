@@ -34,7 +34,8 @@
     "operador": "tsx --env-file=../../.env scripts/operador.ts",
     "ordenes-prueba": "tsx --env-file=../../.env scripts/ordenes-de-prueba.ts",
     "repuestos-prueba": "tsx --env-file=../../.env scripts/repuestos-de-prueba.ts",
-    "personal-prueba": "tsx --env-file=../../.env scripts/personal-de-prueba.ts"
+    "personal-prueba": "tsx --env-file=../../.env scripts/personal-de-prueba.ts",
+    "asesor-prueba": "tsx --env-file=../../.env scripts/asesor-de-prueba.ts"
   },
   "dependencies": {
     "drizzle-orm": "0.45.2",

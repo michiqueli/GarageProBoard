@@ -1,12 +1,11 @@
 import { randomBytes } from 'node:crypto'
 import { cuitValido } from '@gpb/core'
-import { and, eq, isNull } from 'drizzle-orm'
+import { eq } from 'drizzle-orm'
 import { crearDb, crearPool, type Db } from '../src/index.ts'
 import {
   credencial,
   empleado,
   entidadComercial,
-  orden,
   sucursal,
   tenant,
   usuario,
@@ -19,8 +18,7 @@ import {
  *     pnpm --filter @gpb/db personal-prueba
  *
  * Además engancha a los usuarios de ejemplo con su legajo por el correo, que es lo que hace
- * que la regla «el mecánico sólo edita sus órdenes» tenga contra qué evaluarse, y le pone
- * mecánico a las órdenes abiertas que quedaron sin uno tras la migración 0016.
+ * que la regla «el mecánico sólo edita sus órdenes» tenga contra qué evaluarse.
  *
  * Sólo en desarrollo, y sólo si la concesionaria todavía no tiene personal: no pisa nada.
  */
@@ -206,8 +204,6 @@ async function sembrar(db: Db) {
     .where(eq(sucursal.tenantId, tenantId))
     .limit(1)
 
-  const mecanicos: string[] = []
-
   for (const p of PERSONAL) {
     const [identidad] = await db
       .insert(entidadComercial)
@@ -250,27 +246,18 @@ async function sembrar(db: Db) {
         .set({ empleadoId: identidad.id })
         .where(eq(usuario.email, p.correoUsuario))
     }
-
-    if (p.puesto === 'mecanico') mecanicos.push(identidad.id)
   }
 
-  // Las órdenes que quedaron sin mecánico tras la migración 0016 vuelven a tener uno, así el
-  // listado del taller se ve como se tiene que ver.
-  const abiertas = await db
-    .select({ id: orden.id })
-    .from(orden)
-    .where(and(eq(orden.tenantId, tenantId), isNull(orden.mecanicoId)))
-  for (const [i, o] of abiertas.entries()) {
-    const elegido = mecanicos[i % Math.max(mecanicos.length, 1)]
-    if (elegido) await db.update(orden).set({ mecanicoId: elegido }).where(eq(orden.id, o.id))
-  }
+  // Las órdenes **no** se reparten entre mecánicos: en una concesionaria no hay un paso donde
+  // recepción asigne autos. El mecánico de una orden es el que la agarró, y eso lo pone el
+  // fichaje con el primero que la escanea. Sembrarlo a mano haría que la pantalla dijera que
+  // alguien trabajó un auto que nunca tocó.
 
   const conCredencial = PERSONAL.filter((p) => p.conCredencial).length
   console.log(
     `✓ ${PERSONAL.length} empleados, ${conCredencial} con credencial emitida y ` +
       `${PERSONAL.length - conCredencial} esperando la suya.`,
   )
-  if (abiertas.length) console.log(`✓ ${abiertas.length} órdenes con mecánico asignado de nuevo.`)
 }
 
 try {

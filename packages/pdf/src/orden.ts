@@ -22,7 +22,7 @@ export interface DatosOrdenImpresa {
   qr: string
   /** AAAA-MM-DDTHH:mm, en la hora de Argentina. */
   ingreso: string
-  prometidaPara: string | null
+  entregaEstimada: string | null
   vehiculo: {
     dominio: string | null
     marcaModelo: string | null
@@ -179,8 +179,8 @@ function hoja(doc: Doc, o: DatosOrdenImpresa, copia: 'TALLER' | 'CLIENTE') {
     doc,
     IZQ + col,
     y + mm(2),
-    'Prometida para',
-    o.prometidaPara ? fecha(o.prometidaPara) : '',
+    'Entrega estimada',
+    o.entregaEstimada ? fecha(o.entregaEstimada) : '',
     col - mm(4),
   )
   etiquetaValor(doc, IZQ + col * 2, y + mm(2), 'Asesor', o.asesor, col - mm(4))

@@ -477,7 +477,7 @@ function Personal() {
 function Credencial({ empleado }: { empleado: Empleado }) {
   if (!empleado.credencial) {
     return (
-      <span className="inline-flex rounded-full bg-atencion px-2 text-etiqueta font-semibold text-atencion-texto">
+      <span className="inline-flex rounded-full bg-atencion px-2 text-etiqueta font-semibold text-fondo">
         Sin credencial
       </span>
     )

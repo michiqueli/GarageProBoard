@@ -106,7 +106,7 @@ describe('las órdenes para facturar, con el teclado', () => {
       pedido: 'Alineación',
       asesor: 'Martín',
       mecanico: null,
-      prometidaPara: null,
+      entregaEstimada: null,
       creadoEn: '2026-09-16T12:00:00.000Z',
       total: '48000.00',
     }

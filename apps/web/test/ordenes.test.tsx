@@ -62,7 +62,7 @@ const ORDEN = {
   pedido: 'Service de 50.000 km',
   asesor: 'Martín Gutiérrez',
   mecanico: null,
-  prometidaPara: null,
+  entregaEstimada: null,
   creadoEn: '2026-09-16T12:00:00.000Z',
   total: '1140200.00',
 }
@@ -74,6 +74,10 @@ const FICHA = {
   autorizaTelefono: null,
   pagaEmail: 'flota@transportes.test',
   presupuestos: [],
+  // Lo que registró el fichaje. Vacío en casi todas las pruebas de esta pantalla: los tiempos
+  // se prueban en las suyas.
+  sesiones: [],
+  manoDeObraMin: 0,
   kilometraje: 48210,
   combustible: 'medio',
   observaciones: null,
@@ -402,6 +406,63 @@ describe('anular la orden', () => {
     await confirmarDialogo('Anular la orden')
 
     expect(await within(pedidos).findByText('Anulado')).toBeDefined()
+  })
+
+  /**
+   * La regresión que lo motivó: el mecánico escaneaba, la base guardaba los minutos, y en la
+   * pantalla de la orden no se enteraba nadie. El fichaje tiene que verse desde el sistema.
+   */
+  it('la orden muestra los tiempos que registró el fichaje', async () => {
+    ordenes.ficha.mockResolvedValue({
+      ...FICHA,
+      manoDeObraMin: 95,
+      sesiones: [
+        {
+          id: 's1',
+          nombre: 'Diego Sosa',
+          legajo: '0001',
+          inicio: '2026-09-20T12:00:00.000Z',
+          fin: '2026-09-20T13:35:00.000Z',
+          minutos: 95,
+          cerradaPor: 'mecanico',
+        },
+      ],
+    })
+    await montarApp(`/ordenes/${ORDEN.id}`)
+
+    const tiempos = await screen.findByRole('region', { name: 'Tiempos de taller' })
+    expect(within(tiempos).getByText('Diego Sosa')).toBeDefined()
+    expect(within(tiempos).getAllByText('1 h 35 min').length).toBeGreaterThan(0)
+  })
+
+  /** Lo que cerró el fin de turno es lo que probablemente esté mal: hay que poder mirarlo. */
+  it('marca las que no cerró el mecánico', async () => {
+    ordenes.ficha.mockResolvedValue({
+      ...FICHA,
+      manoDeObraMin: 600,
+      sesiones: [
+        {
+          id: 's1',
+          nombre: 'Diego Sosa',
+          legajo: '0001',
+          inicio: '2026-09-19T12:00:00.000Z',
+          fin: '2026-09-19T22:00:00.000Z',
+          minutos: 600,
+          cerradaPor: 'auto',
+        },
+      ],
+    })
+    await montarApp(`/ordenes/${ORDEN.id}`)
+
+    const tiempos = await screen.findByRole('region', { name: 'Tiempos de taller' })
+    expect(within(tiempos).getByText('cerrada al fin del turno')).toBeDefined()
+  })
+
+  it('sin nadie que haya fichado, explica de dónde salen los minutos', async () => {
+    await montarApp(`/ordenes/${ORDEN.id}`)
+
+    const tiempos = await screen.findByRole('region', { name: 'Tiempos de taller' })
+    expect(within(tiempos).getByText(/puesto de fichaje/)).toBeDefined()
   })
 
   /**

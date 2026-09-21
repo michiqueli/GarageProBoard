@@ -1,5 +1,5 @@
 import { esCargaManual, TIPOS_QR } from '@gpb/core'
-import { and, type Db, eq, isNull, sql } from '@gpb/db'
+import { and, asc, type Db, eq, isNull, sql } from '@gpb/db'
 import {
   credencial,
   empleado,
@@ -8,6 +8,8 @@ import {
   estacionFichaje,
   eventoEscaneo,
   jornada,
+  marca,
+  modelo,
   orden,
   sesionTrabajo,
   sucursal,
@@ -41,6 +43,14 @@ import { armarTablero } from './tablero.ts'
  */
 const CONCURRENCIA: 'unica' | 'multiple' = 'unica'
 
+export interface Abierta {
+  numero: number
+  dominio: string | null
+  vehiculo: string | null
+  desde: string
+  hace: string
+}
+
 export interface Respuesta {
   resultado: 'ok' | 'rechazado' | 'error'
   accion: 'entrada' | 'salida' | 'abrio' | 'cerro' | null
@@ -50,6 +60,8 @@ export interface Respuesta {
   empleado: { nombre: string; legajo: string } | null
   orden: { numero: number; dominio: string | null } | null
   duracion: string | null
+  abiertas: Abierta[]
+  otros: string[]
 }
 
 const RECHAZO = (titulo: string, detalle = ''): Respuesta => ({
@@ -61,6 +73,8 @@ const RECHAZO = (titulo: string, detalle = ''): Respuesta => ({
   empleado: null,
   orden: null,
   duracion: null,
+  abiertas: [],
+  otros: [],
 })
 
 /** «2 h 14 min», «41 min», «recién». Se lee de un vistazo y a dos metros. */
@@ -306,11 +320,17 @@ export class ServicioFichaje {
           empleado: { nombre: persona.nombre, legajo: persona.legajo },
           orden: null,
           duracion: null,
+          abiertas: [],
+          otros: [],
         },
       }
     }
 
-    // En el taller la credencial es la mitad de la operación: falta la orden.
+    // En el taller la credencial es la mitad de la operación: falta la orden. Y va con lo que
+    // tiene abierto, que es lo que hace que la pantalla enseñe sola: el que ve «OT 000006
+    // abierta hace 2 h» entiende sin que nadie le explique que escanearla la cierra.
+    const abiertas = await this.abiertasDe(tx, persona.id)
+
     return {
       tipo: 'credencial' as const,
       empleadoId: persona.id,
@@ -324,8 +344,44 @@ export class ServicioFichaje {
         empleado: { nombre: persona.nombre, legajo: persona.legajo },
         orden: null,
         duracion: null,
+        abiertas,
+        otros: [],
       },
     }
+  }
+
+  /**
+   * Las órdenes que esta persona tiene abiertas ahora mismo, con hace cuánto.
+   *
+   * Es lo que la pantalla le muestra después del primer escaneo. Ojo con el texto que la
+   * acompaña: escanear la OT **frena su reloj, no da la orden por terminada** — quién declara
+   * terminada una orden es una decisión del taller, no del que dejó de trabajar en ella.
+   */
+  private async abiertasDe(tx: Db, empleadoId: string): Promise<Abierta[]> {
+    const ahora = Date.now()
+    const filas = await tx
+      .select({
+        numero: orden.numero,
+        dominio: vehiculo.dominio,
+        marca: marca.nombre,
+        modelo: modelo.nombre,
+        inicio: sesionTrabajo.inicio,
+      })
+      .from(sesionTrabajo)
+      .innerJoin(orden, eq(orden.id, sesionTrabajo.ordenId))
+      .leftJoin(vehiculo, eq(vehiculo.id, orden.vehiculoId))
+      .leftJoin(modelo, eq(modelo.id, vehiculo.modeloId))
+      .leftJoin(marca, eq(marca.id, modelo.marcaId))
+      .where(and(eq(sesionTrabajo.empleadoId, empleadoId), isNull(sesionTrabajo.fin)))
+      .orderBy(asc(sesionTrabajo.inicio))
+
+    return filas.map((f) => ({
+      numero: f.numero,
+      dominio: f.dominio,
+      vehiculo: [f.marca, f.modelo].filter(Boolean).join(' ') || null,
+      desde: f.inicio.toISOString(),
+      hace: enPalabras((ahora - f.inicio.getTime()) / 1000),
+    }))
   }
 
   /** La orden: abre o cierra la sesión de trabajo de esa persona en esa orden. */
@@ -341,6 +397,7 @@ export class ServicioFichaje {
         numero: orden.numero,
         estado: orden.estado,
         sucursalId: orden.sucursalId,
+        mecanicoId: orden.mecanicoId,
         dominio: vehiculo.dominio,
       })
       .from(orden)
@@ -401,12 +458,18 @@ export class ServicioFichaje {
         respuesta: {
           resultado: 'ok' as const,
           accion: 'cerro' as const,
-          titulo: persona.nombre,
-          detalle: `Cerró la OT ${numeroDeOrden(ot.numero)} · ${duracion}`,
+          // «Terminaste» y no el nombre: al que está parado ahí no hay que decirle quién es
+          // —eso ya lo vio en el paso 1— sino qué acaba de pasar. Y «terminaste» es lo que
+          // hizo él: frenó su reloj. Que la orden esté terminada lo decide el taller, no el
+          // que dejó de trabajar en ella.
+          titulo: 'Terminaste',
+          detalle: `OT ${numeroDeOrden(ot.numero)} · ${duracion} trabajadas`,
           esperandoOrden: false,
           empleado: { nombre: persona.nombre, legajo: persona.legajo },
           orden: datosOrden,
           duracion,
+          abiertas: [],
+          otros: [],
         },
       }
     }
@@ -431,6 +494,22 @@ export class ServicioFichaje {
       }
     }
 
+    // Quiénes más están en ese auto. Pasa poco —la concurrencia única es por mecánico, no por
+    // orden— y justamente por eso hay que avisarlo: si dos están en el mismo auto sin saberlo,
+    // los dos relojes corren y la mano de obra sale al doble.
+    const otros = (
+      await tx
+        .select({
+          nombre: entidadComercial.nombre,
+          apellido: entidadComercial.apellido,
+          razonSocial: entidadComercial.razonSocial,
+        })
+        .from(sesionTrabajo)
+        .innerJoin(empleado, eq(empleado.id, sesionTrabajo.empleadoId))
+        .innerJoin(entidadComercial, eq(entidadComercial.id, empleado.id))
+        .where(and(eq(sesionTrabajo.ordenId, ot.id), isNull(sesionTrabajo.fin)))
+    ).map((o) => `${o.nombre ?? ''} ${o.apellido ?? ''}`.trim() || o.razonSocial)
+
     await tx.insert(sesionTrabajo).values({
       tenantId: estacion.tenantId,
       ordenId: ot.id,
@@ -446,6 +525,14 @@ export class ServicioFichaje {
       await tx.update(orden).set({ estado: 'en_proceso' }).where(eq(orden.id, ot.id))
     }
 
+    // Si no tenía mecánico asignado, queda el que la agarró. **Sólo si estaba vacío**: el
+    // asignado es una decisión de recepción o del jefe de taller, y el fichaje no la pisa. Que
+    // trabaje uno distinto del asignado es normal —y lo cuentan los tiempos—; lo que no tiene
+    // sentido es una orden con horas trabajadas y nadie a cargo.
+    if (!ot.mecanicoId) {
+      await tx.update(orden).set({ mecanicoId: persona.id }).where(eq(orden.id, ot.id))
+    }
+
     return {
       tipo: 'orden' as const,
       empleadoId: persona.id,
@@ -453,14 +540,16 @@ export class ServicioFichaje {
       respuesta: {
         resultado: 'ok' as const,
         accion: 'abrio' as const,
-        titulo: persona.nombre,
+        titulo: 'Empezaste',
         detalle: dejo
-          ? `Abrió la OT ${numeroDeOrden(ot.numero)} · dejó la ${numeroDeOrden(dejo)}`
-          : `Abrió la OT ${numeroDeOrden(ot.numero)}${ot.dominio ? ` · ${ot.dominio}` : ''}`,
+          ? `OT ${numeroDeOrden(ot.numero)} · dejaste la ${numeroDeOrden(dejo)}`
+          : `OT ${numeroDeOrden(ot.numero)}${ot.dominio ? ` · ${ot.dominio}` : ''}`,
         esperandoOrden: false,
         empleado: { nombre: persona.nombre, legajo: persona.legajo },
         orden: datosOrden,
         duracion: null,
+        abiertas: [],
+        otros,
       },
     }
   }

@@ -134,6 +134,13 @@
       "when": 1789947623039,
       "tag": "0018_estacion_tablero",
       "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1789954063966,
+      "tag": "0019_entrega_estimada",
+      "breakpoints": true
     }
   ]
 }

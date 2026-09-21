@@ -32,7 +32,7 @@ const TRABAJANDO = {
   vehiculo: 'Volkswagen Amarok',
   pedido: 'Hace ruido al frenar',
   ingreso: '2026-09-20T11:00:00.000Z',
-  prometidaPara: null,
+  entregaEstimada: null,
   asignado: 'Diego Sosa',
   trabajando: [{ nombre: 'Diego Sosa', desde: '2026-09-20T12:00:00.000Z' }],
   manoDeObraMin: 95,

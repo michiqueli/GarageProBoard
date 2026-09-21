@@ -53,7 +53,7 @@ export async function armarTablero(tx: Db, sucursalId: string) {
       estado: orden.estado,
       pedido: orden.pedido,
       ingreso: orden.creadoEn,
-      prometidaPara: orden.prometidaPara,
+      entregaEstimada: orden.entregaEstimada,
       dominio: vehiculo.dominio,
       marca: marca.nombre,
       modelo: modelo.nombre,
@@ -122,7 +122,7 @@ export async function armarTablero(tx: Db, sucursalId: string) {
       vehiculo: nombreVehiculo(a.marca, a.modelo),
       pedido: a.pedido,
       ingreso: a.ingreso.toISOString(),
-      prometidaPara: a.prometidaPara,
+      entregaEstimada: a.entregaEstimada,
       asignado:
         `${a.asignadoNombre ?? ''} ${a.asignadoApellido ?? ''}`.trim() ||
         a.asignadoRazonSocial ||
