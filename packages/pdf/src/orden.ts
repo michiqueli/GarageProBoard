@@ -1,3 +1,16 @@
+import {
+  type ControlInventario,
+  DANIOS,
+  ELEMENTOS_INVENTARIO,
+  type ElementoInventario,
+  INVENTARIO,
+  ROTULOS,
+  type TipoDanio,
+  trazo,
+  VISTA,
+  ZONAS,
+  zona,
+} from '@gpb/core'
 import PDFDocument from 'pdfkit'
 import { dibujarQr } from './comun.ts'
 import { formatearImporte } from './factura.ts'
@@ -37,6 +50,9 @@ export interface DatosOrdenImpresa {
   paga: string | null
   pedido: string
   observaciones: string | null
+  /** Las marcas del auto dibujado, en coordenadas del dibujo de `@gpb/core`. */
+  danios: Array<{ zona: string; tipo: TipoDanio; x: number; y: number; nota: string | null }>
+  inventario: Partial<Record<ElementoInventario, ControlInventario>>
   asesor: string
   mecanico: string | null
   items: Array<{
@@ -114,6 +130,126 @@ function caja(doc: Doc, y: number, alto: number, titulo?: string) {
       .text(titulo.toUpperCase(), IZQ + mm(3), y + mm(2))
     doc.fillColor('#000')
   }
+}
+
+const ALTO_DIBUJO = mm(58)
+const ANCHO_DIBUJO = (ALTO_DIBUJO * VISTA.ancho) / VISTA.alto
+
+/**
+ * El auto dibujado con sus marcas, al lado la lista con el nombre de cada zona, lo que vino
+ * con el auto y las observaciones. Devuelve el alto que ocupó.
+ *
+ * Va en las dos copias: la del cliente es la que firma, y la del taller le dice al mecánico
+ * qué rayón ya estaba — que es lo que después lo salva de que se lo achaquen.
+ *
+ * En negro y blanco a propósito: la orden se imprime en la láser del mostrador. La marca es un
+ * círculo lleno con la letra calada, que se distingue igual en una fotocopia.
+ */
+function estadoDelVehiculo(doc: Doc, o: DatosOrdenImpresa, y: number): number {
+  const x0 = IZQ + mm(3)
+  const y0 = y + mm(7)
+  const escala = ALTO_DIBUJO / VISTA.alto
+
+  doc.save()
+  doc.translate(x0, y0).scale(escala)
+  doc.lineWidth(0.7 / escala).strokeColor('#777')
+  for (const z of ZONAS) doc.path(trazo(z)).stroke()
+  doc.restore()
+  doc.strokeColor('#000')
+
+  doc.font(NORMAL).fontSize(6).fillColor('#555')
+  for (const [texto, r] of [
+    ['ADELANTE', ROTULOS.adelante],
+    ['ATRÁS', ROTULOS.atras],
+  ] as const) {
+    doc.text(texto, x0, y0 + r.y * escala - mm(1.2), { width: ANCHO_DIBUJO, align: 'center' })
+  }
+  doc.fillColor('#000')
+
+  const radio = mm(1.9)
+  for (const d of o.danios) {
+    const cx = x0 + d.x * escala
+    const cy = y0 + d.y * escala
+    doc.circle(cx, cy, radio).fill('#000')
+    doc
+      .font(NEGRITA)
+      .fontSize(6.5)
+      .fillColor('#fff')
+      .text(DANIOS[d.tipo].letra, cx - radio, cy - mm(1.1), {
+        width: radio * 2,
+        align: 'center',
+        lineBreak: false,
+      })
+  }
+  doc.fillColor('#000')
+
+  // La columna de la derecha: marcas, inventario y observaciones.
+  const xt = x0 + ANCHO_DIBUJO + mm(6)
+  const ancho = DER - mm(3) - xt
+  let yt = y + mm(7)
+
+  const subtitulo = (texto: string) => {
+    doc
+      .font(NEGRITA)
+      .fontSize(7)
+      .fillColor('#555')
+      .text(texto.toUpperCase(), xt, yt, { width: ancho })
+    doc.fillColor('#000')
+    yt += mm(3.8)
+  }
+
+  subtitulo('Marcas')
+  doc.font(NORMAL).fontSize(8.5)
+  if (!o.danios.length) {
+    doc.text(
+      'Sin marcas: el vehículo se recibe sin rayones, golpes ni faltantes a la vista.',
+      xt,
+      yt,
+      {
+        width: ancho,
+      },
+    )
+    yt = doc.y + mm(1.5)
+  } else {
+    for (const d of o.danios) {
+      const donde = zona(d.zona)?.nombre ?? d.zona
+      doc
+        .font(NEGRITA)
+        .text(`${DANIOS[d.tipo].letra}  `, xt, yt, { continued: true, width: ancho })
+        .font(NORMAL)
+        .text(`${DANIOS[d.tipo].nombre} · ${donde}${d.nota ? ` — ${d.nota}` : ''}`)
+      yt = doc.y + mm(0.6)
+    }
+    yt += mm(1)
+  }
+
+  subtitulo('Vino con el auto')
+  const mitad = (ancho - mm(4)) / 2
+  ELEMENTOS_INVENTARIO.forEach((e, i) => {
+    const control = o.inventario[e]
+    const cx = xt + (i % 2) * (mitad + mm(4))
+    const cy = yt + Math.floor(i / 2) * mm(4)
+    doc
+      .font(control === 'falta' ? NEGRITA : NORMAL)
+      .fontSize(8.5)
+      .text(
+        `${INVENTARIO[e]}: ${control === 'esta' ? 'sí' : control === 'falta' ? 'FALTA' : '—'}`,
+        cx,
+        cy,
+        { width: mitad, lineBreak: false, ellipsis: true },
+      )
+  })
+  yt += Math.ceil(ELEMENTOS_INVENTARIO.length / 2) * mm(4) + mm(1.5)
+
+  if (o.observaciones) {
+    subtitulo('Observaciones')
+    doc.font(NORMAL).fontSize(8.5).text(o.observaciones, xt, yt, { width: ancho })
+    yt = doc.y
+  }
+
+  const alto = Math.max(ALTO_DIBUJO + mm(10), yt - y + mm(3))
+  caja(doc, y, alto, 'Estado del vehículo al recibirlo')
+  return alto
 }
 
 function hoja(doc: Doc, o: DatosOrdenImpresa, copia: 'TALLER' | 'CLIENTE') {
@@ -258,14 +394,7 @@ function hoja(doc: Doc, o: DatosOrdenImpresa, copia: 'TALLER' | 'CLIENTE') {
     .text(o.pedido, IZQ + mm(3), y + mm(6), { width: UTIL - mm(6) })
   y += altoPedido + mm(3)
 
-  const obs = o.observaciones ?? 'Sin observaciones.'
-  const altoObs = Math.max(mm(14), altoTexto(obs) + mm(9))
-  caja(doc, y, altoObs, 'Estado del vehículo al recibirlo')
-  doc
-    .font(NORMAL)
-    .fontSize(10)
-    .text(obs, IZQ + mm(3), y + mm(6), { width: UTIL - mm(6) })
-  y += altoObs + mm(3)
+  y += estadoDelVehiculo(doc, o, y) + mm(3)
 
   // Trabajos y repuestos
   if (o.items.length) {

@@ -17,6 +17,7 @@
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "dependencies": {
+    "@gpb/core": "workspace:*",
     "pdfkit": "0.20.2",
     "qrcode": "1.5.4"
   },

@@ -98,6 +98,17 @@ function pedir(access: string, method: 'GET' | 'POST' | 'PUT', url: string, payl
   })
 }
 
+/** La recepción de la orden 1 tal como se abrió: editar reemplaza todo lo que no se manda. */
+const RECEPCION_1 = {
+  traeNombre: 'Juan Gómez',
+  traeTelefono: '342 555-1234',
+  kilometraje: 48210,
+  combustible: 'medio',
+  pedido: 'Service de 50.000 km. Ruido al frenar.',
+  observaciones: 'Rayón en paragolpes trasero',
+  entregaEstimada: '2026-09-18',
+}
+
 const SERVICE = [
   { tipo: 'trabajo', descripcion: 'Service 50.000 km', cantidad: '1', precioUnitario: '180000' },
   { tipo: 'repuesto', descripcion: 'Aceite 5W30', cantidad: '6', precioUnitario: '12000.50' },
@@ -146,6 +157,52 @@ describe('la recepción', () => {
       items: [SERVICE[0]],
     })
     expect(otra.json()).toMatchObject({ numero: 2, titular: null, paga: null, total: '180000.00' })
+  })
+
+  it('el estado del auto: la zona sale del punto, no de lo que diga la pantalla', async () => {
+    const r = await pedir(gerente, 'PUT', `/ordenes/${ordenId}`, {
+      ...RECEPCION_1,
+      danios: [
+        // Mandada como capot, cae en el techo: se guarda como techo.
+        { zona: 'capot', tipo: 'rayon', x: 120.04, y: 180, nota: '  Largo  ' },
+        { tipo: 'falta', x: 30, y: 127, nota: '' },
+      ],
+      inventario: { auxilio: 'falta', gato: 'esta' },
+    })
+    expect(r.statusCode).toBe(200)
+    expect(r.json()).toMatchObject({
+      danios: [
+        { zona: 'techo', tipo: 'rayon', x: 120, y: 180, nota: 'Largo' },
+        { zona: 'espejo_izquierdo', tipo: 'falta', x: 30, y: 127, nota: null },
+      ],
+      inventario: { auxilio: 'falta', gato: 'esta' },
+    })
+  })
+
+  it('editar sin mandar el dibujo no lo borra; mandarlo vacío, sí', async () => {
+    const sinDibujo = await pedir(gerente, 'PUT', `/ordenes/${ordenId}`, RECEPCION_1)
+    expect(sinDibujo.json().danios).toHaveLength(2)
+    expect(sinDibujo.json().inventario).toEqual({ auxilio: 'falta', gato: 'esta' })
+
+    const vacio = await pedir(gerente, 'PUT', `/ordenes/${ordenId}`, {
+      ...RECEPCION_1,
+      danios: [],
+    })
+    expect(vacio.json().danios).toEqual([])
+  })
+
+  it('una marca fuera del auto, o de un tipo que no existe, no se guarda', async () => {
+    const afuera = await pedir(gerente, 'PUT', `/ordenes/${ordenId}`, {
+      ...RECEPCION_1,
+      danios: [{ tipo: 'rayon', x: 2, y: 2 }],
+    })
+    expect(afuera.statusCode).toBe(400)
+    const inventado = await pedir(gerente, 'PUT', `/ordenes/${ordenId}`, {
+      ...RECEPCION_1,
+      danios: [{ tipo: 'abollon', x: 120, y: 180 }],
+      inventario: { auxilio: 'quizas' },
+    })
+    expect(inventado.statusCode).toBe(400)
   })
 
   it('el listado busca por patente y por número', async () => {

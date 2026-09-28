@@ -1,4 +1,4 @@
-import { plata, puedeSobre } from '@gpb/core'
+import { plata, puedeSobre, type TipoDanio, zonaEn } from '@gpb/core'
 import {
   and,
   asc,
@@ -16,9 +16,11 @@ import {
 import {
   cliente,
   comprobante,
+  type DanioRecepcion,
   empleado,
   empresa,
   entidadComercial,
+  type InventarioRecepcion,
   marca,
   modelo,
   orden,
@@ -96,6 +98,30 @@ export interface DatosRecepcion {
   pedido: string
   observaciones?: string | null | undefined
   entregaEstimada?: string | null | undefined
+  danios?: DanioEntrada[] | undefined
+  inventario?: InventarioRecepcion | undefined
+}
+
+interface DanioEntrada {
+  tipo: TipoDanio
+  x: number
+  y: number
+  nota?: string | null | undefined
+}
+
+/**
+ * La zona sale del punto, acá y no en la pantalla: una marca no puede decir «capot» dibujada
+ * sobre el techo. El contrato ya rechazó las que caen fuera del auto.
+ */
+function conZona(danios: DanioEntrada[]): DanioRecepcion[] {
+  return danios.map((d) => {
+    const z = zonaEn(d.x, d.y)
+    if (!z) throw new Error('Una marca fuera del auto pasó la validación del contrato.')
+    // Redondeado a una décima: la posición de un dedo no tiene seis decimales de verdad.
+    const x = Math.round(d.x * 10) / 10
+    const y = Math.round(d.y * 10) / 10
+    return { zona: z.id, tipo: d.tipo, x, y, nota: d.nota || null }
+  })
 }
 
 export interface ItemEntrada {
@@ -250,6 +276,8 @@ export class ServicioOrdenes {
           combustible: entrada.combustible ?? null,
           pedido: entrada.pedido,
           observaciones: entrada.observaciones ?? null,
+          danios: conZona(entrada.danios ?? []),
+          inventario: entrada.inventario ?? {},
           entregaEstimada: entrada.entregaEstimada ?? null,
           asesorId: sesion.usuarioId,
         })
@@ -304,6 +332,9 @@ export class ServicioOrdenes {
             combustible: entrada.combustible ?? null,
             pedido: entrada.pedido,
             observaciones: entrada.observaciones ?? null,
+            // Sin mandar, quedan como estaban: editar los datos de contacto no borra el dibujo.
+            ...(entrada.danios ? { danios: conZona(entrada.danios) } : {}),
+            ...(entrada.inventario ? { inventario: entrada.inventario } : {}),
             entregaEstimada: entrada.entregaEstimada ?? null,
             actualizadoEn: new Date(),
           })
@@ -1002,6 +1033,8 @@ export class ServicioOrdenes {
       kilometraje: o.kilometraje,
       combustible: o.combustible as 'vacio' | 'cuarto' | 'medio' | 'tres_cuartos' | 'lleno' | null,
       observaciones: o.observaciones,
+      danios: o.danios,
+      inventario: o.inventario,
       terminadaEn: o.terminadaEn?.toISOString() ?? null,
       entregadaEn: o.entregadaEn?.toISOString() ?? null,
       items: items.map((i) => ({

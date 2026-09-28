@@ -61,6 +61,7 @@
   /* Semánticos. Nunca se usan para marca, ni la marca para estado: si el mismo
      color significa «nosotros» y «en proceso», deja de significar cualquiera. */
   --color-ok: #3fbf8f;
+  --color-ok-suave: #3fbf8f24;
   --color-atencion: #d9962b;
   --color-critico: #e0705c;
   --color-critico-suave: #e0705c24;
@@ -123,6 +124,7 @@
   --color-marca-suave: #b873091f;
 
   --color-ok: #1c8a63;
+  --color-ok-suave: #1c8a631a;
   --color-atencion: #a96c10;
   --color-critico: #b2412c;
   --color-critico-suave: #b2412c1a;
@@ -143,6 +145,22 @@
  */
 [data-densidad="comoda"] {
   --spacing-fila: var(--spacing-fila-comoda);
+}
+
+/*
+ * Densidad táctil: la tablet del mostrador de recepción.
+ *
+ * Acá sí cambia todo, al revés que la cómoda: el que la usa tiene el dedo, no el mouse, y el
+ * objetivo mínimo es el del piso de taller. El texto de los campos sube a 16px por otro
+ * motivo además del tamaño: con menos, el navegador de la tablet agranda la página sola al
+ * tocar un campo, y la recepción queda corrida.
+ */
+[data-densidad="tactil"] {
+  --spacing-fila: var(--spacing-tactil);
+  --spacing-campo: var(--spacing-tactil);
+  --text-dato: 1rem;
+  --text-ui: 1rem;
+  --text-etiqueta: 0.875rem;
 }
 
 @layer base {

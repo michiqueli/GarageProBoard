@@ -454,6 +454,9 @@ importers:
 
   packages/pdf:
     dependencies:
+      '@gpb/core':
+        specifier: workspace:*
+        version: link:../core
       pdfkit:
         specifier: 0.20.2
         version: 0.20.2

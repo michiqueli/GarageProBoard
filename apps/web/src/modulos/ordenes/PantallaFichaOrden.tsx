@@ -30,6 +30,8 @@ import { mensajeGeneral } from '../../sesion/consultas.ts'
 import { usePuedeUsar } from '../../sesion/permisos.ts'
 import { useAtajo, useCambiosSinGuardar, useVolver } from '../../teclado/index.ts'
 import { ALICUOTAS, abrirPdf, nombreComprobante } from '../caja/comprobantes.ts'
+import { type Danio, DiagramaDanios } from './DiagramaDanios.tsx'
+import { type Inventario, InventarioRecepcion } from './InventarioRecepcion.tsx'
 import {
   COMBUSTIBLES,
   type Combustible,
@@ -393,12 +395,22 @@ function Recepcion({ orden: o, accion }: { orden: Orden; accion?: ReactNode }) {
         </dl>
         <dl className="grid grid-cols-[auto_1fr] content-start gap-x-4 gap-y-1.5 text-dato">
           <Dato nombre="Pedido">{o.pedido}</Dato>
-          <Dato nombre="Estado al recibirlo">{o.observaciones}</Dato>
+          <Dato nombre="Observaciones">{o.observaciones}</Dato>
           <Dato nombre="Entrega estimada">{o.entregaEstimada?.split('-').reverse().join('/')}</Dato>
           <Dato nombre="Asesor">{o.asesor}</Dato>
           {/* No se elige: lo pone el fichaje con el primero que la escanea. */}
           <Dato nombre="Mecánico">{o.mecanico?.nombre}</Dato>
         </dl>
+      </div>
+      <div className="grid gap-4 border-t border-borde px-3 py-2.5 lg:grid-cols-[3fr_2fr]">
+        <div className="grid content-start gap-2">
+          <h3 className="text-etiqueta font-medium text-texto-suave">Estado al recibirlo</h3>
+          <DiagramaDanios danios={o.danios} />
+        </div>
+        <div className="grid content-start gap-2">
+          <h3 className="text-etiqueta font-medium text-texto-suave">Vino con el auto</h3>
+          <InventarioRecepcion inventario={o.inventario} />
+        </div>
       </div>
     </Seccion>
   )
@@ -424,6 +436,8 @@ function FormRecepcion({
   const [pedido, setPedido] = useState(o.pedido)
   const [observaciones, setObservaciones] = useState(o.observaciones ?? '')
   const [entregaEstimada, setPrometidaPara] = useState(o.entregaEstimada ?? '')
+  const [danios, setDanios] = useState<Danio[]>(o.danios)
+  const [inventario, setInventario] = useState<Inventario>(o.inventario)
 
   const guardar = useMutation({
     mutationFn: () =>
@@ -439,6 +453,8 @@ function FormRecepcion({
         pedido,
         observaciones,
         entregaEstimada: entregaEstimada || null,
+        danios: danios.map(({ tipo, x, y, nota }) => ({ tipo, x, y, nota })),
+        inventario,
       }),
     onSuccess: async (nueva) => {
       await guardada(nueva)
@@ -491,11 +507,7 @@ function FormRecepcion({
         </div>
         <div className="grid gap-3 md:grid-cols-2">
           <Texto etiqueta="Qué pide el cliente" valor={pedido} onChange={setPedido} />
-          <Texto
-            etiqueta="Estado del vehículo al recibirlo"
-            valor={observaciones}
-            onChange={setObservaciones}
-          />
+          <Texto etiqueta="Otras observaciones" valor={observaciones} onChange={setObservaciones} />
         </div>
         <div className="grid gap-3 md:grid-cols-4">
           <Campo
@@ -504,6 +516,14 @@ function FormRecepcion({
             value={entregaEstimada}
             onChange={(e) => setPrometidaPara(e.target.value)}
           />
+        </div>
+        <div className="grid gap-2 border-t border-borde pt-3">
+          <h3 className="text-etiqueta font-medium text-texto-suave">Estado al recibirlo</h3>
+          <DiagramaDanios danios={danios} onChange={setDanios} />
+        </div>
+        <div className="grid gap-2 border-t border-borde pt-3">
+          <h3 className="text-etiqueta font-medium text-texto-suave">Vino con el auto</h3>
+          <InventarioRecepcion inventario={inventario} onChange={setInventario} />
         </div>
         <div className="flex gap-2">
           <Boton

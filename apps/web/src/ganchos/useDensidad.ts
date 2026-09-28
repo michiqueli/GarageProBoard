@@ -1,6 +1,6 @@
 import { useEffect } from 'react'
 
-type Densidad = 'compacta' | 'comoda'
+type Densidad = 'compacta' | 'comoda' | 'tactil'
 
 /**
  * Estampa la densidad en la raíz del documento, igual que `useTema`.

@@ -170,6 +170,8 @@ export class ControladorOrdenes {
           paga: o.paga?.razonSocial ?? null,
           pedido: o.pedido,
           observaciones: o.observaciones,
+          danios: o.danios,
+          inventario: o.inventario,
           asesor: o.asesor,
           mecanico: o.mecanico?.nombre ?? null,
           // Lo que el cliente rechazó no va en la orden impresa: no se hace ni se cobra.

@@ -1,10 +1,11 @@
 import { randomBytes } from 'node:crypto'
-import { cuitValido } from '@gpb/core'
+import { cuitValido, type TipoDanio, zonaEn } from '@gpb/core'
 import { and, eq, isNull, sql } from 'drizzle-orm'
 import { crearDb, crearPool, type Db } from '../src/index.ts'
 import {
   cliente,
   entidadComercial,
+  type InventarioRecepcion,
   marca,
   modelo,
   orden,
@@ -152,6 +153,9 @@ interface OrdenPrueba {
   combustible: string
   pedido: string
   observaciones: string | null
+  /** Las marcas del auto dibujado: [tipo, x, y, detalle], en coordenadas del dibujo. */
+  danios?: Array<[TipoDanio, number, number, string | null]>
+  inventario?: InventarioRecepcion
   prometida: number | null
   conMecanico: boolean
   items: Item[]
@@ -167,7 +171,22 @@ const ORDENES: OrdenPrueba[] = [
     km: 60120,
     combustible: 'medio',
     pedido: 'Service de 60.000 km. Ruido en el tren delantero al pasar lomas de burro.',
-    observaciones: 'Rayón en puerta trasera derecha. Falta tapa de la rueda de auxilio.',
+    observaciones: 'Testigo de ABS prendido al recibirlo.',
+    danios: [
+      ['rayon', 186, 228, 'Largo, a la altura de la manija'],
+      ['falta', 30, 300, 'Falta la tapa de la llanta'],
+      ['golpe', 120, 340, null],
+    ],
+    inventario: {
+      auxilio: 'esta',
+      gato: 'esta',
+      llave_rueda: 'esta',
+      llave_antirrobo: 'falta',
+      matafuego: 'esta',
+      balizas: 'esta',
+      alfombras: 'esta',
+      cedula: 'esta',
+    },
     prometida: 1,
     conMecanico: true,
     items: [
@@ -197,7 +216,11 @@ const ORDENES: OrdenPrueba[] = [
     km: 148300,
     combustible: 'cuarto',
     pedido: 'Patina el embrague en las subidas.',
-    observaciones: 'Paragolpes delantero despegado del lado izquierdo.',
+    observaciones: null,
+    danios: [
+      ['roto', 84, 27, 'Despegado del lado izquierdo'],
+      ['rayon', 150, 60, null],
+    ],
     prometida: 2,
     conMecanico: true,
     items: [
@@ -444,6 +467,14 @@ async function abrirOrdenes(tx: Db, tenantId: string) {
         combustible: o.combustible,
         pedido: o.pedido,
         observaciones: o.observaciones,
+        danios: (o.danios ?? []).map(([tipo, x, y, nota]) => ({
+          zona: zonaEn(x, y)?.id ?? 'techo',
+          tipo,
+          x,
+          y,
+          nota,
+        })),
+        inventario: o.inventario ?? {},
         entregaEstimada: o.prometida === null ? null : fecha(o.prometida),
         asesorId: asesor.id,
         mecanicoId: o.conMecanico ? (mecanico?.id ?? null) : null,

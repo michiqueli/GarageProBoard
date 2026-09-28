@@ -1,4 +1,5 @@
 export * from './atajos.ts'
+export * from './carroceria.ts'
 export * from './cuit.ts'
 export * from './dinero.ts'
 export * from './iva.ts'

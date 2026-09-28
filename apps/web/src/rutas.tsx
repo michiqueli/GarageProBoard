@@ -50,6 +50,11 @@ declare module '@tanstack/react-router' {
   interface StaticDataRouteOption {
     /** Qué pantalla es, para la acción de F4 y sus teclas propias. */
     pantalla?: Pantalla
+    /**
+     * La densidad que pide la pantalla, por encima de la preferencia del usuario. Es para la
+     * recepción en tablet: ahí manda el dedo, elija lo que elija cada uno en su escritorio.
+     */
+    densidad?: 'tactil'
   }
 }
 
@@ -160,6 +165,21 @@ const rutaRecepcion = createRoute({
   component: lazyRouteComponent(
     () => import('./modulos/ordenes/PantallaRecepcion.tsx'),
     'PantallaRecepcion',
+  ),
+})
+
+/**
+ * La recepción en tablet: el mismo flujo que `ordenes/nueva`, en pasos y para el dedo (ver
+ * `docs/tecnicos/recepcion-en-tablet.md`). Con sesión, porque quien recibe es una persona y la
+ * auditoría tiene que decir quién; lo que cambia es la vista, no quién opera.
+ */
+const rutaRecepcionTablet = createRoute({
+  getParentRoute: () => conSesion,
+  path: 'recepcion',
+  staticData: { pantalla: 'ordenes', densidad: 'tactil' },
+  component: lazyRouteComponent(
+    () => import('./modulos/ordenes/PantallaRecepcionTablet.tsx'),
+    'PantallaRecepcionTablet',
   ),
 })
 
@@ -430,6 +450,7 @@ const arbol = raiz.addChildren([
     rutaInicio,
     rutaOrdenes,
     rutaRecepcion,
+    rutaRecepcionTablet,
     rutaFichaOrden,
     rutaVehiculos,
     rutaFichaVehiculo,
@@ -489,7 +510,12 @@ function Raiz() {
   const datos = usarSesion((e) => e.datos)
 
   useTema(datos?.config.tema)
-  useDensidad(datos?.config.densidad)
+  // La decide la raíz y no la pantalla: si la estampara la pantalla, el efecto de acá —que
+  // corre después del de los hijos— la pisaría con la preferencia del usuario.
+  const densidadDeRuta = useMatches({
+    select: (ms) => ms.find((m) => m.staticData?.densidad)?.staticData.densidad,
+  })
+  useDensidad(densidadDeRuta ?? datos?.config.densidad)
 
   // Al cambiar de usuario se tira la caché: en la PC compartida del mostrador, el
   // cambio de turno no puede dejar a la vista los datos del turno anterior.

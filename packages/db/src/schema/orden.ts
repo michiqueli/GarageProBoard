@@ -1,3 +1,4 @@
+import type { ControlInventario, ElementoInventario, TipoDanio } from '@gpb/core'
 import { sql } from 'drizzle-orm'
 import {
   type AnyPgColumn,
@@ -6,6 +7,7 @@ import {
   date,
   index,
   integer,
+  jsonb,
   numeric,
   pgTable,
   primaryKey,
@@ -35,6 +37,17 @@ export const ESTADOS_ORDEN = [
 ] as const
 
 export const NIVELES_COMBUSTIBLE = ['vacio', 'cuarto', 'medio', 'tres_cuartos', 'lleno'] as const
+
+/** Una marca en el auto dibujado. Las coordenadas son del dibujo de `@gpb/core`, no de la pantalla. */
+export interface DanioRecepcion {
+  zona: string
+  tipo: TipoDanio
+  x: number
+  y: number
+  nota: string | null
+}
+
+export type InventarioRecepcion = Partial<Record<ElementoInventario, ControlInventario>>
 
 /**
  * La orden de trabajo: el auto que entró, qué pidió el cliente, qué se le hizo y qué se
@@ -85,8 +98,19 @@ export const orden = pgTable(
     combustible: text(),
     /** Lo que pidió el cliente, con sus palabras: «hace ruido al frenar». */
     pedido: text().notNull(),
-    /** El estado del auto al recibirlo: rayones, golpes, lo que falta. */
+    /** Lo que no entra en el dibujo ni en el inventario: «olor a quemado», «testigos prendidos». */
     observaciones: text(),
+    /**
+     * Las marcas del auto dibujado: rayones, golpes, lo roto y lo que falta de la carrocería.
+     *
+     * Van en la orden y no en una tabla aparte **para que las audite el trigger de `orden`**.
+     * Lo que más importa saber de esto es si alguien lo cambió después de que el cliente
+     * firmó, y una tabla de renglones que se reemplaza entera en cada edición quedaría sin
+     * auditar, como `orden_item`. Nadie consulta daños sueltos: se leen con su orden.
+     */
+    danios: jsonb().$type<DanioRecepcion[]>().notNull().default(sql`'[]'::jsonb`),
+    /** Lo que vino con el auto: el auxilio, el gato. Lo que no figura, no se revisó. */
+    inventario: jsonb().$type<InventarioRecepcion>().notNull().default(sql`'{}'::jsonb`),
     entregaEstimada: date(),
 
     asesorId: uuid()
@@ -119,6 +143,8 @@ export const orden = pgTable(
       sql`${t.combustible} is null or ${t.combustible} in ('vacio', 'cuarto', 'medio', 'tres_cuartos', 'lleno')`,
     ),
     check('orden_kilometraje_positivo', sql`${t.kilometraje} is null or ${t.kilometraje} >= 0`),
+    check('orden_danios_lista', sql`jsonb_typeof(${t.danios}) = 'array'`),
+    check('orden_inventario_objeto', sql`jsonb_typeof(${t.inventario}) = 'object'`),
     check('orden_codigo_qr_formato', sql`${t.codigoQr} ~ '^[0-9A-HJKMNP-TV-Z]{8}$'`),
   ],
 )

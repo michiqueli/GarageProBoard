@@ -31,7 +31,28 @@ writeFileSync(
     paga: 'Transportes del Sur SRL',
     pedido:
       'Service de 50.000 km. Hace ruido al frenar adelante, del lado del acompañante. Revisar luz de check engine.',
-    observaciones: 'Rayón en paragolpes trasero izquierdo. Sin rueda de auxilio.',
+    observaciones: 'Testigo de check engine prendido al recibirlo.',
+    danios: [
+      {
+        zona: 'paragolpes_trasero',
+        tipo: 'rayon',
+        x: 90,
+        y: 343,
+        nota: 'Del lado izquierdo, largo',
+      },
+      { zona: 'puerta_delantera_derecha', tipo: 'golpe', x: 186, y: 150, nota: null },
+      { zona: 'parabrisas', tipo: 'roto', x: 140, y: 125, nota: 'Rajadura chica abajo' },
+      { zona: 'espejo_izquierdo', tipo: 'falta', x: 30, y: 127, nota: 'Falta la tapa' },
+    ],
+    inventario: {
+      auxilio: 'falta',
+      gato: 'esta',
+      llave_rueda: 'esta',
+      llave_antirrobo: 'esta',
+      matafuego: 'esta',
+      balizas: 'falta',
+      cedula: 'esta',
+    },
     asesor: 'Martín Gutiérrez',
     mecanico: 'Pedro Sosa',
     items: [

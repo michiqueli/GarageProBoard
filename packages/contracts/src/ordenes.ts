@@ -1,3 +1,11 @@
+import {
+  CONTROLES_INVENTARIO,
+  ELEMENTOS_INVENTARIO,
+  TIPOS_DANIO,
+  VISTA,
+  ZONAS_IDS,
+  zonaEn,
+} from '@gpb/core'
 import { z } from 'zod'
 import { conPermiso } from './acceso.ts'
 import { CODIGOS_ALICUOTA } from './comprobantes.ts'
@@ -36,6 +44,36 @@ const opcional = z
   .nullish()
 
 const persona = z.object({ id: z.uuid(), razonSocial: z.string() })
+
+/**
+ * Una marca en el auto dibujado de la recepción. `x` e `y` son del dibujo de `@gpb/core`,
+ * no de la pantalla: así cae en el mismo lugar en la tablet, en el monitor y en la hoja.
+ */
+export const danioRecepcion = z.object({
+  zona: z.enum(ZONAS_IDS),
+  tipo: z.enum(TIPOS_DANIO),
+  x: z.number().min(0).max(VISTA.ancho),
+  y: z.number().min(0).max(VISTA.alto),
+  nota: z.string().nullable(),
+})
+
+/** Sin zona: sale del punto. Mandarla sería darle a la pantalla la chance de contradecirlo. */
+const danioEntrada = danioRecepcion
+  .omit({ zona: true })
+  .extend({
+    nota: z
+      .string()
+      .trim()
+      .max(120, 'El detalle de una marca es corto: lo largo va en las observaciones')
+      .nullish(),
+  })
+  .refine((d) => zonaEn(d.x, d.y), 'Esa marca cae fuera del auto')
+
+/** Lo que vino con el auto. Lo que no figura no se revisó, que no es lo mismo que «está». */
+export const inventarioRecepcion = z.partialRecord(
+  z.enum(ELEMENTOS_INVENTARIO),
+  z.enum(CONTROLES_INVENTARIO),
+)
 
 export const ordenResumen = z.object({
   id: z.uuid(),
@@ -130,6 +168,8 @@ export const ordenDetalle = ordenResumen.extend({
   kilometraje: z.number().int().nullable(),
   combustible: z.enum(NIVELES_COMBUSTIBLE).nullable(),
   observaciones: z.string().nullable(),
+  danios: z.array(danioRecepcion),
+  inventario: inventarioRecepcion,
   terminadaEn: z.iso.datetime().nullable(),
   entregadaEn: z.iso.datetime().nullable(),
   items: z.array(itemOrden),
@@ -160,6 +200,12 @@ const datosRecepcion = z.object({
   pedido: z.string().trim().min(3, 'Anotá qué pide el cliente'),
   observaciones: opcional,
   entregaEstimada: z.iso.date().nullish(),
+  /**
+   * Sin mandar, no se tocan: así un cliente viejo que edita la recepción no borra el dibujo
+   * que ya estaba. Para dejarlo vacío se manda la lista vacía.
+   */
+  danios: z.array(danioEntrada).max(80, 'Son muchas marcas: agrupalas con un detalle').optional(),
+  inventario: inventarioRecepcion.optional(),
 })
 
 const itemEntrada = z.object({

@@ -81,6 +81,8 @@ const FICHA = {
   kilometraje: 48210,
   combustible: 'medio',
   observaciones: null,
+  danios: [],
+  inventario: {},
   terminadaEn: null,
   entregadaEn: null,
   factura: null,
@@ -182,6 +184,195 @@ describe('la recepción', () => {
     await userEvent.keyboard('{F2}')
     expect(screen.getByText('Elegí el vehículo que entra.')).toBeDefined()
     expect(ordenes.abrir).not.toHaveBeenCalled()
+  })
+})
+
+const VEHICULO_ELEGIBLE = {
+  id: ORDEN.vehiculo.id,
+  chasis: ORDEN.vehiculo.chasis,
+  dominio: 'AB123CD',
+  anio: 2022,
+  color: null,
+  marca: 'Volkswagen',
+  modelo: 'Amarok',
+  titular: TITULAR,
+}
+
+async function elegirVehiculo(etiqueta: string) {
+  listarVehiculos.mockResolvedValue({ datos: [VEHICULO_ELEGIBLE], total: 1 })
+  await userEvent.type(await screen.findByLabelText(etiqueta), 'ab123')
+  await screen.findByRole('list', { name: 'Vehículos que coinciden con ab123' })
+  await userEvent.keyboard('{Enter}')
+  await screen.findByText('Titular: Transportes del Sur SRL')
+}
+
+describe('el estado del vehículo al recibirlo', () => {
+  it('con teclado: las flechas recorren las piezas por dónde están y la letra marca', async () => {
+    ordenes.abrir.mockResolvedValue({ ...FICHA, estado: 'recibida' })
+    await montarApp('/ordenes/nueva')
+    await elegirVehiculo('Vehículo')
+    await userEvent.type(screen.getByLabelText('Qué pide el cliente'), 'Ruido al frenar')
+
+    const auto = screen.getByRole('application')
+    auto.focus()
+    // Arranca en el capot; a la izquierda del capot está el guardabarros, no la óptica.
+    await userEvent.keyboard('r')
+    await userEvent.keyboard('{ArrowLeft}')
+    await userEvent.keyboard('g')
+
+    const marcas = screen.getByRole('list', { name: 'Marcas' })
+    expect(within(marcas).getByText('Rayón · Capot')).toBeDefined()
+    expect(within(marcas).getByText('Golpe · Guardabarros delantero izquierdo')).toBeDefined()
+
+    await userEvent.type(
+      screen.getByLabelText('Detalle de golpe · guardabarros delantero izquierdo'),
+      'Chico',
+    )
+    await userEvent.keyboard('{F2}')
+    await waitFor(() =>
+      expect(ordenes.abrir).toHaveBeenCalledWith(
+        expect.objectContaining({
+          danios: [
+            { tipo: 'rayon', x: 120, y: 75, nota: null },
+            { tipo: 'golpe', x: 54, y: 75, nota: 'Chico' },
+          ],
+        }),
+      ),
+    )
+  })
+
+  it('Supr quita la última marca de la pieza, después de confirmar', async () => {
+    await montarApp('/ordenes/nueva')
+    await screen.findByLabelText('Vehículo')
+    const auto = screen.getByRole('application')
+    auto.focus()
+    await userEvent.keyboard('x')
+    expect(screen.getByText('Roto o rajado · Capot')).toBeDefined()
+
+    await userEvent.keyboard('{Delete}')
+    await confirmarDialogo('Quitar la marca')
+    await waitFor(() => expect(screen.queryByText('Roto o rajado · Capot')).toBeNull())
+  })
+
+  it('tocar una pieza la marca con lo elegido', async () => {
+    await montarApp('/ordenes/nueva')
+    await screen.findByLabelText('Vehículo')
+    const queMarcar = screen.getByRole('group', { name: 'Qué marcar' })
+    await userEvent.click(within(queMarcar).getByRole('radio', { name: /Falta/ }))
+    const espejo = document.querySelector('[data-zona="espejo_derecho"]')
+    if (!espejo) throw new Error('falta el espejo en el dibujo')
+    await userEvent.click(espejo)
+    expect(screen.getByText('Falta · Espejo derecho')).toBeDefined()
+  })
+
+  it('el inventario: lo que falta, y el resto de un toque', async () => {
+    ordenes.abrir.mockResolvedValue({ ...FICHA, estado: 'recibida' })
+    await montarApp('/ordenes/nueva')
+    await elegirVehiculo('Vehículo')
+    await userEvent.type(screen.getByLabelText('Qué pide el cliente'), 'Service')
+
+    const auxilio = screen.getByRole('group', { name: 'Rueda de auxilio' })
+    await userEvent.click(within(auxilio).getByRole('radio', { name: 'Falta' }))
+    expect(screen.getByText('9 sin revisar')).toBeDefined()
+    await userEvent.click(screen.getByRole('button', { name: 'El resto está' }))
+    expect(screen.getByText('Revisado entero')).toBeDefined()
+
+    await userEvent.keyboard('{F2}')
+    await waitFor(() =>
+      expect(ordenes.abrir).toHaveBeenCalledWith(
+        expect.objectContaining({
+          inventario: expect.objectContaining({ auxilio: 'falta', gato: 'esta', manual: 'esta' }),
+        }),
+      ),
+    )
+  })
+
+  it('sin tocar, el inventario no dice que está: dice que no se revisó', async () => {
+    ordenes.ficha.mockResolvedValue({ ...FICHA, inventario: { auxilio: 'falta' } })
+    await montarApp(`/ordenes/${ORDEN.id}`)
+    const lista = await screen.findByRole('list', { name: 'Vino con el auto' })
+    expect(within(lista).getByText('Falta')).toBeDefined()
+    expect(within(lista).getAllByText('Sin revisar')).toHaveLength(9)
+  })
+
+  it('la ficha muestra las marcas con la pieza donde cayeron', async () => {
+    ordenes.ficha.mockResolvedValue({
+      ...FICHA,
+      danios: [{ zona: 'puerta_delantera_derecha', tipo: 'golpe', x: 186, y: 153, nota: 'Hondo' }],
+    })
+    await montarApp(`/ordenes/${ORDEN.id}`)
+    expect(await screen.findByText('Golpe · Puerta delantera derecha')).toBeDefined()
+    expect(screen.getByText('— Hondo')).toBeDefined()
+    // De sólo lectura: el dibujo de la ficha no se marca.
+    expect(screen.queryByRole('application')).toBeNull()
+  })
+})
+
+describe('la recepción en tablet', () => {
+  it('es táctil, va paso por paso, no deja seguir sin lo que falta, y abre la orden', async () => {
+    ordenes.abrir.mockResolvedValue({ ...FICHA, numero: 57, estado: 'recibida' })
+    await montarApp('/recepcion')
+    await screen.findByLabelText('Patente o chasis')
+    expect(document.documentElement.dataset.densidad).toBe('tactil')
+
+    await userEvent.click(screen.getByRole('button', { name: 'Siguiente' }))
+    expect(screen.getByText('Elegí el vehículo que entra.')).toBeDefined()
+
+    await elegirVehiculo('Patente o chasis')
+    await userEvent.click(screen.getByRole('button', { name: 'Siguiente' }))
+    await screen.findByText('¿Quién lo trae y quién autoriza?')
+    await userEvent.click(screen.getByRole('button', { name: 'Siguiente' }))
+
+    await screen.findByText('¿Qué pide el cliente?')
+    await userEvent.click(screen.getByRole('button', { name: 'Siguiente' }))
+    expect(screen.getByText('Anotá qué pide el cliente, con sus palabras.')).toBeDefined()
+    await userEvent.type(screen.getByLabelText('Qué pide el cliente'), 'Cambio de aceite')
+    await userEvent.click(screen.getByRole('button', { name: 'Siguiente' }))
+
+    await screen.findByText('¿Cómo está el vehículo?')
+    const techo = document.querySelector('[data-zona="techo"]')
+    if (!techo) throw new Error('falta el techo en el dibujo')
+    await userEvent.click(techo)
+    await userEvent.click(screen.getByRole('button', { name: 'Siguiente' }))
+
+    await screen.findByText('¿Qué vino con el auto?')
+    await userEvent.click(screen.getByRole('button', { name: 'Está todo' }))
+    await userEvent.click(screen.getByRole('button', { name: 'Siguiente' }))
+
+    await screen.findByText('Revisalo con el cliente')
+    expect(screen.getByText('R Rayón · Techo')).toBeDefined()
+    expect(screen.getByText('Todo lo revisado está')).toBeDefined()
+    await userEvent.click(screen.getByRole('button', { name: /Abrir la orden/ }))
+
+    await waitFor(() =>
+      expect(ordenes.abrir).toHaveBeenCalledWith(
+        expect.objectContaining({
+          vehiculoId: ORDEN.vehiculo.id,
+          pedido: 'Cambio de aceite',
+          danios: [{ tipo: 'rayon', x: 120, y: 192, nota: null }],
+        }),
+      ),
+    )
+    expect(await screen.findByText('OT 000057')).toBeDefined()
+
+    // Y se sigue con el próximo, sin volver a entrar.
+    await userEvent.click(screen.getByRole('button', { name: 'Recibir otro vehículo' }))
+    expect(await screen.findByLabelText('Patente o chasis')).toHaveProperty('value', '')
+  })
+
+  it('«Cambiar» en el repaso lleva al paso donde se carga ese dato', async () => {
+    await montarApp('/recepcion')
+    await screen.findByLabelText('Patente o chasis')
+    await userEvent.click(screen.getByRole('button', { name: /Revisar/ }))
+    await userEvent.click(screen.getByRole('button', { name: 'Cambiar qué pide' }))
+    expect(await screen.findByText('¿Qué pide el cliente?')).toBeDefined()
+  })
+
+  it('al salir de la tablet vuelve la densidad de cada uno', async () => {
+    const router = await montarApp('/recepcion')
+    await screen.findByLabelText('Patente o chasis')
+    await router.navigate({ to: '/ordenes' })
+    await waitFor(() => expect(document.documentElement.dataset.densidad).toBeUndefined())
   })
 })
 
