@@ -63,6 +63,12 @@ export const TABLAS_AUDITADAS: readonly TablaAuditada[] = [
     solo: ['update', 'delete'],
     nota: 'Un renglón de un comprobante emitido no se toca. Lo que importa es enterarse si pasa.',
   },
+  {
+    tabla: 'hoja_imagen',
+    nota:
+      'El dibujo sobre el que firma el cliente. Lo que interesa es quién cambió la hoja y ' +
+      'cuándo: una fila borrada acá deja órdenes firmadas apuntando a un dibujo que no está.',
+  },
   { tabla: 'orden' },
   { tabla: 'orden_presupuesto' },
   { tabla: 'repuesto' },

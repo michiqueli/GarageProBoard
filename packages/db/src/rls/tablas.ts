@@ -13,6 +13,7 @@ export const TABLAS_CON_TENANT = [
   'certificado_afip',
   'comprobante',
   'comprobante_renglon',
+  'hoja_imagen',
   'orden',
   'orden_item',
   'orden_secuencia',
