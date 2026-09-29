@@ -11,3 +11,5 @@ export const DB = Symbol('DB')
 export const FISCAL = Symbol('FISCAL')
 /** El correo saliente: ServicioCorreo. */
 export const CORREO = Symbol('CORREO')
+/** El almacén de archivos: Almacen. */
+export const ALMACEN = Symbol('ALMACEN')

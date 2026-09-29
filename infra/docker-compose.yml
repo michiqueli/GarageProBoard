@@ -44,6 +44,13 @@ services:
       timeout: 3s
       retries: 10
 
+  # FALTA el almacén de archivos, y no por olvido: al 29/09/2026 la imagen `minio/minio` ya no
+  # está publicada en Docker Hub y `quay.io/minio/minio` contesta 401. Sin servidor que bajar,
+  # el servicio quedaría acá rompiendo `pnpm infra:up` para todos.
+  #
+  # El código no depende de cuál sea: `Almacen` habla S3 y anda contra cualquier servidor
+  # compatible. Falta elegir con cuál se corre. Ver docs/tecnicos/hoja-de-recepcion.md.
+
   # Atrapa los mails que manda el sistema en desarrollo: nada le llega a nadie de verdad, y
   # se ven en http://localhost:8025 con sus adjuntos.
   mailpit:

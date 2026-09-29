@@ -1,12 +1,13 @@
 import { crearFacturacionArca, type Entorno, type ServicioFiscal } from '@gpb/afip'
 import { crearDb, crearPool, type Db, type Pool } from '@gpb/db'
 import { Global, Inject, Module, type OnApplicationShutdown } from '@nestjs/common'
+import { ArchivosDelTenant, crearAlmacenMinio } from './almacen.ts'
 import { crearCorreoSmtp } from './correo.ts'
 import { DatosDelTenant } from './datos.ts'
 import { CajaFuerte } from './secretos.ts'
-import { CORREO, DB, FISCAL, POOL } from './simbolos.ts'
+import { ALMACEN, CORREO, DB, FISCAL, POOL } from './simbolos.ts'
 
-export { CORREO, DB, FISCAL, POOL }
+export { ALMACEN, CORREO, DB, FISCAL, POOL }
 
 /**
  * La facturación de AFIP, una instancia por entorno y creada recién cuando se usa. Cada
@@ -55,8 +56,19 @@ function crearFiscal(): (entorno: Entorno) => ServicioFiscal {
       provide: CORREO,
       useFactory: () => crearCorreoSmtp(process.env.SMTP_URL, process.env.CORREO_REMITENTE),
     },
+    {
+      provide: ALMACEN,
+      useFactory: () =>
+        crearAlmacenMinio({
+          endpoint: process.env.S3_ENDPOINT,
+          accessKey: process.env.S3_ACCESS_KEY,
+          secretKey: process.env.S3_SECRET_KEY,
+          bucket: process.env.S3_BUCKET,
+        }),
+    },
+    ArchivosDelTenant,
   ],
-  exports: [POOL, DB, DatosDelTenant, CajaFuerte, FISCAL, CORREO],
+  exports: [POOL, DB, DatosDelTenant, CajaFuerte, FISCAL, CORREO, ALMACEN, ArchivosDelTenant],
 })
 export class ModuloBase implements OnApplicationShutdown {
   // Inyección explícita en todo el proyecto: ver la nota en auth.service.ts. Nest
