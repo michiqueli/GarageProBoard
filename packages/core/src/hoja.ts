@@ -1,51 +1,38 @@
 /**
- * La hoja de recepción: las vistas del vehículo sobre las que se marca lo que trae.
+ * La hoja de recepción: el dibujo del vehículo sobre el que se marca lo que trae al entrar.
  *
- * Son las cinco de la hoja de VW, que es la que el rubro reconoce. Las imágenes **no las
- * dibujamos nosotros**: las carga cada concesionaria, y el sistema trae un juego por omisión
- * para que un taller que recién entra pueda recibir un auto el primer día. El porqué está en
- * `docs/tecnicos/hoja-de-recepcion.md`.
+ * **Una imagen por carrocería**, con todas las vistas adentro —la planta en el medio, los
+ * costados arriba y abajo, el frente y la cola a los lados—, que es como vienen las hojas de
+ * inspección de siempre. La decisión de que sea una y no cinco separadas está en
+ * `docs/tecnicos/hoja-de-recepcion.md`: los dibujos que existen vienen así.
+ *
+ * Las imágenes **no las dibujamos nosotros**: las carga cada concesionaria, y el sistema trae
+ * un juego para que un taller que recién entra pueda recibir un auto el primer día.
  */
 
 import type { Carroceria } from './carroceria.ts'
 
-export const VISTAS = ['frente', 'atras', 'izquierda', 'derecha', 'arriba'] as const
-export type Vista = (typeof VISTAS)[number]
-
-export const VISTAS_NOMBRE: Record<Vista, string> = {
-  frente: 'Frente',
-  atras: 'Atrás',
-  izquierda: 'Lado izquierdo',
-  derecha: 'Lado derecho',
-  arriba: 'Desde arriba',
-}
-
 /**
- * Tres juegos de imágenes, no uno por carrocería.
- *
- * Es la misma economía que tenían las siluetas dibujadas: lo que cambia de verdad entre un
- * sedán y un SUV, mirados de frente y de costado, no alcanza para pedirle a cada taller que
- * consiga y cargue cinco dibujos más.
+ * Cuatro dibujos. No uno por carrocería: un sedán y un coupé se marcan igual, y pedirle a cada
+ * taller que consiga dos dibujos casi idénticos no le compra nada a nadie.
  */
-export const TIPOS_HOJA = ['sedan', 'hatchback', 'pickup'] as const
+export const TIPOS_HOJA = ['sedan', 'hatchback', 'suv', 'pickup'] as const
 export type TipoHoja = (typeof TIPOS_HOJA)[number]
 
 export const TIPOS_HOJA_NOMBRE: Record<TipoHoja, string> = {
   sedan: 'Sedán',
   hatchback: 'Hatchback',
+  suv: 'SUV',
   pickup: 'Pickup',
 }
 
-/**
- * Con qué juego se dibuja cada carrocería. El furgón va con la pickup por ahora: de las tres
- * es la única con la que comparte la trompa alta y la caja atrás.
- */
+/** Con qué dibujo se recibe cada carrocería. El furgón va con la pickup, que es lo más cerca. */
 export const HOJA_DE: Record<Carroceria, TipoHoja> = {
   sedan: 'sedan',
   coupe: 'sedan',
   hatchback: 'hatchback',
   familiar: 'hatchback',
-  suv: 'hatchback',
+  suv: 'suv',
   pickup: 'pickup',
   furgon: 'pickup',
 }

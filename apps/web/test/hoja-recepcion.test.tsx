@@ -20,18 +20,14 @@ vi.mock('../src/sesion/cliente.ts', () => ({
   renovar: () => renovar(),
 }))
 
-const TIPOS = ['sedan', 'hatchback', 'pickup'] as const
-const VISTAS = ['frente', 'atras', 'izquierda', 'derecha', 'arriba'] as const
+const TIPOS = ['sedan', 'hatchback', 'suv', 'pickup'] as const
 
-/** Las quince casillas, todas con la del sistema, que es como arranca un taller nuevo. */
-const vacias = () => ({
-  datos: TIPOS.flatMap((tipo) => VISTAS.map((vista) => ({ tipo, vista, propia: null }))),
-})
+/** Los cuatro dibujos, todos con el del sistema: así arranca un taller nuevo. */
+const vacias = () => ({ datos: TIPOS.map((tipo) => ({ tipo, propia: null })) })
 
 const propia = {
   id: '77777777-7777-4777-8777-777777777777',
   tipo: 'sedan' as const,
-  vista: 'frente' as const,
   formato: 'image/png' as const,
   ancho: 1200,
   alto: 800,
@@ -56,37 +52,32 @@ beforeEach(() => {
 afterEach(cleanup)
 
 describe('la hoja de recepción', () => {
-  it('muestra las quince casillas, y las que no tienen dibujo propio usan la del sistema', async () => {
+  it('muestra un dibujo por carrocería, y los que no son propios usan el del sistema', async () => {
     await montarApp('/hoja-recepcion')
-    expect(await screen.findByText('Sedán')).toBeDefined()
+    const dibujos = await screen.findByRole('list', { name: 'Dibujos' })
 
-    // Tres secciones, cinco vistas cada una.
-    for (const tipo of ['Sedán', 'Hatchback', 'Pickup']) {
-      const seccion = screen.getByRole('region', { name: tipo })
-      expect(within(seccion).getAllByRole('listitem')).toHaveLength(5)
-      expect(within(seccion).getByText('0 de 5 con dibujo propio')).toBeDefined()
+    expect(within(dibujos).getAllByRole('listitem')).toHaveLength(4)
+    for (const tipo of ['Sedán', 'Hatchback', 'SUV', 'Pickup']) {
+      expect(within(dibujos).getByRole('heading', { name: tipo })).toBeDefined()
     }
-    expect(screen.getAllByText('El que trae el sistema')).toHaveLength(15)
+    expect(within(dibujos).getAllByText('Del sistema')).toHaveLength(4)
   })
 
-  it('subir un dibujo lo manda con su tipo y su vista, y refresca la lista', async () => {
+  it('subir un dibujo lo manda con su tipo, y refresca la lista', async () => {
     hojas.subir.mockResolvedValue(propia)
     await montarApp('/hoja-recepcion')
-    const sedan = await screen.findByRole('region', { name: 'Sedán' })
-    await within(sedan).findAllByRole('button', { name: 'Subir el mío' })
+    await screen.findAllByRole('button', { name: 'Subir el mío' })
 
     hojas.listar.mockResolvedValue({
-      datos: vacias().datos.map((c) =>
-        c.tipo === 'sedan' && c.vista === 'frente' ? { ...c, propia } : c,
-      ),
+      datos: vacias().datos.map((c) => (c.tipo === 'sedan' ? { ...c, propia } : c)),
     })
 
     const archivo = new File([new Uint8Array([1, 2, 3])], 'frente.png', { type: 'image/png' })
-    await userEvent.upload(screen.getByLabelText('Elegir el dibujo de Sedán, frente'), archivo)
+    await userEvent.upload(screen.getByLabelText('Elegir el dibujo de Sedán'), archivo)
 
     await waitFor(() =>
       expect(hojas.subir).toHaveBeenCalledWith(
-        expect.objectContaining({ tipo: 'sedan', vista: 'frente', imagen: archivo }),
+        expect.objectContaining({ tipo: 'sedan', imagen: archivo }),
       ),
     )
     // Y la casilla pasa a mostrar las medidas del dibujo propio.
@@ -99,9 +90,7 @@ describe('la hoja de recepción', () => {
    */
   it('quitar avisa que las órdenes viejas lo siguen mostrando, y pregunta antes', async () => {
     hojas.listar.mockResolvedValue({
-      datos: vacias().datos.map((c) =>
-        c.tipo === 'sedan' && c.vista === 'frente' ? { ...c, propia } : c,
-      ),
+      datos: vacias().datos.map((c) => (c.tipo === 'sedan' ? { ...c, propia } : c)),
     })
     hojas.quitar.mockResolvedValue({ hecho: true })
     await montarApp('/hoja-recepcion')
@@ -110,9 +99,7 @@ describe('la hoja de recepción', () => {
     expect(await screen.findByText(/las órdenes que se recibieron con él/i)).toBeDefined()
     await confirmarDialogo('Volver al del sistema')
 
-    await waitFor(() =>
-      expect(hojas.quitar).toHaveBeenCalledWith({ tipo: 'sedan', vista: 'frente' }),
-    )
+    await waitFor(() => expect(hojas.quitar).toHaveBeenCalledWith({ tipo: 'sedan' }))
   })
 
   /** Ver el dibujo es ver órdenes; cambiarlo es configurar el módulo, que es otra cosa. */

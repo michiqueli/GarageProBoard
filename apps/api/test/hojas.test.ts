@@ -56,7 +56,7 @@ function png(ancho: number, alto: number): Buffer {
   return b
 }
 
-function subir(access: string, tipo: string, vista: string, contenido: Buffer, nombre = 'a.png') {
+function subir(access: string, tipo: string, contenido: Buffer, nombre = 'a.png') {
   const borde = '----gpb'
   const cuerpo = Buffer.concat([
     Buffer.from(
@@ -68,7 +68,7 @@ function subir(access: string, tipo: string, vista: string, contenido: Buffer, n
   ])
   return app.inject({
     method: 'POST',
-    url: `/api/hojas/${tipo}/${vista}`,
+    url: `/api/hojas/${tipo}`,
     headers: {
       authorization: `Bearer ${access}`,
       'content-type': `multipart/form-data; boundary=${borde}`,
@@ -81,30 +81,27 @@ const pedir = (access: string, method: 'GET' | 'DELETE', url: string) =>
   app.inject({ method, url: `/api${url}`, headers: { authorization: `Bearer ${access}` } })
 
 describe('la hoja de recepción', () => {
-  it('arranca con las quince casillas vacías: el taller nuevo usa las del sistema', async () => {
+  it('arranca sin dibujos propios: el taller nuevo usa los del sistema', async () => {
     const r = await pedir(gerente, 'GET', '/hojas')
     expect(r.statusCode).toBe(200)
-    const datos = r.json().datos as Array<{ tipo: string; vista: string; propia: unknown }>
-    expect(datos).toHaveLength(15)
+    const datos = r.json().datos as Array<{ tipo: string; propia: unknown }>
+    expect(datos).toHaveLength(4)
     expect(datos.every((d) => d.propia === null)).toBe(true)
   })
 
   it('sube el dibujo, lo mide del archivo y lo sirve', async () => {
-    const r = await subir(gerente, 'sedan', 'frente', png(1200, 800))
+    const r = await subir(gerente, 'sedan', png(1200, 800))
     expect(r.statusCode).toBe(201)
     const imagen = r.json()
     expect(imagen).toMatchObject({
       tipo: 'sedan',
-      vista: 'frente',
       formato: 'image/png',
       ancho: 1200,
       alto: 800,
     })
 
     // El objeto quedó bajo el prefijo de la concesionaria, no suelto.
-    expect(almacen.claves().some((k) => /^t\/[0-9a-f-]+\/hojas\/sedan\/frente\//.test(k))).toBe(
-      true,
-    )
+    expect(almacen.claves().some((k) => /^t\/[0-9a-f-]+\/hojas\/sedan\//.test(k))).toBe(true)
 
     const servida = await pedir(gerente, 'GET', `/hojas/imagenes/${imagen.id}`)
     expect(servida.statusCode).toBe(200)
@@ -112,7 +109,7 @@ describe('la hoja de recepción', () => {
     expect(servida.rawPayload.subarray(0, 8)).toEqual(png(1, 1).subarray(0, 8))
 
     const lista = (await pedir(gerente, 'GET', '/hojas')).json().datos
-    const casilla = lista.find((d: { vista: string }) => d.vista === 'frente')
+    const casilla = lista.find((d: { tipo: string }) => d.tipo === 'sedan')
     expect(casilla.propia.id).toBe(imagen.id)
   })
 
@@ -121,14 +118,14 @@ describe('la hoja de recepción', () => {
    * `Content-Type` que mandó el navegador. Acá va un ejecutable diciendo ser un PNG.
    */
   it('un archivo que dice ser PNG y no lo es, no entra', async () => {
-    const r = await subir(gerente, 'sedan', 'atras', Buffer.from('MZ\x90\x00 no soy una imagen'))
+    const r = await subir(gerente, 'hatchback', Buffer.from('MZ\x90\x00 no soy una imagen'))
     expect(r.statusCode).toBe(422)
     expect(r.json().code).toBe('FORMATO_INVALIDO')
-    expect(almacen.claves().some((k) => k.includes('/atras/'))).toBe(false)
+    expect(almacen.claves().some((k) => k.includes('/hatchback/'))).toBe(false)
   })
 
   it('un dibujo demasiado chico se rechaza diciendo entre qué medidas tiene que estar', async () => {
-    const r = await subir(gerente, 'sedan', 'atras', png(120, 90))
+    const r = await subir(gerente, 'hatchback', png(120, 90))
     expect(r.statusCode).toBe(422)
     expect(r.json().code).toBe('MEDIDAS_INVALIDAS')
     expect(r.json().message).toMatch(/300/)
@@ -136,26 +133,20 @@ describe('la hoja de recepción', () => {
 
   /** Hay órdenes firmadas que apuntan a la vieja: reemplazar no puede ser pisar. */
   it('subir de nuevo deja la anterior guardada, y quitar vuelve a la del sistema', async () => {
-    const primera = (await subir(gerente, 'pickup', 'arriba', png(900, 600))).json()
-    const segunda = (await subir(gerente, 'pickup', 'arriba', png(1000, 700))).json()
+    const primera = (await subir(gerente, 'pickup', png(900, 600))).json()
+    const segunda = (await subir(gerente, 'pickup', png(1000, 700))).json()
     expect(segunda.id).not.toBe(primera.id)
 
     // La vieja se sigue sirviendo igual: es la que mira una orden vieja.
     expect((await pedir(gerente, 'GET', `/hojas/imagenes/${primera.id}`)).statusCode).toBe(200)
 
     const lista = (await pedir(gerente, 'GET', '/hojas')).json().datos
-    const casilla = lista.find(
-      (d: { tipo: string; vista: string }) => d.tipo === 'pickup' && d.vista === 'arriba',
-    )
+    const casilla = lista.find((d: { tipo: string }) => d.tipo === 'pickup')
     expect(casilla.propia.id).toBe(segunda.id)
 
-    expect((await pedir(gerente, 'DELETE', '/hojas/pickup/arriba')).statusCode).toBe(200)
+    expect((await pedir(gerente, 'DELETE', '/hojas/pickup')).statusCode).toBe(200)
     const despues = (await pedir(gerente, 'GET', '/hojas')).json().datos
-    expect(
-      despues.find(
-        (d: { tipo: string; vista: string }) => d.tipo === 'pickup' && d.vista === 'arriba',
-      ).propia,
-    ).toBeNull()
+    expect(despues.find((d: { tipo: string }) => d.tipo === 'pickup').propia).toBeNull()
     // Y el archivo sigue estando: las órdenes que se recibieron con él lo muestran.
     expect((await pedir(gerente, 'GET', `/hojas/imagenes/${segunda.id}`)).statusCode).toBe(200)
   })
@@ -166,8 +157,8 @@ describe('la hoja de recepción', () => {
    */
   it('el mecánico ve las hojas pero no las cambia', async () => {
     expect((await pedir(mecanico, 'GET', '/hojas')).statusCode).toBe(200)
-    expect((await subir(mecanico, 'hatchback', 'frente', png(900, 600))).statusCode).toBe(403)
-    expect((await pedir(mecanico, 'DELETE', '/hojas/sedan/frente')).statusCode).toBe(403)
+    expect((await subir(mecanico, 'hatchback', png(900, 600))).statusCode).toBe(403)
+    expect((await pedir(mecanico, 'DELETE', '/hojas/sedan')).statusCode).toBe(403)
   })
 
   it('una imagen que no existe da 404 y no revienta', async () => {

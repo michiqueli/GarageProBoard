@@ -32,33 +32,40 @@ alguien que dibuja.
 
 ## Lo decidido
 
-**Cinco vistas por tipo de carrocería, y las imágenes las carga cada concesionaria.**
+**Una imagen por tipo de carrocería, y la carga cada concesionaria.**
 
 | | |
 | --- | --- |
-| **Vistas** | Frente, atrás, lado izquierdo, lado derecho, arriba |
-| **Tipos** | Sedán, hatchback, pickup |
+| **Tipos** | Sedán, hatchback, SUV, pickup |
+| **Qué trae cada imagen** | Todas las vistas juntas: la planta, los costados, el frente y la cola |
 | **Quién las pone** | Cada taller sube las suyas; el sistema trae un juego por omisión |
 
-Son las cinco de la hoja de VW, que es la que el rubro reconoce. Quince imágenes por
-concesionaria.
+### Una imagen y no cinco, que fue el segundo intento
 
-### La marca deja de saber en qué pieza cayó
+La primera versión de esta decisión pedía cinco archivos por tipo —frente, atrás, los dos
+costados y arriba—, como están dispuestas en la hoja de VW. Se cayó al buscar los dibujos:
+**los que existen vienen con las cinco vistas armadas en una sola figura**, que es como se
+dibujan las hojas de inspección desde siempre. Separarlas significaba recortar, y recortar una
+figura de 380 píxeles deja cada vista en 150, por debajo de lo que se lee en una tablet.
 
-Es la consecuencia que hay que aceptar, y conviene decirla fuerte: sobre una imagen que sube
-cada taller, **el sistema no puede saber qué chapa es ese punto**. No hay mapa de zonas que
-sirva para un dibujo que todavía no existe.
+Así que se sigue a los dibujos que hay, en vez de pedirle al mundo que venga en cinco archivos.
 
-Entonces la marca dice **la vista y el detalle**: «Golpe · Lado izquierdo — a la altura de la
-manija». Que es, exactamente, lo que dice la hoja de papel de hoy. Lo preciso lo da el dibujo
-con la letra encima, que es para lo que está.
+### La marca no sabe dónde cayó, y está bien
+
+Es la consecuencia que hay que aceptar: sobre una imagen que sube cada taller **el sistema no
+puede saber qué pieza es ese punto**, y ahora tampoco qué vista. No hay mapa de zonas que sirva
+para un dibujo que todavía no existe.
+
+Entonces la marca es **la letra sobre el dibujo, más el detalle que se escriba**. Que es,
+exactamente, lo que dice la hoja de papel: nadie anota «rayón en la puerta delantera
+izquierda», dibuja una R donde está el rayón.
 
 Se descartó agregar un desplegable de piezas después de cada marca: es un paso más por cada
 rayón, con un cliente parado adelante, y la recepción se mide en cuánto tarda.
 
 ### Las coordenadas van en fracción, no en píxeles
 
-Una marca se guarda como `{ vista, x, y }` con **x e y entre 0 y 1**, relativas al alto y al
+Una marca se guarda como `{ x, y }` con **los dos entre 0 y 1**, relativas al alto y al
 ancho de la imagen. Así el taller puede reemplazar su dibujo por uno de otro tamaño y las
 marcas siguen cayendo donde caían. Guardar píxeles ataría cada marca a la resolución del
 archivo que había ese día.
@@ -73,13 +80,13 @@ Por eso las imágenes **no se modifican**: subir una nueva crea una versión, la
 y cada orden apunta a la versión con la que se recibió. Una hoja firmada se puede volver a
 imprimir dentro de dos años y sale igual.
 
-## Dónde se guardan: en MinIO
+## Dónde se guardan: en un almacén de objetos
 
-Por el tamaño solo, estas quince imágenes irían en `bytea`: son dos megas por concesionaria,
-entran en el `pg_dump` que ya existe y quedan adentro del aislamiento por tenant que ya está
+Por el tamaño solo, estas cuatro imágenes irían en `bytea`: son unos pocos megas por
+concesionaria, entran en el `pg_dump` que ya existe y quedan adentro del aislamiento por tenant que ya está
 probado con RLS.
 
-**Pero MinIO va a estar igual**, en el VPS, para las fotos del vehículo y para el logo de la
+**Pero el almacén de objetos va a estar igual**, en el VPS, para las fotos del vehículo y para el logo de la
 concesionaria. Y entre dos megas de más en la base y **dos historias distintas de dónde vive un
 archivo**, lo caro a la larga es lo segundo: dos formas de subir, dos de servir, dos de borrar
 y dos de restaurar. Entonces estas son las primeras que van, y estrenan el camino.
@@ -87,7 +94,7 @@ y dos de restaurar. Entonces estas son las primeras que van, y estrenan el camin
 ### Lo que hay que resolver por estrenarlo
 
 **El aislamiento deja de ser de Postgres.** Un bucket no tiene RLS. La clave lleva el tenant
-adelante —`t/<tenantId>/hojas/<hojaId>/<vista>.webp`— y **el tenant sale siempre de la sesión,
+adelante —`t/<tenantId>/hojas/<tipo>/<id>.png`— y **el tenant sale siempre de la sesión,
 nunca del pedido**. Es la misma regla que ya aplica `DatosDelTenant`, movida al almacén, y es
 lo que hay que cuidar con tests como se cuidó la de la base.
 
@@ -96,7 +103,7 @@ objeto y recién después se escribe la fila, así un corte en el medio deja un 
 bucket y no una hoja rota en la pantalla. Los huérfanos los junta una limpieza aparte.
 
 **Los bytes los sirve la API**, no se le dan URLs firmadas al navegador. Una URL firmada que
-alguien reenvía sigue abriendo la hoja de un cliente hasta que vence. Son quince imágenes
+alguien reenvía sigue abriendo la hoja de un cliente hasta que vence. Son cuatro imágenes
 chicas: con `ETag` y `Cache-Control` el navegador no las vuelve a pedir, y el permiso se sigue
 evaluando en cada pedido como en todo lo demás.
 
@@ -106,15 +113,15 @@ su dibujo.
 
 ### Atrás de una interfaz
 
-El resto del sistema no conoce MinIO: ve un almacén con guardar, leer y borrar, y una clave.
-Eso es lo que permite que en desarrollo sea el MinIO del `docker compose` y que mañana sea otra
-cosa sin tocar la recepción. Y que un test pueda correr con un almacén en memoria, sin levantar
+El resto del sistema no conoce el servidor: ve un almacén con guardar, leer y borrar, y una
+clave. Eso es lo que permite que en desarrollo sea el Garage del `docker compose` —MinIO dejó
+de publicar su imagen— y que mañana sea otra cosa sin tocar la recepción. Y que un test pueda correr con un almacén en memoria, sin levantar
 un contenedor más de los que ya hay.
 
 ## El juego por omisión
 
 Un taller que recién entra tiene que poder recibir un auto el primer día. Así que el sistema
-trae las quince imágenes: sedán, hatchback y pickup, genéricas, y el que quiere las suyas las
+trae las cuatro: sedán, hatchback, SUV y pickup, genéricas, y el que quiere las suyas las
 reemplaza.
 
 **Tienen que ser dibujos con licencia comercial**, compradas o encargadas. Las de VW y las de
@@ -208,18 +215,18 @@ para las dos mitades.
 Por orden, porque cada paso deja el sistema andando:
 
 1. **El modelo de datos del dibujo**: la tabla de hojas con sus versiones y sus imágenes, y las
-   marcas que pasan de `{ zona, x, y }` a `{ vista, x, y }` en fracción. Con la migración de
-   las que ya están cargadas.
-2. **El almacén y la subida**: MinIO en el `docker compose`, la interfaz que lo tapa, multipart
+   marcas que pasan de `{ zona, x, y }` a `{ x, y }` en fracción. Con la migración de las que
+   ya están cargadas.
+2. **El almacén y la subida**: Garage en el `docker compose`, la interfaz que lo tapa, multipart
    en la API, límite de tamaño y de tipo, y la conversión a un formato único. Es la primera
    subida de archivos del sistema, así que lo que se decida acá lo van a heredar las fotos del
    vehículo y el logo de la concesionaria — y los tests de aislamiento del almacén se escriben
    ahora, no cuando haya tres módulos usándolo.
 3. **El catálogo de puntos de revisión**, con su semilla y sus respuestas por orden.
 4. **La pantalla de configuración**, adentro del módulo de servicios, con sus dos partes: las
-   quince imágenes y los puntos que se revisan.
-5. **La recepción**: las cinco vistas con la marca donde se toca, y la revisión por secciones.
+   cuatro imágenes y los puntos que se revisan.
+5. **La recepción**: el dibujo con la marca donde se toca, y la revisión por secciones.
    En tablet se toca; con teclado se cambia de vista con las flechas y se marca con la letra.
-6. **La orden impresa**: las cinco vistas con sus marcas y la revisión con su semáforo, que en
+6. **La orden impresa**: el dibujo con sus marcas y la revisión con su semáforo, que en
    blanco y negro es forma además de color.
 7. **Pasar a presupuesto** lo que quedó en ámbar y en rojo.

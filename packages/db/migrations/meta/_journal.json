@@ -162,6 +162,13 @@
       "when": 1790718414455,
       "tag": "0022_hoja_de_recepcion",
       "breakpoints": true
+    },
+    {
+      "idx": 23,
+      "version": "7",
+      "when": 1790724011468,
+      "tag": "0023_hoja_una_por_carroceria",
+      "breakpoints": true
     }
   ]
 }

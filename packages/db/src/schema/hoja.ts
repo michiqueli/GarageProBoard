@@ -5,8 +5,9 @@ import { usuario } from './acceso.ts'
 import { tenant } from './tenant.ts'
 
 /**
- * Las imágenes de la hoja de recepción: cinco vistas por cada tipo de carrocería, cargadas por
- * la concesionaria. Quince por taller. El porqué, en `docs/tecnicos/hoja-de-recepcion.md`.
+ * Las imágenes de la hoja de recepción: una por tipo de carrocería, con todas las vistas del
+ * vehículo adentro, cargadas por la concesionaria. El porqué, en
+ * `docs/tecnicos/hoja-de-recepcion.md`.
  *
  * **Las filas no se modifican.** Subir una imagen nueva marca la anterior como reemplazada e
  * inserta otra, y cada orden apunta a la que tenía cuando se recibió el vehículo. Es lo que
@@ -23,7 +24,6 @@ export const hojaImagen = pgTable(
     id: pk(),
     tenantId: tenantId().references(() => tenant.id),
     tipo: text().notNull(),
-    vista: text().notNull(),
     /**
      * Dónde está en el almacén, **sin** el prefijo del tenant: ése lo pone
      * `ArchivosDelTenant` con el de la sesión, y no puede salir de una fila. Si saliera,
@@ -40,17 +40,11 @@ export const hojaImagen = pgTable(
     reemplazadaEn: timestamp({ withTimezone: true }),
   },
   (t) => [
-    // Una sola vigente por tipo y vista. Las reemplazadas no entran, así que pueden ser muchas.
-    uniqueIndex('hoja_imagen_vigente_uq')
-      .on(t.tenantId, t.tipo, t.vista)
-      .where(sql`reemplazada_en is null`),
+    // Una sola vigente por tipo. Las reemplazadas no entran, así que pueden ser muchas.
+    uniqueIndex('hoja_imagen_vigente_uq').on(t.tenantId, t.tipo).where(sql`reemplazada_en is null`),
     // Escritos a mano y no armados desde `@gpb/core`, como el resto del esquema: sumar un
     // valor al catálogo genera la migración que lo admite, y así se ve en el diff.
-    check('hoja_imagen_tipo_valido', sql`${t.tipo} in ('sedan', 'hatchback', 'pickup')`),
-    check(
-      'hoja_imagen_vista_valida',
-      sql`${t.vista} in ('frente', 'atras', 'izquierda', 'derecha', 'arriba')`,
-    ),
+    check('hoja_imagen_tipo_valido', sql`${t.tipo} in ('sedan', 'hatchback', 'suv', 'pickup')`),
     check('hoja_imagen_formato_valido', sql`${t.formato} in ('image/png', 'image/jpeg')`),
     check(
       'hoja_imagen_medidas_positivas',

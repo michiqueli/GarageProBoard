@@ -7,8 +7,6 @@ import {
   medirImagen,
   TIPOS_HOJA,
   type TipoHoja,
-  VISTAS,
-  type Vista,
 } from '@gpb/core'
 import { and, desc, eq, isNull } from '@gpb/db'
 import { hojaImagen } from '@gpb/db/schema'
@@ -32,7 +30,8 @@ export class ErrorHojas extends Error {
 const EXTENSION: Record<FormatoHoja, string> = { 'image/png': 'png', 'image/jpeg': 'jpg' }
 
 /**
- * Las imágenes de la hoja de recepción: las quince que carga cada concesionaria.
+ * Las imágenes de la hoja de recepción: una por tipo de carrocería, con todas las vistas del
+ * vehículo adentro.
  *
  * Lo que hay que tener presente al leer esto es que **las filas no se modifican**. Subir
  * reemplaza, y reemplazar es marcar la vieja y agregar una nueva, porque hay órdenes firmadas
@@ -45,7 +44,7 @@ export class ServicioHojas {
     @Inject(ArchivosDelTenant) private readonly archivos: ArchivosDelTenant,
   ) {}
 
-  /** Las quince casillas, estén cargadas o no: es la grilla de la pantalla de configuración. */
+  /** Los cuatro dibujos, estén cargados o no: es la grilla de la pantalla de configuración. */
   listar() {
     return this.datos.transaccion(async (tx) => {
       const propias = await tx
@@ -54,13 +53,11 @@ export class ServicioHojas {
         .where(isNull(hojaImagen.reemplazadaEn))
         .orderBy(desc(hojaImagen.creadoEn))
 
-      const porCasillero = new Map(propias.map((i) => [`${i.tipo}/${i.vista}`, i]))
-      const datos = TIPOS_HOJA.flatMap((tipo) =>
-        VISTAS.map((vista) => {
-          const propia = porCasillero.get(`${tipo}/${vista}`)
-          return { tipo, vista, propia: propia ? salida(propia) : null }
-        }),
-      )
+      const porTipo = new Map(propias.map((i) => [i.tipo, i]))
+      const datos = TIPOS_HOJA.map((tipo) => {
+        const propia = porTipo.get(tipo)
+        return { tipo, propia: propia ? salida(propia) : null }
+      })
       return { datos }
     })
   }
@@ -72,7 +69,7 @@ export class ServicioHojas {
    * hoja rota en la pantalla, y peor, en una orden ya firmada. Así el peor caso es un huérfano
    * en el bucket, que no se le nota a nadie y lo junta una limpieza aparte.
    */
-  subir(tipo: TipoHoja, vista: Vista, contenido: Uint8Array, usuarioId?: string) {
+  subir(tipo: TipoHoja, contenido: Uint8Array, usuarioId?: string) {
     if (contenido.length > MAXIMO_BYTES_HOJA) throw new ErrorHojas('DEMASIADO_GRANDE')
 
     // El formato sale de los bytes, no de lo que diga el navegador: un ejecutable que se
@@ -84,7 +81,7 @@ export class ServicioHojas {
       throw new ErrorHojas('MEDIDAS_INVALIDAS')
     }
 
-    const ruta = `hojas/${tipo}/${vista}/${randomUUID()}.${EXTENSION[medida.formato]}`
+    const ruta = `hojas/${tipo}/${randomUUID()}.${EXTENSION[medida.formato]}`
 
     return this.datos
       .transaccion(async (tx, sesion) => {
@@ -98,20 +95,13 @@ export class ServicioHojas {
         await tx
           .update(hojaImagen)
           .set({ reemplazadaEn: new Date() })
-          .where(
-            and(
-              eq(hojaImagen.tipo, tipo),
-              eq(hojaImagen.vista, vista),
-              isNull(hojaImagen.reemplazadaEn),
-            ),
-          )
+          .where(and(eq(hojaImagen.tipo, tipo), isNull(hojaImagen.reemplazadaEn)))
 
         const [creada] = await tx
           .insert(hojaImagen)
           .values({
             tenantId: sesion.tenantId,
             tipo,
-            vista,
             ruta,
             formato: medida.formato,
             ancho: medida.ancho,
@@ -150,7 +140,7 @@ export class ServicioHojas {
     return {
       contenido: objeto.contenido,
       formato: fila.formato,
-      nombre: `${fila.tipo}-${fila.vista}.${EXTENSION[fila.formato as FormatoHoja] ?? 'png'}`,
+      nombre: `${fila.tipo}.${EXTENSION[fila.formato as FormatoHoja] ?? 'png'}`,
     }
   }
 
@@ -158,18 +148,12 @@ export class ServicioHojas {
    * Vuelve al dibujo que trae el sistema. No borra: marca. El archivo tampoco se borra, porque
    * las órdenes recibidas con él lo siguen mostrando.
    */
-  quitar(tipo: TipoHoja, vista: Vista) {
+  quitar(tipo: TipoHoja) {
     return this.datos.transaccion(async (tx) => {
       const marcadas = await tx
         .update(hojaImagen)
         .set({ reemplazadaEn: new Date() })
-        .where(
-          and(
-            eq(hojaImagen.tipo, tipo),
-            eq(hojaImagen.vista, vista),
-            isNull(hojaImagen.reemplazadaEn),
-          ),
-        )
+        .where(and(eq(hojaImagen.tipo, tipo), isNull(hojaImagen.reemplazadaEn)))
         .returning({ id: hojaImagen.id })
       if (!marcadas.length) throw new ErrorHojas('NO_ENCONTRADA')
       return { hecho: true as const }
@@ -181,7 +165,6 @@ function salida(f: typeof hojaImagen.$inferSelect) {
   return {
     id: f.id,
     tipo: f.tipo as TipoHoja,
-    vista: f.vista as Vista,
     formato: f.formato as FormatoHoja,
     ancho: f.ancho,
     alto: f.alto,

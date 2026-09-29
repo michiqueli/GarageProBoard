@@ -4,19 +4,17 @@ import {
   MAXIMO_LADO_HOJA,
   MINIMO_LADO_HOJA,
   TIPOS_HOJA,
-  VISTAS,
 } from '@gpb/core'
 import { z } from 'zod'
 import { conPermiso } from './acceso.ts'
 
 const TAG = 'Hoja de recepción'
 
-const casillero = z.object({ tipo: z.enum(TIPOS_HOJA), vista: z.enum(VISTAS) })
+const casillero = z.object({ tipo: z.enum(TIPOS_HOJA) })
 
 export const imagenDeHoja = z.object({
   id: z.uuid(),
   tipo: z.enum(TIPOS_HOJA),
-  vista: z.enum(VISTAS),
   formato: z.enum(FORMATOS_HOJA),
   ancho: z.number().int(),
   alto: z.number().int(),
@@ -27,7 +25,7 @@ export const imagenDeHoja = z.object({
 })
 
 /**
- * Un casillero de la hoja: el tipo de carrocería y la vista, con la imagen que hay puesta.
+ * Un casillero de la hoja: el tipo de carrocería, con la imagen que hay puesta.
  * Sin imagen propia va la del juego por omisión, que es lo que ve un taller el primer día.
  */
 export const casilleroDeHoja = casillero.extend({
@@ -45,17 +43,17 @@ export const contratoHojas = {
       path: '/hojas',
       tags: [TAG],
       operationId: 'listarHojas',
-      summary: 'Las quince casillas de la hoja de recepción, y cuáles tienen imagen propia',
+      summary: 'Los dibujos de la hoja de recepción, uno por carrocería, y cuáles son propios',
     })
     .output(z.object({ datos: z.array(casilleroDeHoja) })),
 
   subir: conPermiso('servicios', 'configurar', 'Orden')
     .route({
       method: 'POST',
-      path: '/hojas/{tipo}/{vista}',
+      path: '/hojas/{tipo}',
       tags: [TAG],
       operationId: 'subirImagenDeHoja',
-      summary: 'Reemplazar el dibujo de una vista',
+      summary: 'Reemplazar el dibujo de una carrocería',
       successStatus: 201,
       description:
         'PNG o JPEG, porque son los dos que la orden impresa sabe embeber. La imagen ' +
@@ -104,7 +102,7 @@ export const contratoHojas = {
   quitar: conPermiso('servicios', 'configurar', 'Orden')
     .route({
       method: 'DELETE',
-      path: '/hojas/{tipo}/{vista}',
+      path: '/hojas/{tipo}',
       tags: [TAG],
       operationId: 'quitarImagenDeHoja',
       summary: 'Volver al dibujo que trae el sistema',

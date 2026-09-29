@@ -31,7 +31,7 @@ export class ControladorHojas {
     return implement(c.subir).handler(async ({ input, errors }) => {
       try {
         const bytes = new Uint8Array(await input.imagen.arrayBuffer())
-        return await this.servicio.subir(input.tipo, input.vista, bytes)
+        return await this.servicio.subir(input.tipo, bytes)
       } catch (error) {
         return traducir(error, errors)
       }
@@ -54,7 +54,7 @@ export class ControladorHojas {
   @Operacion(c.quitar)
   quitar() {
     return implement(c.quitar).handler(({ input, errors }) =>
-      this.servicio.quitar(input.tipo, input.vista).catch((e) => traducir(e, errors)),
+      this.servicio.quitar(input.tipo).catch((e) => traducir(e, errors)),
     )
   }
 }

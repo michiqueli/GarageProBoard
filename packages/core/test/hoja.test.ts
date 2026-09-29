@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { CARROCERIAS } from '../src/carroceria.ts'
-import { HOJA_DE, medirImagen, TIPOS_HOJA, VISTAS, VISTAS_NOMBRE } from '../src/hoja.ts'
+import { HOJA_DE, medirImagen, TIPOS_HOJA, TIPOS_HOJA_NOMBRE } from '../src/hoja.ts'
 
 /** Un PNG de verdad hasta el IHDR, que es todo lo que se lee. */
 function png(ancho: number, alto: number): Uint8Array {
@@ -24,10 +24,9 @@ describe('la hoja de recepción', () => {
     for (const c of CARROCERIAS) expect(TIPOS_HOJA).toContain(HOJA_DE[c])
   })
 
-  it('las cinco vistas tienen nombre propio', () => {
-    expect(VISTAS).toHaveLength(5)
-    const nombres = VISTAS.map((v) => VISTAS_NOMBRE[v])
-    expect(new Set(nombres).size).toBe(5)
+  it('cada tipo de hoja tiene su nombre, y ninguno se repite', () => {
+    const nombres = TIPOS_HOJA.map((t) => TIPOS_HOJA_NOMBRE[t])
+    expect(new Set(nombres).size).toBe(TIPOS_HOJA.length)
   })
 })
 
