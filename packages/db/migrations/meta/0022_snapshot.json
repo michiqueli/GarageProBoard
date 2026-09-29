@@ -153,12 +153,8 @@
           "name": "auditoria_tenant_id_tenant_id_fk",
           "tableFrom": "auditoria",
           "tableTo": "tenant",
-          "columnsFrom": [
-            "tenant_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["tenant_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -166,12 +162,8 @@
           "name": "auditoria_usuario_id_usuario_id_fk",
           "tableFrom": "auditoria",
           "tableTo": "usuario",
-          "columnsFrom": [
-            "usuario_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["usuario_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -336,12 +328,8 @@
           "name": "auditoria_cambio_tenant_id_tenant_id_fk",
           "tableFrom": "auditoria_cambio",
           "tableTo": "tenant",
-          "columnsFrom": [
-            "tenant_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["tenant_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -428,12 +416,8 @@
           "name": "aviso_tenant_id_tenant_id_fk",
           "tableFrom": "aviso",
           "tableTo": "tenant",
-          "columnsFrom": [
-            "tenant_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["tenant_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -441,12 +425,8 @@
           "name": "aviso_usuario_id_usuario_id_fk",
           "tableFrom": "aviso",
           "tableTo": "usuario",
-          "columnsFrom": [
-            "usuario_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["usuario_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -507,12 +487,8 @@
           "name": "rol_tenant_id_tenant_id_fk",
           "tableFrom": "rol",
           "tableTo": "tenant",
-          "columnsFrom": [
-            "tenant_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["tenant_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -522,10 +498,7 @@
         "rol_nombre_uq": {
           "name": "rol_nombre_uq",
           "nullsNotDistinct": false,
-          "columns": [
-            "tenant_id",
-            "nombre"
-          ]
+          "columns": ["tenant_id", "nombre"]
         }
       },
       "policies": {},
@@ -629,12 +602,8 @@
           "name": "usuario_tenant_id_tenant_id_fk",
           "tableFrom": "usuario",
           "tableTo": "tenant",
-          "columnsFrom": [
-            "tenant_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["tenant_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -642,12 +611,8 @@
           "name": "usuario_empleado_id_empleado_id_fk",
           "tableFrom": "usuario",
           "tableTo": "empleado",
-          "columnsFrom": [
-            "empleado_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["empleado_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -657,9 +622,7 @@
         "usuario_empleado_uq": {
           "name": "usuario_empleado_uq",
           "nullsNotDistinct": false,
-          "columns": [
-            "empleado_id"
-          ]
+          "columns": ["empleado_id"]
         }
       },
       "policies": {},
@@ -700,12 +663,8 @@
           "name": "usuario_rol_tenant_id_tenant_id_fk",
           "tableFrom": "usuario_rol",
           "tableTo": "tenant",
-          "columnsFrom": [
-            "tenant_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["tenant_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -713,12 +672,8 @@
           "name": "usuario_rol_usuario_id_usuario_id_fk",
           "tableFrom": "usuario_rol",
           "tableTo": "usuario",
-          "columnsFrom": [
-            "usuario_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["usuario_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -726,12 +681,8 @@
           "name": "usuario_rol_rol_id_rol_id_fk",
           "tableFrom": "usuario_rol",
           "tableTo": "rol",
-          "columnsFrom": [
-            "rol_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["rol_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -739,10 +690,7 @@
       "compositePrimaryKeys": {
         "usuario_rol_usuario_id_rol_id_pk": {
           "name": "usuario_rol_usuario_id_rol_id_pk",
-          "columns": [
-            "usuario_id",
-            "rol_id"
-          ]
+          "columns": ["usuario_id", "rol_id"]
         }
       },
       "uniqueConstraints": {},
@@ -779,12 +727,8 @@
           "name": "usuario_sucursal_tenant_id_tenant_id_fk",
           "tableFrom": "usuario_sucursal",
           "tableTo": "tenant",
-          "columnsFrom": [
-            "tenant_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["tenant_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -792,12 +736,8 @@
           "name": "usuario_sucursal_usuario_id_usuario_id_fk",
           "tableFrom": "usuario_sucursal",
           "tableTo": "usuario",
-          "columnsFrom": [
-            "usuario_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["usuario_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -805,12 +745,8 @@
           "name": "usuario_sucursal_sucursal_id_sucursal_id_fk",
           "tableFrom": "usuario_sucursal",
           "tableTo": "sucursal",
-          "columnsFrom": [
-            "sucursal_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["sucursal_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -818,10 +754,7 @@
       "compositePrimaryKeys": {
         "usuario_sucursal_usuario_id_sucursal_id_pk": {
           "name": "usuario_sucursal_usuario_id_sucursal_id_pk",
-          "columns": [
-            "usuario_id",
-            "sucursal_id"
-          ]
+          "columns": ["usuario_id", "sucursal_id"]
         }
       },
       "uniqueConstraints": {},
@@ -918,12 +851,8 @@
           "name": "auditoria_backoffice_operador_id_operador_id_fk",
           "tableFrom": "auditoria_backoffice",
           "tableTo": "operador",
-          "columnsFrom": [
-            "operador_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["operador_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -931,12 +860,8 @@
           "name": "auditoria_backoffice_tenant_afectado_tenant_id_fk",
           "tableFrom": "auditoria_backoffice",
           "tableTo": "tenant",
-          "columnsFrom": [
-            "tenant_afectado"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["tenant_afectado"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -1103,12 +1028,8 @@
           "name": "sesion_operador_operador_id_operador_id_fk",
           "tableFrom": "sesion_operador",
           "tableTo": "operador",
-          "columnsFrom": [
-            "operador_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["operador_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -1211,12 +1132,8 @@
           "name": "regla_comprobante_condicion_emisor_condicion_iva_codigo_fk",
           "tableFrom": "regla_comprobante",
           "tableTo": "condicion_iva",
-          "columnsFrom": [
-            "condicion_emisor"
-          ],
-          "columnsTo": [
-            "codigo"
-          ],
+          "columnsFrom": ["condicion_emisor"],
+          "columnsTo": ["codigo"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -1224,12 +1141,8 @@
           "name": "regla_comprobante_condicion_receptor_condicion_iva_codigo_fk",
           "tableFrom": "regla_comprobante",
           "tableTo": "condicion_iva",
-          "columnsFrom": [
-            "condicion_receptor"
-          ],
-          "columnsTo": [
-            "codigo"
-          ],
+          "columnsFrom": ["condicion_receptor"],
+          "columnsTo": ["codigo"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -1237,12 +1150,8 @@
           "name": "regla_comprobante_tipo_comprobante_tipo_comprobante_codigo_fk",
           "tableFrom": "regla_comprobante",
           "tableTo": "tipo_comprobante",
-          "columnsFrom": [
-            "tipo_comprobante"
-          ],
-          "columnsTo": [
-            "codigo"
-          ],
+          "columnsFrom": ["tipo_comprobante"],
+          "columnsTo": ["codigo"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -1250,10 +1159,7 @@
       "compositePrimaryKeys": {
         "regla_comprobante_condicion_emisor_condicion_receptor_pk": {
           "name": "regla_comprobante_condicion_emisor_condicion_receptor_pk",
-          "columns": [
-            "condicion_emisor",
-            "condicion_receptor"
-          ]
+          "columns": ["condicion_emisor", "condicion_receptor"]
         }
       },
       "uniqueConstraints": {},
@@ -1355,12 +1261,8 @@
           "name": "cliente_id_entidad_comercial_id_fk",
           "tableFrom": "cliente",
           "tableTo": "entidad_comercial",
-          "columnsFrom": [
-            "id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -1368,12 +1270,8 @@
           "name": "cliente_tenant_id_tenant_id_fk",
           "tableFrom": "cliente",
           "tableTo": "tenant",
-          "columnsFrom": [
-            "tenant_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["tenant_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -1464,12 +1362,8 @@
           "name": "empleado_id_entidad_comercial_id_fk",
           "tableFrom": "empleado",
           "tableTo": "entidad_comercial",
-          "columnsFrom": [
-            "id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -1477,12 +1371,8 @@
           "name": "empleado_tenant_id_tenant_id_fk",
           "tableFrom": "empleado",
           "tableTo": "tenant",
-          "columnsFrom": [
-            "tenant_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["tenant_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -1490,12 +1380,8 @@
           "name": "empleado_sucursal_id_sucursal_id_fk",
           "tableFrom": "empleado",
           "tableTo": "sucursal",
-          "columnsFrom": [
-            "sucursal_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["sucursal_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -1505,10 +1391,7 @@
         "empleado_legajo_uq": {
           "name": "empleado_legajo_uq",
           "nullsNotDistinct": false,
-          "columns": [
-            "tenant_id",
-            "legajo"
-          ]
+          "columns": ["tenant_id", "legajo"]
         }
       },
       "policies": {},
@@ -1671,12 +1554,8 @@
           "name": "entidad_comercial_tenant_id_tenant_id_fk",
           "tableFrom": "entidad_comercial",
           "tableTo": "tenant",
-          "columnsFrom": [
-            "tenant_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["tenant_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -1684,12 +1563,8 @@
           "name": "entidad_comercial_condicion_iva_condicion_iva_codigo_fk",
           "tableFrom": "entidad_comercial",
           "tableTo": "condicion_iva",
-          "columnsFrom": [
-            "condicion_iva"
-          ],
-          "columnsTo": [
-            "codigo"
-          ],
+          "columnsFrom": ["condicion_iva"],
+          "columnsTo": ["codigo"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -1697,12 +1572,8 @@
           "name": "entidad_comercial_provincia_codigo_provincia_codigo_fk",
           "tableFrom": "entidad_comercial",
           "tableTo": "provincia",
-          "columnsFrom": [
-            "provincia_codigo"
-          ],
-          "columnsTo": [
-            "codigo"
-          ],
+          "columnsFrom": ["provincia_codigo"],
+          "columnsTo": ["codigo"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -1712,11 +1583,7 @@
         "entidad_documento_uq": {
           "name": "entidad_documento_uq",
           "nullsNotDistinct": false,
-          "columns": [
-            "tenant_id",
-            "tipo_documento",
-            "numero_documento"
-          ]
+          "columns": ["tenant_id", "tipo_documento", "numero_documento"]
         }
       },
       "policies": {},
@@ -1781,12 +1648,8 @@
           "name": "proveedor_id_entidad_comercial_id_fk",
           "tableFrom": "proveedor",
           "tableTo": "entidad_comercial",
-          "columnsFrom": [
-            "id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -1794,12 +1657,8 @@
           "name": "proveedor_tenant_id_tenant_id_fk",
           "tableFrom": "proveedor",
           "tableTo": "tenant",
-          "columnsFrom": [
-            "tenant_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["tenant_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -2190,12 +2049,8 @@
           "name": "comprobante_tenant_id_tenant_id_fk",
           "tableFrom": "comprobante",
           "tableTo": "tenant",
-          "columnsFrom": [
-            "tenant_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["tenant_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -2203,12 +2058,8 @@
           "name": "comprobante_empresa_id_empresa_id_fk",
           "tableFrom": "comprobante",
           "tableTo": "empresa",
-          "columnsFrom": [
-            "empresa_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["empresa_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -2216,12 +2067,8 @@
           "name": "comprobante_sucursal_id_sucursal_id_fk",
           "tableFrom": "comprobante",
           "tableTo": "sucursal",
-          "columnsFrom": [
-            "sucursal_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["sucursal_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -2229,12 +2076,8 @@
           "name": "comprobante_punto_venta_id_punto_venta_id_fk",
           "tableFrom": "comprobante",
           "tableTo": "punto_venta",
-          "columnsFrom": [
-            "punto_venta_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["punto_venta_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -2242,12 +2085,8 @@
           "name": "comprobante_tipo_comprobante_tipo_comprobante_codigo_fk",
           "tableFrom": "comprobante",
           "tableTo": "tipo_comprobante",
-          "columnsFrom": [
-            "tipo_comprobante"
-          ],
-          "columnsTo": [
-            "codigo"
-          ],
+          "columnsFrom": ["tipo_comprobante"],
+          "columnsTo": ["codigo"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -2255,12 +2094,8 @@
           "name": "comprobante_cliente_id_entidad_comercial_id_fk",
           "tableFrom": "comprobante",
           "tableTo": "entidad_comercial",
-          "columnsFrom": [
-            "cliente_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["cliente_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -2268,12 +2103,8 @@
           "name": "comprobante_receptor_condicion_iva_condicion_iva_codigo_fk",
           "tableFrom": "comprobante",
           "tableTo": "condicion_iva",
-          "columnsFrom": [
-            "receptor_condicion_iva"
-          ],
-          "columnsTo": [
-            "codigo"
-          ],
+          "columnsFrom": ["receptor_condicion_iva"],
+          "columnsTo": ["codigo"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -2281,12 +2112,8 @@
           "name": "comprobante_comprobante_asociado_id_comprobante_id_fk",
           "tableFrom": "comprobante",
           "tableTo": "comprobante",
-          "columnsFrom": [
-            "comprobante_asociado_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["comprobante_asociado_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -2294,12 +2121,8 @@
           "name": "comprobante_orden_id_orden_id_fk",
           "tableFrom": "comprobante",
           "tableTo": "orden",
-          "columnsFrom": [
-            "orden_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["orden_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -2307,12 +2130,8 @@
           "name": "comprobante_pedido_repuestos_id_pedido_repuestos_id_fk",
           "tableFrom": "comprobante",
           "tableTo": "pedido_repuestos",
-          "columnsFrom": [
-            "pedido_repuestos_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["pedido_repuestos_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -2320,12 +2139,8 @@
           "name": "comprobante_emitido_por_usuario_id_fk",
           "tableFrom": "comprobante",
           "tableTo": "usuario",
-          "columnsFrom": [
-            "emitido_por"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["emitido_por"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -2465,12 +2280,8 @@
           "name": "comprobante_renglon_tenant_id_tenant_id_fk",
           "tableFrom": "comprobante_renglon",
           "tableTo": "tenant",
-          "columnsFrom": [
-            "tenant_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["tenant_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -2478,12 +2289,8 @@
           "name": "comprobante_renglon_comprobante_id_comprobante_id_fk",
           "tableFrom": "comprobante_renglon",
           "tableTo": "comprobante",
-          "columnsFrom": [
-            "comprobante_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["comprobante_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -2593,12 +2400,8 @@
           "name": "estacion_fichaje_tenant_id_tenant_id_fk",
           "tableFrom": "estacion_fichaje",
           "tableTo": "tenant",
-          "columnsFrom": [
-            "tenant_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["tenant_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -2606,12 +2409,8 @@
           "name": "estacion_fichaje_sucursal_id_sucursal_id_fk",
           "tableFrom": "estacion_fichaje",
           "tableTo": "sucursal",
-          "columnsFrom": [
-            "sucursal_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["sucursal_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -2621,9 +2420,7 @@
         "estacion_token_uq": {
           "name": "estacion_token_uq",
           "nullsNotDistinct": false,
-          "columns": [
-            "token_hash"
-          ]
+          "columns": ["token_hash"]
         }
       },
       "policies": {},
@@ -2763,12 +2560,8 @@
           "name": "evento_escaneo_tenant_id_tenant_id_fk",
           "tableFrom": "evento_escaneo",
           "tableTo": "tenant",
-          "columnsFrom": [
-            "tenant_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["tenant_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -2776,12 +2569,8 @@
           "name": "evento_escaneo_estacion_id_estacion_fichaje_id_fk",
           "tableFrom": "evento_escaneo",
           "tableTo": "estacion_fichaje",
-          "columnsFrom": [
-            "estacion_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["estacion_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -2789,12 +2578,8 @@
           "name": "evento_escaneo_empleado_id_empleado_id_fk",
           "tableFrom": "evento_escaneo",
           "tableTo": "empleado",
-          "columnsFrom": [
-            "empleado_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["empleado_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -2802,12 +2587,8 @@
           "name": "evento_escaneo_orden_id_orden_id_fk",
           "tableFrom": "evento_escaneo",
           "tableTo": "orden",
-          "columnsFrom": [
-            "orden_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["orden_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -2940,12 +2721,8 @@
           "name": "jornada_tenant_id_tenant_id_fk",
           "tableFrom": "jornada",
           "tableTo": "tenant",
-          "columnsFrom": [
-            "tenant_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["tenant_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -2953,12 +2730,8 @@
           "name": "jornada_empleado_id_empleado_id_fk",
           "tableFrom": "jornada",
           "tableTo": "empleado",
-          "columnsFrom": [
-            "empleado_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["empleado_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -2966,12 +2739,8 @@
           "name": "jornada_estacion_entrada_id_estacion_fichaje_id_fk",
           "tableFrom": "jornada",
           "tableTo": "estacion_fichaje",
-          "columnsFrom": [
-            "estacion_entrada_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["estacion_entrada_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -2979,12 +2748,8 @@
           "name": "jornada_estacion_salida_id_estacion_fichaje_id_fk",
           "tableFrom": "jornada",
           "tableTo": "estacion_fichaje",
-          "columnsFrom": [
-            "estacion_salida_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["estacion_salida_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -3153,12 +2918,8 @@
           "name": "sesion_trabajo_tenant_id_tenant_id_fk",
           "tableFrom": "sesion_trabajo",
           "tableTo": "tenant",
-          "columnsFrom": [
-            "tenant_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["tenant_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -3166,12 +2927,8 @@
           "name": "sesion_trabajo_orden_id_orden_id_fk",
           "tableFrom": "sesion_trabajo",
           "tableTo": "orden",
-          "columnsFrom": [
-            "orden_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["orden_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -3179,12 +2936,8 @@
           "name": "sesion_trabajo_empleado_id_empleado_id_fk",
           "tableFrom": "sesion_trabajo",
           "tableTo": "empleado",
-          "columnsFrom": [
-            "empleado_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["empleado_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -3192,12 +2945,8 @@
           "name": "sesion_trabajo_estacion_inicio_id_estacion_fichaje_id_fk",
           "tableFrom": "sesion_trabajo",
           "tableTo": "estacion_fichaje",
-          "columnsFrom": [
-            "estacion_inicio_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["estacion_inicio_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -3205,12 +2954,8 @@
           "name": "sesion_trabajo_estacion_fin_id_estacion_fichaje_id_fk",
           "tableFrom": "sesion_trabajo",
           "tableTo": "estacion_fichaje",
-          "columnsFrom": [
-            "estacion_fin_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["estacion_fin_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -3344,12 +3089,8 @@
           "name": "hoja_imagen_tenant_id_tenant_id_fk",
           "tableFrom": "hoja_imagen",
           "tableTo": "tenant",
-          "columnsFrom": [
-            "tenant_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["tenant_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -3357,12 +3098,8 @@
           "name": "hoja_imagen_creado_por_usuario_id_fk",
           "tableFrom": "hoja_imagen",
           "tableTo": "usuario",
-          "columnsFrom": [
-            "creado_por"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["creado_por"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -3607,12 +3344,8 @@
           "name": "orden_tenant_id_tenant_id_fk",
           "tableFrom": "orden",
           "tableTo": "tenant",
-          "columnsFrom": [
-            "tenant_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["tenant_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -3620,12 +3353,8 @@
           "name": "orden_sucursal_id_sucursal_id_fk",
           "tableFrom": "orden",
           "tableTo": "sucursal",
-          "columnsFrom": [
-            "sucursal_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["sucursal_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -3633,12 +3362,8 @@
           "name": "orden_vehiculo_id_vehiculo_id_fk",
           "tableFrom": "orden",
           "tableTo": "vehiculo",
-          "columnsFrom": [
-            "vehiculo_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["vehiculo_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -3646,12 +3371,8 @@
           "name": "orden_titular_id_entidad_comercial_id_fk",
           "tableFrom": "orden",
           "tableTo": "entidad_comercial",
-          "columnsFrom": [
-            "titular_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["titular_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -3659,12 +3380,8 @@
           "name": "orden_paga_id_entidad_comercial_id_fk",
           "tableFrom": "orden",
           "tableTo": "entidad_comercial",
-          "columnsFrom": [
-            "paga_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["paga_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -3672,12 +3389,8 @@
           "name": "orden_asesor_id_usuario_id_fk",
           "tableFrom": "orden",
           "tableTo": "usuario",
-          "columnsFrom": [
-            "asesor_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["asesor_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -3685,12 +3398,8 @@
           "name": "orden_mecanico_id_empleado_id_fk",
           "tableFrom": "orden",
           "tableTo": "empleado",
-          "columnsFrom": [
-            "mecanico_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["mecanico_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -3700,17 +3409,12 @@
         "orden_sucursal_numero_uq": {
           "name": "orden_sucursal_numero_uq",
           "nullsNotDistinct": false,
-          "columns": [
-            "sucursal_id",
-            "numero"
-          ]
+          "columns": ["sucursal_id", "numero"]
         },
         "orden_codigo_qr_uq": {
           "name": "orden_codigo_qr_uq",
           "nullsNotDistinct": false,
-          "columns": [
-            "codigo_qr"
-          ]
+          "columns": ["codigo_qr"]
         }
       },
       "policies": {},
@@ -3868,12 +3572,8 @@
           "name": "orden_item_tenant_id_tenant_id_fk",
           "tableFrom": "orden_item",
           "tableTo": "tenant",
-          "columnsFrom": [
-            "tenant_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["tenant_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -3881,12 +3581,8 @@
           "name": "orden_item_orden_id_orden_id_fk",
           "tableFrom": "orden_item",
           "tableTo": "orden",
-          "columnsFrom": [
-            "orden_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["orden_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -3894,12 +3590,8 @@
           "name": "orden_item_repuesto_id_repuesto_id_fk",
           "tableFrom": "orden_item",
           "tableTo": "repuesto",
-          "columnsFrom": [
-            "repuesto_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["repuesto_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -3907,12 +3599,8 @@
           "name": "orden_item_presupuesto_id_orden_presupuesto_id_fk",
           "tableFrom": "orden_item",
           "tableTo": "orden_presupuesto",
-          "columnsFrom": [
-            "presupuesto_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["presupuesto_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -4042,12 +3730,8 @@
           "name": "orden_presupuesto_tenant_id_tenant_id_fk",
           "tableFrom": "orden_presupuesto",
           "tableTo": "tenant",
-          "columnsFrom": [
-            "tenant_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["tenant_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -4055,12 +3739,8 @@
           "name": "orden_presupuesto_orden_id_orden_id_fk",
           "tableFrom": "orden_presupuesto",
           "tableTo": "orden",
-          "columnsFrom": [
-            "orden_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["orden_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -4068,12 +3748,8 @@
           "name": "orden_presupuesto_creado_por_usuario_id_fk",
           "tableFrom": "orden_presupuesto",
           "tableTo": "usuario",
-          "columnsFrom": [
-            "creado_por"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["creado_por"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -4081,12 +3757,8 @@
           "name": "orden_presupuesto_respondido_por_usuario_id_fk",
           "tableFrom": "orden_presupuesto",
           "tableTo": "usuario",
-          "columnsFrom": [
-            "respondido_por"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["respondido_por"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -4096,10 +3768,7 @@
         "orden_presupuesto_numero_uq": {
           "name": "orden_presupuesto_numero_uq",
           "nullsNotDistinct": false,
-          "columns": [
-            "orden_id",
-            "numero"
-          ]
+          "columns": ["orden_id", "numero"]
         }
       },
       "policies": {},
@@ -4149,12 +3818,8 @@
           "name": "orden_secuencia_tenant_id_tenant_id_fk",
           "tableFrom": "orden_secuencia",
           "tableTo": "tenant",
-          "columnsFrom": [
-            "tenant_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["tenant_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -4162,12 +3827,8 @@
           "name": "orden_secuencia_sucursal_id_sucursal_id_fk",
           "tableFrom": "orden_secuencia",
           "tableTo": "sucursal",
-          "columnsFrom": [
-            "sucursal_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["sucursal_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -4175,9 +3836,7 @@
       "compositePrimaryKeys": {
         "orden_secuencia_sucursal_id_pk": {
           "name": "orden_secuencia_sucursal_id_pk",
-          "columns": [
-            "sucursal_id"
-          ]
+          "columns": ["sucursal_id"]
         }
       },
       "uniqueConstraints": {},
@@ -4326,12 +3985,8 @@
           "name": "certificado_afip_tenant_id_tenant_id_fk",
           "tableFrom": "certificado_afip",
           "tableTo": "tenant",
-          "columnsFrom": [
-            "tenant_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["tenant_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -4339,12 +3994,8 @@
           "name": "certificado_afip_empresa_id_empresa_id_fk",
           "tableFrom": "certificado_afip",
           "tableTo": "empresa",
-          "columnsFrom": [
-            "empresa_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["empresa_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -4411,12 +4062,8 @@
           "name": "comprobante_secuencia_tenant_id_tenant_id_fk",
           "tableFrom": "comprobante_secuencia",
           "tableTo": "tenant",
-          "columnsFrom": [
-            "tenant_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["tenant_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -4424,12 +4071,8 @@
           "name": "comprobante_secuencia_punto_venta_id_punto_venta_id_fk",
           "tableFrom": "comprobante_secuencia",
           "tableTo": "punto_venta",
-          "columnsFrom": [
-            "punto_venta_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["punto_venta_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -4437,12 +4080,8 @@
           "name": "comprobante_secuencia_tipo_comprobante_tipo_comprobante_codigo_fk",
           "tableFrom": "comprobante_secuencia",
           "tableTo": "tipo_comprobante",
-          "columnsFrom": [
-            "tipo_comprobante"
-          ],
-          "columnsTo": [
-            "codigo"
-          ],
+          "columnsFrom": ["tipo_comprobante"],
+          "columnsTo": ["codigo"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -4450,10 +4089,7 @@
       "compositePrimaryKeys": {
         "comprobante_secuencia_punto_venta_id_tipo_comprobante_pk": {
           "name": "comprobante_secuencia_punto_venta_id_tipo_comprobante_pk",
-          "columns": [
-            "punto_venta_id",
-            "tipo_comprobante"
-          ]
+          "columns": ["punto_venta_id", "tipo_comprobante"]
         }
       },
       "uniqueConstraints": {},
@@ -4554,12 +4190,8 @@
           "name": "empresa_tenant_id_tenant_id_fk",
           "tableFrom": "empresa",
           "tableTo": "tenant",
-          "columnsFrom": [
-            "tenant_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["tenant_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -4567,12 +4199,8 @@
           "name": "empresa_condicion_iva_condicion_iva_codigo_fk",
           "tableFrom": "empresa",
           "tableTo": "condicion_iva",
-          "columnsFrom": [
-            "condicion_iva"
-          ],
-          "columnsTo": [
-            "codigo"
-          ],
+          "columnsFrom": ["condicion_iva"],
+          "columnsTo": ["codigo"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -4580,12 +4208,8 @@
           "name": "empresa_provincia_codigo_provincia_codigo_fk",
           "tableFrom": "empresa",
           "tableTo": "provincia",
-          "columnsFrom": [
-            "provincia_codigo"
-          ],
-          "columnsTo": [
-            "codigo"
-          ],
+          "columnsFrom": ["provincia_codigo"],
+          "columnsTo": ["codigo"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -4595,10 +4219,7 @@
         "empresa_tenant_cuit_uq": {
           "name": "empresa_tenant_cuit_uq",
           "nullsNotDistinct": false,
-          "columns": [
-            "tenant_id",
-            "cuit"
-          ]
+          "columns": ["tenant_id", "cuit"]
         }
       },
       "policies": {},
@@ -4716,12 +4337,8 @@
           "name": "punto_venta_tenant_id_tenant_id_fk",
           "tableFrom": "punto_venta",
           "tableTo": "tenant",
-          "columnsFrom": [
-            "tenant_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["tenant_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -4729,12 +4346,8 @@
           "name": "punto_venta_empresa_id_empresa_id_fk",
           "tableFrom": "punto_venta",
           "tableTo": "empresa",
-          "columnsFrom": [
-            "empresa_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["empresa_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -4742,14 +4355,8 @@
           "name": "punto_venta_sucursal_empresa_fk",
           "tableFrom": "punto_venta",
           "tableTo": "sucursal",
-          "columnsFrom": [
-            "sucursal_id",
-            "empresa_id"
-          ],
-          "columnsTo": [
-            "id",
-            "empresa_id"
-          ],
+          "columnsFrom": ["sucursal_id", "empresa_id"],
+          "columnsTo": ["id", "empresa_id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -4759,10 +4366,7 @@
         "punto_venta_empresa_numero_uq": {
           "name": "punto_venta_empresa_numero_uq",
           "nullsNotDistinct": false,
-          "columns": [
-            "empresa_id",
-            "numero"
-          ]
+          "columns": ["empresa_id", "numero"]
         }
       },
       "policies": {},
@@ -4879,12 +4483,8 @@
           "name": "sucursal_tenant_id_tenant_id_fk",
           "tableFrom": "sucursal",
           "tableTo": "tenant",
-          "columnsFrom": [
-            "tenant_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["tenant_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -4892,12 +4492,8 @@
           "name": "sucursal_empresa_id_empresa_id_fk",
           "tableFrom": "sucursal",
           "tableTo": "empresa",
-          "columnsFrom": [
-            "empresa_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["empresa_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -4905,12 +4501,8 @@
           "name": "sucursal_provincia_codigo_provincia_codigo_fk",
           "tableFrom": "sucursal",
           "tableTo": "provincia",
-          "columnsFrom": [
-            "provincia_codigo"
-          ],
-          "columnsTo": [
-            "codigo"
-          ],
+          "columnsFrom": ["provincia_codigo"],
+          "columnsTo": ["codigo"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -4920,10 +4512,7 @@
         "sucursal_id_empresa_uq": {
           "name": "sucursal_id_empresa_uq",
           "nullsNotDistinct": false,
-          "columns": [
-            "id",
-            "empresa_id"
-          ]
+          "columns": ["id", "empresa_id"]
         }
       },
       "policies": {},
@@ -5023,12 +4612,8 @@
           "name": "credencial_tenant_id_tenant_id_fk",
           "tableFrom": "credencial",
           "tableTo": "tenant",
-          "columnsFrom": [
-            "tenant_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["tenant_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -5036,12 +4621,8 @@
           "name": "credencial_empleado_id_empleado_id_fk",
           "tableFrom": "credencial",
           "tableTo": "empleado",
-          "columnsFrom": [
-            "empleado_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["empleado_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -5051,9 +4632,7 @@
         "credencial_codigo_uq": {
           "name": "credencial_codigo_uq",
           "nullsNotDistinct": false,
-          "columns": [
-            "codigo"
-          ]
+          "columns": ["codigo"]
         }
       },
       "policies": {},
@@ -5147,12 +4726,8 @@
           "name": "usuario_atajo_tenant_id_tenant_id_fk",
           "tableFrom": "usuario_atajo",
           "tableTo": "tenant",
-          "columnsFrom": [
-            "tenant_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["tenant_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -5160,12 +4735,8 @@
           "name": "usuario_atajo_usuario_id_usuario_id_fk",
           "tableFrom": "usuario_atajo",
           "tableTo": "usuario",
-          "columnsFrom": [
-            "usuario_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["usuario_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -5175,19 +4746,12 @@
         "usuario_atajo_accion_uq": {
           "name": "usuario_atajo_accion_uq",
           "nullsNotDistinct": false,
-          "columns": [
-            "usuario_id",
-            "accion"
-          ]
+          "columns": ["usuario_id", "accion"]
         },
         "usuario_atajo_tecla_uq": {
           "name": "usuario_atajo_tecla_uq",
           "nullsNotDistinct": false,
-          "columns": [
-            "usuario_id",
-            "ambito",
-            "tecla"
-          ]
+          "columns": ["usuario_id", "ambito", "tecla"]
         }
       },
       "policies": {},
@@ -5267,12 +4831,8 @@
           "name": "usuario_config_usuario_id_usuario_id_fk",
           "tableFrom": "usuario_config",
           "tableTo": "usuario",
-          "columnsFrom": [
-            "usuario_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["usuario_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -5280,12 +4840,8 @@
           "name": "usuario_config_tenant_id_tenant_id_fk",
           "tableFrom": "usuario_config",
           "tableTo": "tenant",
-          "columnsFrom": [
-            "tenant_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["tenant_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -5293,12 +4849,8 @@
           "name": "usuario_config_sucursal_predeterminada_id_sucursal_id_fk",
           "tableFrom": "usuario_config",
           "tableTo": "sucursal",
-          "columnsFrom": [
-            "sucursal_predeterminada_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["sucursal_predeterminada_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -5443,12 +4995,8 @@
           "name": "compra_tenant_id_tenant_id_fk",
           "tableFrom": "compra",
           "tableTo": "tenant",
-          "columnsFrom": [
-            "tenant_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["tenant_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -5456,12 +5004,8 @@
           "name": "compra_sucursal_id_sucursal_id_fk",
           "tableFrom": "compra",
           "tableTo": "sucursal",
-          "columnsFrom": [
-            "sucursal_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["sucursal_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -5469,12 +5013,8 @@
           "name": "compra_proveedor_id_proveedor_id_fk",
           "tableFrom": "compra",
           "tableTo": "proveedor",
-          "columnsFrom": [
-            "proveedor_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["proveedor_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -5482,12 +5022,8 @@
           "name": "compra_creado_por_usuario_id_fk",
           "tableFrom": "compra",
           "tableTo": "usuario",
-          "columnsFrom": [
-            "creado_por"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["creado_por"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -5495,12 +5031,8 @@
           "name": "compra_recibida_por_usuario_id_fk",
           "tableFrom": "compra",
           "tableTo": "usuario",
-          "columnsFrom": [
-            "recibida_por"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["recibida_por"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -5510,10 +5042,7 @@
         "compra_numero_uq": {
           "name": "compra_numero_uq",
           "nullsNotDistinct": false,
-          "columns": [
-            "sucursal_id",
-            "numero"
-          ]
+          "columns": ["sucursal_id", "numero"]
         }
       },
       "policies": {},
@@ -5612,12 +5141,8 @@
           "name": "compra_renglon_tenant_id_tenant_id_fk",
           "tableFrom": "compra_renglon",
           "tableTo": "tenant",
-          "columnsFrom": [
-            "tenant_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["tenant_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -5625,12 +5150,8 @@
           "name": "compra_renglon_compra_id_compra_id_fk",
           "tableFrom": "compra_renglon",
           "tableTo": "compra",
-          "columnsFrom": [
-            "compra_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["compra_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -5638,12 +5159,8 @@
           "name": "compra_renglon_repuesto_id_repuesto_id_fk",
           "tableFrom": "compra_renglon",
           "tableTo": "repuesto",
-          "columnsFrom": [
-            "repuesto_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["repuesto_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -5798,12 +5315,8 @@
           "name": "movimiento_stock_tenant_id_tenant_id_fk",
           "tableFrom": "movimiento_stock",
           "tableTo": "tenant",
-          "columnsFrom": [
-            "tenant_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["tenant_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -5811,12 +5324,8 @@
           "name": "movimiento_stock_repuesto_id_repuesto_id_fk",
           "tableFrom": "movimiento_stock",
           "tableTo": "repuesto",
-          "columnsFrom": [
-            "repuesto_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["repuesto_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -5824,12 +5333,8 @@
           "name": "movimiento_stock_sucursal_id_sucursal_id_fk",
           "tableFrom": "movimiento_stock",
           "tableTo": "sucursal",
-          "columnsFrom": [
-            "sucursal_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["sucursal_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -5837,12 +5342,8 @@
           "name": "movimiento_stock_orden_id_orden_id_fk",
           "tableFrom": "movimiento_stock",
           "tableTo": "orden",
-          "columnsFrom": [
-            "orden_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["orden_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -5850,12 +5351,8 @@
           "name": "movimiento_stock_pedido_id_pedido_repuestos_id_fk",
           "tableFrom": "movimiento_stock",
           "tableTo": "pedido_repuestos",
-          "columnsFrom": [
-            "pedido_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["pedido_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -5863,12 +5360,8 @@
           "name": "movimiento_stock_compra_id_compra_id_fk",
           "tableFrom": "movimiento_stock",
           "tableTo": "compra",
-          "columnsFrom": [
-            "compra_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["compra_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -5876,12 +5369,8 @@
           "name": "movimiento_stock_otra_sucursal_id_sucursal_id_fk",
           "tableFrom": "movimiento_stock",
           "tableTo": "sucursal",
-          "columnsFrom": [
-            "otra_sucursal_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["otra_sucursal_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -5889,12 +5378,8 @@
           "name": "movimiento_stock_usuario_id_usuario_id_fk",
           "tableFrom": "movimiento_stock",
           "tableTo": "usuario",
-          "columnsFrom": [
-            "usuario_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["usuario_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -6066,12 +5551,8 @@
           "name": "pedido_repuestos_tenant_id_tenant_id_fk",
           "tableFrom": "pedido_repuestos",
           "tableTo": "tenant",
-          "columnsFrom": [
-            "tenant_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["tenant_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -6079,12 +5560,8 @@
           "name": "pedido_repuestos_sucursal_id_sucursal_id_fk",
           "tableFrom": "pedido_repuestos",
           "tableTo": "sucursal",
-          "columnsFrom": [
-            "sucursal_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["sucursal_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -6092,12 +5569,8 @@
           "name": "pedido_repuestos_vehiculo_id_vehiculo_id_fk",
           "tableFrom": "pedido_repuestos",
           "tableTo": "vehiculo",
-          "columnsFrom": [
-            "vehiculo_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["vehiculo_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -6105,12 +5578,8 @@
           "name": "pedido_repuestos_orden_id_orden_id_fk",
           "tableFrom": "pedido_repuestos",
           "tableTo": "orden",
-          "columnsFrom": [
-            "orden_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["orden_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -6118,12 +5587,8 @@
           "name": "pedido_repuestos_cliente_id_entidad_comercial_id_fk",
           "tableFrom": "pedido_repuestos",
           "tableTo": "entidad_comercial",
-          "columnsFrom": [
-            "cliente_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["cliente_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -6131,12 +5596,8 @@
           "name": "pedido_repuestos_creado_por_usuario_id_fk",
           "tableFrom": "pedido_repuestos",
           "tableTo": "usuario",
-          "columnsFrom": [
-            "creado_por"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["creado_por"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -6146,10 +5607,7 @@
         "pedido_repuestos_numero_uq": {
           "name": "pedido_repuestos_numero_uq",
           "nullsNotDistinct": false,
-          "columns": [
-            "sucursal_id",
-            "numero"
-          ]
+          "columns": ["sucursal_id", "numero"]
         }
       },
       "policies": {},
@@ -6277,12 +5735,8 @@
           "name": "pedido_repuestos_item_tenant_id_tenant_id_fk",
           "tableFrom": "pedido_repuestos_item",
           "tableTo": "tenant",
-          "columnsFrom": [
-            "tenant_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["tenant_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -6290,12 +5744,8 @@
           "name": "pedido_repuestos_item_pedido_id_pedido_repuestos_id_fk",
           "tableFrom": "pedido_repuestos_item",
           "tableTo": "pedido_repuestos",
-          "columnsFrom": [
-            "pedido_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["pedido_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -6303,12 +5753,8 @@
           "name": "pedido_repuestos_item_repuesto_id_repuesto_id_fk",
           "tableFrom": "pedido_repuestos_item",
           "tableTo": "repuesto",
-          "columnsFrom": [
-            "repuesto_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["repuesto_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -6457,12 +5903,8 @@
           "name": "repuesto_tenant_id_tenant_id_fk",
           "tableFrom": "repuesto",
           "tableTo": "tenant",
-          "columnsFrom": [
-            "tenant_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["tenant_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -6470,12 +5912,8 @@
           "name": "repuesto_proveedor_id_proveedor_id_fk",
           "tableFrom": "repuesto",
           "tableTo": "proveedor",
-          "columnsFrom": [
-            "proveedor_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["proveedor_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -6485,10 +5923,7 @@
         "repuesto_codigo_uq": {
           "name": "repuesto_codigo_uq",
           "nullsNotDistinct": false,
-          "columns": [
-            "tenant_id",
-            "codigo"
-          ]
+          "columns": ["tenant_id", "codigo"]
         }
       },
       "policies": {},
@@ -6563,12 +5998,8 @@
           "name": "repuesto_stock_tenant_id_tenant_id_fk",
           "tableFrom": "repuesto_stock",
           "tableTo": "tenant",
-          "columnsFrom": [
-            "tenant_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["tenant_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -6576,12 +6007,8 @@
           "name": "repuesto_stock_repuesto_id_repuesto_id_fk",
           "tableFrom": "repuesto_stock",
           "tableTo": "repuesto",
-          "columnsFrom": [
-            "repuesto_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["repuesto_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -6589,12 +6016,8 @@
           "name": "repuesto_stock_sucursal_id_sucursal_id_fk",
           "tableFrom": "repuesto_stock",
           "tableTo": "sucursal",
-          "columnsFrom": [
-            "sucursal_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["sucursal_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -6602,10 +6025,7 @@
       "compositePrimaryKeys": {
         "repuesto_stock_sucursal_id_repuesto_id_pk": {
           "name": "repuesto_stock_sucursal_id_repuesto_id_pk",
-          "columns": [
-            "sucursal_id",
-            "repuesto_id"
-          ]
+          "columns": ["sucursal_id", "repuesto_id"]
         }
       },
       "uniqueConstraints": {},
@@ -6649,12 +6069,8 @@
           "name": "repuestos_secuencia_tenant_id_tenant_id_fk",
           "tableFrom": "repuestos_secuencia",
           "tableTo": "tenant",
-          "columnsFrom": [
-            "tenant_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["tenant_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -6662,12 +6078,8 @@
           "name": "repuestos_secuencia_sucursal_id_sucursal_id_fk",
           "tableFrom": "repuestos_secuencia",
           "tableTo": "sucursal",
-          "columnsFrom": [
-            "sucursal_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["sucursal_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -6675,10 +6087,7 @@
       "compositePrimaryKeys": {
         "repuestos_secuencia_sucursal_id_tipo_pk": {
           "name": "repuestos_secuencia_sucursal_id_tipo_pk",
-          "columns": [
-            "sucursal_id",
-            "tipo"
-          ]
+          "columns": ["sucursal_id", "tipo"]
         }
       },
       "uniqueConstraints": {},
@@ -6741,12 +6150,8 @@
           "name": "dispositivo_tenant_id_tenant_id_fk",
           "tableFrom": "dispositivo",
           "tableTo": "tenant",
-          "columnsFrom": [
-            "tenant_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["tenant_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -6908,12 +6313,8 @@
           "name": "sesion_tenant_id_tenant_id_fk",
           "tableFrom": "sesion",
           "tableTo": "tenant",
-          "columnsFrom": [
-            "tenant_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["tenant_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -6921,12 +6322,8 @@
           "name": "sesion_usuario_id_usuario_id_fk",
           "tableFrom": "sesion",
           "tableTo": "usuario",
-          "columnsFrom": [
-            "usuario_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["usuario_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -6934,12 +6331,8 @@
           "name": "sesion_dispositivo_id_dispositivo_id_fk",
           "tableFrom": "sesion",
           "tableTo": "dispositivo",
-          "columnsFrom": [
-            "dispositivo_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["dispositivo_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -6947,12 +6340,8 @@
           "name": "sesion_sucursal_id_sucursal_id_fk",
           "tableFrom": "sesion",
           "tableTo": "sucursal",
-          "columnsFrom": [
-            "sucursal_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["sucursal_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -7082,12 +6471,8 @@
           "name": "tenant_modulo_tenant_id_tenant_id_fk",
           "tableFrom": "tenant_modulo",
           "tableTo": "tenant",
-          "columnsFrom": [
-            "tenant_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["tenant_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -7095,10 +6480,7 @@
       "compositePrimaryKeys": {
         "tenant_modulo_tenant_id_modulo_pk": {
           "name": "tenant_modulo_tenant_id_modulo_pk",
-          "columns": [
-            "tenant_id",
-            "modulo"
-          ]
+          "columns": ["tenant_id", "modulo"]
         }
       },
       "uniqueConstraints": {},
@@ -7159,12 +6541,8 @@
           "name": "marca_tenant_id_tenant_id_fk",
           "tableFrom": "marca",
           "tableTo": "tenant",
-          "columnsFrom": [
-            "tenant_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["tenant_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -7174,10 +6552,7 @@
         "marca_nombre_uq": {
           "name": "marca_nombre_uq",
           "nullsNotDistinct": false,
-          "columns": [
-            "tenant_id",
-            "nombre"
-          ]
+          "columns": ["tenant_id", "nombre"]
         }
       },
       "policies": {},
@@ -7267,12 +6642,8 @@
           "name": "modelo_tenant_id_tenant_id_fk",
           "tableFrom": "modelo",
           "tableTo": "tenant",
-          "columnsFrom": [
-            "tenant_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["tenant_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -7280,12 +6651,8 @@
           "name": "modelo_marca_id_marca_id_fk",
           "tableFrom": "modelo",
           "tableTo": "marca",
-          "columnsFrom": [
-            "marca_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["marca_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -7295,12 +6662,7 @@
         "modelo_nombre_uq": {
           "name": "modelo_nombre_uq",
           "nullsNotDistinct": false,
-          "columns": [
-            "tenant_id",
-            "marca_id",
-            "nombre",
-            "version"
-          ]
+          "columns": ["tenant_id", "marca_id", "nombre", "version"]
         }
       },
       "policies": {},
@@ -7399,12 +6761,8 @@
           "name": "titularidad_tenant_id_tenant_id_fk",
           "tableFrom": "titularidad",
           "tableTo": "tenant",
-          "columnsFrom": [
-            "tenant_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["tenant_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -7412,12 +6770,8 @@
           "name": "titularidad_vehiculo_id_vehiculo_id_fk",
           "tableFrom": "titularidad",
           "tableTo": "vehiculo",
-          "columnsFrom": [
-            "vehiculo_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["vehiculo_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -7425,12 +6779,8 @@
           "name": "titularidad_cliente_id_cliente_id_fk",
           "tableFrom": "titularidad",
           "tableTo": "cliente",
-          "columnsFrom": [
-            "cliente_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["cliente_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -7567,12 +6917,8 @@
           "name": "vehiculo_tenant_id_tenant_id_fk",
           "tableFrom": "vehiculo",
           "tableTo": "tenant",
-          "columnsFrom": [
-            "tenant_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["tenant_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -7580,12 +6926,8 @@
           "name": "vehiculo_modelo_id_modelo_id_fk",
           "tableFrom": "vehiculo",
           "tableTo": "modelo",
-          "columnsFrom": [
-            "modelo_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["modelo_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -7595,10 +6937,7 @@
         "vehiculo_chasis_uq": {
           "name": "vehiculo_chasis_uq",
           "nullsNotDistinct": false,
-          "columns": [
-            "tenant_id",
-            "chasis"
-          ]
+          "columns": ["tenant_id", "chasis"]
         }
       },
       "policies": {},

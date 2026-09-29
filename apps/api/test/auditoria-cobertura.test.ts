@@ -127,6 +127,11 @@ const NO_AUDITAN: Readonly<Record<string, string>> = {
   'auth.cerrar': 'Salir no cambia ningún dato de la concesionaria.',
   'auth.cambiarSucursal': 'Queda en la familia de sesiones, junto con el ingreso.',
   'auth.leerAvisos': 'Marcar como leído un aviso propio no es un cambio que nadie audite.',
+  'hojas.subir':
+    'El trigger de hoja_imagen ya guarda la fila entera, con quien y cuando, y no se modifican: ' +
+    'subir inserta una y marca la anterior. La narracion diria lo mismo que las dos filas.',
+  'hojas.quitar':
+    'Marca la imagen propia como reemplazada, y eso es una sola columna que el trigger ya cuenta.',
   'configuracion.guardar': 'Son las preferencias propias: el tema de cada uno no es del resto.',
   'configuracion.guardarAtajos': 'El mapa de teclas es de quien lo usa, y de nadie más.',
   'fichaje.escanear':

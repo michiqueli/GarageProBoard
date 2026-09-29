@@ -18,6 +18,8 @@ import { DatosDeLaEstacion } from './fichaje/estacion.ts'
 import { ServicioEstaciones } from './fichaje/estaciones.service.ts'
 import { ControladorFichaje } from './fichaje/fichaje.controller.ts'
 import { ServicioFichaje } from './fichaje/fichaje.service.ts'
+import { ControladorHojas } from './hojas/hojas.controller.ts'
+import { ServicioHojas } from './hojas/hojas.service.ts'
 import { ControladorOrdenes } from './ordenes/ordenes.controller.ts'
 import { ServicioOrdenes } from './ordenes/ordenes.service.ts'
 import { ControladorOrganizacion } from './organizacion/organizacion.controller.ts'
@@ -83,6 +85,7 @@ import { ServicioVehiculos } from './vehiculos/vehiculos.service.ts'
     ControladorProveedores,
     ControladorPersonal,
     ControladorFichaje,
+    ControladorHojas,
   ],
   providers: [
     ServicioUsuarios,
@@ -101,6 +104,7 @@ import { ServicioVehiculos } from './vehiculos/vehiculos.service.ts'
     ServicioProveedores,
     ServicioPersonal,
     ServicioFichaje,
+    ServicioHojas,
     ServicioEstaciones,
     DatosDeLaEstacion,
   ],
