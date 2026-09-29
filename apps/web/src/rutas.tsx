@@ -286,6 +286,16 @@ const rutaEstaciones = createRoute({
   ),
 })
 
+const rutaHojaRecepcion = createRoute({
+  getParentRoute: () => conSesion,
+  path: 'hoja-recepcion',
+  staticData: { pantalla: 'ordenes' },
+  component: lazyRouteComponent(
+    () => import('./modulos/ordenes/PantallaHojaRecepcion.tsx'),
+    'PantallaHojaRecepcion',
+  ),
+})
+
 const rutaRrhh = createRoute({
   getParentRoute: () => conSesion,
   path: 'rrhh',
@@ -460,6 +470,7 @@ const arbol = raiz.addChildren([
     rutaRrhh,
     rutaTablero,
     rutaEstaciones,
+    rutaHojaRecepcion,
     rutaRoles,
     rutaAuditoria,
     rutaEmpresas,
