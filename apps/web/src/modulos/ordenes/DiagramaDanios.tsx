@@ -4,6 +4,7 @@ import {
   type Carroceria,
   centro,
   DANIOS,
+  dibujo,
   ROTULOS,
   type Silueta,
   TIPOS_DANIO,
@@ -227,6 +228,16 @@ export function DiagramaDanios({
           onBlur={() => setConFoco(false)}
           className={`${tactil ? 'w-full max-w-sm' : 'w-52'} touch-manipulation select-none rounded-base outline-none focus-visible:ring-2 focus-visible:ring-marca`}
         >
+          {/* El vehículo: contorno, habitáculo, ruedas y espejos. No recibe el toque. */}
+          {dibujo(silueta).map((d) => (
+            <path
+              key={d}
+              d={d}
+              className="pointer-events-none fill-superficie-2 stroke-borde"
+              strokeWidth={1.5}
+            />
+          ))}
+          {/* Las piezas, invisibles hasta que se las toca o se llega con las flechas. */}
           {zonas(silueta).map((z) => {
             const resaltada = editable && conFoco && z.id === activa
             return (
@@ -234,8 +245,8 @@ export function DiagramaDanios({
                 key={z.id}
                 d={trazo(z)}
                 data-zona={z.id}
-                className={`${resaltada ? 'fill-marca-suave stroke-marca' : 'fill-superficie-2 stroke-borde'} ${editable ? 'cursor-crosshair hover:fill-marca-suave' : ''}`}
-                strokeWidth={resaltada ? 2 : 1}
+                className={`${resaltada ? 'fill-marca-suave stroke-marca' : 'fill-transparent stroke-transparent'} ${editable ? 'cursor-crosshair hover:fill-marca-suave' : ''}`}
+                strokeWidth={resaltada ? 2 : 0}
               >
                 <title>{z.nombre}</title>
               </path>

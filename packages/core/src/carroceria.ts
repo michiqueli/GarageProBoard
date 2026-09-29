@@ -278,6 +278,65 @@ export function zona(silueta: Silueta, id: string): Zona | undefined {
   return POR_SILUETA[silueta].find((x) => x.id === id)
 }
 
+/**
+ * El contorno del vehículo: la carrocería, el habitáculo y —en la pickup— la caja.
+ *
+ * Es **lo único que se dibuja**. Las piezas no se dibujan: son áreas de toque invisibles que se
+ * encienden cuando el dedo o las flechas pasan por encima. Las hojas de papel llevan todas las
+ * divisiones marcadas porque el papel no puede encender nada; copiárselas sería quedarse con
+ * el dibujo cargado y sin la ventaja.
+ *
+ * Van en paths SVG, y no en una imagen, porque **la hoja impresa lleva el mismo dibujo**: un
+ * trazado sacado de una foto sale como una mancha en la láser del mostrador.
+ */
+const CONTORNO: Record<Silueta, readonly string[]> = {
+  /**
+   * La trompa más angosta que la cola y el habitáculo que se abre hacia atrás: es lo que hace
+   * que se lea como un auto visto de arriba y no como una pastilla. El capot y el baúl van
+   * marcados porque son las dos chapas que cualquiera reconoce de un vistazo.
+   */
+  auto: [
+    'M76 18 C54 21 38 42 38 76 L38 296 C38 330 52 352 76 352 L164 352 C188 352 202 330 202 296 L202 76 C202 42 186 21 164 18 Z',
+    'M92 114 C82 116 74 128 74 144 L74 238 C74 252 80 262 90 264 L150 264 C160 262 166 252 166 238 L166 144 C166 128 158 116 148 114 Z',
+    'M84 42 L156 42 C162 42 166 46 166 52 L166 100 C166 106 162 110 156 110 L84 110 C78 110 74 106 74 100 L74 52 C74 46 78 42 84 42 Z',
+    'M80 272 L160 272 C164 272 168 276 168 281 L168 322 C168 327 164 330 160 330 L80 330 C76 330 72 327 72 322 L72 281 C72 276 76 272 80 272 Z',
+  ],
+  /** Cuadrada, con la cabina corta adelante y la caja abierta, que es la mitad del vehículo. */
+  pickup: [
+    'M66 18 C50 20 38 34 38 56 L38 316 C38 338 50 352 66 352 L174 352 C190 352 202 338 202 316 L202 56 C202 34 190 20 174 18 Z',
+    'M90 94 C81 96 74 106 74 118 L74 178 C74 190 80 198 89 200 L151 200 C160 198 166 190 166 178 L166 118 C166 106 159 96 150 94 Z',
+    'M52 206 L188 206 C191 206 194 209 194 212 L194 306 C194 309 191 312 188 312 L52 312 C49 312 46 309 46 306 L46 212 C46 209 49 206 52 206 Z',
+    'M86 40 L154 40 C159 40 162 44 162 48 L162 82 C162 86 159 90 154 90 L86 90 C81 90 78 86 78 82 L78 48 C78 44 81 40 86 40 Z',
+  ],
+  /** Un cajón: el parabrisas apenas pasada la trompa, y la caja ocupando todo el resto. */
+  furgon: [
+    'M58 18 C46 20 38 30 38 46 L38 326 C38 342 46 352 58 352 L182 352 C194 352 202 342 202 326 L202 46 C202 30 194 20 182 18 Z',
+    'M80 66 L160 66 C164 66 168 70 168 75 L168 100 C168 105 164 108 160 108 L80 108 C76 108 72 105 72 100 L72 75 C72 70 76 66 80 66 Z',
+    'M50 118 L190 118 C193 118 196 121 196 124 L196 326 C196 329 193 332 190 332 L50 332 C47 332 44 329 44 326 L44 124 C44 121 47 118 50 118 Z',
+  ],
+}
+
+/**
+ * Las piezas que sí se dibujan, porque quedan afuera de la carrocería y sin dibujarlas no
+ * habría dónde tocar. Salen de su propia zona, así que no se pueden desalinear.
+ */
+const AL_COSTADO = [
+  'rueda_delantera_izquierda',
+  'rueda_trasera_izquierda',
+  'rueda_delantera_derecha',
+  'rueda_trasera_derecha',
+  'espejo_izquierdo',
+  'espejo_derecho',
+]
+
+/** Los trazos del vehículo dibujado. Los mismos en la pantalla y en la hoja. */
+export function dibujo(silueta: Silueta): string[] {
+  const piezas = AL_COSTADO.map((id) => zona(silueta, id))
+    .filter((x): x is Zona => Boolean(x))
+    .map(trazo)
+  return [...CONTORNO[silueta], ...piezas]
+}
+
 /** El trazo SVG de una zona. Lo usan la pantalla y el PDF, que así dibujan lo mismo. */
 export function trazo(x: Zona): string {
   const r = Math.min(x.radio, x.ancho / 2, x.alto / 2)

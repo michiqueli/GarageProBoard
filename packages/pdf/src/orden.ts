@@ -1,16 +1,15 @@
 import {
   type ControlInventario,
   DANIOS,
+  dibujo,
   ELEMENTOS_INVENTARIO,
   type ElementoInventario,
   INVENTARIO,
   ROTULOS,
   type Silueta,
   type TipoDanio,
-  trazo,
   VISTA,
   zona,
-  zonas,
 } from '@gpb/core'
 import PDFDocument from 'pdfkit'
 import { dibujarQr } from './comun.ts'
@@ -156,7 +155,7 @@ function estadoDelVehiculo(doc: Doc, o: DatosOrdenImpresa, y: number): number {
   doc.save()
   doc.translate(x0, y0).scale(escala)
   doc.lineWidth(0.7 / escala).strokeColor('#777')
-  for (const z of zonas(o.silueta)) doc.path(trazo(z)).stroke()
+  for (const d of dibujo(o.silueta)) doc.path(d).stroke()
   doc.restore()
   doc.strokeColor('#000')
 
