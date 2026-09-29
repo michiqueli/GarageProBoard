@@ -61,6 +61,7 @@ function crearFiscal(): (entorno: Entorno) => ServicioFiscal {
       useFactory: () =>
         crearAlmacenMinio({
           endpoint: process.env.S3_ENDPOINT,
+          region: process.env.S3_REGION,
           accessKey: process.env.S3_ACCESS_KEY,
           secretKey: process.env.S3_SECRET_KEY,
           bucket: process.env.S3_BUCKET,

@@ -1,0 +1,27 @@
+# Garage en un solo nodo, para desarrollo.
+#
+# Reemplaza a MinIO, que al 29/09/2026 dejó de publicar su imagen: ver
+# docs/tecnicos/hoja-de-recepcion.md. Habla S3, así que a la API le da igual cuál de los dos
+# esté del otro lado.
+#
+# Todos los secretos de acá son de desarrollo, como los de Postgres y los de Redis.
+
+metadata_dir = "/var/lib/garage/meta"
+data_dir = "/var/lib/garage/data"
+db_engine = "sqlite"
+
+# Una sola copia: es una máquina de desarrollo, no un cluster.
+replication_factor = 1
+
+rpc_bind_addr = "[::]:3901"
+rpc_public_addr = "127.0.0.1:3901"
+rpc_secret = "b7f3c1a92d5e4806f1c3a7d92e5b408c6a1f9d3e7b2c5a80f4d6e1b39c7a2d58"
+
+[s3_api]
+s3_region = "garage"
+api_bind_addr = "[::]:3900"
+root_domain = ".s3.garage.localhost"
+
+[admin]
+api_bind_addr = "[::]:3903"
+admin_token = "gpb_dev_admin"

@@ -44,12 +44,55 @@ services:
       timeout: 3s
       retries: 10
 
-  # FALTA el almacén de archivos, y no por olvido: al 29/09/2026 la imagen `minio/minio` ya no
-  # está publicada en Docker Hub y `quay.io/minio/minio` contesta 401. Sin servidor que bajar,
-  # el servicio quedaría acá rompiendo `pnpm infra:up` para todos.
+  # Los archivos que guarda el sistema: hoy las imágenes de la hoja de recepción, mañana las
+  # fotos del vehículo y el logo de la concesionaria.
   #
-  # El código no depende de cuál sea: `Almacen` habla S3 y anda contra cualquier servidor
-  # compatible. Falta elegir con cuál se corre. Ver docs/tecnicos/hoja-de-recepcion.md.
+  # Es Garage y no MinIO porque al 29/09/2026 `minio/minio` ya no está publicada en Docker Hub
+  # y `quay.io` contesta 401. A la API le da igual: habla S3 con los dos.
+  #
+  # Un bucket no tiene RLS: el aislamiento entre concesionarias es el prefijo `t/<tenant>/` de
+  # la clave, que pone `ArchivosDelTenant` con el tenant de la sesión. Ver
+  # docs/tecnicos/hoja-de-recepcion.md.
+  #
+  # Recién creado no sirve para nada: hay que darle su layout, su clave y su bucket. Eso lo
+  # hace `pnpm infra:s3`, que es idempotente.
+  garage:
+    image: dxflrs/garage:v2.4.1
+    container_name: gpb-garage
+    restart: unless-stopped
+    ports:
+      - "3900:3900"
+      - "3903:3903"
+    environment:
+      # El config viene montado desde el repo, con los permisos que tenga el sistema de
+      # archivos del que clona: sin esto, Garage se niega a arrancar por el rpc_secret.
+      GARAGE_ALLOW_WORLD_READABLE_SECRETS: "true"
+    volumes:
+      - ./garage.toml:/etc/garage.toml:ro
+      - garagedata:/var/lib/garage
+    healthcheck:
+      test: ["CMD", "/garage", "status"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  # Garage no trae consola web: viene con un CLI y una API de administración. Esta es la
+  # interfaz de la comunidad, para mirar los buckets y los archivos con los ojos —lo que MinIO
+  # daba de fábrica—. En http://localhost:3909, y es sólo de desarrollo.
+  garage-webui:
+    image: khairul169/garage-webui:1.1.0
+    container_name: gpb-garage-webui
+    restart: unless-stopped
+    depends_on:
+      - garage
+    ports:
+      - "3909:3909"
+    environment:
+      API_BASE_URL: "http://garage:3903"
+      S3_ENDPOINT_URL: "http://garage:3900"
+      API_ADMIN_KEY: "gpb_dev_admin"
+    volumes:
+      - ./garage.toml:/etc/garage.toml:ro
 
   # Atrapa los mails que manda el sistema en desarrollo: nada le llega a nadie de verdad, y
   # se ven en http://localhost:8025 con sus adjuntos.
@@ -64,3 +107,4 @@ services:
 volumes:
   pgdata:
   redisdata:
+  garagedata:

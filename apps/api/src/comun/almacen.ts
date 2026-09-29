@@ -100,6 +100,8 @@ export function crearAlmacenEnMemoria(): Almacen & { claves(): string[] } {
 
 export interface ConfigAlmacen {
   endpoint: string | undefined
+  /** La región que declara el servidor. Garage usa `garage`; S3 de verdad, `us-east-1` y compañía. */
+  region: string | undefined
   accessKey: string | undefined
   secretKey: string | undefined
   bucket: string | undefined
@@ -112,7 +114,7 @@ export interface ConfigAlmacen {
  * el correo. Un servidor sin almacén tiene que poder facturar.
  */
 export function crearAlmacenMinio(config: ConfigAlmacen): Almacen {
-  const { endpoint, accessKey, secretKey, bucket } = config
+  const { endpoint, accessKey, secretKey, bucket, region } = config
   if (!endpoint || !accessKey || !secretKey || !bucket) {
     return {
       guardar: () => Promise.reject(new AlmacenNoConfigurado()),
@@ -128,21 +130,14 @@ export function crearAlmacenMinio(config: ConfigAlmacen): Almacen {
     useSSL: url.protocol === 'https:',
     accessKey,
     secretKey,
+    region: region || 'us-east-1',
   })
 
-  // El bucket se crea una vez y la promesa se comparte: sin esto, veinte subidas a la vez
-  // preguntan veinte veces si existe.
-  let listo: Promise<void> | undefined
-  const asegurarBucket = () => {
-    listo ??= cliente
-      .bucketExists(bucket)
-      .then((existe) => (existe ? undefined : cliente.makeBucket(bucket)))
-    return listo
-  }
-
+  // El bucket **no** lo crea la aplicación: lo deja puesto la infraestructura —en desarrollo,
+  // `pnpm infra:s3`—. Así las credenciales con las que corre la API no necesitan permiso para
+  // crear ni borrar buckets, que es el permiso con el que se puede tirar todo abajo.
   return {
     async guardar(clave, objeto) {
-      await asegurarBucket()
       await cliente.putObject(
         bucket,
         clave,
@@ -154,7 +149,6 @@ export function crearAlmacenMinio(config: ConfigAlmacen): Almacen {
       )
     },
     async leer(clave) {
-      await asegurarBucket()
       try {
         const [stat, flujo] = await Promise.all([
           cliente.statObject(bucket, clave),
@@ -174,7 +168,6 @@ export function crearAlmacenMinio(config: ConfigAlmacen): Almacen {
       }
     },
     async borrar(clave) {
-      await asegurarBucket()
       await cliente.removeObject(bucket, clave)
     },
   }

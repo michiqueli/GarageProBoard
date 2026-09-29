@@ -17,7 +17,8 @@ aislamiento por Row Level Security de Postgres.
     pnpm install
     cp .env.example .env
 
-    pnpm infra:up          # Postgres 18 en el 5433 + Redis 8
+    pnpm infra:up          # Postgres 18 en el 5433, Redis 8, Garage y Mailpit
+    pnpm infra:s3          # el almacén: rol del nodo, clave y bucket. Idempotente
     pnpm db:migrate        # migraciones + políticas de aislamiento
     pnpm db:app-role       # habilita el login de los roles de la API y del back-office
 
@@ -31,6 +32,8 @@ Con eso arriba:
 | **Swagger** | <http://localhost:3080/api/docs> |
 | Spec OpenAPI | <http://localhost:3080/api/openapi.json> |
 | Front | <http://localhost:5173> |
+| Mailpit | <http://localhost:8025> |
+| **Archivos** (Garage) | <http://localhost:3909> |
 
 El spec se genera del mismo contrato que implementa la API y consume el front, así
 que no hay una segunda fuente de verdad que se desactualice.
@@ -90,6 +93,7 @@ de `apps/web`.
 | `pnpm db:migrate` | Aplica migraciones y políticas |
 | `pnpm db:studio` | Drizzle Studio |
 | `pnpm infra:up` / `infra:down` / `infra:reset` | Contenedores de desarrollo |
+| `pnpm infra:s3` | Prepara Garage: rol del nodo, clave y bucket. Va después de `infra:up` |
 
 ## Cómo se trabaja acá
 

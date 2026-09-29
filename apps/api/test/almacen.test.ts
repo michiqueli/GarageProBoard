@@ -108,6 +108,7 @@ describe('el almacén sin configurar', () => {
   it('deja arrancar la API, y recién falla al usarlo, diciendo qué falta', async () => {
     const almacen = crearAlmacenMinio({
       endpoint: undefined,
+      region: undefined,
       accessKey: undefined,
       secretKey: undefined,
       bucket: undefined,
