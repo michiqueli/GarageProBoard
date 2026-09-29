@@ -8,7 +8,7 @@ import { IconoImprimir } from '../../componentes/iconos.tsx'
 import { SelectorCliente } from '../../componentes/SelectorCliente.tsx'
 import { SelectorVehiculo } from '../../componentes/SelectorVehiculo.tsx'
 import { Shell } from '../../componentes/Shell.tsx'
-import { DiagramaDanios } from './DiagramaDanios.tsx'
+import { DiagramaDanios, ElegirCarroceria } from './DiagramaDanios.tsx'
 import { InventarioRecepcion } from './InventarioRecepcion.tsx'
 import { COMBUSTIBLES, imprimirOrden, nombreOrden } from './ordenes.ts'
 import { useRecepcion } from './useRecepcion.ts'
@@ -132,7 +132,14 @@ export function PantallaRecepcion() {
           titulo="Estado del vehículo al recibirlo"
           ayuda="Queda impreso en la orden que firma el cliente"
         >
-          <DiagramaDanios danios={d.danios} onChange={(v) => poner('danios', v)} />
+          {r.faltaCarroceria && (
+            <ElegirCarroceria valor={d.carroceria} onChange={r.elegirCarroceria} />
+          )}
+          <DiagramaDanios
+            danios={d.danios}
+            silueta={r.silueta}
+            onChange={(v) => poner('danios', v)}
+          />
           <div className="grid gap-4 border-t border-borde pt-3 lg:grid-cols-[3fr_2fr]">
             <div className="grid content-start gap-2">
               <h3 className="text-etiqueta font-medium text-texto-suave">Vino con el auto</h3>

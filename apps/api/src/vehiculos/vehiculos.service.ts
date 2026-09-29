@@ -1,3 +1,4 @@
+import type { Carroceria } from '@gpb/core'
 import { and, asc, count, type Db, desc, eq, ilike, isNull, or, sql } from '@gpb/db'
 import {
   auditoria,
@@ -144,6 +145,7 @@ export class ServicioVehiculos {
           v: vehiculo,
           marca: marca.nombre,
           modelo: modelo.nombre,
+          carroceria: modelo.carroceria,
           desde: titularidad.desde,
           hasta: titularidad.hasta,
           titularId: entidadComercial.id,
@@ -319,6 +321,7 @@ export class ServicioVehiculos {
         v: vehiculo,
         marca: marca.nombre,
         modelo: modelo.nombre,
+        carroceria: modelo.carroceria,
         titularId: entidadComercial.id,
         titular: entidadComercial.razonSocial,
       })
@@ -566,6 +569,7 @@ function aResumen(fila: {
   v: typeof vehiculo.$inferSelect
   marca: string | null
   modelo: string | null
+  carroceria: string | null
   titularId: string | null
   titular: string | null
 }) {
@@ -578,6 +582,8 @@ function aResumen(fila: {
     color: v.color,
     marca: fila.marca,
     modelo: fila.modelo,
+    // Para que la recepción sepa con qué silueta dibujarlo sin volver a preguntar.
+    carroceria: fila.carroceria as Carroceria | null,
     titular:
       fila.titularId && fila.titular ? { id: fila.titularId, razonSocial: fila.titular } : null,
   }

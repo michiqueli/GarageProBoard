@@ -1,6 +1,15 @@
 import 'reflect-metadata'
 import { eq } from '@gpb/db'
-import { cliente, entidadComercial, orden, titularidad, usuario, vehiculo } from '@gpb/db/schema'
+import {
+  cliente,
+  entidadComercial,
+  marca,
+  modelo,
+  orden,
+  titularidad,
+  usuario,
+  vehiculo,
+} from '@gpb/db/schema'
 import type { NestFastifyApplication } from '@nestjs/platform-fastify'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import {
@@ -23,6 +32,8 @@ let mecanico: string
 let mecanicoId: string
 let vehiculoId: string
 let otroVehiculoId: string
+let pickupId: string
+let modeloId: string
 let titularId: string
 
 beforeAll(async () => {
@@ -42,6 +53,20 @@ beforeAll(async () => {
   const autos = await db.select().from(vehiculo).where(eq(vehiculo.tenantId, tenantId))
   vehiculoId = autos.find((a) => a.dominio === 'AE123BC')?.id as string
   otroVehiculoId = autos.find((a) => a.dominio === 'AB123CD')?.id as string
+
+  // Una camioneta con su modelo en el catálogo, y el modelo sin carrocería: es como quedan
+  // todos los que ya estaban cargados el día que esto se estrena.
+  const [vw] = await db.insert(marca).values({ tenantId, nombre: 'Volkswagen' }).returning()
+  const [amarok] = await db
+    .insert(modelo)
+    .values({ tenantId, marcaId: vw?.id as string, nombre: 'Amarok' })
+    .returning()
+  modeloId = amarok?.id as string
+  const [camioneta] = await db
+    .insert(vehiculo)
+    .values({ tenantId, chasis: '8AWFB8CD5N7654389', dominio: 'AF456GH', modeloId })
+    .returning()
+  pickupId = camioneta?.id as string
 
   const [e] = await db
     .insert(entidadComercial)
@@ -196,13 +221,38 @@ describe('la recepción', () => {
       ...RECEPCION_1,
       danios: [{ tipo: 'rayon', x: 2, y: 2 }],
     })
-    expect(afuera.statusCode).toBe(400)
+    // La rechaza el servidor y no el contrato: si cae en la chapa depende de qué dibujo es.
+    expect(afuera.statusCode).toBe(422)
+    expect(afuera.json()).toMatchObject({ code: 'MARCA_FUERA_DEL_AUTO' })
     const inventado = await pedir(gerente, 'PUT', `/ordenes/${ordenId}`, {
       ...RECEPCION_1,
       danios: [{ tipo: 'abollon', x: 120, y: 180 }],
       inventario: { auxilio: 'quizas' },
     })
     expect(inventado.statusCode).toBe(400)
+  })
+
+  it('la carrocería la enseña el primero que recibe, y la orden se queda con su dibujo', async () => {
+    const r = await pedir(gerente, 'POST', '/ordenes', {
+      vehiculoId: pickupId,
+      pedido: 'Ruido atrás',
+      carroceria: 'pickup',
+      danios: [{ tipo: 'golpe', x: 120, y: 250 }],
+    })
+    expect(r.statusCode).toBe(201)
+    // Ese mismo punto es el techo de un auto y la caja de una camioneta.
+    expect(r.json()).toMatchObject({ silueta: 'pickup', danios: [{ zona: 'caja' }] })
+
+    // Y el catálogo lo aprendió: del próximo Amarok no se pregunta más.
+    const [m] = await api.pg.dbDuenio.select().from(modelo).where(eq(modelo.id, modeloId))
+    expect(m?.carroceria).toBe('pickup')
+
+    // La orden 1 se dibujó como auto y sigue así: sus marcas son puntos de ese dibujo.
+    const editada = await pedir(gerente, 'PUT', `/ordenes/${ordenId}`, {
+      ...RECEPCION_1,
+      danios: [{ tipo: 'rayon', x: 120, y: 180 }],
+    })
+    expect(editada.json()).toMatchObject({ silueta: 'auto', danios: [{ zona: 'techo' }] })
   })
 
   it('el listado busca por patente y por número', async () => {
@@ -290,7 +340,9 @@ describe('en el taller', () => {
       vehiculoId: otroVehiculoId,
       pedido: 'Vuelve',
     })
-    expect(nueva.json()).toMatchObject({ numero: 3 })
+    // Con un número nuevo, no el de la anulada: un número no se reusa nunca.
+    expect(nueva.statusCode).toBe(201)
+    expect(nueva.json().numero).toBeGreaterThan(sinItems.numero)
   })
 
   it('la orden impresa sale en PDF', async () => {

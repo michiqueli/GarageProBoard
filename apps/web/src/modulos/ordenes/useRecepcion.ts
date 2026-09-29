@@ -1,3 +1,4 @@
+import { type Carroceria, SILUETA_DE } from '@gpb/core'
 import { ORPCError } from '@orpc/client'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useNavigate } from '@tanstack/react-router'
@@ -23,6 +24,11 @@ export interface DatosRecepcion {
   pedido: string
   observaciones: string
   entregaEstimada: string
+  /**
+   * Qué es el vehículo, cuando su modelo todavía no lo dice. Si el modelo lo dice, gana el
+   * modelo —igual que en el servidor—: corregirlo es cosa del catálogo, no de una recepción.
+   */
+  carroceria: Carroceria | null
   danios: Danio[]
   inventario: Inventario
 }
@@ -39,6 +45,7 @@ const VACIA: DatosRecepcion = {
   pedido: '',
   observaciones: '',
   entregaEstimada: '',
+  carroceria: null,
   danios: [],
   inventario: {},
 }
@@ -66,8 +73,24 @@ export function useRecepcion(alAbrir: (orden: OrdenAbierta) => void) {
   }
 
   function elegirVehiculo(v: VehiculoElegido | null) {
-    // Quien paga arranca en el titular: es el caso de todos los días.
-    setDatos((d) => ({ ...d, vehiculo: v, paga: v?.titular ?? null }))
+    // Quien paga arranca en el titular: es el caso de todos los días. Y las marcas se van con
+    // el auto: son puntos de su dibujo, no de la pantalla.
+    setDatos((d) => ({ ...d, vehiculo: v, paga: v?.titular ?? null, carroceria: null, danios: [] }))
+  }
+
+  /** Lo que el modelo ya sabe manda; lo elegido sólo llena el hueco. */
+  const carroceria = datos.vehiculo?.carroceria ?? datos.carroceria
+  const silueta = SILUETA_DE[carroceria ?? 'sedan']
+  /** Se pregunta cuando nadie lo sabe: con un modelo sin carrocería, o sin modelo cargado. */
+  const faltaCarroceria = !datos.vehiculo?.carroceria
+
+  /** Cambiar de dibujo borra las marcas: están puestas sobre el anterior. */
+  function elegirCarroceria(c: Carroceria) {
+    setDatos((d) => ({
+      ...d,
+      carroceria: c,
+      danios: SILUETA_DE[c] === silueta ? d.danios : [],
+    }))
   }
 
   const abrir = useMutation({
@@ -84,6 +107,7 @@ export function useRecepcion(alAbrir: (orden: OrdenAbierta) => void) {
         pedido: datos.pedido,
         observaciones: datos.observaciones,
         entregaEstimada: datos.entregaEstimada || null,
+        carroceria: datos.carroceria,
         danios: datos.danios.map(({ tipo, x, y, nota }) => ({ tipo, x, y, nota })),
         inventario: datos.inventario,
         items: [],
@@ -135,6 +159,9 @@ export function useRecepcion(alAbrir: (orden: OrdenAbierta) => void) {
     datos,
     poner,
     elegirVehiculo,
+    silueta,
+    faltaCarroceria,
+    elegirCarroceria,
     enviar,
     empezarOtra,
     abriendo: abrir.isPending,

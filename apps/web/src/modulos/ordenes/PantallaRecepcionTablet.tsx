@@ -1,5 +1,5 @@
 import { accesoDeRuta, contrato } from '@gpb/contracts'
-import { DANIOS, ELEMENTOS_INVENTARIO, INVENTARIO } from '@gpb/core'
+import { DANIOS, ELEMENTOS_INVENTARIO, INVENTARIO, type Silueta } from '@gpb/core'
 import { Link } from '@tanstack/react-router'
 import { type ReactNode, useEffect, useRef, useState } from 'react'
 import { Boton } from '../../componentes/Boton.tsx'
@@ -10,7 +10,7 @@ import { SelectorCliente } from '../../componentes/SelectorCliente.tsx'
 import { SelectorVehiculo } from '../../componentes/SelectorVehiculo.tsx'
 import { usarSesion } from '../../sesion/almacen.ts'
 import { useVeredicto } from '../../sesion/permisos.ts'
-import { DiagramaDanios, describirDanio } from './DiagramaDanios.tsx'
+import { DiagramaDanios, describirDanio, ElegirCarroceria } from './DiagramaDanios.tsx'
 import { InventarioRecepcion } from './InventarioRecepcion.tsx'
 import { COMBUSTIBLES, imprimirOrden, nombreOrden } from './ordenes.ts'
 import { ElegirCombustible, Texto } from './PantallaRecepcion.tsx'
@@ -300,7 +300,15 @@ export function PantallaRecepcionTablet() {
             <p className="text-dato text-texto-suave">
               Elegí qué marcar y tocá el auto donde está. Si está impecable, seguí de largo.
             </p>
-            <DiagramaDanios danios={d.danios} onChange={(v) => poner('danios', v)} tactil />
+            {r.faltaCarroceria && (
+              <ElegirCarroceria valor={d.carroceria} onChange={r.elegirCarroceria} />
+            )}
+            <DiagramaDanios
+              danios={d.danios}
+              silueta={r.silueta}
+              onChange={(v) => poner('danios', v)}
+              tactil
+            />
           </>
         )}
 
@@ -320,7 +328,7 @@ export function PantallaRecepcionTablet() {
           </>
         )}
 
-        {paso === 'revisar' && <Revisar datos={d} ir={ir} />}
+        {paso === 'revisar' && <Revisar datos={d} silueta={r.silueta} ir={ir} />}
       </section>
 
       <div className="flex items-center gap-2">
@@ -383,9 +391,11 @@ function Falta({ children }: { children: ReactNode }) {
 /** Todo lo cargado, con el paso donde se cambia: se repasa con el cliente antes de abrir. */
 function Revisar({
   datos: d,
+  silueta,
   ir,
 }: {
   datos: ReturnType<typeof useRecepcion>['datos']
+  silueta: Silueta
   ir: (p: Paso) => void
 }) {
   const faltan = ELEMENTOS_INVENTARIO.filter((e) => d.inventario[e] === 'falta')
@@ -431,7 +441,7 @@ function Revisar({
       paso: 'estado',
       nombre: 'Marcas',
       valor: d.danios.length
-        ? d.danios.map((x) => `${DANIOS[x.tipo].letra} ${describirDanio(x)}`).join(' · ')
+        ? d.danios.map((x) => `${DANIOS[x.tipo].letra} ${describirDanio(silueta, x)}`).join(' · ')
         : 'Sin marcas',
     },
     {

@@ -1,4 +1,13 @@
-import { plata, puedeSobre, type TipoDanio, zonaEn } from '@gpb/core'
+import {
+  type Carroceria,
+  plata,
+  puedeSobre,
+  SILUETA_DE,
+  SILUETA_POR_OMISION,
+  type Silueta,
+  type TipoDanio,
+  zonaEn,
+} from '@gpb/core'
 import {
   and,
   asc,
@@ -55,6 +64,7 @@ type Codigo =
   | 'REPUESTO_INVALIDO'
   | 'PRESUPUESTO_PENDIENTE'
   | 'ITEM_INVALIDO'
+  | 'MARCA_FUERA_DEL_AUTO'
   | 'CORREO_NO_CONFIGURADO'
   | 'CORREO_NO_ENVIADO'
 
@@ -100,6 +110,7 @@ export interface DatosRecepcion {
   entregaEstimada?: string | null | undefined
   danios?: DanioEntrada[] | undefined
   inventario?: InventarioRecepcion | undefined
+  carroceria?: Carroceria | null | undefined
 }
 
 interface DanioEntrada {
@@ -111,12 +122,13 @@ interface DanioEntrada {
 
 /**
  * La zona sale del punto, acá y no en la pantalla: una marca no puede decir «capot» dibujada
- * sobre el techo. El contrato ya rechazó las que caen fuera del auto.
+ * sobre el techo. Y sale del dibujo que le toca al vehículo: el mismo punto es el baúl de un
+ * auto y la caja de una pickup.
  */
-function conZona(danios: DanioEntrada[]): DanioRecepcion[] {
+function conZona(silueta: Silueta, danios: DanioEntrada[]): DanioRecepcion[] {
   return danios.map((d) => {
-    const z = zonaEn(d.x, d.y)
-    if (!z) throw new Error('Una marca fuera del auto pasó la validación del contrato.')
+    const z = zonaEn(silueta, d.x, d.y)
+    if (!z) throw new ErrorOrdenes('MARCA_FUERA_DEL_AUTO')
     // Redondeado a una décima: la posición de un dedo no tiene seis decimales de verdad.
     const x = Math.round(d.x * 10) / 10
     const y = Math.round(d.y * 10) / 10
@@ -222,10 +234,15 @@ export class ServicioOrdenes {
   abrir(entrada: DatosRecepcion & { vehiculoId: string; items: ItemEntrada[] }, ip?: string) {
     return this.datos.transaccion(async (tx, sesion) => {
       const [auto] = await tx
-        .select({ id: vehiculo.id, kilometraje: vehiculo.kilometraje })
+        .select({
+          id: vehiculo.id,
+          kilometraje: vehiculo.kilometraje,
+          modeloId: vehiculo.modeloId,
+        })
         .from(vehiculo)
         .where(eq(vehiculo.id, entrada.vehiculoId))
       if (!auto) throw new ErrorOrdenes('NO_ENCONTRADO')
+      const silueta = await this.siluetaDe(tx, auto.modeloId, entrada.carroceria)
 
       // Un auto está una sola vez en el taller: dos órdenes abiertas del mismo auto son dos
       // números distintos para el mismo trabajo, y el mecánico ficha en la equivocada.
@@ -276,7 +293,8 @@ export class ServicioOrdenes {
           combustible: entrada.combustible ?? null,
           pedido: entrada.pedido,
           observaciones: entrada.observaciones ?? null,
-          danios: conZona(entrada.danios ?? []),
+          silueta,
+          danios: conZona(silueta, entrada.danios ?? []),
           inventario: entrada.inventario ?? {},
           entregaEstimada: entrada.entregaEstimada ?? null,
           asesorId: sesion.usuarioId,
@@ -320,6 +338,20 @@ export class ServicioOrdenes {
       'Una orden facturada, entregada o anulada ya no se modifica.',
       async (tx, sesion, o) => {
         await this.verificarReferencias(tx, entrada.pagaId ?? null)
+        /**
+         * El dibujo cambia sólo si alguien lo dice **y** manda las marcas de nuevo: las que ya
+         * están son puntos de la silueta con la que se recibió, y cambiarla sola movería un
+         * golpe del baúl a la caja de una pickup. Ni siquiera alcanza con que el modelo haya
+         * aprendido su carrocería después: la orden vieja sigue dibujada como se firmó.
+         */
+        let silueta = o.silueta as Silueta
+        if (entrada.danios && entrada.carroceria) {
+          const [auto] = await tx
+            .select({ modeloId: vehiculo.modeloId })
+            .from(vehiculo)
+            .where(eq(vehiculo.id, o.vehiculoId))
+          silueta = await this.siluetaDe(tx, auto?.modeloId ?? null, entrada.carroceria)
+        }
         await tx
           .update(orden)
           .set({
@@ -333,7 +365,7 @@ export class ServicioOrdenes {
             pedido: entrada.pedido,
             observaciones: entrada.observaciones ?? null,
             // Sin mandar, quedan como estaban: editar los datos de contacto no borra el dibujo.
-            ...(entrada.danios ? { danios: conZona(entrada.danios) } : {}),
+            ...(entrada.danios ? { silueta, danios: conZona(silueta, entrada.danios) } : {}),
             ...(entrada.inventario ? { inventario: entrada.inventario } : {}),
             entregaEstimada: entrada.entregaEstimada ?? null,
             actualizadoEn: new Date(),
@@ -912,6 +944,36 @@ export class ServicioOrdenes {
     }
   }
 
+  /**
+   * Con qué dibujo se marca este auto.
+   *
+   * La carrocería es del modelo, así que el primero que recibe un vehículo de un modelo que no
+   * la tiene se la enseña al catálogo, y de ahí en más entra sola. Se escribe **sólo si estaba
+   * vacía**: igual que el fichaje con el mecánico, no pisa lo que alguien ya decidió. Por eso
+   * también, cuando el modelo ya dice qué es, gana el modelo: corregirlo es cosa del catálogo,
+   * no de una recepción suelta.
+   */
+  private async siluetaDe(
+    tx: Db,
+    modeloId: string | null,
+    elegida: Carroceria | null | undefined,
+  ): Promise<Silueta> {
+    if (!modeloId) return elegida ? SILUETA_DE[elegida] : SILUETA_POR_OMISION
+
+    const [m] = await tx
+      .select({ carroceria: modelo.carroceria })
+      .from(modelo)
+      .where(eq(modelo.id, modeloId))
+    const guardada = (m?.carroceria as Carroceria | null | undefined) ?? null
+    if (!guardada && elegida) {
+      await tx
+        .update(modelo)
+        .set({ carroceria: elegida })
+        .where(and(eq(modelo.id, modeloId), isNull(modelo.carroceria)))
+    }
+    return SILUETA_DE[guardada ?? elegida ?? 'sedan']
+  }
+
   private async verificarReferencias(tx: Db, pagaId: string | null) {
     if (pagaId) {
       const [c] = await tx.select({ id: cliente.id }).from(cliente).where(eq(cliente.id, pagaId))
@@ -1035,6 +1097,7 @@ export class ServicioOrdenes {
       observaciones: o.observaciones,
       danios: o.danios,
       inventario: o.inventario,
+      silueta: o.silueta as Silueta,
       terminadaEn: o.terminadaEn?.toISOString() ?? null,
       entregadaEn: o.entregadaEn?.toISOString() ?? null,
       items: items.map((i) => ({

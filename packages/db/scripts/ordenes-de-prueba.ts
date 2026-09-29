@@ -1,5 +1,5 @@
 import { randomBytes } from 'node:crypto'
-import { cuitValido, type TipoDanio, zonaEn } from '@gpb/core'
+import { cuitValido, type Silueta, type TipoDanio, zonaEn } from '@gpb/core'
 import { and, eq, isNull, sql } from 'drizzle-orm'
 import { crearDb, crearPool, type Db } from '../src/index.ts'
 import {
@@ -153,6 +153,8 @@ interface OrdenPrueba {
   combustible: string
   pedido: string
   observaciones: string | null
+  /** Con cuál de los tres dibujos se marcó. La semilla no mira el modelo: lo dice acá. */
+  silueta?: Silueta
   /** Las marcas del auto dibujado: [tipo, x, y, detalle], en coordenadas del dibujo. */
   danios?: Array<[TipoDanio, number, number, string | null]>
   inventario?: InventarioRecepcion
@@ -467,8 +469,9 @@ async function abrirOrdenes(tx: Db, tenantId: string) {
         combustible: o.combustible,
         pedido: o.pedido,
         observaciones: o.observaciones,
+        silueta: o.silueta ?? 'auto',
         danios: (o.danios ?? []).map(([tipo, x, y, nota]) => ({
-          zona: zonaEn(x, y)?.id ?? 'techo',
+          zona: zonaEn(o.silueta ?? 'auto', x, y)?.id ?? 'techo',
           tipo,
           x,
           y,

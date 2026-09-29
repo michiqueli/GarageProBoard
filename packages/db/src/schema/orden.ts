@@ -109,6 +109,13 @@ export const orden = pgTable(
      * auditar, como `orden_item`. Nadie consulta daños sueltos: se leen con su orden.
      */
     danios: jsonb().$type<DanioRecepcion[]>().notNull().default(sql`'[]'::jsonb`),
+    /**
+     * Con qué dibujo se marcaron: el auto, la pickup o el furgón. Sale de la carrocería del
+     * modelo, pero **se copia acá** porque las marcas son puntos de ese dibujo. Si mañana
+     * alguien corrige la carrocería del modelo, las órdenes viejas se redibujarían con otra
+     * silueta y un golpe en el baúl aparecería en la caja de una pickup.
+     */
+    silueta: text().notNull().default('auto'),
     /** Lo que vino con el auto: el auxilio, el gato. Lo que no figura, no se revisó. */
     inventario: jsonb().$type<InventarioRecepcion>().notNull().default(sql`'{}'::jsonb`),
     entregaEstimada: date(),
@@ -144,6 +151,7 @@ export const orden = pgTable(
     ),
     check('orden_kilometraje_positivo', sql`${t.kilometraje} is null or ${t.kilometraje} >= 0`),
     check('orden_danios_lista', sql`jsonb_typeof(${t.danios}) = 'array'`),
+    check('orden_silueta_valida', sql`${t.silueta} in ('auto', 'pickup', 'furgon')`),
     check('orden_inventario_objeto', sql`jsonb_typeof(${t.inventario}) = 'object'`),
     check('orden_codigo_qr_formato', sql`${t.codigoQr} ~ '^[0-9A-HJKMNP-TV-Z]{8}$'`),
   ],

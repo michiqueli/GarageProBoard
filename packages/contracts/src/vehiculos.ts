@@ -1,3 +1,4 @@
+import { CARROCERIAS } from '@gpb/core'
 import { z } from 'zod'
 import { conPermiso } from './acceso.ts'
 import { chasis, dominio, paginado, problema } from './comunes.ts'
@@ -16,6 +17,11 @@ export const vehiculoSalida = z.object({
   color: z.string().nullable(),
   marca: z.string().nullable(),
   modelo: z.string().nullable(),
+  /**
+   * La del modelo, que es quien la sabe. Va en el resumen porque la recepción la necesita para
+   * elegir con qué silueta dibujarlo, y ahí el vehículo ya está en la mano.
+   */
+  carroceria: z.enum(CARROCERIAS).nullable(),
   /** El titular vigente. Un 0km en stock no tiene. */
   titular: titularResumen.nullable(),
 })

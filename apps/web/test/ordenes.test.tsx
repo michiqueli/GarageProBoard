@@ -81,6 +81,7 @@ const FICHA = {
   kilometraje: 48210,
   combustible: 'medio',
   observaciones: null,
+  silueta: 'auto',
   danios: [],
   inventario: {},
   terminadaEn: null,
@@ -149,6 +150,7 @@ describe('la recepción', () => {
           color: null,
           marca: 'Volkswagen',
           modelo: 'Amarok',
+          carroceria: null,
           titular: TITULAR,
         },
       ],
@@ -195,11 +197,12 @@ const VEHICULO_ELEGIBLE = {
   color: null,
   marca: 'Volkswagen',
   modelo: 'Amarok',
+  carroceria: null,
   titular: TITULAR,
 }
 
-async function elegirVehiculo(etiqueta: string) {
-  listarVehiculos.mockResolvedValue({ datos: [VEHICULO_ELEGIBLE], total: 1 })
+async function elegirVehiculo(etiqueta: string, vehiculo = VEHICULO_ELEGIBLE) {
+  listarVehiculos.mockResolvedValue({ datos: [vehiculo], total: 1 })
   await userEvent.type(await screen.findByLabelText(etiqueta), 'ab123')
   await screen.findByRole('list', { name: 'Vehículos que coinciden con ab123' })
   await userEvent.keyboard('{Enter}')
@@ -207,6 +210,48 @@ async function elegirVehiculo(etiqueta: string) {
 }
 
 describe('el estado del vehículo al recibirlo', () => {
+  // La hoja de papel trae las siluetas todas juntas porque no sabe qué auto va a entrar.
+  it('con el modelo cargado se dibuja lo que es, y no se pregunta nada', async () => {
+    ordenes.abrir.mockResolvedValue({ ...FICHA, estado: 'recibida' })
+    await montarApp('/ordenes/nueva')
+    await elegirVehiculo('Vehículo', { ...VEHICULO_ELEGIBLE, carroceria: 'pickup' })
+
+    // Ya se sabe qué es: no se pregunta.
+    expect(screen.queryByRole('radio', { name: 'Pickup' })).toBeNull()
+
+    const auto = screen.getByRole('application')
+    auto.focus()
+    // Bajando desde el capot: parabrisas, techo, ventanilla y la caja, que un auto no tiene.
+    await userEvent.keyboard('{ArrowDown}{ArrowDown}{ArrowDown}{ArrowDown}g')
+    const marcas = screen.getByRole('list', { name: 'Marcas' })
+    expect(within(marcas).getByText('Golpe · Caja de carga')).toBeDefined()
+  })
+
+  it('si el modelo no dice qué es, se pregunta una vez, y cambiarlo borra las marcas', async () => {
+    ordenes.abrir.mockResolvedValue({ ...FICHA, estado: 'recibida' })
+    await montarApp('/ordenes/nueva')
+    await elegirVehiculo('Vehículo')
+    await userEvent.type(screen.getByLabelText('Qué pide el cliente'), 'Ruido al frenar')
+
+    const auto = screen.getByRole('application')
+    auto.focus()
+    await userEvent.keyboard('{ArrowDown}{ArrowDown}r')
+    expect(
+      within(screen.getByRole('list', { name: 'Marcas' })).getByText('Rayón · Techo'),
+    ).toBeDefined()
+
+    // Era una pickup: el techo marcado es de otro dibujo, así que la marca no puede quedar.
+    await userEvent.click(screen.getByRole('radio', { name: 'Pickup' }))
+    expect(screen.queryByRole('list', { name: 'Marcas' })).toBeNull()
+
+    await userEvent.keyboard('{F2}')
+    await waitFor(() =>
+      expect(ordenes.abrir).toHaveBeenCalledWith(
+        expect.objectContaining({ carroceria: 'pickup', danios: [] }),
+      ),
+    )
+  })
+
   it('con teclado: las flechas recorren las piezas por dónde están y la letra marca', async () => {
     ordenes.abrir.mockResolvedValue({ ...FICHA, estado: 'recibida' })
     await montarApp('/ordenes/nueva')

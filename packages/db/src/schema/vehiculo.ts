@@ -40,11 +40,25 @@ export const modelo = pgTable(
     version: text(),
     anioDesde: integer(),
     anioHasta: integer(),
+    /**
+     * Sedán, pickup, furgón. Es del modelo y no del vehículo: una Amarok es pickup por ser
+     * Amarok. No se puede sacar del dominio, que es secuencial, ni del chasis, cuyas
+     * posiciones de carrocería las define cada terminal sin norma común.
+     *
+     * Nace en null porque los catálogos ya cargados no la tienen. La completa el primero que
+     * recibe un vehículo de ese modelo, y de ahí en más entra sola.
+     */
+    carroceria: text(),
     creadoEn: creadoEn(),
   },
   (t) => [
     unique('modelo_nombre_uq').on(t.tenantId, t.marcaId, t.nombre, t.version),
     index('modelo_marca_idx').on(t.marcaId),
+    check(
+      'modelo_carroceria_valida',
+      sql`${t.carroceria} is null
+          or ${t.carroceria} in ('sedan', 'hatchback', 'coupe', 'familiar', 'suv', 'pickup', 'furgon')`,
+    ),
   ],
 )
 

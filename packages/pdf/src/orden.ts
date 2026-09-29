@@ -5,11 +5,12 @@ import {
   type ElementoInventario,
   INVENTARIO,
   ROTULOS,
+  type Silueta,
   type TipoDanio,
   trazo,
   VISTA,
-  ZONAS,
   zona,
+  zonas,
 } from '@gpb/core'
 import PDFDocument from 'pdfkit'
 import { dibujarQr } from './comun.ts'
@@ -50,6 +51,8 @@ export interface DatosOrdenImpresa {
   paga: string | null
   pedido: string
   observaciones: string | null
+  /** Cuál de los tres dibujos: el auto, la pickup o el furgón. Lo trae la orden. */
+  silueta: Silueta
   /** Las marcas del auto dibujado, en coordenadas del dibujo de `@gpb/core`. */
   danios: Array<{ zona: string; tipo: TipoDanio; x: number; y: number; nota: string | null }>
   inventario: Partial<Record<ElementoInventario, ControlInventario>>
@@ -153,7 +156,7 @@ function estadoDelVehiculo(doc: Doc, o: DatosOrdenImpresa, y: number): number {
   doc.save()
   doc.translate(x0, y0).scale(escala)
   doc.lineWidth(0.7 / escala).strokeColor('#777')
-  for (const z of ZONAS) doc.path(trazo(z)).stroke()
+  for (const z of zonas(o.silueta)) doc.path(trazo(z)).stroke()
   doc.restore()
   doc.strokeColor('#000')
 
@@ -212,7 +215,7 @@ function estadoDelVehiculo(doc: Doc, o: DatosOrdenImpresa, y: number): number {
     yt = doc.y + mm(1.5)
   } else {
     for (const d of o.danios) {
-      const donde = zona(d.zona)?.nombre ?? d.zona
+      const donde = zona(o.silueta, d.zona)?.nombre ?? d.zona
       doc
         .font(NEGRITA)
         .text(`${DANIOS[d.tipo].letra}  `, xt, yt, { continued: true, width: ancho })

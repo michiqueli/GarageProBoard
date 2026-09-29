@@ -170,6 +170,7 @@ export class ControladorOrdenes {
           paga: o.paga?.razonSocial ?? null,
           pedido: o.pedido,
           observaciones: o.observaciones,
+          silueta: o.silueta,
           danios: o.danios,
           inventario: o.inventario,
           asesor: o.asesor,

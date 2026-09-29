@@ -1,10 +1,11 @@
 import {
+  CARROCERIAS,
   CONTROLES_INVENTARIO,
   ELEMENTOS_INVENTARIO,
+  SILUETAS,
   TIPOS_DANIO,
   VISTA,
   ZONAS_IDS,
-  zonaEn,
 } from '@gpb/core'
 import { z } from 'zod'
 import { conPermiso } from './acceso.ts'
@@ -57,17 +58,20 @@ export const danioRecepcion = z.object({
   nota: z.string().nullable(),
 })
 
-/** Sin zona: sale del punto. Mandarla sería darle a la pantalla la chance de contradecirlo. */
-const danioEntrada = danioRecepcion
-  .omit({ zona: true })
-  .extend({
-    nota: z
-      .string()
-      .trim()
-      .max(120, 'El detalle de una marca es corto: lo largo va en las observaciones')
-      .nullish(),
-  })
-  .refine((d) => zonaEn(d.x, d.y), 'Esa marca cae fuera del auto')
+/**
+ * Sin zona: sale del punto. Mandarla sería darle a la pantalla la chance de contradecirlo.
+ *
+ * Y que el punto caiga adentro de la chapa tampoco se valida acá: depende de qué dibujo es
+ * —el baúl de un auto es caja en una pickup— y eso lo sabe el servidor, que es el que resuelve
+ * la silueta. Acá sólo se comprueba que esté dentro del lienzo.
+ */
+const danioEntrada = danioRecepcion.omit({ zona: true }).extend({
+  nota: z
+    .string()
+    .trim()
+    .max(120, 'El detalle de una marca es corto: lo largo va en las observaciones')
+    .nullish(),
+})
 
 /** Lo que vino con el auto. Lo que no figura no se revisó, que no es lo mismo que «está». */
 export const inventarioRecepcion = z.partialRecord(
@@ -170,6 +174,8 @@ export const ordenDetalle = ordenResumen.extend({
   observaciones: z.string().nullable(),
   danios: z.array(danioRecepcion),
   inventario: inventarioRecepcion,
+  /** Con qué dibujo se marcó. Va con la orden porque las marcas son puntos de ese dibujo. */
+  silueta: z.enum(SILUETAS),
   terminadaEn: z.iso.datetime().nullable(),
   entregadaEn: z.iso.datetime().nullable(),
   items: z.array(itemOrden),
@@ -206,6 +212,12 @@ const datosRecepcion = z.object({
    */
   danios: z.array(danioEntrada).max(80, 'Son muchas marcas: agrupalas con un detalle').optional(),
   inventario: inventarioRecepcion.optional(),
+  /**
+   * Qué es el vehículo, cuando su modelo todavía no lo dice. Se manda desde la recepción, que
+   * es donde alguien lo tiene adelante, y queda guardado en el modelo: el siguiente de ese
+   * modelo ya se dibuja solo.
+   */
+  carroceria: z.enum(CARROCERIAS).nullish(),
 })
 
 const itemEntrada = z.object({
@@ -231,6 +243,13 @@ const ESTADO_INVALIDO = {
     message: 'La orden no está en un estado que permita eso',
     data: z.object({ motivo: z.string() }),
   },
+} as const
+/**
+ * El punto cayó fuera de la chapa. Lo resuelve el servidor y no el contrato porque depende de
+ * qué dibujo le toca al vehículo, que sale de la carrocería de su modelo.
+ */
+const MARCA_FUERA = {
+  MARCA_FUERA_DEL_AUTO: { status: 422, message: 'Una de las marcas cae fuera del auto' },
 } as const
 
 export const contratoOrdenes = {
@@ -283,6 +302,7 @@ export const contratoOrdenes = {
       }),
     )
     .errors({
+      ...MARCA_FUERA,
       NO_ENCONTRADO: { status: 404, message: 'Ese vehículo, cliente o mecánico no existe' },
       VEHICULO_CON_ORDEN: {
         status: 409,
@@ -304,6 +324,7 @@ export const contratoOrdenes = {
     .errors({
       ...NO_ENCONTRADA,
       ...ESTADO_INVALIDO,
+      ...MARCA_FUERA,
       NO_ENCONTRADO: { status: 404, message: 'Ese cliente o mecánico no existe' },
     })
     .output(ordenDetalle),

@@ -1,15 +1,19 @@
 import {
+  CARROCERIAS,
+  CARROCERIAS_NOMBRE,
+  type Carroceria,
   centro,
   DANIOS,
   ROTULOS,
+  type Silueta,
   TIPOS_DANIO,
   type TipoDanio,
   trazo,
   VISTA,
-  ZONAS,
   type Zona,
   zona,
   zonaEn,
+  zonas,
 } from '@gpb/core'
 import { type KeyboardEvent, type MouseEvent, useId, useRef, useState } from 'react'
 import { confirmar } from '../../componentes/avisos.ts'
@@ -62,11 +66,11 @@ function puntoLibre(z: Zona, cuantas: number) {
  * lista: flecha a la derecha desde la puerta izquierda tiene que ir al techo, no a la zona que
  * se declaró después.
  */
-function vecina(desde: Zona, dx: number, dy: number): Zona {
+function vecina(silueta: Silueta, desde: Zona, dx: number, dy: number): Zona {
   const c = centro(desde)
   let mejor: Zona = desde
   let puntaje = Number.POSITIVE_INFINITY
-  for (const z of ZONAS) {
+  for (const z of zonas(silueta)) {
     if (z.id === desde.id) continue
     const o = centro(z)
     const avance = (o.x - c.x) * dx + (o.y - c.y) * dy
@@ -88,8 +92,8 @@ const FLECHAS: Record<string, [number, number]> = {
   ArrowRight: [1, 0],
 }
 
-export function describirDanio(d: Danio): string {
-  return `${DANIOS[d.tipo].nombre} · ${zona(d.zona)?.nombre ?? d.zona}`
+export function describirDanio(silueta: Silueta, d: Danio): string {
+  return `${DANIOS[d.tipo].nombre} · ${zona(silueta, d.zona)?.nombre ?? d.zona}`
 }
 
 /**
@@ -103,25 +107,33 @@ export function describirDanio(d: Danio): string {
  * X, F) marca la pieza en la que se está parado, y `Supr` quita la última marca de esa pieza.
  *
  * Sin `onChange` es de sólo lectura: la ficha de la orden lo muestra así.
+ *
+ * El dibujo es el que le toca al vehículo —auto, pickup o furgón— y se dibuja uno solo. Las
+ * hojas de papel traen las siluetas todas juntas porque el papel no sabe qué auto va a entrar;
+ * acá se sabe, así que hacer tachar la que no va sería copiar una limitación del papel.
  */
 export function DiagramaDanios({
   danios,
+  silueta,
   onChange,
   tactil = false,
 }: {
   danios: Danio[]
+  silueta: Silueta
   onChange?: ((danios: Danio[]) => void) | undefined
   tactil?: boolean
 }) {
   const editable = Boolean(onChange)
   const [tipo, setTipo] = useState<TipoDanio>('rayon')
-  const [activa, setActiva] = useState<string>(ZONAS.find((z) => z.id === 'capot')?.id ?? '')
+  const [activa, setActiva] = useState<string>('capot')
   const [conFoco, setConFoco] = useState(false)
   const lienzo = useRef<SVGSVGElement>(null)
   const idAyuda = useId()
 
-  const zonaActiva = zona(activa)
-  const enActiva = danios.filter((d) => d.zona === activa)
+  // El capot existe en los tres dibujos, así que cambiar de silueta nunca deja el teclado
+  // parado en una pieza que no está.
+  const zonaActiva = zona(silueta, activa) ?? zona(silueta, 'capot')
+  const enActiva = danios.filter((d) => d.zona === zonaActiva?.id)
 
   function agregar(d: Omit<Danio, 'nota'>) {
     onChange?.([...danios, { ...d, nota: null }])
@@ -131,7 +143,7 @@ export function DiagramaDanios({
     const d = danios[indice]
     if (!d || !onChange) return
     const si = await confirmar({
-      titulo: `¿Quitar la marca de ${describirDanio(d).toLowerCase()}?`,
+      titulo: `¿Quitar la marca de ${describirDanio(silueta, d).toLowerCase()}?`,
       texto: d.nota ? `Tiene un detalle: «${d.nota}».` : undefined,
       confirmar: 'Quitar la marca',
       peligro: true,
@@ -147,7 +159,7 @@ export function DiagramaDanios({
     const punto = matriz
       ? new DOMPoint(evento.clientX, evento.clientY).matrixTransform(matriz.inverse())
       : null
-    const enPunto = punto ? zonaEn(punto.x, punto.y) : undefined
+    const enPunto = punto ? zonaEn(silueta, punto.x, punto.y) : undefined
     if (punto && enPunto) {
       setActiva(enPunto.id)
       agregar({ zona: enPunto.id, tipo, x: punto.x, y: punto.y })
@@ -156,7 +168,7 @@ export function DiagramaDanios({
     // Sin geometría —un navegador sin diseño, como el de los tests—: el centro de la pieza
     // tocada. Tocar afuera del auto no marca nada.
     const id = (evento.target as Element).getAttribute('data-zona')
-    const tocada = id ? zona(id) : undefined
+    const tocada = id ? zona(silueta, id) : undefined
     if (!tocada) return
     setActiva(tocada.id)
     agregar({ zona: tocada.id, tipo, ...centro(tocada) })
@@ -170,7 +182,7 @@ export function DiagramaDanios({
       evento.preventDefault()
       // Que no le llegue al mapa global: Supr también es la baja de la pantalla.
       evento.stopPropagation()
-      setActiva(vecina(zonaActiva, flecha[0], flecha[1]).id)
+      setActiva(vecina(silueta, zonaActiva, flecha[0], flecha[1]).id)
       return
     }
     const porLetra = LETRA_A_TIPO.get(evento.key.toUpperCase())
@@ -215,7 +227,7 @@ export function DiagramaDanios({
           onBlur={() => setConFoco(false)}
           className={`${tactil ? 'w-full max-w-sm' : 'w-52'} touch-manipulation select-none rounded-base outline-none focus-visible:ring-2 focus-visible:ring-marca`}
         >
-          {ZONAS.map((z) => {
+          {zonas(silueta).map((z) => {
             const resaltada = editable && conFoco && z.id === activa
             return (
               <path
@@ -278,12 +290,61 @@ export function DiagramaDanios({
 
       <ListaDanios
         danios={danios}
+        silueta={silueta}
         editable={editable}
         tactil={tactil}
         onNota={cambiarNota}
         onQuitar={(i) => void quitar(i)}
       />
     </div>
+  )
+}
+
+/**
+ * Qué es el vehículo, para dibujar el que es. Aparece sólo cuando su modelo no lo dice: en
+ * cuanto alguien lo contesta queda guardado en el modelo, así que de ese modelo se pregunta una
+ * vez sola y nunca más.
+ *
+ * Radios de verdad, como el combustible: las flechas los recorren sin programar nada.
+ */
+export function ElegirCarroceria({
+  valor,
+  onChange,
+}: {
+  valor: Carroceria | null
+  onChange: (c: Carroceria) => void
+}) {
+  const nombre = useId()
+  return (
+    <fieldset className="grid gap-1.5">
+      <legend className="text-etiqueta text-texto-suave">
+        ¿Qué es? Lo preguntamos una vez: queda guardado en el modelo
+      </legend>
+      <div className="flex flex-wrap gap-1">
+        {CARROCERIAS.map((c) => {
+          const elegida = c === valor
+          return (
+            <label
+              key={c}
+              className={`inline-flex h-campo cursor-pointer items-center rounded-base border px-2.5 text-etiqueta focus-within:outline-2 focus-within:outline-marca ${
+                elegida
+                  ? 'border-marca bg-marca-suave font-semibold text-texto'
+                  : 'border-borde text-texto-suave'
+              }`}
+            >
+              <input
+                type="radio"
+                name={nombre}
+                className="sr-only"
+                checked={elegida}
+                onChange={() => onChange(c)}
+              />
+              {CARROCERIAS_NOMBRE[c]}
+            </label>
+          )
+        })}
+      </div>
+    </fieldset>
   )
 }
 
@@ -330,12 +391,14 @@ function ElegirTipo({ tipo, onChange }: { tipo: TipoDanio; onChange: (t: TipoDan
 
 function ListaDanios({
   danios,
+  silueta,
   editable,
   tactil,
   onNota,
   onQuitar,
 }: {
   danios: Danio[]
+  silueta: Silueta
   editable: boolean
   tactil: boolean
   onNota: (indice: number, nota: string) => void
@@ -361,11 +424,11 @@ function ListaDanios({
           >
             <span className="text-fondo">{DANIOS[d.tipo].letra}</span>
           </span>
-          <span className="min-w-40 flex-1">{describirDanio(d)}</span>
+          <span className="min-w-40 flex-1">{describirDanio(silueta, d)}</span>
           {editable ? (
             <>
               <input
-                aria-label={`Detalle de ${describirDanio(d).toLowerCase()}`}
+                aria-label={`Detalle de ${describirDanio(silueta, d).toLowerCase()}`}
                 placeholder="Detalle, si hace falta"
                 value={d.nota ?? ''}
                 maxLength={120}
