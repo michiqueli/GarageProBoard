@@ -73,17 +73,43 @@ Por eso las imágenes **no se modifican**: subir una nueva crea una versión, la
 y cada orden apunta a la versión con la que se recibió. Una hoja firmada se puede volver a
 imprimir dentro de dos años y sale igual.
 
-## Dónde se guardan: en la base, no en un almacén aparte
+## Dónde se guardan: en MinIO
 
-En `bytea`, en Postgres.
+Por el tamaño solo, estas quince imágenes irían en `bytea`: son dos megas por concesionaria,
+entran en el `pg_dump` que ya existe y quedan adentro del aislamiento por tenant que ya está
+probado con RLS.
 
-Son quince imágenes por concesionaria, de unos 150 KB: dos megas. Con eso entran en el backup
-que ya existe, quedan adentro del aislamiento por tenant que ya está probado con RLS, y no
-suman un contenedor, una credencial, un despliegue ni una forma nueva de que algo se pierda.
+**Pero MinIO va a estar igual**, en el VPS, para las fotos del vehículo y para el logo de la
+concesionaria. Y entre dos megas de más en la base y **dos historias distintas de dónde vive un
+archivo**, lo caro a la larga es lo segundo: dos formas de subir, dos de servir, dos de borrar
+y dos de restaurar. Entonces estas son las primeras que van, y estrenan el camino.
 
-**No es la regla general.** El día que se guarden las fotos del vehículo —decenas por orden, de
-varios megas— eso va a un almacén de objetos, porque ahí el tamaño y la cantidad sí lo
-justifican. La diferencia no es el tipo de archivo: es cuántos y cuán grandes.
+### Lo que hay que resolver por estrenarlo
+
+**El aislamiento deja de ser de Postgres.** Un bucket no tiene RLS. La clave lleva el tenant
+adelante —`t/<tenantId>/hojas/<hojaId>/<vista>.webp`— y **el tenant sale siempre de la sesión,
+nunca del pedido**. Es la misma regla que ya aplica `DatosDelTenant`, movida al almacén, y es
+lo que hay que cuidar con tests como se cuidó la de la base.
+
+**La fila de Postgres es la que manda.** Si existe la fila, existe la imagen: se sube primero el
+objeto y recién después se escribe la fila, así un corte en el medio deja un huérfano en el
+bucket y no una hoja rota en la pantalla. Los huérfanos los junta una limpieza aparte.
+
+**Los bytes los sirve la API**, no se le dan URLs firmadas al navegador. Una URL firmada que
+alguien reenvía sigue abriendo la hoja de un cliente hasta que vence. Son quince imágenes
+chicas: con `ETag` y `Cache-Control` el navegador no las vuelve a pedir, y el permiso se sigue
+evaluando en cada pedido como en todo lo demás.
+
+**Y el backup deja de ser un `pg_dump`.** Es la consecuencia operativa de esta decisión y
+conviene anotarla acá: desde este momento, restaurar la base sola deja las hojas firmadas sin
+su dibujo.
+
+### Atrás de una interfaz
+
+El resto del sistema no conoce MinIO: ve un almacén con guardar, leer y borrar, y una clave.
+Eso es lo que permite que en desarrollo sea el MinIO del `docker compose` y que mañana sea otra
+cosa sin tocar la recepción. Y que un test pueda correr con un almacén en memoria, sin levantar
+un contenedor más de los que ya hay.
 
 ## El juego por omisión
 
@@ -184,9 +210,11 @@ Por orden, porque cada paso deja el sistema andando:
 1. **El modelo de datos del dibujo**: la tabla de hojas con sus versiones y sus imágenes, y las
    marcas que pasan de `{ zona, x, y }` a `{ vista, x, y }` en fracción. Con la migración de
    las que ya están cargadas.
-2. **La subida**: multipart en la API, límite de tamaño y de tipo, y la conversión a un formato
-   único. Es la primera subida de archivos del sistema, así que lo que se decida acá lo van a
-   heredar las fotos del vehículo y el logo de la concesionaria.
+2. **El almacén y la subida**: MinIO en el `docker compose`, la interfaz que lo tapa, multipart
+   en la API, límite de tamaño y de tipo, y la conversión a un formato único. Es la primera
+   subida de archivos del sistema, así que lo que se decida acá lo van a heredar las fotos del
+   vehículo y el logo de la concesionaria — y los tests de aislamiento del almacén se escriben
+   ahora, no cuando haya tres módulos usándolo.
 3. **El catálogo de puntos de revisión**, con su semilla y sus respuestas por orden.
 4. **La pantalla de configuración**, adentro del módulo de servicios, con sus dos partes: las
    quince imágenes y los puntos que se revisan.
