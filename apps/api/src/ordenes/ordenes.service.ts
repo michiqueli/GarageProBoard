@@ -1,12 +1,11 @@
 import {
   type Carroceria,
+  HOJA_DE,
+  HOJA_POR_OMISION,
   plata,
   puedeSobre,
-  SILUETA_DE,
-  SILUETA_POR_OMISION,
-  type Silueta,
   type TipoDanio,
-  zonaEn,
+  type TipoHoja,
 } from '@gpb/core'
 import {
   and,
@@ -29,6 +28,7 @@ import {
   empleado,
   empresa,
   entidadComercial,
+  hojaImagen,
   type InventarioRecepcion,
   marca,
   modelo,
@@ -64,7 +64,6 @@ type Codigo =
   | 'REPUESTO_INVALIDO'
   | 'PRESUPUESTO_PENDIENTE'
   | 'ITEM_INVALIDO'
-  | 'MARCA_FUERA_DEL_AUTO'
   | 'CORREO_NO_CONFIGURADO'
   | 'CORREO_NO_ENVIADO'
 
@@ -121,19 +120,19 @@ interface DanioEntrada {
 }
 
 /**
- * La zona sale del punto, acá y no en la pantalla: una marca no puede decir «capot» dibujada
- * sobre el techo. Y sale del dibujo que le toca al vehículo: el mismo punto es el baúl de un
- * auto y la caja de una pickup.
+ * Las marcas como se guardan: en fracción del dibujo, con cuatro decimales.
+ *
+ * Cuatro alcanzan de sobra —sobre una imagen de mil píxeles son décimas de píxel— y evitan que
+ * la posición de un dedo quede escrita con dieciséis dígitos que no significan nada.
  */
-function conZona(silueta: Silueta, danios: DanioEntrada[]): DanioRecepcion[] {
-  return danios.map((d) => {
-    const z = zonaEn(silueta, d.x, d.y)
-    if (!z) throw new ErrorOrdenes('MARCA_FUERA_DEL_AUTO')
-    // Redondeado a una décima: la posición de un dedo no tiene seis decimales de verdad.
-    const x = Math.round(d.x * 10) / 10
-    const y = Math.round(d.y * 10) / 10
-    return { zona: z.id, tipo: d.tipo, x, y, nota: d.nota || null }
-  })
+function marcas(danios: DanioEntrada[]): DanioRecepcion[] {
+  const cortar = (n: number) => Math.round(n * 10_000) / 10_000
+  return danios.map((d) => ({
+    tipo: d.tipo,
+    x: cortar(d.x),
+    y: cortar(d.y),
+    nota: d.nota || null,
+  }))
 }
 
 export interface ItemEntrada {
@@ -242,7 +241,7 @@ export class ServicioOrdenes {
         .from(vehiculo)
         .where(eq(vehiculo.id, entrada.vehiculoId))
       if (!auto) throw new ErrorOrdenes('NO_ENCONTRADO')
-      const silueta = await this.siluetaDe(tx, auto.modeloId, entrada.carroceria)
+      const hoja = await this.hojaDe(tx, auto.modeloId, entrada.carroceria)
 
       // Un auto está una sola vez en el taller: dos órdenes abiertas del mismo auto son dos
       // números distintos para el mismo trabajo, y el mecánico ficha en la equivocada.
@@ -293,8 +292,9 @@ export class ServicioOrdenes {
           combustible: entrada.combustible ?? null,
           pedido: entrada.pedido,
           observaciones: entrada.observaciones ?? null,
-          silueta,
-          danios: conZona(silueta, entrada.danios ?? []),
+          hojaTipo: hoja.hojaTipo,
+          hojaImagenId: hoja.hojaImagenId,
+          danios: marcas(entrada.danios ?? []),
           inventario: entrada.inventario ?? {},
           entregaEstimada: entrada.entregaEstimada ?? null,
           asesorId: sesion.usuarioId,
@@ -340,17 +340,17 @@ export class ServicioOrdenes {
         await this.verificarReferencias(tx, entrada.pagaId ?? null)
         /**
          * El dibujo cambia sólo si alguien lo dice **y** manda las marcas de nuevo: las que ya
-         * están son puntos de la silueta con la que se recibió, y cambiarla sola movería un
-         * golpe del baúl a la caja de una pickup. Ni siquiera alcanza con que el modelo haya
-         * aprendido su carrocería después: la orden vieja sigue dibujada como se firmó.
+         * están son puntos del dibujo con el que se recibió, y cambiarlo solo las movería de
+         * lugar. Ni siquiera alcanza con que el modelo haya aprendido su carrocería después, o
+         * con que el taller haya subido una imagen nueva: la orden sigue como se firmó.
          */
-        let silueta = o.silueta as Silueta
+        let hoja = { hojaTipo: o.hojaTipo as TipoHoja, hojaImagenId: o.hojaImagenId }
         if (entrada.danios && entrada.carroceria) {
           const [auto] = await tx
             .select({ modeloId: vehiculo.modeloId })
             .from(vehiculo)
             .where(eq(vehiculo.id, o.vehiculoId))
-          silueta = await this.siluetaDe(tx, auto?.modeloId ?? null, entrada.carroceria)
+          hoja = await this.hojaDe(tx, auto?.modeloId ?? null, entrada.carroceria)
         }
         await tx
           .update(orden)
@@ -365,7 +365,7 @@ export class ServicioOrdenes {
             pedido: entrada.pedido,
             observaciones: entrada.observaciones ?? null,
             // Sin mandar, quedan como estaban: editar los datos de contacto no borra el dibujo.
-            ...(entrada.danios ? { silueta, danios: conZona(silueta, entrada.danios) } : {}),
+            ...(entrada.danios ? { ...hoja, danios: marcas(entrada.danios) } : {}),
             ...(entrada.inventario ? { inventario: entrada.inventario } : {}),
             entregaEstimada: entrada.entregaEstimada ?? null,
             actualizadoEn: new Date(),
@@ -953,25 +953,38 @@ export class ServicioOrdenes {
    * también, cuando el modelo ya dice qué es, gana el modelo: corregirlo es cosa del catálogo,
    * no de una recepción suelta.
    */
-  private async siluetaDe(
+  private async hojaDe(
     tx: Db,
     modeloId: string | null,
     elegida: Carroceria | null | undefined,
-  ): Promise<Silueta> {
-    if (!modeloId) return elegida ? SILUETA_DE[elegida] : SILUETA_POR_OMISION
+  ): Promise<{ hojaTipo: TipoHoja; hojaImagenId: string | null }> {
+    let carroceria = elegida ?? null
 
-    const [m] = await tx
-      .select({ carroceria: modelo.carroceria })
-      .from(modelo)
-      .where(eq(modelo.id, modeloId))
-    const guardada = (m?.carroceria as Carroceria | null | undefined) ?? null
-    if (!guardada && elegida) {
-      await tx
-        .update(modelo)
-        .set({ carroceria: elegida })
-        .where(and(eq(modelo.id, modeloId), isNull(modelo.carroceria)))
+    if (modeloId) {
+      const [m] = await tx
+        .select({ carroceria: modelo.carroceria })
+        .from(modelo)
+        .where(eq(modelo.id, modeloId))
+      const guardada = (m?.carroceria as Carroceria | null | undefined) ?? null
+      if (!guardada && elegida) {
+        await tx
+          .update(modelo)
+          .set({ carroceria: elegida })
+          .where(and(eq(modelo.id, modeloId), isNull(modelo.carroceria)))
+      }
+      carroceria = guardada ?? elegida ?? null
     }
-    return SILUETA_DE[guardada ?? elegida ?? 'sedan']
+
+    const hojaTipo = carroceria ? HOJA_DE[carroceria] : HOJA_POR_OMISION
+
+    // Y cuál es el dibujo de hoy. Se guarda el id, no el tipo solo: si el taller sube otro
+    // mañana, esta orden se sigue viendo con el que el cliente firmó. Sin propio, queda en
+    // null y se usa el del sistema.
+    const [imagen] = await tx
+      .select({ id: hojaImagen.id })
+      .from(hojaImagen)
+      .where(and(eq(hojaImagen.tipo, hojaTipo), isNull(hojaImagen.reemplazadaEn)))
+    return { hojaTipo, hojaImagenId: imagen?.id ?? null }
   }
 
   private async verificarReferencias(tx: Db, pagaId: string | null) {
@@ -1097,7 +1110,8 @@ export class ServicioOrdenes {
       observaciones: o.observaciones,
       danios: o.danios,
       inventario: o.inventario,
-      silueta: o.silueta as Silueta,
+      hojaTipo: o.hojaTipo as TipoHoja,
+      hojaImagenId: o.hojaImagenId,
       terminadaEn: o.terminadaEn?.toISOString() ?? null,
       entregadaEn: o.entregadaEn?.toISOString() ?? null,
       items: items.map((i) => ({

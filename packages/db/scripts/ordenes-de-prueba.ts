@@ -1,5 +1,5 @@
 import { randomBytes } from 'node:crypto'
-import { cuitValido, type Silueta, type TipoDanio, zonaEn } from '@gpb/core'
+import { cuitValido, type TipoDanio, type TipoHoja } from '@gpb/core'
 import { and, eq, isNull, sql } from 'drizzle-orm'
 import { crearDb, crearPool, type Db } from '../src/index.ts'
 import {
@@ -153,9 +153,9 @@ interface OrdenPrueba {
   combustible: string
   pedido: string
   observaciones: string | null
-  /** Con cuál de los tres dibujos se marcó. La semilla no mira el modelo: lo dice acá. */
-  silueta?: Silueta
-  /** Las marcas del auto dibujado: [tipo, x, y, detalle], en coordenadas del dibujo. */
+  /** Con cuál de los dibujos se marcó. La semilla no mira el modelo: lo dice acá. */
+  hojaTipo?: TipoHoja
+  /** Las marcas: [tipo, x, y, detalle], con x e y en fracción del dibujo. */
   danios?: Array<[TipoDanio, number, number, string | null]>
   inventario?: InventarioRecepcion
   prometida: number | null
@@ -175,9 +175,9 @@ const ORDENES: OrdenPrueba[] = [
     pedido: 'Service de 60.000 km. Ruido en el tren delantero al pasar lomas de burro.',
     observaciones: 'Testigo de ABS prendido al recibirlo.',
     danios: [
-      ['rayon', 186, 228, 'Largo, a la altura de la manija'],
-      ['falta', 30, 300, 'Falta la tapa de la llanta'],
-      ['golpe', 120, 340, null],
+      ['rayon', 0.78, 0.61, 'Largo, a la altura de la manija'],
+      ['falta', 0.13, 0.81, 'Falta la tapa de la llanta'],
+      ['golpe', 0.5, 0.91, null],
     ],
     inventario: {
       auxilio: 'esta',
@@ -220,8 +220,8 @@ const ORDENES: OrdenPrueba[] = [
     pedido: 'Patina el embrague en las subidas.',
     observaciones: null,
     danios: [
-      ['roto', 84, 27, 'Despegado del lado izquierdo'],
-      ['rayon', 150, 60, null],
+      ['roto', 0.35, 0.07, 'Despegado del lado izquierdo'],
+      ['rayon', 0.63, 0.16, null],
     ],
     prometida: 2,
     conMecanico: true,
@@ -469,14 +469,8 @@ async function abrirOrdenes(tx: Db, tenantId: string) {
         combustible: o.combustible,
         pedido: o.pedido,
         observaciones: o.observaciones,
-        silueta: o.silueta ?? 'auto',
-        danios: (o.danios ?? []).map(([tipo, x, y, nota]) => ({
-          zona: zonaEn(o.silueta ?? 'auto', x, y)?.id ?? 'techo',
-          tipo,
-          x,
-          y,
-          nota,
-        })),
+        hojaTipo: o.hojaTipo ?? 'sedan',
+        danios: (o.danios ?? []).map(([tipo, x, y, nota]) => ({ tipo, x, y, nota })),
         inventario: o.inventario ?? {},
         entregaEstimada: o.prometida === null ? null : fecha(o.prometida),
         asesorId: asesor.id,

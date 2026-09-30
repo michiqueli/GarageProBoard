@@ -20,6 +20,7 @@ import {
 import { actualizadoEn, creadoEn, pk, tenantId } from './_comunes.ts'
 import { usuario } from './acceso.ts'
 import { empleado, entidadComercial } from './comercial.ts'
+import { hojaImagen } from './hoja.ts'
 import { sucursal } from './organizacion.ts'
 import { repuesto } from './repuestos.ts'
 import { tenant } from './tenant.ts'
@@ -38,9 +39,11 @@ export const ESTADOS_ORDEN = [
 
 export const NIVELES_COMBUSTIBLE = ['vacio', 'cuarto', 'medio', 'tres_cuartos', 'lleno'] as const
 
-/** Una marca en el auto dibujado. Las coordenadas son del dibujo de `@gpb/core`, no de la pantalla. */
+/**
+ * Una marca sobre el dibujo de la recepción. `x` e `y` van **en fracción**, entre 0 y 1: el
+ * taller puede reemplazar su dibujo por uno de otro tamaño y la marca no se mueve.
+ */
 export interface DanioRecepcion {
-  zona: string
   tipo: TipoDanio
   x: number
   y: number
@@ -110,12 +113,18 @@ export const orden = pgTable(
      */
     danios: jsonb().$type<DanioRecepcion[]>().notNull().default(sql`'[]'::jsonb`),
     /**
-     * Con qué dibujo se marcaron: el auto, la pickup o el furgón. Sale de la carrocería del
-     * modelo, pero **se copia acá** porque las marcas son puntos de ese dibujo. Si mañana
-     * alguien corrige la carrocería del modelo, las órdenes viejas se redibujarían con otra
-     * silueta y un golpe en el baúl aparecería en la caja de una pickup.
+     * Qué carrocería se dibujó. Sale de la del modelo, pero **se copia acá**: si mañana alguien
+     * la corrige, las órdenes viejas se redibujarían con otro vehículo y las marcas caerían en
+     * cualquier lado.
      */
-    silueta: text().notNull().default('auto'),
+    hojaTipo: text().notNull().default('sedan'),
+    /**
+     * La imagen exacta con la que se recibió, o `null` si se usó la que trae el sistema.
+     *
+     * Por eso `hoja_imagen` no se modifica nunca: esta orden la apunta, y una hoja firmada se
+     * tiene que poder reimprimir dentro de dos años con las marcas donde el cliente las vio.
+     */
+    hojaImagenId: uuid().references(() => hojaImagen.id),
     /** Lo que vino con el auto: el auxilio, el gato. Lo que no figura, no se revisó. */
     inventario: jsonb().$type<InventarioRecepcion>().notNull().default(sql`'{}'::jsonb`),
     entregaEstimada: date(),
@@ -151,7 +160,7 @@ export const orden = pgTable(
     ),
     check('orden_kilometraje_positivo', sql`${t.kilometraje} is null or ${t.kilometraje} >= 0`),
     check('orden_danios_lista', sql`jsonb_typeof(${t.danios}) = 'array'`),
-    check('orden_silueta_valida', sql`${t.silueta} in ('auto', 'pickup', 'furgon')`),
+    check('orden_hoja_tipo_valido', sql`${t.hojaTipo} in ('sedan', 'hatchback', 'suv', 'pickup')`),
     check('orden_inventario_objeto', sql`jsonb_typeof(${t.inventario}) = 'object'`),
     check('orden_codigo_qr_formato', sql`${t.codigoQr} ~ '^[0-9A-HJKMNP-TV-Z]{8}$'`),
   ],

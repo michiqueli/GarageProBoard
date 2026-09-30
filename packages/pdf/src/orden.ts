@@ -1,15 +1,10 @@
 import {
   type ControlInventario,
   DANIOS,
-  dibujo,
   ELEMENTOS_INVENTARIO,
   type ElementoInventario,
   INVENTARIO,
-  ROTULOS,
-  type Silueta,
   type TipoDanio,
-  VISTA,
-  zona,
 } from '@gpb/core'
 import PDFDocument from 'pdfkit'
 import { dibujarQr } from './comun.ts'
@@ -50,10 +45,14 @@ export interface DatosOrdenImpresa {
   paga: string | null
   pedido: string
   observaciones: string | null
-  /** Cuál de los tres dibujos: el auto, la pickup o el furgón. Lo trae la orden. */
-  silueta: Silueta
-  /** Las marcas del auto dibujado, en coordenadas del dibujo de `@gpb/core`. */
-  danios: Array<{ zona: string; tipo: TipoDanio; x: number; y: number; nota: string | null }>
+  /**
+   * El dibujo del vehículo con el que se recibió, tal cual: los bytes de la imagen que el
+   * taller tenía cargada ese día. Sin él —un taller que todavía no subió ninguna— la hoja sale
+   * con las marcas en texto y sin dibujo, que es mejor que no salir.
+   */
+  hoja: { imagen: Uint8Array; ancho: number; alto: number } | null
+  /** Las marcas, en fracción del ancho y del alto del dibujo. */
+  danios: Array<{ tipo: TipoDanio; x: number; y: number; nota: string | null }>
   inventario: Partial<Record<ElementoInventario, ControlInventario>>
   asesor: string
   mecanico: string | null
@@ -135,7 +134,7 @@ function caja(doc: Doc, y: number, alto: number, titulo?: string) {
 }
 
 const ALTO_DIBUJO = mm(58)
-const ANCHO_DIBUJO = (ALTO_DIBUJO * VISTA.ancho) / VISTA.alto
+const ANCHO_MAXIMO_DIBUJO = mm(62)
 
 /**
  * El auto dibujado con sus marcas, al lado la lista con el nombre de cada zona, lo que vino
@@ -150,28 +149,24 @@ const ANCHO_DIBUJO = (ALTO_DIBUJO * VISTA.ancho) / VISTA.alto
 function estadoDelVehiculo(doc: Doc, o: DatosOrdenImpresa, y: number): number {
   const x0 = IZQ + mm(3)
   const y0 = y + mm(7)
-  const escala = ALTO_DIBUJO / VISTA.alto
 
-  doc.save()
-  doc.translate(x0, y0).scale(escala)
-  doc.lineWidth(0.7 / escala).strokeColor('#777')
-  for (const d of dibujo(o.silueta)) doc.path(d).stroke()
-  doc.restore()
-  doc.strokeColor('#000')
+  // El dibujo entra en su caja sin deformarse: el taller sube la imagen que quiere y la hoja
+  // no puede estirar un auto para que llene el hueco.
+  const escala = o.hoja
+    ? Math.min(ALTO_DIBUJO / o.hoja.alto, ANCHO_MAXIMO_DIBUJO / o.hoja.ancho)
+    : 0
+  const anchoDibujo = o.hoja ? o.hoja.ancho * escala : 0
+  const altoDibujo = o.hoja ? o.hoja.alto * escala : 0
 
-  doc.font(NORMAL).fontSize(6).fillColor('#555')
-  for (const [texto, r] of [
-    ['ADELANTE', ROTULOS.adelante],
-    ['ATRÁS', ROTULOS.atras],
-  ] as const) {
-    doc.text(texto, x0, y0 + r.y * escala - mm(1.2), { width: ANCHO_DIBUJO, align: 'center' })
+  if (o.hoja) {
+    doc.image(Buffer.from(o.hoja.imagen), x0, y0, { width: anchoDibujo, height: altoDibujo })
   }
-  doc.fillColor('#000')
 
   const radio = mm(1.9)
   for (const d of o.danios) {
-    const cx = x0 + d.x * escala
-    const cy = y0 + d.y * escala
+    if (!o.hoja) break
+    const cx = x0 + d.x * anchoDibujo
+    const cy = y0 + d.y * altoDibujo
     doc.circle(cx, cy, radio).fill('#000')
     doc
       .font(NEGRITA)
@@ -186,7 +181,7 @@ function estadoDelVehiculo(doc: Doc, o: DatosOrdenImpresa, y: number): number {
   doc.fillColor('#000')
 
   // La columna de la derecha: marcas, inventario y observaciones.
-  const xt = x0 + ANCHO_DIBUJO + mm(6)
+  const xt = x0 + (o.hoja ? anchoDibujo : 0) + mm(6)
   const ancho = DER - mm(3) - xt
   let yt = y + mm(7)
 
@@ -214,12 +209,11 @@ function estadoDelVehiculo(doc: Doc, o: DatosOrdenImpresa, y: number): number {
     yt = doc.y + mm(1.5)
   } else {
     for (const d of o.danios) {
-      const donde = zona(o.silueta, d.zona)?.nombre ?? d.zona
       doc
         .font(NEGRITA)
         .text(`${DANIOS[d.tipo].letra}  `, xt, yt, { continued: true, width: ancho })
         .font(NORMAL)
-        .text(`${DANIOS[d.tipo].nombre} · ${donde}${d.nota ? ` — ${d.nota}` : ''}`)
+        .text(`${DANIOS[d.tipo].nombre}${d.nota ? ` — ${d.nota}` : ''}`)
       yt = doc.y + mm(0.6)
     }
     yt += mm(1)

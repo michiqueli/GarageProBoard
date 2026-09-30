@@ -6,6 +6,7 @@ import { implement } from '@orpc/nest'
 import type { FastifyRequest } from 'fastify'
 import { Operacion } from '../comun/operacion.ts'
 import { qrFirmado, SecretoQrFaltante } from '../comun/qr.ts'
+import { ServicioHojas } from '../hojas/hojas.service.ts'
 import { ErrorOrdenes, horaArgentina, ServicioOrdenes } from './ordenes.service.ts'
 
 const c = contrato.ordenes
@@ -28,7 +29,11 @@ function traducir<E extends Partial<Record<ErrorOrdenes['codigo'] | 'SIN_SECRETO
 
 @Controller()
 export class ControladorOrdenes {
-  constructor(@Inject(ServicioOrdenes) private readonly servicio: ServicioOrdenes) {}
+  constructor(
+    @Inject(ServicioOrdenes) private readonly servicio: ServicioOrdenes,
+    /** La hoja impresa lleva el dibujo con el que se recibió, así que hay que ir a buscarlo. */
+    @Inject(ServicioHojas) private readonly hojas: ServicioHojas,
+  ) {}
 
   @Operacion(c.listar)
   listar() {
@@ -170,7 +175,13 @@ export class ControladorOrdenes {
           paga: o.paga?.razonSocial ?? null,
           pedido: o.pedido,
           observaciones: o.observaciones,
-          silueta: o.silueta,
+          // El dibujo exacto con el que se firmó, no el que esté vigente hoy.
+          hoja: o.hojaImagenId
+            ? await this.hojas
+                .bytes(o.hojaImagenId)
+                .then((h) => ({ imagen: h.contenido, ancho: h.ancho, alto: h.alto }))
+                .catch(() => null)
+            : null,
           danios: o.danios,
           inventario: o.inventario,
           asesor: o.asesor,

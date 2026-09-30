@@ -21,6 +21,7 @@ const ordenes = {
   pdfPresupuesto: vi.fn(),
 }
 const listarVehiculos = vi.fn()
+const listarHojas = vi.fn()
 const listarRepuestos = vi.fn()
 const listarPedidos = vi.fn()
 const renovar = vi.fn()
@@ -32,6 +33,10 @@ vi.mock('../src/sesion/cliente.ts', () => ({
     repuestos: { listar: (x: unknown) => listarRepuestos(x) },
     pedidosRepuestos: { listar: (x: unknown) => listarPedidos(x) },
     clientes: { listar: vi.fn().mockResolvedValue({ datos: [], total: 0 }) },
+    hojas: {
+      listar: () => listarHojas(),
+      imagen: vi.fn().mockResolvedValue(new Blob([new Uint8Array([1])], { type: 'image/png' })),
+    },
     ordenes: Object.fromEntries(
       Object.keys(ordenes).map((n) => [
         n,
@@ -81,7 +86,8 @@ const FICHA = {
   kilometraje: 48210,
   combustible: 'medio',
   observaciones: null,
-  silueta: 'auto',
+  hojaTipo: 'sedan',
+  hojaImagenId: null,
   danios: [],
   inventario: {},
   terminadaEn: null,
@@ -104,7 +110,7 @@ const FICHA = {
 }
 
 beforeEach(() => {
-  for (const f of [...Object.values(ordenes), listarVehiculos, renovar]) f.mockReset()
+  for (const f of [...Object.values(ordenes), listarVehiculos, listarHojas, renovar]) f.mockReset()
   usarSesion.getState().limpiar()
   renovar.mockImplementation(async () => {
     usarSesion.getState().establecer(SESION)
@@ -113,6 +119,10 @@ beforeEach(() => {
   ordenes.listar.mockResolvedValue({ datos: [ORDEN], total: 1 })
   ordenes.ficha.mockResolvedValue(FICHA)
   ordenes.personal.mockResolvedValue({ datos: [] })
+  // El taller todavía no subió sus dibujos: es el caso de la mayoría al arrancar.
+  listarHojas.mockResolvedValue({
+    datos: ['sedan', 'hatchback', 'suv', 'pickup'].map((tipo) => ({ tipo, propia: null })),
+  })
 })
 
 afterEach(() => {
@@ -210,7 +220,6 @@ async function elegirVehiculo(etiqueta: string, vehiculo = VEHICULO_ELEGIBLE) {
 }
 
 describe('el estado del vehículo al recibirlo', () => {
-  // La hoja de papel trae las siluetas todas juntas porque no sabe qué auto va a entrar.
   it('con el modelo cargado se dibuja lo que es, y no se pregunta nada', async () => {
     ordenes.abrir.mockResolvedValue({ ...FICHA, estado: 'recibida' })
     await montarApp('/ordenes/nueva')
@@ -218,13 +227,7 @@ describe('el estado del vehículo al recibirlo', () => {
 
     // Ya se sabe qué es: no se pregunta.
     expect(screen.queryByRole('radio', { name: 'Pickup' })).toBeNull()
-
-    const auto = screen.getByRole('application')
-    auto.focus()
-    // Bajando desde el capot: parabrisas, techo, ventanilla y la caja, que un auto no tiene.
-    await userEvent.keyboard('{ArrowDown}{ArrowDown}{ArrowDown}{ArrowDown}g')
-    const marcas = screen.getByRole('list', { name: 'Marcas' })
-    expect(within(marcas).getByText('Golpe · Caja de carga')).toBeDefined()
+    expect(screen.getByRole('application', { name: /Dibujo de Pickup/ })).toBeDefined()
   })
 
   it('si el modelo no dice qué es, se pregunta una vez, y cambiarlo borra las marcas', async () => {
@@ -236,11 +239,9 @@ describe('el estado del vehículo al recibirlo', () => {
     const auto = screen.getByRole('application')
     auto.focus()
     await userEvent.keyboard('{ArrowDown}{ArrowDown}r')
-    expect(
-      within(screen.getByRole('list', { name: 'Marcas' })).getByText('Rayón · Techo'),
-    ).toBeDefined()
+    expect(within(screen.getByRole('list', { name: 'Marcas' })).getByText('Rayón')).toBeDefined()
 
-    // Era una pickup: el techo marcado es de otro dibujo, así que la marca no puede quedar.
+    // Era una pickup: las marcas están puestas sobre otro dibujo, así que no pueden quedar.
     await userEvent.click(screen.getByRole('radio', { name: 'Pickup' }))
     expect(screen.queryByRole('list', { name: 'Marcas' })).toBeNull()
 
@@ -252,7 +253,12 @@ describe('el estado del vehículo al recibirlo', () => {
     )
   })
 
-  it('con teclado: las flechas recorren las piezas por dónde están y la letra marca', async () => {
+  /**
+   * Sin mouse: la cruz arranca en el medio del dibujo, las flechas la mueven y la letra marca
+   * donde quedó. Es lo que reemplazó al recorrido por piezas, que no existe más porque el
+   * dibujo lo pone cada taller.
+   */
+  it('con teclado: las flechas mueven la cruz y la letra marca donde quedó', async () => {
     ordenes.abrir.mockResolvedValue({ ...FICHA, estado: 'recibida' })
     await montarApp('/ordenes/nueva')
     await elegirVehiculo('Vehículo')
@@ -260,54 +266,49 @@ describe('el estado del vehículo al recibirlo', () => {
 
     const auto = screen.getByRole('application')
     auto.focus()
-    // Arranca en el capot; a la izquierda del capot está el guardabarros, no la óptica.
     await userEvent.keyboard('r')
-    await userEvent.keyboard('{ArrowLeft}')
-    await userEvent.keyboard('g')
+    // Dos flechas a la izquierda son cuatro centésimas del ancho.
+    await userEvent.keyboard('{ArrowLeft}{ArrowLeft}g')
 
     const marcas = screen.getByRole('list', { name: 'Marcas' })
-    expect(within(marcas).getByText('Rayón · Capot')).toBeDefined()
-    expect(within(marcas).getByText('Golpe · Guardabarros delantero izquierdo')).toBeDefined()
+    expect(within(marcas).getByText('Rayón')).toBeDefined()
+    expect(within(marcas).getByText('Golpe')).toBeDefined()
 
-    await userEvent.type(
-      screen.getByLabelText('Detalle de golpe · guardabarros delantero izquierdo'),
-      'Chico',
-    )
+    await userEvent.type(screen.getByLabelText('Detalle de la marca 2, golpe'), 'Chico')
     await userEvent.keyboard('{F2}')
     await waitFor(() =>
       expect(ordenes.abrir).toHaveBeenCalledWith(
         expect.objectContaining({
           danios: [
-            { tipo: 'rayon', x: 120, y: 75, nota: null },
-            { tipo: 'golpe', x: 54, y: 75, nota: 'Chico' },
+            { tipo: 'rayon', x: 0.5, y: 0.5, nota: null },
+            { tipo: 'golpe', x: 0.46, y: 0.5, nota: 'Chico' },
           ],
         }),
       ),
     )
   })
 
-  it('Supr quita la última marca de la pieza, después de confirmar', async () => {
+  it('Supr quita la última marca, después de confirmar', async () => {
     await montarApp('/ordenes/nueva')
     await screen.findByLabelText('Vehículo')
     const auto = screen.getByRole('application')
     auto.focus()
     await userEvent.keyboard('x')
-    expect(screen.getByText('Roto o rajado · Capot')).toBeDefined()
+    const marcas = screen.getByRole('list', { name: 'Marcas' })
+    expect(within(marcas).getByText('Roto o rajado')).toBeDefined()
 
     await userEvent.keyboard('{Delete}')
     await confirmarDialogo('Quitar la marca')
-    await waitFor(() => expect(screen.queryByText('Roto o rajado · Capot')).toBeNull())
+    await waitFor(() => expect(screen.queryByRole('list', { name: 'Marcas' })).toBeNull())
   })
 
-  it('tocar una pieza la marca con lo elegido', async () => {
+  it('tocar el dibujo lo marca con lo elegido', async () => {
     await montarApp('/ordenes/nueva')
     await screen.findByLabelText('Vehículo')
     const queMarcar = screen.getByRole('group', { name: 'Qué marcar' })
     await userEvent.click(within(queMarcar).getByRole('radio', { name: /Falta/ }))
-    const espejo = document.querySelector('[data-zona="espejo_derecho"]')
-    if (!espejo) throw new Error('falta el espejo en el dibujo')
-    await userEvent.click(espejo)
-    expect(screen.getByText('Falta · Espejo derecho')).toBeDefined()
+    await userEvent.click(screen.getByRole('application'))
+    expect(within(screen.getByRole('list', { name: 'Marcas' })).getByText('Falta')).toBeDefined()
   })
 
   it('el inventario: lo que falta, y el resto de un toque', async () => {
@@ -340,13 +341,13 @@ describe('el estado del vehículo al recibirlo', () => {
     expect(within(lista).getAllByText('Sin revisar')).toHaveLength(9)
   })
 
-  it('la ficha muestra las marcas con la pieza donde cayeron', async () => {
+  it('la ficha muestra las marcas con su detalle, y no se pueden tocar', async () => {
     ordenes.ficha.mockResolvedValue({
       ...FICHA,
-      danios: [{ zona: 'puerta_delantera_derecha', tipo: 'golpe', x: 186, y: 153, nota: 'Hondo' }],
+      danios: [{ tipo: 'golpe', x: 0.78, y: 0.41, nota: 'Hondo' }],
     })
     await montarApp(`/ordenes/${ORDEN.id}`)
-    expect(await screen.findByText('Golpe · Puerta delantera derecha')).toBeDefined()
+    expect(await screen.findByText('Golpe')).toBeDefined()
     expect(screen.getByText('— Hondo')).toBeDefined()
     // De sólo lectura: el dibujo de la ficha no se marca.
     expect(screen.queryByRole('application')).toBeNull()
@@ -375,9 +376,7 @@ describe('la recepción en tablet', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Siguiente' }))
 
     await screen.findByText('¿Cómo está el vehículo?')
-    const techo = document.querySelector('[data-zona="techo"]')
-    if (!techo) throw new Error('falta el techo en el dibujo')
-    await userEvent.click(techo)
+    await userEvent.click(screen.getByRole('application'))
     await userEvent.click(screen.getByRole('button', { name: 'Siguiente' }))
 
     await screen.findByText('¿Qué vino con el auto?')
@@ -385,7 +384,7 @@ describe('la recepción en tablet', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Siguiente' }))
 
     await screen.findByText('Revisalo con el cliente')
-    expect(screen.getByText('R Rayón · Techo')).toBeDefined()
+    expect(screen.getByText('R Rayón')).toBeDefined()
     expect(screen.getByText('Todo lo revisado está')).toBeDefined()
     await userEvent.click(screen.getByRole('button', { name: /Abrir la orden/ }))
 
@@ -394,7 +393,7 @@ describe('la recepción en tablet', () => {
         expect.objectContaining({
           vehiculoId: ORDEN.vehiculo.id,
           pedido: 'Cambio de aceite',
-          danios: [{ tipo: 'rayon', x: 120, y: 192, nota: null }],
+          danios: [{ tipo: 'rayon', x: 0.5, y: 0.5, nota: null }],
         }),
       ),
     )

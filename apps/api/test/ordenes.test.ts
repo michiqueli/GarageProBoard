@@ -184,21 +184,22 @@ describe('la recepción', () => {
     expect(otra.json()).toMatchObject({ numero: 2, titular: null, paga: null, total: '180000.00' })
   })
 
-  it('el estado del auto: la zona sale del punto, no de lo que diga la pantalla', async () => {
+  it('el estado del auto: las marcas en fracción, y el detalle sin espacios de más', async () => {
     const r = await pedir(gerente, 'PUT', `/ordenes/${ordenId}`, {
       ...RECEPCION_1,
+      // Con más decimales de los que significan algo: la posición de un dedo no tiene
+      // dieciséis dígitos.
       danios: [
-        // Mandada como capot, cae en el techo: se guarda como techo.
-        { zona: 'capot', tipo: 'rayon', x: 120.04, y: 180, nota: '  Largo  ' },
-        { tipo: 'falta', x: 30, y: 127, nota: '' },
+        { tipo: 'rayon', x: 0.500123456, y: 0.4837, nota: '  Largo  ' },
+        { tipo: 'falta', x: 0.125, y: 0.3414, nota: '' },
       ],
       inventario: { auxilio: 'falta', gato: 'esta' },
     })
     expect(r.statusCode).toBe(200)
     expect(r.json()).toMatchObject({
       danios: [
-        { zona: 'techo', tipo: 'rayon', x: 120, y: 180, nota: 'Largo' },
-        { zona: 'espejo_izquierdo', tipo: 'falta', x: 30, y: 127, nota: null },
+        { tipo: 'rayon', x: 0.5001, y: 0.4837, nota: 'Largo' },
+        { tipo: 'falta', x: 0.125, y: 0.3414, nota: null },
       ],
       inventario: { auxilio: 'falta', gato: 'esta' },
     })
@@ -216,17 +217,15 @@ describe('la recepción', () => {
     expect(vacio.json().danios).toEqual([])
   })
 
-  it('una marca fuera del auto, o de un tipo que no existe, no se guarda', async () => {
+  it('una marca fuera del dibujo, o de un tipo que no existe, no se guarda', async () => {
     const afuera = await pedir(gerente, 'PUT', `/ordenes/${ordenId}`, {
       ...RECEPCION_1,
-      danios: [{ tipo: 'rayon', x: 2, y: 2 }],
+      danios: [{ tipo: 'rayon', x: 1.4, y: 0.5 }],
     })
-    // La rechaza el servidor y no el contrato: si cae en la chapa depende de qué dibujo es.
-    expect(afuera.statusCode).toBe(422)
-    expect(afuera.json()).toMatchObject({ code: 'MARCA_FUERA_DEL_AUTO' })
+    expect(afuera.statusCode).toBe(400)
     const inventado = await pedir(gerente, 'PUT', `/ordenes/${ordenId}`, {
       ...RECEPCION_1,
-      danios: [{ tipo: 'abollon', x: 120, y: 180 }],
+      danios: [{ tipo: 'abollon', x: 0.5, y: 0.5 }],
       inventario: { auxilio: 'quizas' },
     })
     expect(inventado.statusCode).toBe(400)
@@ -237,22 +236,22 @@ describe('la recepción', () => {
       vehiculoId: pickupId,
       pedido: 'Ruido atrás',
       carroceria: 'pickup',
-      danios: [{ tipo: 'golpe', x: 120, y: 250 }],
+      danios: [{ tipo: 'golpe', x: 0.5, y: 0.67 }],
     })
     expect(r.statusCode).toBe(201)
-    // Ese mismo punto es el techo de un auto y la caja de una camioneta.
-    expect(r.json()).toMatchObject({ silueta: 'pickup', danios: [{ zona: 'caja' }] })
+    expect(r.json()).toMatchObject({ hojaTipo: 'pickup', hojaImagenId: null })
 
     // Y el catálogo lo aprendió: del próximo Amarok no se pregunta más.
     const [m] = await api.pg.dbDuenio.select().from(modelo).where(eq(modelo.id, modeloId))
     expect(m?.carroceria).toBe('pickup')
 
-    // La orden 1 se dibujó como auto y sigue así: sus marcas son puntos de ese dibujo.
+    // La orden 1 se recibió como sedán y sigue así, aunque su vehículo no tenga modelo: el
+    // dibujo de una orden no se recalcula.
     const editada = await pedir(gerente, 'PUT', `/ordenes/${ordenId}`, {
       ...RECEPCION_1,
-      danios: [{ tipo: 'rayon', x: 120, y: 180 }],
+      danios: [{ tipo: 'rayon', x: 0.5, y: 0.48 }],
     })
-    expect(editada.json()).toMatchObject({ silueta: 'auto', danios: [{ zona: 'techo' }] })
+    expect(editada.json()).toMatchObject({ hojaTipo: 'sedan' })
   })
 
   it('el listado busca por patente y por número', async () => {

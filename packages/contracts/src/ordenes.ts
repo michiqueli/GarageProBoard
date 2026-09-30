@@ -2,10 +2,8 @@ import {
   CARROCERIAS,
   CONTROLES_INVENTARIO,
   ELEMENTOS_INVENTARIO,
-  SILUETAS,
   TIPOS_DANIO,
-  VISTA,
-  ZONAS_IDS,
+  TIPOS_HOJA,
 } from '@gpb/core'
 import { z } from 'zod'
 import { conPermiso } from './acceso.ts'
@@ -47,25 +45,20 @@ const opcional = z
 const persona = z.object({ id: z.uuid(), razonSocial: z.string() })
 
 /**
- * Una marca en el auto dibujado de la recepción. `x` e `y` son del dibujo de `@gpb/core`,
- * no de la pantalla: así cae en el mismo lugar en la tablet, en el monitor y en la hoja.
+ * Una marca sobre el dibujo de la recepción.
+ *
+ * `x` e `y` van **en fracción del ancho y del alto**, entre 0 y 1: así el taller puede
+ * reemplazar su dibujo por uno de otro tamaño y la marca sigue cayendo donde el cliente la vio.
+ * Guardar píxeles ataría cada marca a la resolución del archivo que había ese día.
  */
 export const danioRecepcion = z.object({
-  zona: z.enum(ZONAS_IDS),
   tipo: z.enum(TIPOS_DANIO),
-  x: z.number().min(0).max(VISTA.ancho),
-  y: z.number().min(0).max(VISTA.alto),
+  x: z.number().min(0).max(1),
+  y: z.number().min(0).max(1),
   nota: z.string().nullable(),
 })
 
-/**
- * Sin zona: sale del punto. Mandarla sería darle a la pantalla la chance de contradecirlo.
- *
- * Y que el punto caiga adentro de la chapa tampoco se valida acá: depende de qué dibujo es
- * —el baúl de un auto es caja en una pickup— y eso lo sabe el servidor, que es el que resuelve
- * la silueta. Acá sólo se comprueba que esté dentro del lienzo.
- */
-const danioEntrada = danioRecepcion.omit({ zona: true }).extend({
+const danioEntrada = danioRecepcion.extend({
   nota: z
     .string()
     .trim()
@@ -174,8 +167,15 @@ export const ordenDetalle = ordenResumen.extend({
   observaciones: z.string().nullable(),
   danios: z.array(danioRecepcion),
   inventario: inventarioRecepcion,
-  /** Con qué dibujo se marcó. Va con la orden porque las marcas son puntos de ese dibujo. */
-  silueta: z.enum(SILUETAS),
+  /** Qué carrocería se dibujó: decide cuál de los dibujos del sistema usar si no hay propio. */
+  hojaTipo: z.enum(TIPOS_HOJA),
+  /**
+   * La imagen exacta con la que se recibió, o `null` si se usó la del sistema.
+   *
+   * Va con la orden y no se recalcula: las marcas son puntos de **ese** dibujo. Si el taller
+   * sube uno nuevo, esta orden se sigue viendo y se sigue imprimiendo con el que firmó.
+   */
+  hojaImagenId: z.uuid().nullable(),
   terminadaEn: z.iso.datetime().nullable(),
   entregadaEn: z.iso.datetime().nullable(),
   items: z.array(itemOrden),
@@ -244,14 +244,6 @@ const ESTADO_INVALIDO = {
     data: z.object({ motivo: z.string() }),
   },
 } as const
-/**
- * El punto cayó fuera de la chapa. Lo resuelve el servidor y no el contrato porque depende de
- * qué dibujo le toca al vehículo, que sale de la carrocería de su modelo.
- */
-const MARCA_FUERA = {
-  MARCA_FUERA_DEL_AUTO: { status: 422, message: 'Una de las marcas cae fuera del auto' },
-} as const
-
 export const contratoOrdenes = {
   listar: conPermiso('servicios', 'ver', 'Orden')
     .route({
@@ -302,7 +294,6 @@ export const contratoOrdenes = {
       }),
     )
     .errors({
-      ...MARCA_FUERA,
       NO_ENCONTRADO: { status: 404, message: 'Ese vehículo, cliente o mecánico no existe' },
       VEHICULO_CON_ORDEN: {
         status: 409,
@@ -324,7 +315,6 @@ export const contratoOrdenes = {
     .errors({
       ...NO_ENCONTRADA,
       ...ESTADO_INVALIDO,
-      ...MARCA_FUERA,
       NO_ENCONTRADO: { status: 404, message: 'Ese cliente o mecánico no existe' },
     })
     .output(ordenDetalle),

@@ -122,7 +122,13 @@ export class ServicioHojas {
   }
 
   /** Los bytes, para la pantalla y para la hoja impresa. */
-  async bytes(id: string): Promise<{ contenido: Uint8Array; formato: string; nombre: string }> {
+  async bytes(id: string): Promise<{
+    contenido: Uint8Array
+    formato: string
+    nombre: string
+    ancho: number
+    alto: number
+  }> {
     const fila = await this.datos.transaccion(async (tx) => {
       const [f] = await tx.select().from(hojaImagen).where(eq(hojaImagen.id, id))
       return f
@@ -141,6 +147,8 @@ export class ServicioHojas {
       contenido: objeto.contenido,
       formato: fila.formato,
       nombre: `${fila.tipo}.${EXTENSION[fila.formato as FormatoHoja] ?? 'png'}`,
+      ancho: fila.ancho,
+      alto: fila.alto,
     }
   }
 

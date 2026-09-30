@@ -169,6 +169,20 @@
       "when": 1790724011468,
       "tag": "0023_hoja_una_por_carroceria",
       "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "7",
+      "when": 1790725817837,
+      "tag": "0024_hoja_en_la_orden",
+      "breakpoints": true
+    },
+    {
+      "idx": 25,
+      "version": "7",
+      "when": 1790725842585,
+      "tag": "0025_sin_silueta",
+      "breakpoints": true
     }
   ]
 }

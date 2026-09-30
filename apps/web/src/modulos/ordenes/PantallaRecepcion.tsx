@@ -137,7 +137,8 @@ export function PantallaRecepcion() {
           )}
           <DiagramaDanios
             danios={d.danios}
-            silueta={r.silueta}
+            hojaTipo={r.hojaTipo}
+            imagenId={r.hojaImagenId}
             onChange={(v) => poner('danios', v)}
           />
           <div className="grid gap-4 border-t border-borde pt-3 lg:grid-cols-[3fr_2fr]">

@@ -2,28 +2,22 @@ import {
   CARROCERIAS,
   CARROCERIAS_NOMBRE,
   type Carroceria,
-  centro,
   DANIOS,
-  dibujo,
-  ROTULOS,
-  type Silueta,
   TIPOS_DANIO,
+  TIPOS_HOJA_NOMBRE,
   type TipoDanio,
-  trazo,
-  VISTA,
-  type Zona,
-  zona,
-  zonaEn,
-  zonas,
+  type TipoHoja,
 } from '@gpb/core'
-import { type KeyboardEvent, type MouseEvent, useId, useRef, useState } from 'react'
+import { Link } from '@tanstack/react-router'
+import { type KeyboardEvent, type MouseEvent, useEffect, useId, useRef, useState } from 'react'
 import { confirmar } from '../../componentes/avisos.ts'
 import { Boton } from '../../componentes/Boton.tsx'
 import { IconoBorrar } from '../../componentes/iconos.tsx'
+import { api } from '../../sesion/cliente.ts'
 
 export interface Danio {
-  zona: string
   tipo: TipoDanio
+  /** En fracción del ancho y del alto del dibujo, entre 0 y 1. */
   x: number
   y: number
   nota: string | null
@@ -39,53 +33,6 @@ const COLOR: Record<TipoDanio, string> = {
 
 const LETRA_A_TIPO = new Map(TIPOS_DANIO.map((t) => [DANIOS[t].letra, t]))
 
-// Dónde cae la segunda, tercera… marca que se pone con teclado en la misma zona: sin esto
-// quedarían apiladas en el centro y se verían como una sola.
-const CORRIMIENTOS = [
-  [0, 0],
-  [0, -13],
-  [0, 13],
-  [-9, -6],
-  [9, 6],
-  [-9, 6],
-  [9, -6],
-] as const
-
-const MARGEN = 5
-
-function puntoLibre(z: Zona, cuantas: number) {
-  const c = centro(z)
-  const [dx, dy] = CORRIMIENTOS[cuantas % CORRIMIENTOS.length] ?? [0, 0]
-  return {
-    x: Math.min(z.x + z.ancho - MARGEN, Math.max(z.x + MARGEN, c.x + dx)),
-    y: Math.min(z.y + z.alto - MARGEN, Math.max(z.y + MARGEN, c.y + dy)),
-  }
-}
-
-/**
- * La zona que sigue en una dirección, **por dónde está en el dibujo** y no por el orden de la
- * lista: flecha a la derecha desde la puerta izquierda tiene que ir al techo, no a la zona que
- * se declaró después.
- */
-function vecina(silueta: Silueta, desde: Zona, dx: number, dy: number): Zona {
-  const c = centro(desde)
-  let mejor: Zona = desde
-  let puntaje = Number.POSITIVE_INFINITY
-  for (const z of zonas(silueta)) {
-    if (z.id === desde.id) continue
-    const o = centro(z)
-    const avance = (o.x - c.x) * dx + (o.y - c.y) * dy
-    if (avance <= 1) continue
-    const costado = Math.abs((o.x - c.x) * dy) + Math.abs((o.y - c.y) * dx)
-    const p = avance + costado * 2.5
-    if (p < puntaje) {
-      puntaje = p
-      mejor = z
-    }
-  }
-  return mejor
-}
-
 const FLECHAS: Record<string, [number, number]> = {
   ArrowUp: [0, -1],
   ArrowDown: [0, 1],
@@ -93,58 +40,71 @@ const FLECHAS: Record<string, [number, number]> = {
   ArrowRight: [1, 0],
 }
 
-export function describirDanio(silueta: Silueta, d: Danio): string {
-  return `${DANIOS[d.tipo].nombre} · ${zona(silueta, d.zona)?.nombre ?? d.zona}`
+/** Cuánto se mueve la cruz con cada flecha, y cuánto con Shift para afinar. */
+const PASO = 0.02
+const PASO_FINO = 0.005
+
+const entre0y1 = (n: number) => Math.min(1, Math.max(0, n))
+
+/**
+ * Cuatro decimales, que sobre una imagen de mil píxeles son décimas de píxel.
+ *
+ * Se corta acá y no sólo en el servidor porque mover la cruz dos veces deja un 0,46 escrito
+ * como 0,45999999999999996: sumar fracciones en punto flotante arrastra basura, y esa basura
+ * viaja por la red y aparece en cualquier registro que muestre la marca.
+ */
+const cortar = (n: number) => Math.round(n * 10_000) / 10_000
+
+export function describirDanio(d: Danio): string {
+  return DANIOS[d.tipo].nombre
 }
 
 /**
- * El auto dibujado de la recepción: se toca donde está el rayón, el golpe, lo roto o lo que
- * falta, y queda la marca con su letra. Es la hoja de papel del mostrador, con la ventaja de
- * que la marca dice en qué pieza cayó.
+ * El dibujo del vehículo con las marcas de lo que trae: dónde tiene un rayón, un golpe, algo
+ * roto o algo que falta.
  *
- * **Con dedo**: se elige qué marcar y se toca el auto, en el punto exacto.
- * **Con teclado**, que es como se usa en el mostrador de escritorio: el dibujo es un solo
- * lugar de `Tab`; adentro, las flechas recorren las piezas por dónde están, la letra (R, G,
- * X, F) marca la pieza en la que se está parado, y `Supr` quita la última marca de esa pieza.
+ * **El dibujo lo carga cada concesionaria** (ver `docs/tecnicos/hoja-de-recepcion.md`), así que
+ * el sistema no sabe qué pieza es cada punto: la marca es la letra donde está la cosa, más el
+ * detalle que se escriba. Es, exactamente, lo que hace la hoja de papel.
+ *
+ * **Con dedo**: se elige qué marcar y se toca el dibujo, en el punto exacto.
+ * **Con teclado**, que es como se usa en el mostrador de escritorio: el dibujo es un solo lugar
+ * de `Tab`; adentro, las flechas mueven una cruz —con `Shift` se afina—, la letra (R, G, X, F)
+ * marca donde está la cruz, y `Supr` quita la última marca.
  *
  * Sin `onChange` es de sólo lectura: la ficha de la orden lo muestra así.
- *
- * El dibujo es el que le toca al vehículo —auto, pickup o furgón— y se dibuja uno solo. Las
- * hojas de papel traen las siluetas todas juntas porque el papel no sabe qué auto va a entrar;
- * acá se sabe, así que hacer tachar la que no va sería copiar una limitación del papel.
  */
 export function DiagramaDanios({
   danios,
-  silueta,
+  imagenId,
+  hojaTipo,
   onChange,
   tactil = false,
 }: {
   danios: Danio[]
-  silueta: Silueta
+  /** La imagen con la que se marca. `null` es que el taller todavía no cargó ninguna. */
+  imagenId: string | null
+  hojaTipo: TipoHoja
   onChange?: ((danios: Danio[]) => void) | undefined
   tactil?: boolean
 }) {
   const editable = Boolean(onChange)
   const [tipo, setTipo] = useState<TipoDanio>('rayon')
-  const [activa, setActiva] = useState<string>('capot')
+  const [cruz, setCruz] = useState({ x: 0.5, y: 0.5 })
   const [conFoco, setConFoco] = useState(false)
-  const lienzo = useRef<SVGSVGElement>(null)
+  const lienzo = useRef<HTMLDivElement>(null)
   const idAyuda = useId()
-
-  // El capot existe en los tres dibujos, así que cambiar de silueta nunca deja el teclado
-  // parado en una pieza que no está.
-  const zonaActiva = zona(silueta, activa) ?? zona(silueta, 'capot')
-  const enActiva = danios.filter((d) => d.zona === zonaActiva?.id)
+  const dibujo = useDibujo(imagenId)
 
   function agregar(d: Omit<Danio, 'nota'>) {
-    onChange?.([...danios, { ...d, nota: null }])
+    onChange?.([...danios, { ...d, x: cortar(d.x), y: cortar(d.y), nota: null }])
   }
 
   async function quitar(indice: number) {
     const d = danios[indice]
     if (!d || !onChange) return
     const si = await confirmar({
-      titulo: `¿Quitar la marca de ${describirDanio(silueta, d).toLowerCase()}?`,
+      titulo: `¿Quitar la marca de ${describirDanio(d).toLowerCase()}?`,
       texto: d.nota ? `Tiene un detalle: «${d.nota}».` : undefined,
       confirmar: 'Quitar la marca',
       peligro: true,
@@ -152,38 +112,33 @@ export function DiagramaDanios({
     if (si) onChange(danios.filter((_, i) => i !== indice))
   }
 
-  function tocar(evento: MouseEvent<SVGSVGElement>) {
+  function tocar(evento: MouseEvent<HTMLDivElement>) {
     if (!editable) return
-    const svg = lienzo.current
-    const matriz = typeof svg?.getScreenCTM === 'function' ? svg.getScreenCTM() : null
-    // El punto exacto del dedo, pasado a coordenadas del dibujo.
-    const punto = matriz
-      ? new DOMPoint(evento.clientX, evento.clientY).matrixTransform(matriz.inverse())
-      : null
-    const enPunto = punto ? zonaEn(silueta, punto.x, punto.y) : undefined
-    if (punto && enPunto) {
-      setActiva(enPunto.id)
-      agregar({ zona: enPunto.id, tipo, x: punto.x, y: punto.y })
+    const caja = lienzo.current?.getBoundingClientRect()
+    // Sin geometría —un navegador sin diseño, como el de los tests— se marca en la cruz.
+    if (!caja?.width || !caja.height) {
+      agregar({ tipo, ...cruz })
       return
     }
-    // Sin geometría —un navegador sin diseño, como el de los tests—: el centro de la pieza
-    // tocada. Tocar afuera del auto no marca nada.
-    const id = (evento.target as Element).getAttribute('data-zona')
-    const tocada = id ? zona(silueta, id) : undefined
-    if (!tocada) return
-    setActiva(tocada.id)
-    agregar({ zona: tocada.id, tipo, ...centro(tocada) })
+    const x = entre0y1((evento.clientX - caja.left) / caja.width)
+    const y = entre0y1((evento.clientY - caja.top) / caja.height)
+    setCruz({ x, y })
+    agregar({ tipo, x, y })
   }
 
-  function tecla(evento: KeyboardEvent<SVGSVGElement>) {
-    if (!editable || !zonaActiva) return
+  function tecla(evento: KeyboardEvent<HTMLDivElement>) {
+    if (!editable) return
     if (evento.altKey || evento.ctrlKey || evento.metaKey) return
     const flecha = FLECHAS[evento.key]
     if (flecha) {
       evento.preventDefault()
       // Que no le llegue al mapa global: Supr también es la baja de la pantalla.
       evento.stopPropagation()
-      setActiva(vecina(silueta, zonaActiva, flecha[0], flecha[1]).id)
+      const paso = evento.shiftKey ? PASO_FINO : PASO
+      setCruz((c) => ({
+        x: entre0y1(c.x + flecha[0] * paso),
+        y: entre0y1(c.y + flecha[1] * paso),
+      }))
       return
     }
     const porLetra = LETRA_A_TIPO.get(evento.key.toUpperCase())
@@ -192,14 +147,13 @@ export function DiagramaDanios({
       evento.stopPropagation()
       const t = porLetra ?? tipo
       if (porLetra) setTipo(porLetra)
-      agregar({ zona: zonaActiva.id, tipo: t, ...puntoLibre(zonaActiva, enActiva.length) })
+      agregar({ tipo: t, ...cruz })
       return
     }
     if (evento.key === 'Delete') {
       evento.preventDefault()
       evento.stopPropagation()
-      const ultima = danios.findLastIndex((d) => d.zona === zonaActiva.id)
-      if (ultima >= 0) void quitar(ultima)
+      if (danios.length) void quitar(danios.length - 1)
     }
   }
 
@@ -211,14 +165,14 @@ export function DiagramaDanios({
     <div className="grid gap-3 md:grid-cols-[auto_1fr]">
       <div className="grid content-start justify-items-center gap-2">
         {editable && <ElegirTipo tipo={tipo} onChange={setTipo} />}
-        <svg
+        {/* biome-ignore lint/a11y/useKeyWithClickEvents: tiene onKeyDown, y el rol es application */}
+        <div
           ref={lienzo}
-          viewBox={`0 0 ${VISTA.ancho} ${VISTA.alto}`}
           role={editable ? 'application' : 'img'}
           aria-label={
             editable
-              ? 'Auto dibujado: flechas para recorrer las piezas, R G X F para marcar, Supr para quitar'
-              : `Auto dibujado con ${danios.length === 1 ? 'una marca' : `${danios.length} marcas`}`
+              ? `Dibujo de ${TIPOS_HOJA_NOMBRE[hojaTipo]}: flechas para mover la cruz, R G X F para marcar, Supr para quitar`
+              : `Dibujo con ${danios.length === 1 ? 'una marca' : `${danios.length} marcas`}`
           }
           aria-describedby={editable ? idAyuda : undefined}
           tabIndex={editable ? 0 : undefined}
@@ -226,87 +180,117 @@ export function DiagramaDanios({
           onKeyDown={tecla}
           onFocus={() => setConFoco(true)}
           onBlur={() => setConFoco(false)}
-          className={`${tactil ? 'w-full max-w-sm' : 'w-52'} touch-manipulation select-none rounded-base outline-none focus-visible:ring-2 focus-visible:ring-marca`}
+          className={`relative ${tactil ? 'w-full max-w-lg' : 'w-72'} touch-manipulation select-none overflow-hidden rounded-base bg-superficie-2 outline-none ${
+            editable ? 'cursor-crosshair focus-visible:ring-2 focus-visible:ring-marca' : ''
+          }`}
         >
-          {/* El vehículo: contorno, habitáculo, ruedas y espejos. No recibe el toque. */}
-          {dibujo(silueta).map((d) => (
-            <path
-              key={d}
-              d={d}
-              className="pointer-events-none fill-superficie-2 stroke-borde"
-              strokeWidth={1.5}
+          {dibujo.url ? (
+            <img
+              src={dibujo.url}
+              alt={`Dibujo de ${TIPOS_HOJA_NOMBRE[hojaTipo]}`}
+              className="block w-full"
+              draggable={false}
             />
-          ))}
-          {/* Las piezas, invisibles hasta que se las toca o se llega con las flechas. */}
-          {zonas(silueta).map((z) => {
-            const resaltada = editable && conFoco && z.id === activa
-            return (
-              <path
-                key={z.id}
-                d={trazo(z)}
-                data-zona={z.id}
-                className={`${resaltada ? 'fill-marca-suave stroke-marca' : 'fill-transparent stroke-transparent'} ${editable ? 'cursor-crosshair hover:fill-marca-suave' : ''}`}
-                strokeWidth={resaltada ? 2 : 0}
-              >
-                <title>{z.nombre}</title>
-              </path>
-            )
-          })}
-          <text
-            x={ROTULOS.adelante.x}
-            y={ROTULOS.adelante.y}
-            textAnchor="middle"
-            fontSize={9}
-            letterSpacing={1}
-            className="fill-texto-tenue"
-          >
-            ADELANTE
-          </text>
-          <text
-            x={ROTULOS.atras.x}
-            y={ROTULOS.atras.y}
-            textAnchor="middle"
-            fontSize={9}
-            letterSpacing={1}
-            className="fill-texto-tenue"
-          >
-            ATRÁS
-          </text>
+          ) : (
+            <SinDibujo estado={dibujo.estado} hojaTipo={hojaTipo} />
+          )}
+
           {danios.map((d, i) => (
-            // biome-ignore lint/suspicious/noArrayIndexKey: las marcas no tienen id propio y su orden es el de carga
-            <g key={i} className={`pointer-events-none ${COLOR[d.tipo]}`}>
-              <circle cx={d.x} cy={d.y} r={7} fill="currentColor" />
-              <text
-                x={d.x}
-                y={d.y}
-                textAnchor="middle"
-                dominantBaseline="central"
-                fontSize={9}
-                fontWeight={700}
-                className="fill-fondo"
-              >
-                {DANIOS[d.tipo].letra}
-              </text>
-            </g>
+            <span
+              // biome-ignore lint/suspicious/noArrayIndexKey: las marcas no tienen id propio y su orden es el de carga
+              key={i}
+              aria-hidden="true"
+              className={`pointer-events-none absolute flex size-6 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full bg-current text-etiqueta font-bold ${COLOR[d.tipo]}`}
+              style={{ left: `${d.x * 100}%`, top: `${d.y * 100}%` }}
+            >
+              <span className="text-fondo">{DANIOS[d.tipo].letra}</span>
+            </span>
           ))}
-        </svg>
+
+          {/* La cruz sólo mientras se usa el teclado: con el dedo estorba. */}
+          {editable && conFoco && (
+            <span
+              aria-hidden="true"
+              className="pointer-events-none absolute size-5 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-marca"
+              style={{ left: `${cruz.x * 100}%`, top: `${cruz.y * 100}%` }}
+            />
+          )}
+        </div>
         {editable && (
           <p id={idAyuda} aria-live="polite" className="min-h-4 text-etiqueta text-texto-suave">
-            {conFoco && zonaActiva
-              ? `${zonaActiva.nombre}${enActiva.length ? ` · ${enActiva.map((d) => DANIOS[d.tipo].nombre.toLowerCase()).join(', ')}` : ''}`
-              : 'Tocá el auto donde está la marca'}
+            {conFoco
+              ? 'Flechas para mover la cruz, la letra para marcar'
+              : 'Tocá el dibujo donde está la marca'}
           </p>
         )}
       </div>
 
       <ListaDanios
         danios={danios}
-        silueta={silueta}
         editable={editable}
         tactil={tactil}
         onNota={cambiarNota}
         onQuitar={(i) => void quitar(i)}
       />
+    </div>
+  )
+}
+
+/**
+ * El dibujo, traído por el cliente y no por la dirección directa en el `src`: la ruta pide
+ * permiso y un `<img>` no manda el token de la sesión.
+ */
+function useDibujo(id: string | null) {
+  const [url, setUrl] = useState<string | null>(null)
+  const [estado, setEstado] = useState<'sin-imagen' | 'cargando' | 'fallo'>('sin-imagen')
+
+  useEffect(() => {
+    if (!id) {
+      setUrl(null)
+      setEstado('sin-imagen')
+      return
+    }
+    let vivo = true
+    let creada: string | undefined
+    setEstado('cargando')
+    void api.hojas
+      .imagen({ id })
+      .then((archivo) => {
+        if (!vivo) return
+        creada = URL.createObjectURL(archivo as Blob)
+        setUrl(creada)
+      })
+      .catch(() => vivo && setEstado('fallo'))
+    return () => {
+      vivo = false
+      setUrl(null)
+      if (creada) URL.revokeObjectURL(creada)
+    }
+  }, [id])
+
+  return { url, estado }
+}
+
+/** Sin dibujo no se puede marcar, y el que lo ve tiene que saber quién lo arregla. */
+function SinDibujo({
+  estado,
+  hojaTipo,
+}: {
+  estado: 'sin-imagen' | 'cargando' | 'fallo'
+  hojaTipo: TipoHoja
+}) {
+  return (
+    <div className="grid h-48 place-items-center px-3 text-center text-etiqueta text-texto-tenue">
+      {estado === 'cargando' && '…'}
+      {estado === 'fallo' && 'No se pudo cargar el dibujo'}
+      {estado === 'sin-imagen' && (
+        <span>
+          Todavía no hay dibujo de {TIPOS_HOJA_NOMBRE[hojaTipo].toLowerCase()}.{' '}
+          <Link to="/hoja-recepcion" className="underline">
+            Subilo en Hoja de recepción
+          </Link>
+        </span>
+      )}
     </div>
   )
 }
@@ -402,14 +386,12 @@ function ElegirTipo({ tipo, onChange }: { tipo: TipoDanio; onChange: (t: TipoDan
 
 function ListaDanios({
   danios,
-  silueta,
   editable,
   tactil,
   onNota,
   onQuitar,
 }: {
   danios: Danio[]
-  silueta: Silueta
   editable: boolean
   tactil: boolean
   onNota: (indice: number, nota: string) => void
@@ -419,7 +401,7 @@ function ListaDanios({
     return (
       <p className="self-start text-dato text-texto-suave">
         {editable
-          ? 'Sin marcas. Tocá el auto donde tenga un rayón, un golpe, algo roto o algo que falte; si está impecable, dejalo así: la hoja dice que se recibió sin marcas.'
+          ? 'Sin marcas. Tocá el dibujo donde el vehículo tenga un rayón, un golpe, algo roto o algo que falte; si está impecable, dejalo así: la hoja dice que se recibió sin marcas.'
           : 'Sin marcas: se recibió sin rayones, golpes ni faltantes a la vista.'}
       </p>
     )
@@ -435,12 +417,12 @@ function ListaDanios({
           >
             <span className="text-fondo">{DANIOS[d.tipo].letra}</span>
           </span>
-          <span className="min-w-40 flex-1">{describirDanio(silueta, d)}</span>
+          <span className="min-w-28 flex-1">{describirDanio(d)}</span>
           {editable ? (
             <>
               <input
-                aria-label={`Detalle de ${describirDanio(silueta, d).toLowerCase()}`}
-                placeholder="Detalle, si hace falta"
+                aria-label={`Detalle de la marca ${i + 1}, ${describirDanio(d).toLowerCase()}`}
+                placeholder="Dónde está, si hace falta"
                 value={d.nota ?? ''}
                 maxLength={120}
                 onChange={(e) => onNota(i, e.target.value)}

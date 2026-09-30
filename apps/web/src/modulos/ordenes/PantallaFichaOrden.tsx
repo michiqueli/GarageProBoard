@@ -405,7 +405,7 @@ function Recepcion({ orden: o, accion }: { orden: Orden; accion?: ReactNode }) {
       <div className="grid gap-4 border-t border-borde px-3 py-2.5 lg:grid-cols-[3fr_2fr]">
         <div className="grid content-start gap-2">
           <h3 className="text-etiqueta font-medium text-texto-suave">Estado al recibirlo</h3>
-          <DiagramaDanios danios={o.danios} silueta={o.silueta} />
+          <DiagramaDanios danios={o.danios} hojaTipo={o.hojaTipo} imagenId={o.hojaImagenId} />
         </div>
         <div className="grid content-start gap-2">
           <h3 className="text-etiqueta font-medium text-texto-suave">Vino con el auto</h3>
@@ -519,7 +519,12 @@ function FormRecepcion({
         </div>
         <div className="grid gap-2 border-t border-borde pt-3">
           <h3 className="text-etiqueta font-medium text-texto-suave">Estado al recibirlo</h3>
-          <DiagramaDanios danios={danios} silueta={o.silueta} onChange={setDanios} />
+          <DiagramaDanios
+            danios={danios}
+            hojaTipo={o.hojaTipo}
+            imagenId={o.hojaImagenId}
+            onChange={setDanios}
+          />
         </div>
         <div className="grid gap-2 border-t border-borde pt-3">
           <h3 className="text-etiqueta font-medium text-texto-suave">Vino con el auto</h3>

@@ -1,6 +1,6 @@
-import { type Carroceria, SILUETA_DE } from '@gpb/core'
+import { type Carroceria, HOJA_DE, HOJA_POR_OMISION } from '@gpb/core'
 import { ORPCError } from '@orpc/client'
-import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useNavigate } from '@tanstack/react-router'
 import { useState } from 'react'
 import type { ClienteElegido } from '../../componentes/SelectorCliente.tsx'
@@ -80,7 +80,14 @@ export function useRecepcion(alAbrir: (orden: OrdenAbierta) => void) {
 
   /** Lo que el modelo ya sabe manda; lo elegido sólo llena el hueco. */
   const carroceria = datos.vehiculo?.carroceria ?? datos.carroceria
-  const silueta = SILUETA_DE[carroceria ?? 'sedan']
+  const hojaTipo = carroceria ? HOJA_DE[carroceria] : HOJA_POR_OMISION
+
+  /**
+   * Los dibujos que tiene cargados el taller. Se piden una vez y quedan en la caché: son
+   * cuatro filas y no cambian mientras alguien recibe un auto.
+   */
+  const hojas = useQuery({ queryKey: ['hojas', tenantId], queryFn: () => api.hojas.listar() })
+  const hojaImagenId = hojas.data?.datos.find((h) => h.tipo === hojaTipo)?.propia?.id ?? null
   /** Se pregunta cuando nadie lo sabe: con un modelo sin carrocería, o sin modelo cargado. */
   const faltaCarroceria = !datos.vehiculo?.carroceria
 
@@ -89,7 +96,7 @@ export function useRecepcion(alAbrir: (orden: OrdenAbierta) => void) {
     setDatos((d) => ({
       ...d,
       carroceria: c,
-      danios: SILUETA_DE[c] === silueta ? d.danios : [],
+      danios: HOJA_DE[c] === hojaTipo ? d.danios : [],
     }))
   }
 
@@ -159,7 +166,8 @@ export function useRecepcion(alAbrir: (orden: OrdenAbierta) => void) {
     datos,
     poner,
     elegirVehiculo,
-    silueta,
+    hojaTipo,
+    hojaImagenId,
     faltaCarroceria,
     elegirCarroceria,
     enviar,

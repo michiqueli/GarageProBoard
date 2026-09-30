@@ -1,0 +1,1 @@
+ALTER TABLE "orden" DROP COLUMN "silueta";

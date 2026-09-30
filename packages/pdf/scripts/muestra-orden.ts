@@ -32,20 +32,15 @@ writeFileSync(
     pedido:
       'Service de 50.000 km. Hace ruido al frenar adelante, del lado del acompañante. Revisar luz de check engine.',
     observaciones: 'Testigo de check engine prendido al recibirlo.',
-    // La muestra es una Hilux a propósito: así lo que se mira al ojo es el dibujo nuevo.
-    silueta: 'pickup',
+    // Sin dibujo: la muestra no tiene de dónde sacar la imagen que carga cada taller, y así
+    // se ve además que la hoja sale igual cuando todavía no hay ninguno.
+    hoja: null,
     danios: [
-      {
-        zona: 'paragolpes_trasero',
-        tipo: 'rayon',
-        x: 90,
-        y: 343,
-        nota: 'Del lado izquierdo, largo',
-      },
-      { zona: 'puerta_delantera_derecha', tipo: 'golpe', x: 186, y: 120, nota: null },
-      { zona: 'parabrisas', tipo: 'roto', x: 140, y: 105, nota: 'Rajadura chica abajo' },
-      { zona: 'espejo_izquierdo', tipo: 'falta', x: 30, y: 113, nota: 'Falta la tapa' },
-      { zona: 'caja', tipo: 'golpe', x: 120, y: 250, nota: 'El piso, de cargar' },
+      { tipo: 'rayon', x: 0.38, y: 0.92, nota: 'Del lado izquierdo, largo' },
+      { tipo: 'golpe', x: 0.78, y: 0.32, nota: null },
+      { tipo: 'roto', x: 0.58, y: 0.28, nota: 'Rajadura chica abajo' },
+      { tipo: 'falta', x: 0.12, y: 0.3, nota: 'Falta la tapa' },
+      { tipo: 'golpe', x: 0.5, y: 0.67, nota: 'El piso, de cargar' },
     ],
     inventario: {
       auxilio: 'falta',
