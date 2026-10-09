@@ -1057,6 +1057,25 @@ describe('la cola de la tablet', () => {
     expect(screen.queryByRole('region', { name: 'Nuevo vehículo' })).toBeNull()
   })
 
+  it('las órdenes recibidas hoy quedan a mano, para reimprimirlas o corregirlas', async () => {
+    recepcion.hoy.mockResolvedValue({ datos: [] })
+    ordenes.listar.mockResolvedValue({
+      datos: [
+        { ...ORDEN, numero: 57, estado: 'recibida', creadoEn: new Date().toISOString() },
+        { ...ORDEN, id: 'vieja', numero: 12, creadoEn: '2026-01-02T12:00:00.000Z' },
+      ],
+      total: 2,
+    })
+    await montarApp('/recepcion')
+
+    const recibidos = await screen.findByRole('region', { name: 'Recibidos hoy' })
+    expect(within(recibidos).getByText('OT 000057')).toBeDefined()
+    expect(within(recibidos).queryByText('OT 000012')).toBeNull()
+    const ver = within(recibidos).getByRole('link', { name: 'Ver y corregir' })
+    expect(ver.getAttribute('href')).toBe(`/ordenes/${ORDEN.id}`)
+    expect(within(recibidos).getByRole('button', { name: /Imprimir/ })).toBeDefined()
+  })
+
   it('«Devolver a la cola» la suelta y vuelve a la lista', async () => {
     recepcion.hoy.mockResolvedValue({ datos: [ESPERA] })
     recepcion.atender.mockResolvedValue({ ...ESPERA, atendidaEn: new Date().toISOString() })

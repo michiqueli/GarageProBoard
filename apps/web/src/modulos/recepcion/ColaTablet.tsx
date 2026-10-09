@@ -1,9 +1,16 @@
+import { contrato } from '@gpb/contracts'
 import { nivelEspera } from '@gpb/core'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { Link } from '@tanstack/react-router'
 import { Boton } from '../../componentes/Boton.tsx'
+import { IconoImprimir } from '../../componentes/iconos.tsx'
+import { Patente } from '../../componentes/Patente.tsx'
 import { usarSesion } from '../../sesion/almacen.ts'
 import { api } from '../../sesion/cliente.ts'
 import { mensajeGeneral } from '../../sesion/consultas.ts'
+import { usePuedeUsar } from '../../sesion/permisos.ts'
+import { imprimirOrden, nombreOrden } from '../ordenes/ordenes.ts'
+import { diaDe } from './turnos.ts'
 import { errorAlAtender, minutos, REFRESCO, useAhora, type Visita } from './visitas.ts'
 
 const HORA = new Intl.DateTimeFormat('es-AR', { hour: '2-digit', minute: '2-digit' })
@@ -110,6 +117,8 @@ export function ColaTablet({
         </Lista>
       )}
 
+      <RecibidosHoy />
+
       {deOtros.length > 0 && (
         <Lista titulo="Los está recibiendo otro">
           {deOtros.map((v) => (
@@ -184,5 +193,53 @@ function Tarjeta({
         </span>
       </button>
     </li>
+  )
+}
+
+/**
+ * Las órdenes que se abrieron hoy, para volver a imprimirlas o corregirlas. Sin esto, en la
+ * tablet —que no tiene menú— una orden recién abierta se perdía al volver a la cola: si el
+ * semáforo tenía un error, no había cómo llegar a la orden para arreglarlo y reimprimirla.
+ */
+function RecibidosHoy() {
+  const tenantId = usarSesion((e) => e.datos?.tenant.id)
+  const puedeVer = usePuedeUsar(contrato.ordenes.listar)
+  const ordenes = useQuery({
+    queryKey: ['ordenes', tenantId, 'recibidas-hoy'],
+    queryFn: () => api.ordenes.listar({ pagina: 1, porPagina: 30, estado: 'todas' }),
+    enabled: puedeVer,
+    refetchInterval: 30_000,
+  })
+  const hoy = diaDe(new Date())
+  const deHoy = (ordenes.data?.datos ?? []).filter(
+    (o) => diaDe(o.creadoEn) === hoy && o.estado !== 'anulada',
+  )
+  if (!deHoy.length) return null
+
+  return (
+    <Lista titulo="Recibidos hoy">
+      {deHoy.map((o) => (
+        <li
+          key={o.id}
+          className="flex flex-wrap items-center gap-x-4 gap-y-2 rounded-base border border-borde bg-superficie px-4 py-2.5"
+        >
+          <span className="font-mono font-semibold">{nombreOrden(o.numero)}</span>
+          <Patente dominio={o.vehiculo.dominio} />
+          <span className="min-w-0 flex-1 truncate text-texto-suave">{o.pedido}</span>
+          <span className="flex gap-2">
+            <Boton icono={<IconoImprimir />} onClick={() => void imprimirOrden(o.id)}>
+              Imprimir
+            </Boton>
+            <Link
+              to="/ordenes/$id"
+              params={{ id: o.id }}
+              className="inline-flex h-campo items-center rounded-base border border-borde px-3 text-dato text-texto-suave"
+            >
+              Ver y corregir
+            </Link>
+          </span>
+        </li>
+      ))}
+    </Lista>
   )
 }
