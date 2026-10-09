@@ -165,7 +165,8 @@ export function DiagramaDanios({
     <div className="grid gap-3 md:grid-cols-[auto_1fr]">
       <div className="grid content-start justify-items-center gap-2">
         {editable && <ElegirTipo tipo={tipo} onChange={setTipo} />}
-        {/* biome-ignore lint/a11y/useKeyWithClickEvents: tiene onKeyDown, y el rol es application */}
+        {/* biome-ignore lint/a11y/noStaticElementInteractions: el rol es application o img según editable */}
+        {/* biome-ignore lint/a11y/useAriaPropsSupportedByRole: el rol es application o img según editable */}
         <div
           ref={lienzo}
           role={editable ? 'application' : 'img'}

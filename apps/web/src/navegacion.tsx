@@ -1,4 +1,4 @@
-import { type Acceso, type Autorizacion, permite } from '@gpb/contracts'
+import { type Acceso, type Autorizacion, accesoDeRuta, contrato, permite } from '@gpb/contracts'
 import type { LinkProps } from '@tanstack/react-router'
 import type { ReactNode } from 'react'
 
@@ -60,6 +60,20 @@ export const PRINCIPALES: Seccion[] = [
       <svg viewBox="0 0 16 16" {...trazo} aria-hidden="true">
         <path d="M3 2h7l3 3v9H3z" />
         <path d="M5.5 8h5M5.5 11h3" />
+      </svg>
+    ),
+  },
+  {
+    // Con entrada propia y no sólo el botón «Vista tablet» de la recepción: en la tablet el
+    // menú es lo único a mano, y nadie va a pasar por la vista de escritorio para llegar.
+    id: 'recepcion',
+    etiqueta: 'Recepción en tablet',
+    to: '/recepcion',
+    requiere: accesoDeRuta(contrato.ordenes.abrir),
+    icono: (
+      <svg viewBox="0 0 16 16" {...trazo} aria-hidden="true">
+        <rect x="3" y="1.5" width="10" height="13" rx="1.5" />
+        <path d="M7 12.2h2" />
       </svg>
     ),
   },
