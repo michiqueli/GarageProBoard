@@ -295,6 +295,10 @@ Lo que pasa antes de que alguien sea una orden o una factura. Es la parte que ni
 competidor de los tres relevados tiene resuelta, y donde se pierde la mayor cantidad de
 plata sin que nadie lo vea.
 
+Diseñado el 09/10/2026 junto con la agenda de turnos del Hito 2, porque son la misma puerta:
+la visita, la cola de las tablets, la derivación a una persona y el tótem, en
+[la recepción](../tecnicos/recepcion-y-turnos.md).
+
 - ⬜ **Tótem de recepción**, la pantalla en la puerta como la de un banco: ponés tu
       documento, si ya existís te saluda por tu nombre y si no te lo pide, elegís a qué
       viniste —ventas, servicios, repuestos, administración— y te llevás tu turno. Llamado

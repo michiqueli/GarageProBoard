@@ -14,6 +14,7 @@ import { contratoOrganizacion } from './organizacion.ts'
 import { contratoPadron } from './padron.ts'
 import { contratoPersonal } from './personal.ts'
 import { contratoProveedores } from './proveedores.ts'
+import { contratoRecepcion } from './recepcion.ts'
 import { contratoCompras, contratoPedidosRepuestos, contratoRepuestos } from './repuestos.ts'
 import { contratoRevision } from './revision.ts'
 import { contratoRoles } from './roles.ts'
@@ -35,6 +36,7 @@ export * from './organizacion.ts'
 export * from './padron.ts'
 export * from './personal.ts'
 export * from './proveedores.ts'
+export * from './recepcion.ts'
 export * from './repuestos.ts'
 export * from './revision.ts'
 export * from './roles.ts'
@@ -66,6 +68,7 @@ export const contrato = {
   ordenes: contratoOrdenes,
   hojas: contratoHojas,
   revision: contratoRevision,
+  recepcion: contratoRecepcion,
   repuestos: contratoRepuestos,
   pedidosRepuestos: contratoPedidosRepuestos,
   compras: contratoCompras,

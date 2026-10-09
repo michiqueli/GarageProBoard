@@ -24,6 +24,7 @@ export const PANTALLAS = [
   'clientes',
   'vehiculos',
   'personal',
+  'recepcion',
 ] as const
 
 export type Pantalla = (typeof PANTALLAS)[number]
@@ -40,6 +41,7 @@ export const ETIQUETA_AMBITO: Readonly<Record<Ambito, string>> = {
   clientes: 'Clientes',
   vehiculos: 'Vehículos',
   personal: 'Personal y credenciales',
+  recepcion: 'Recepción',
 }
 
 export interface DefinicionAccion {
@@ -331,6 +333,23 @@ const POR_PANTALLA: readonly DefinicionAccion[] = [
     porOmision: 'F9',
     reasignable: true,
     descripcion: 'Queda sin poder fichar hasta que se le emita otra.',
+  },
+  {
+    accion: 'recepcion.atender',
+    principal: true,
+    ambito: 'recepcion',
+    etiqueta: 'Atender',
+    porOmision: 'F4',
+    reasignable: true,
+    descripcion: 'La visita marcada: la espera termina y queda a tu nombre.',
+  },
+  {
+    accion: 'recepcion.terminar',
+    ambito: 'recepcion',
+    etiqueta: 'Terminar la visita',
+    porOmision: 'F9',
+    reasignable: true,
+    descripcion: 'La marcada, como atendida. Si nadie la había agarrado, queda a tu nombre.',
   },
 ]
 

@@ -64,10 +64,28 @@ export const PRINCIPALES: Seccion[] = [
     ),
   },
   {
+    // Después de Órdenes y no antes, a propósito: el orden decide la primera pantalla de
+    // cada uno, y el gerente y el asesor entran a las órdenes. La recepcionista no las ve, y
+    // cae acá.
+    id: 'puerta',
+    etiqueta: 'Recepción',
+    to: '/puerta',
+    requiere: accesoDeRuta(contrato.recepcion.hoy),
+    icono: (
+      <svg viewBox="0 0 16 16" {...trazo} aria-hidden="true">
+        <path d="M3 14V2.5h7V14" />
+        <path d="M10 4h3v10M1.5 14h13" />
+        <circle cx="8" cy="8.5" r="0.6" />
+      </svg>
+    ),
+  },
+  {
     // Con entrada propia y no sólo el botón «Vista tablet» de la recepción: en la tablet el
     // menú es lo único a mano, y nadie va a pasar por la vista de escritorio para llegar.
+    // «Tablet de recepción» y no «Recepción en tablet»: dos entradas que arrancan igual se
+    // pisan cuando uno lee el menú de un vistazo.
     id: 'recepcion',
-    etiqueta: 'Recepción en tablet',
+    etiqueta: 'Tablet de recepción',
     to: '/recepcion',
     requiere: accesoDeRuta(contrato.ordenes.abrir),
     icono: (

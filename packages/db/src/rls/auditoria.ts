@@ -128,6 +128,11 @@ export const TABLAS_AUDITADAS: readonly TablaAuditada[] = [
   { tabla: 'usuario_rol' },
   { tabla: 'usuario_sucursal' },
   { tabla: 'dispositivo' },
+  {
+    tabla: 'visita',
+    solo: ['update', 'delete'],
+    nota: 'Anotar a quien llega es lo normal. Lo que sí: a quién se lo derivó, quién lo agarró y cómo terminó, que es lo que se discute cuando un cliente dice que esperó una hora.',
+  },
 ]
 
 /**
@@ -140,6 +145,7 @@ export const TABLAS_SIN_AUDITAR: Readonly<
   comprobante_secuencia: 'Es un contador. Lo que numera ya se audita entero.',
   orden_secuencia: 'Es un contador: la numeración sin huecos se verifica en las órdenes.',
   repuestos_secuencia: 'Es un contador: lo numerado se audita en el pedido y en la compra.',
+  visita_secuencia: 'Es un contador: el número del día es para llamar, no un comprobante.',
   orden_item:
     'La orden se guarda entera en cada edición, así que auditar el renglón sería una fila por ' +
     'renglón en cada guardado. Lo material —el total y el estado— cambia en la orden, y lo ' +

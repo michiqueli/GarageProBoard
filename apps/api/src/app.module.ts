@@ -27,6 +27,8 @@ import { ServicioOrganizacion } from './organizacion/organizacion.service.ts'
 import { ModuloPadron } from './padron/padron.module.ts'
 import { ControladorPersonal } from './personal/personal.controller.ts'
 import { ServicioPersonal } from './personal/personal.service.ts'
+import { ControladorRecepcion } from './recepcion/recepcion.controller.ts'
+import { ServicioRecepcion } from './recepcion/recepcion.service.ts'
 import { ServicioCompras } from './repuestos/compras.service.ts'
 import { ServicioPedidosRepuestos } from './repuestos/pedidos.service.ts'
 import { ServicioProveedores } from './repuestos/proveedores.service.ts'
@@ -89,6 +91,7 @@ import { ServicioVehiculos } from './vehiculos/vehiculos.service.ts'
     ControladorFichaje,
     ControladorHojas,
     ControladorRevision,
+    ControladorRecepcion,
   ],
   providers: [
     ServicioUsuarios,
@@ -109,6 +112,7 @@ import { ServicioVehiculos } from './vehiculos/vehiculos.service.ts'
     ServicioFichaje,
     ServicioHojas,
     ServicioRevision,
+    ServicioRecepcion,
     ServicioEstaciones,
     DatosDeLaEstacion,
   ],

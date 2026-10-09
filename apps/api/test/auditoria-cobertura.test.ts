@@ -143,6 +143,15 @@ const NO_AUDITAN: Readonly<Record<string, string>> = {
   'revision.mover':
     'Es el lugar del punto en la lista: el trigger registra el cambio de orden, y no hay nada ' +
     'del negocio que contar además.',
+  'recepcion.anotar':
+    'Anotar a quien llega es lo de todos los días: la visita misma dice quién la anotó y a ' +
+    'qué hora, y auditar el alta sería una fila por cada persona que cruza la puerta.',
+  'recepcion.derivar':
+    'Es una columna de la visita, y el trigger guarda su antes y su después con quién lo cambió.',
+  'recepcion.atender':
+    'Quién la agarró y cuándo son dos columnas de la visita que el trigger ya cuenta.',
+  'recepcion.cerrar':
+    'Cómo terminó queda en la visita, y el trigger guarda el cambio con quién y cuándo.',
   'configuracion.guardar': 'Son las preferencias propias: el tema de cada uno no es del resto.',
   'configuracion.guardarAtajos': 'El mapa de teclas es de quien lo usa, y de nadie más.',
   'fichaje.escanear':

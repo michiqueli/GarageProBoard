@@ -148,6 +148,20 @@ const rutaInicio = createRoute({
   component: SinPantallas,
 })
 
+/**
+ * La puerta: quién está esperando, a quién se le derivó y quién lo atiende. Ver
+ * `docs/tecnicos/recepcion-y-turnos.md`.
+ */
+const rutaPuerta = createRoute({
+  getParentRoute: () => conSesion,
+  path: 'puerta',
+  staticData: { pantalla: 'recepcion' },
+  component: lazyRouteComponent(
+    () => import('./modulos/recepcion/PantallaPuerta.tsx'),
+    'PantallaPuerta',
+  ),
+})
+
 const rutaOrdenes = createRoute({
   getParentRoute: () => conSesion,
   path: 'ordenes',
@@ -461,6 +475,7 @@ const arbol = raiz.addChildren([
     rutaOrdenes,
     rutaRecepcion,
     rutaRecepcionTablet,
+    rutaPuerta,
     rutaFichaOrden,
     rutaVehiculos,
     rutaFichaVehiculo,

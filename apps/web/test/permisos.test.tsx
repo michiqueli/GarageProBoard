@@ -35,6 +35,10 @@ vi.mock('../src/sesion/cliente.ts', () => ({
       leerAvisos: (...a: unknown[]) => leerAvisos(...a),
     },
     vehiculos: { listar: (...a: unknown[]) => listarVehiculos(...a) },
+    recepcion: {
+      hoy: async () => ({ datos: [] }),
+      receptores: async () => ({ datos: [] }),
+    },
   },
   renovar: () => renovar(),
 }))
@@ -213,12 +217,13 @@ describe('un módulo que la concesionaria no tiene', () => {
   })
 
   it('el inicio lo salta: el gerente cae en la primera sección contratada', async () => {
-    // Con todo contratado, el gerente cae en Órdenes. Sin servicios, en Vehículos.
+    // Con todo contratado, el gerente cae en Órdenes. Sin servicios, en la puerta: la
+    // recepción es del núcleo, porque toda concesionaria tiene una, venda autos o no.
     entraComo(SESION_SIN_TALLER_NI_CAJA)
     const router = await montarApp('/')
 
-    expect(await screen.findByRole('heading', { name: 'Vehículos', level: 1 })).toBeDefined()
-    expect(router.state.location.pathname).toBe('/vehiculos')
+    expect(await screen.findByRole('heading', { name: 'Recepción', level: 1 })).toBeDefined()
+    expect(router.state.location.pathname).toBe('/puerta')
   })
 })
 

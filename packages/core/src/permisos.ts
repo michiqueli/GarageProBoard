@@ -47,6 +47,7 @@ export const SUJETOS = [
   'Usuario',
   'Configuracion',
   'Auditoria',
+  'Visita',
   'all',
 ] as const
 
@@ -83,6 +84,7 @@ const SUSTANTIVOS: Record<Sujeto, string> = {
   Usuario: 'usuarios',
   Configuracion: 'la configuración',
   Auditoria: 'el registro de ingresos y cambios',
+  Visita: 'las visitas de la recepción',
   all: 'todo el sistema',
 }
 
@@ -237,7 +239,7 @@ export const ROLES_PREDEFINIDOS: RolPredefinido[] = [
     nombre: 'Asesor de servicios',
     descripcion: 'Recibe vehículos, abre y cierra órdenes, atiende al cliente.',
     habilidades: [
-      { action: ['ver', 'crear', 'editar'], subject: ['Orden', 'Vehiculo', 'Cliente'] },
+      { action: ['ver', 'crear', 'editar'], subject: ['Orden', 'Vehiculo', 'Cliente', 'Visita'] },
       { action: 'ver', subject: ['Repuesto', 'Comprobante'] },
       // El legajo lleva sueldos y categoría: no lo ve quien atiende el mostrador.
       { action: 'ver', subject: 'Empleado', inverted: true, reason: 'Contiene datos de sueldo.' },
@@ -266,6 +268,7 @@ export const ROLES_PREDEFINIDOS: RolPredefinido[] = [
       { action: ['ver', 'crear', 'facturar'], subject: 'Comprobante' },
       { action: 'ver', subject: ['Orden', 'Cliente', 'Vehiculo'] },
       { action: ['ver', 'crear', 'editar'], subject: 'Cliente' },
+      { action: ['ver', 'editar'], subject: 'Visita' },
       // Anular un comprobante emitido no es un permiso de caja: es una nota de
       // crédito con consecuencias fiscales y la autoriza alguien más.
       { action: 'anular', subject: 'Comprobante', inverted: true },
@@ -278,6 +281,7 @@ export const ROLES_PREDEFINIDOS: RolPredefinido[] = [
       { action: ['ver', 'crear', 'editar'], subject: ['Repuesto', 'Proveedor'] },
       { action: 'anular', subject: 'Repuesto' },
       { action: 'ver', subject: ['Orden', 'Cliente'] },
+      { action: ['ver', 'editar'], subject: 'Visita' },
     ],
   },
   {
@@ -287,6 +291,27 @@ export const ROLES_PREDEFINIDOS: RolPredefinido[] = [
       { action: ['ver', 'crear', 'editar'], subject: ['Comprobante', 'Cliente', 'Proveedor'] },
       { action: 'anular', subject: 'Comprobante' },
       { action: 'ver', subject: ['Orden', 'Vehiculo', 'Empresa'] },
+      { action: ['ver', 'editar'], subject: 'Visita' },
+    ],
+  },
+  {
+    nombre: 'Recepcionista',
+    descripcion:
+      'Atiende la puerta: anota a quien llega, lo deriva a quien lo va a atender y sigue la ' +
+      'espera.',
+    habilidades: [
+      { action: ['ver', 'crear', 'editar'], subject: 'Visita' },
+      // Busca a quien llega por su documento y por su auto. Las órdenes no: si las viera,
+      // entraría a Órdenes de trabajo en vez de a la puerta, que es lo suyo.
+      { action: 'ver', subject: ['Cliente', 'Vehiculo'] },
+    ],
+  },
+  {
+    nombre: 'Vendedor',
+    descripcion: 'Atiende a quien le derivan desde la puerta: venta 0km, plan de ahorro y usados.',
+    habilidades: [
+      { action: ['ver', 'crear', 'editar'], subject: ['Visita', 'Cliente'] },
+      { action: 'ver', subject: 'Vehiculo' },
     ],
   },
   {
