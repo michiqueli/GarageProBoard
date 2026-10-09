@@ -337,10 +337,19 @@ export const contratoOrdenes = {
         items: z.array(itemEntrada).default([]),
         /** Lo que se revisó en el mostrador. La inspección dinámica se completa después, en el taller. */
         revision: z.array(respuestaEntrada).default([]),
+        /**
+         * La visita de la puerta de la que sale, si salió de la cola. Abrir la orden la cierra
+         * con la orden: es lo que une cuánto esperó alguien con qué se le hizo.
+         */
+        visitaId: z.uuid().nullish(),
       }),
     )
     .errors({
       ...PUNTO_INVALIDO,
+      VISITA_INVALIDA: {
+        status: 409,
+        message: 'Esa visita ya terminó o la está atendiendo otra persona',
+      },
       NO_ENCONTRADO: { status: 404, message: 'Ese vehículo, cliente o mecánico no existe' },
       VEHICULO_CON_ORDEN: {
         status: 409,

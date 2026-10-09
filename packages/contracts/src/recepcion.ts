@@ -160,6 +160,22 @@ export const contratoRecepcion = {
     })
     .output(visita),
 
+  soltar: conPermiso('nucleo', 'editar', 'Visita')
+    .route({
+      method: 'POST',
+      path: '/recepcion/visitas/{id}/soltar',
+      tags: [TAG],
+      operationId: 'soltarVisita',
+      summary: 'Devolverla a la cola: vuelve a esperar, con su hora de llegada de siempre',
+      description:
+        'Para la que se agarró por error, o la que quedó en una tablet que se apagó. La puede ' +
+        'soltar cualquiera que atienda la puerta, no sólo quien la agarró: si no, una tablet ' +
+        'sin batería deja al cliente colgado.',
+    })
+    .input(z.object({ id: z.uuid() }))
+    .errors({ ...NO_ENCONTRADA, ...YA_CERRADA })
+    .output(visita),
+
   cerrar: conPermiso('nucleo', 'editar', 'Visita')
     .route({
       method: 'POST',

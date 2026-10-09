@@ -6,7 +6,7 @@ import {
   nivelEspera,
   PUESTOS_POR_MOTIVO,
 } from '@gpb/core'
-import { ORPCError } from '@orpc/client'
+
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { type FormEvent, useEffect, useRef, useState } from 'react'
 import { confirmar } from '../../componentes/avisos.ts'
@@ -21,41 +21,11 @@ import { api } from '../../sesion/cliente.ts'
 import { mensajeGeneral } from '../../sesion/consultas.ts'
 import { usePuedeUsar } from '../../sesion/permisos.ts'
 import { useAtajo, useFilasConTeclado } from '../../teclado/index.ts'
+import { errorAlAtender, minutos, REFRESCO, useAhora, type Visita } from './visitas.ts'
 
-export type Visita = Awaited<ReturnType<typeof api.recepcion.hoy>>['datos'][number]
 type Receptor = Awaited<ReturnType<typeof api.recepcion.receptores>>['datos'][number]
 
 const HORA = new Intl.DateTimeFormat('es-AR', { hour: '2-digit', minute: '2-digit' })
-
-/**
- * Cada cuánto se vuelve a preguntar. Es la cola compartida con las tablets y con los que
- * atienden: lo que otro agarró tiene que dejar de verse como libre enseguida.
- */
-const REFRESCO = 5_000
-
-/** Minutos enteros entre dos horas. */
-function minutos(desde: string, hasta: number): number {
-  return Math.max(0, Math.floor((hasta - new Date(desde).getTime()) / 60_000))
-}
-
-/** El reloj de la pantalla: las esperas cuentan solas aunque nadie toque nada. */
-function useAhora(cada = 30_000): number {
-  const [ahora, setAhora] = useState(() => Date.now())
-  useEffect(() => {
-    const t = setInterval(() => setAhora(Date.now()), cada)
-    return () => clearInterval(t)
-  }, [cada])
-  return ahora
-}
-
-/** Si la tiene otro, el aviso dice quién: «Ya la tiene Juan Pérez». */
-function errorAlAtender(error: unknown): string {
-  if (error instanceof ORPCError && error.code === 'YA_LA_TIENE') {
-    const nombre = (error.data as { nombre?: string } | undefined)?.nombre
-    if (nombre) return `Ya la tiene ${nombre}`
-  }
-  return mensajeGeneral(error)
-}
 
 /**
  * La puerta: quién está esperando, a quién se le derivó y quién lo está atendiendo. Es lo que
@@ -108,6 +78,11 @@ export function PantallaPuerta() {
       },
       error: mensajeGeneral,
     },
+  })
+  const soltar = useMutation({
+    mutationFn: (v: Visita) => api.recepcion.soltar({ id: v.id }),
+    onSuccess: invalidar,
+    meta: { exito: (r) => `${(r as Visita).numero} volvió a la cola`, error: mensajeGeneral },
   })
   const derivar = useMutation({
     mutationFn: ({ v, a }: { v: Visita; a: string | null }) =>
@@ -171,6 +146,7 @@ export function PantallaPuerta() {
     terminar: () => cerrar.mutate({ v, resultado: 'atendida' }),
     seFue: () => void seFue(v),
     derivar: (a: string | null) => derivar.mutate({ v, a }),
+    soltar: () => soltar.mutate(v),
   })
 
   return (
@@ -229,6 +205,7 @@ interface PropsFila {
   terminar: () => void
   seFue: () => void
   derivar: (a: string | null) => void
+  soltar: () => void
 }
 
 function Bloque({
@@ -374,7 +351,7 @@ function QuienAtiende({ v, receptores, puedeEditar, derivar }: PropsFila) {
   )
 }
 
-function Acciones({ v, puedeEditar, atender, terminar, seFue }: PropsFila) {
+function Acciones({ v, puedeEditar, atender, terminar, seFue, soltar }: PropsFila) {
   if (!puedeEditar) return null
   return (
     <span className="inline-flex gap-1.5">
@@ -389,6 +366,12 @@ function Acciones({ v, puedeEditar, atender, terminar, seFue }: PropsFila) {
       {!v.atendidaEn && (
         <Boton tamano="chico" variante="sutil" onClick={seFue}>
           Se fue
+        </Boton>
+      )}
+      {/* La tablet que la tenía se apagó, o la agarró quien no era: vuelve a esperar. */}
+      {v.atendidaEn && (
+        <Boton tamano="chico" variante="sutil" onClick={soltar}>
+          Devolver a la cola
         </Boton>
       )}
     </span>

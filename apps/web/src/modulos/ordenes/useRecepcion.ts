@@ -34,6 +34,11 @@ export interface DatosRecepcion {
   inventario: Inventario
   /** Lo contestado de la revisión, por punto. Lo que no está, no se revisó. */
   revision: Record<string, Cambio>
+  /**
+   * La visita de la puerta de la que sale, si se agarró de la cola. Abrir la orden la cierra
+   * con la orden: es lo que une cuánto esperó alguien con qué se le hizo.
+   */
+  visita: { id: string; numero: string } | null
 }
 
 const VACIA: DatosRecepcion = {
@@ -52,6 +57,7 @@ const VACIA: DatosRecepcion = {
   danios: [],
   inventario: {},
   revision: {},
+  visita: null,
 }
 
 export type OrdenAbierta = Awaited<ReturnType<typeof api.ordenes.abrir>>
@@ -80,6 +86,25 @@ export function useRecepcion(alAbrir: (orden: OrdenAbierta) => void) {
     // Quien paga arranca en el titular: es el caso de todos los días. Y las marcas se van con
     // el auto: son puntos de su dibujo, no de la pantalla.
     setDatos((d) => ({ ...d, vehiculo: v, paga: v?.titular ?? null, carroceria: null, danios: [] }))
+  }
+
+  /**
+   * Empezar desde una visita de la cola: quien la anotó en la puerta ya dijo quién es y su
+   * teléfono, y es quien trae el auto. Lo demás arranca vacío, como siempre.
+   */
+  function desdeVisita(v: {
+    id: string
+    numero: string
+    nombre: string | null
+    telefono: string | null
+  }) {
+    setDatos({
+      ...VACIA,
+      visita: { id: v.id, numero: v.numero },
+      traeNombre: v.nombre ?? '',
+      traeTelefono: v.telefono ?? '',
+    })
+    setTocado(false)
   }
 
   /** Lo que el modelo ya sabe manda; lo elegido sólo llena el hueco. */
@@ -145,10 +170,13 @@ export function useRecepcion(alAbrir: (orden: OrdenAbierta) => void) {
           .filter(([, c]) => c.estado)
           .map(([puntoId, c]) => ({ puntoId, estado: c.estado, nota: c.nota })),
         items: [],
+        visitaId: datos.visita?.id ?? null,
       }),
     onSuccess: async (o) => {
       await Promise.all([
         cache.invalidateQueries({ queryKey: ['ordenes', tenantId] }),
+        // La visita se cerró con la orden: deja de estar en la cola y en la puerta.
+        cache.invalidateQueries({ queryKey: ['visitas', tenantId] }),
         // El auto que se acaba de recibir tiene que aparecer en el taller sin recargar.
         cache.invalidateQueries({ queryKey: ['tablero', tenantId], exact: false }),
       ])
@@ -165,6 +193,9 @@ export function useRecepcion(alAbrir: (orden: OrdenAbierta) => void) {
               alHacer: () => void navegar({ to: '/ordenes/$id', params: { id: d.ordenId } }),
             },
           }
+        }
+        if (error instanceof ORPCError && error.code === 'VISITA_INVALIDA') {
+          return `${datos.visita?.numero ?? 'Esa visita'} ya la tiene otra persona o ya terminó. Devolvela a la cola o recibí el auto sin turno.`
         }
         return mensajeGeneral(error)
       },
@@ -193,6 +224,7 @@ export function useRecepcion(alAbrir: (orden: OrdenAbierta) => void) {
     datos,
     poner,
     elegirVehiculo,
+    desdeVisita,
     hojaTipo,
     hojaImagenId,
     faltaCarroceria,

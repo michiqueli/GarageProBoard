@@ -1,4 +1,6 @@
 import 'reflect-metadata'
+import { eq } from '@gpb/db'
+import { vehiculo } from '@gpb/db/schema'
 import type { NestFastifyApplication } from '@nestjs/platform-fastify'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import {
@@ -21,6 +23,7 @@ let asesor: string
 let gerente: string
 let mecanico: string
 let otroGerente: string
+let vehiculos: string[] = []
 let vendedorId: string
 let mecanicoId: string
 let deOtraSucursalId: string
@@ -36,6 +39,8 @@ interface Visita {
   atendidaEn: string | null
   cerradaEn: string | null
   resultado: string | null
+  ordenId: string | null
+  llegoEn: string
   nota: string | null
 }
 
@@ -46,6 +51,11 @@ beforeAll(async () => {
     slug: 'puerta',
     email: 'gerente@puerta.test',
     sucursales: ['Casa Central', 'Sucursal Norte'],
+    vehiculos: [
+      { chasis: '8AJFB8CD5N1234567', dominio: 'AE123BC' },
+      { chasis: '9BWZZZ377VT004251', dominio: 'AB456CD' },
+      { chasis: '93YBSR7RHAJ123456', dominio: 'AC789DE' },
+    ],
     otros: [
       { email: 'recepcion@puerta.test', rol: 'Recepcionista' },
       { email: 'asesor@puerta.test', rol: 'Asesor de servicios' },
@@ -57,6 +67,12 @@ beforeAll(async () => {
     email: 'gerente@puerta-otra.test',
   })
   const [central, norte] = semilla.sucursales
+  vehiculos = (
+    await api.pg.dbDuenio
+      .select({ id: vehiculo.id })
+      .from(vehiculo)
+      .where(eq(vehiculo.tenantId, semilla.tenant.id))
+  ).map((v) => v.id)
   const tenantId = semilla.tenant.id
   vendedorId = await sembrarEmpleado(api.pg.dbDuenio, {
     tenantId,
@@ -274,5 +290,62 @@ describe('quién puede', () => {
     const v = await anotar({ motivo: 'venta', nombre: 'Ajena' })
     const r = await pedir(otroGerente, 'POST', `/recepcion/visitas/${v.id}/atender`)
     expect(r.statusCode).toBe(404)
+  })
+})
+
+describe('la cola de las tablets', () => {
+  function abrirOrden(quien: string, vehiculoId: string, visitaId?: string) {
+    return pedir(quien, 'POST', '/ordenes', {
+      vehiculoId,
+      pedido: 'Hace ruido al frenar',
+      ...(visitaId ? { visitaId } : {}),
+    })
+  }
+
+  it('soltarla la devuelve a la cola, con la hora en que llegó', async () => {
+    const v = await anotar({ motivo: 'servicio', nombre: 'Agarrado por error' })
+    await pedir(asesor, 'POST', `/recepcion/visitas/${v.id}/atender`)
+
+    // La suelta la recepcionista: la tablet que la tenía se quedó sin batería.
+    const r = await pedir(recepcionista, 'POST', `/recepcion/visitas/${v.id}/soltar`)
+    expect(r.statusCode, r.body).toBe(200)
+    expect(r.json()).toMatchObject({ atendidaPor: null, atendidaEn: null, llegoEn: v.llegoEn })
+
+    // Y otro la puede agarrar.
+    expect((await pedir(gerente, 'POST', `/recepcion/visitas/${v.id}/atender`)).statusCode).toBe(
+      200,
+    )
+  })
+
+  it('abrir la orden desde la visita la cierra con su orden', async () => {
+    const v = await anotar({ motivo: 'servicio', nombre: 'Con turno' })
+    await pedir(asesor, 'POST', `/recepcion/visitas/${v.id}/atender`)
+
+    const r = await abrirOrden(asesor, vehiculos[0] as string, v.id)
+    expect(r.statusCode, r.body).toBe(201)
+
+    const cerrada = (await hoy()).find((x) => x.id === v.id)
+    expect(cerrada).toMatchObject({ resultado: 'orden', ordenId: r.json().id })
+    expect(cerrada?.atendidaPor?.nombre).toBe('Prueba Asesor de servicios')
+  })
+
+  it('si la tiene otro, no se abre la orden: nada queda a medias', async () => {
+    const v = await anotar({ motivo: 'servicio', nombre: 'Disputado' })
+    await pedir(gerente, 'POST', `/recepcion/visitas/${v.id}/atender`)
+
+    const r = await abrirOrden(asesor, vehiculos[1] as string, v.id)
+    expect(r.statusCode).toBe(409)
+    expect(r.json().code).toBe('VISITA_INVALIDA')
+    // El auto no quedó con una orden abierta.
+    expect((await abrirOrden(gerente, vehiculos[1] as string)).statusCode).toBe(201)
+  })
+
+  it('una recibida desde el escritorio sin que nadie la agarre queda a nombre de quien abre', async () => {
+    const v = await anotar({ motivo: 'servicio', nombre: 'Directo' })
+    const r = await abrirOrden(asesor, vehiculos[2] as string, v.id)
+    expect(r.statusCode, r.body).toBe(201)
+    const cerrada = (await hoy()).find((x) => x.id === v.id)
+    expect(cerrada?.atendidaPor?.nombre).toBe('Prueba Asesor de servicios')
+    expect(cerrada?.atendidaEn).not.toBeNull()
   })
 })

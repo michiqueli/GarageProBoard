@@ -28,6 +28,7 @@ const listarPuntos = vi.fn()
 const listarRepuestos = vi.fn()
 const listarPedidos = vi.fn()
 const renovar = vi.fn()
+const recepcion = { hoy: vi.fn(), atender: vi.fn(), soltar: vi.fn() }
 
 vi.mock('../src/sesion/cliente.ts', () => ({
   api: {
@@ -37,6 +38,11 @@ vi.mock('../src/sesion/cliente.ts', () => ({
     pedidosRepuestos: { listar: (x: unknown) => listarPedidos(x) },
     clientes: { listar: vi.fn().mockResolvedValue({ datos: [], total: 0 }) },
     revision: { listar: () => listarPuntos() },
+    recepcion: {
+      hoy: () => recepcion.hoy(),
+      atender: (x: unknown) => recepcion.atender(x),
+      soltar: (x: unknown) => recepcion.soltar(x),
+    },
     hojas: {
       listar: () => listarHojas(),
       imagen: vi.fn().mockResolvedValue(new Blob([new Uint8Array([1])], { type: 'image/png' })),
@@ -132,8 +138,16 @@ const [BOCINA, CORREAS, PASTILLAS] = PUNTOS as [
 ]
 
 beforeEach(() => {
-  for (const f of [...Object.values(ordenes), listarVehiculos, listarHojas, listarPuntos, renovar])
+  for (const f of [
+    ...Object.values(ordenes),
+    ...Object.values(recepcion),
+    listarVehiculos,
+    listarHojas,
+    listarPuntos,
+    renovar,
+  ])
     f.mockReset()
+  recepcion.hoy.mockResolvedValue({ datos: [] })
   usarSesion.getState().limpiar()
   renovar.mockImplementation(async () => {
     usarSesion.getState().establecer(SESION)
@@ -378,11 +392,17 @@ describe('el estado del vehículo al recibirlo', () => {
   })
 })
 
+/** La tablet arranca en la cola: para recibir un auto que nadie anotó, se elige «sin turno». */
+async function sinTurno() {
+  await userEvent.click(await screen.findByRole('button', { name: 'Recibir sin turno' }))
+  await screen.findByLabelText('Patente o chasis')
+}
+
 describe('la recepción en tablet', () => {
   it('es táctil, va paso por paso, no deja seguir sin lo que falta, y abre la orden', async () => {
     ordenes.abrir.mockResolvedValue({ ...FICHA, numero: 57, estado: 'recibida' })
     await montarApp('/recepcion')
-    await screen.findByLabelText('Patente o chasis')
+    await sinTurno()
     expect(document.documentElement.dataset.densidad).toBe('tactil')
 
     await userEvent.click(screen.getByRole('button', { name: 'Siguiente' }))
@@ -430,14 +450,15 @@ describe('la recepción en tablet', () => {
     )
     expect(await screen.findByText('OT 000057')).toBeDefined()
 
-    // Y se sigue con el próximo, sin volver a entrar.
-    await userEvent.click(screen.getByRole('button', { name: 'Recibir otro vehículo' }))
-    expect(await screen.findByLabelText('Patente o chasis')).toHaveProperty('value', '')
+    // Y se sigue con el próximo, sin volver a entrar: vuelve a la cola, y de ahí sale vacía.
+    await userEvent.click(screen.getByRole('button', { name: 'Volver a la cola' }))
+    await sinTurno()
+    expect(screen.getByLabelText('Patente o chasis')).toHaveProperty('value', '')
   })
 
   it('«Cambiar» en el repaso lleva al paso donde se carga ese dato', async () => {
     await montarApp('/recepcion')
-    await screen.findByLabelText('Patente o chasis')
+    await sinTurno()
     await userEvent.click(screen.getByRole('button', { name: /Repasar/ }))
     await userEvent.click(screen.getByRole('button', { name: 'Cambiar qué pide' }))
     expect(await screen.findByText('¿Qué pide el cliente?')).toBeDefined()
@@ -445,7 +466,7 @@ describe('la recepción en tablet', () => {
 
   it('al salir de la tablet vuelve la densidad de cada uno', async () => {
     const router = await montarApp('/recepcion')
-    await screen.findByLabelText('Patente o chasis')
+    await sinTurno()
     await router.navigate({ to: '/ordenes' })
     await waitFor(() => expect(document.documentElement.dataset.densidad).toBeUndefined())
   })
@@ -890,5 +911,91 @@ describe('anular la orden', () => {
     await waitFor(() =>
       expect(cache.getQueryState(['tablero', 't1', 's1'])?.isInvalidated).toBe(true),
     )
+  })
+})
+
+describe('la cola de la tablet', () => {
+  const ESPERA = {
+    id: 'v1',
+    numero: 'S-004',
+    motivo: 'servicio' as const,
+    origen: 'recepcion' as const,
+    entidadId: null,
+    nombre: 'Juan Pérez',
+    telefono: '351 555-1234',
+    derivadaA: null,
+    atendidaPor: null,
+    llegoEn: new Date(Date.now() - 12 * 60_000).toISOString(),
+    atendidaEn: null,
+    cerradaEn: null,
+    resultado: null,
+    ordenId: null,
+    nota: null,
+  }
+  const DE_OTRO = {
+    ...ESPERA,
+    id: 'v2',
+    numero: 'S-005',
+    nombre: 'Carla Ruiz',
+    atendidaEn: new Date().toISOString(),
+    atendidaPor: { id: 'u9', nombre: 'Diego Sosa' },
+  }
+  const DE_VENTAS = { ...ESPERA, id: 'v3', numero: 'V-001', motivo: 'venta' as const }
+
+  it('muestra a quién esperan para el taller, y lo que tiene otro aparte', async () => {
+    recepcion.hoy.mockResolvedValue({ datos: [ESPERA, DE_OTRO, DE_VENTAS] })
+    await montarApp('/recepcion')
+
+    const esperando = await screen.findByRole('region', { name: 'Esperando' })
+    expect(within(esperando).getByText('S-004')).toBeDefined()
+    // Ventas no es del taller: no aparece.
+    expect(screen.queryByText('V-001')).toBeNull()
+    const otro = screen.getByRole('region', { name: 'Los está recibiendo otro' })
+    expect(within(otro).getByText('Lo tiene Diego Sosa')).toBeDefined()
+  })
+
+  it('tocar uno lo agarra y arranca con quién lo trae ya puesto; la orden cierra la visita', async () => {
+    recepcion.hoy.mockResolvedValue({ datos: [ESPERA] })
+    recepcion.atender.mockResolvedValue({
+      ...ESPERA,
+      atendidaEn: new Date().toISOString(),
+      atendidaPor: { id: 'u1', nombre: 'Martín Gutiérrez' },
+    })
+    ordenes.abrir.mockResolvedValue({ ...FICHA, numero: 58, estado: 'recibida' })
+    await montarApp('/recepcion')
+
+    await userEvent.click(await screen.findByRole('button', { name: /S-004/ }))
+    expect(recepcion.atender).toHaveBeenCalledWith({ id: 'v1' })
+    await screen.findByLabelText('Patente o chasis')
+    expect(screen.getByText('S-004')).toBeDefined()
+
+    await elegirVehiculo('Patente o chasis')
+    await userEvent.click(screen.getByRole('button', { name: 'Siguiente' }))
+    expect(await screen.findByLabelText('Lo trae')).toHaveProperty('value', 'Juan Pérez')
+
+    await userEvent.click(screen.getByRole('button', { name: /Repasar/ }))
+    await userEvent.click(screen.getByRole('button', { name: /Qué pide/ }))
+    await userEvent.type(screen.getByLabelText('Qué pide el cliente'), 'Service de 20.000')
+    await userEvent.click(screen.getByRole('button', { name: /Repasar/ }))
+    await userEvent.click(screen.getByRole('button', { name: /Abrir la orden/ }))
+
+    await waitFor(() =>
+      expect(ordenes.abrir).toHaveBeenCalledWith(
+        expect.objectContaining({ visitaId: 'v1', traeTelefono: '351 555-1234' }),
+      ),
+    )
+  })
+
+  it('«Devolver a la cola» la suelta y vuelve a la lista', async () => {
+    recepcion.hoy.mockResolvedValue({ datos: [ESPERA] })
+    recepcion.atender.mockResolvedValue({ ...ESPERA, atendidaEn: new Date().toISOString() })
+    recepcion.soltar.mockResolvedValue(ESPERA)
+    await montarApp('/recepcion')
+
+    await userEvent.click(await screen.findByRole('button', { name: /S-004/ }))
+    await userEvent.click(await screen.findByRole('button', { name: 'Devolver a la cola' }))
+
+    expect(recepcion.soltar).toHaveBeenCalledWith({ id: 'v1' })
+    expect(await screen.findByRole('heading', { name: '¿A quién recibís?' })).toBeDefined()
   })
 })

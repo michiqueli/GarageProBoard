@@ -49,6 +49,7 @@ import {
   titularidad,
   usuario,
   vehiculo,
+  visita,
 } from '@gpb/db/schema'
 import { generarPresupuestoPdf } from '@gpb/pdf'
 import { Inject, Injectable } from '@nestjs/common'
@@ -72,6 +73,7 @@ type Codigo =
   | 'PRESUPUESTO_PENDIENTE'
   | 'ITEM_INVALIDO'
   | 'PUNTO_INVALIDO'
+  | 'VISITA_INVALIDA'
   | 'CORREO_NO_CONFIGURADO'
   | 'CORREO_NO_ENVIADO'
 
@@ -250,10 +252,25 @@ export class ServicioOrdenes {
       vehiculoId: string
       items: ItemEntrada[]
       revision?: RespuestaEntrada[] | undefined
+      visitaId?: string | null | undefined
     },
     ip?: string,
   ) {
     return this.datos.transaccion(async (tx, sesion) => {
+      // La visita se traba antes que nada: si otra tablet la agarró mientras ésta recibía el
+      // auto, no se abre una orden que después no se puede atar a nadie.
+      if (entrada.visitaId) {
+        const [v] = await tx
+          .select({ cerradaEn: visita.cerradaEn, atendidaPor: visita.atendidaPor })
+          .from(visita)
+          .where(eq(visita.id, entrada.visitaId))
+          .for('update')
+        if (!v) throw new ErrorOrdenes('NO_ENCONTRADO')
+        if (v.cerradaEn || (v.atendidaPor && v.atendidaPor !== sesion.usuarioId)) {
+          throw new ErrorOrdenes('VISITA_INVALIDA')
+        }
+      }
+
       const [auto] = await tx
         .select({
           id: vehiculo.id,
@@ -341,6 +358,22 @@ export class ServicioOrdenes {
           .update(vehiculo)
           .set({ kilometraje: entrada.kilometraje, actualizadoEn: new Date() })
           .where(eq(vehiculo.id, auto.id))
+      }
+
+      if (entrada.visitaId) {
+        const ahora = new Date()
+        await tx
+          .update(visita)
+          .set({
+            resultado: 'orden',
+            ordenId: creada.id,
+            cerradaEn: ahora,
+            // Si nadie la había agarrado —se recibió desde el escritorio—, la atendió quien abre.
+            atendidaPor: sql`coalesce(${visita.atendidaPor}, ${sesion.usuarioId}::uuid)`,
+            atendidaEn: sql`coalesce(${visita.atendidaEn}, now())`,
+            actualizadoEn: ahora,
+          })
+          .where(eq(visita.id, entrada.visitaId))
       }
 
       await this.auditar(

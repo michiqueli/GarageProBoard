@@ -178,7 +178,8 @@ Razonados en [contra qué competimos](competencia-dms.md); acá queda cómo se r
 
 ## Cómo se construye
 
-Por orden, y cada paso se prueba en local de punta a punta. El 1 está hecho desde el 09/10/2026:
+Por orden, y cada paso se prueba en local de punta a punta. El 1 y el 2 están hechos desde el
+09/10/2026:
 la pantalla es **Recepción** en el menú (`/puerta`), y el asistente de la tablet pasó a llamarse
 **Tablet de recepción** para que las dos entradas no arranquen igual.
 

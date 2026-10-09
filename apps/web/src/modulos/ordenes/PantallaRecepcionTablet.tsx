@@ -1,5 +1,6 @@
 import { accesoDeRuta, contrato } from '@gpb/contracts'
 import { DANIOS, ELEMENTOS_INVENTARIO, INVENTARIO } from '@gpb/core'
+import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { Link } from '@tanstack/react-router'
 import { type ReactNode, useEffect, useRef, useState } from 'react'
 import { Boton } from '../../componentes/Boton.tsx'
@@ -9,7 +10,10 @@ import { Patente } from '../../componentes/Patente.tsx'
 import { SelectorCliente } from '../../componentes/SelectorCliente.tsx'
 import { SelectorVehiculo } from '../../componentes/SelectorVehiculo.tsx'
 import { usarSesion } from '../../sesion/almacen.ts'
-import { useVeredicto } from '../../sesion/permisos.ts'
+import { api } from '../../sesion/cliente.ts'
+import { mensajeGeneral } from '../../sesion/consultas.ts'
+import { usePuedeUsar, useVeredicto } from '../../sesion/permisos.ts'
+import { ColaTablet } from '../recepcion/ColaTablet.tsx'
 import { DiagramaDanios, describirDanio, ElegirCarroceria } from './DiagramaDanios.tsx'
 import { InventarioRecepcion } from './InventarioRecepcion.tsx'
 import { COMBUSTIBLES, imprimirOrden, nombreOrden } from './ordenes.ts'
@@ -41,6 +45,9 @@ type Paso = (typeof PASOS)[number]['id']
  * lugar y no sirven. Pero pide el mismo permiso que la de escritorio, que es el que aplica
  * la API al abrir la orden.
  *
+ * **Arranca en la cola** —quién espera para el taller, ver `docs/tecnicos/recepcion-y-turnos.md`—
+ * si quien la usa puede ver la puerta. Si no, directo al primer paso, como antes.
+ *
  * Lo que falta de lo decidido en ese documento, y queda para cuando haya piloto: que la tablet
  * se registre como dispositivo y arranque sola acá, entrar con la credencial QR, cerrar la
  * sesión por inactividad, las fotos y la firma en pantalla.
@@ -52,6 +59,23 @@ export function PantallaRecepcionTablet() {
   const [intento, setIntento] = useState<Partial<Record<Paso, boolean>>>({})
   const r = useRecepcion(setAbierta)
   const { datos: d, poner } = r
+  const conCola = usePuedeUsar(contrato.recepcion.hoy)
+  const [enCola, setEnCola] = useState(true)
+  const tenantId = usarSesion((e) => e.datos?.tenant.id)
+  const cache = useQueryClient()
+
+  /** Devolverla a la cola: vuelve a esperar, y la tablet vuelve a la lista. */
+  const soltar = useMutation({
+    mutationFn: (id: string) => api.recepcion.soltar({ id }),
+    onSettled: () => cache.invalidateQueries({ queryKey: ['visitas', tenantId] }),
+    onSuccess: () => {
+      r.empezarOtra()
+      setIntento({})
+      setPaso('vehiculo')
+      setEnCola(true)
+    },
+    meta: { exito: 'Volvió a la cola', error: mensajeGeneral },
+  })
   const cuerpo = useRef<HTMLElement>(null)
 
   const indice = PASOS.findIndex((p) => p.id === paso)
@@ -102,6 +126,7 @@ export function PantallaRecepcionTablet() {
     setAbierta(null)
     setIntento({})
     ir('vehiculo')
+    setEnCola(true)
   }
 
   if (veredicto !== 'permitido') {
@@ -123,6 +148,27 @@ export function PantallaRecepcionTablet() {
             Ir al inicio
           </Link>
         </section>
+      </Marco>
+    )
+  }
+
+  if (conCola && enCola && !abierta) {
+    return (
+      <Marco>
+        <ColaTablet
+          alElegir={(v) => {
+            r.desdeVisita(v)
+            setIntento({})
+            setPaso('vehiculo')
+            setEnCola(false)
+          }}
+          sinTurno={() => {
+            r.empezarOtra()
+            setIntento({})
+            setPaso('vehiculo')
+            setEnCola(false)
+          }}
+        />
       </Marco>
     )
   }
@@ -149,7 +195,7 @@ export function PantallaRecepcionTablet() {
             >
               Imprimir la orden
             </Boton>
-            <Boton onClick={otra}>Recibir otro vehículo</Boton>
+            <Boton onClick={otra}>{conCola ? 'Volver a la cola' : 'Recibir otro vehículo'}</Boton>
             <Link
               to="/ordenes/$id"
               params={{ id: abierta.id }}
@@ -165,6 +211,21 @@ export function PantallaRecepcionTablet() {
 
   return (
     <Marco>
+      {d.visita && (
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-2 rounded-base border border-marca bg-marca-suave px-4 py-2">
+          <span className="font-mono font-bold">{d.visita.numero}</span>
+          <span className="text-dato">{d.traeNombre || 'Sin nombre'}</span>
+          <span className="ml-auto">
+            <Boton
+              variante="sutil"
+              deshabilitado={soltar.isPending}
+              onClick={() => d.visita && soltar.mutate(d.visita.id)}
+            >
+              Devolver a la cola
+            </Boton>
+          </span>
+        </div>
+      )}
       <nav aria-label="Pasos de la recepción">
         <ol className="grid grid-cols-4 gap-1.5 sm:grid-cols-7">
           {PASOS.map((p, i) => {

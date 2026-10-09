@@ -52,6 +52,13 @@ export class ControladorRecepcion {
     )
   }
 
+  @Operacion(c.soltar)
+  soltar() {
+    return implement(c.soltar).handler(({ input, errors }) =>
+      this.servicio.soltar(input.id).catch((e) => traducir(e, errors)),
+    )
+  }
+
   @Operacion(c.cerrar)
   cerrar() {
     return implement(c.cerrar).handler(({ input, errors }) =>

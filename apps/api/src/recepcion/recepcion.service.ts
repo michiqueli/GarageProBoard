@@ -161,6 +161,19 @@ export class ServicioRecepcion {
     })
   }
 
+  /** Devolverla a la cola. La espera se sigue contando desde que llegó, no desde ahora. */
+  soltar(id: string) {
+    return this.datos.transaccion(async (tx) => {
+      const v = await abierta(tx, id)
+      const [cambiada] = await tx
+        .update(visita)
+        .set({ atendidaPor: null, atendidaEn: null, actualizadoEn: new Date() })
+        .where(eq(visita.id, v.id))
+        .returning()
+      return una(tx, cambiada ?? v)
+    })
+  }
+
   /**
    * Terminarla. Cerrar como atendida una que nadie había agarrado la deja a nombre de quien la
    * cierra: es la recepcionista que resolvió la consulta en el mostrador, y esa espera también

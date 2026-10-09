@@ -150,6 +150,8 @@ const NO_AUDITAN: Readonly<Record<string, string>> = {
     'Es una columna de la visita, y el trigger guarda su antes y su después con quién lo cambió.',
   'recepcion.atender':
     'Quién la agarró y cuándo son dos columnas de la visita que el trigger ya cuenta.',
+  'recepcion.soltar':
+    'Vacía quién la agarró y cuándo: el trigger guarda el antes, que es lo que importa saber.',
   'recepcion.cerrar':
     'Cómo terminó queda en la visita, y el trigger guarda el cambio con quién y cuándo.',
   'configuracion.guardar': 'Son las preferencias propias: el tema de cada uno no es del resto.',
