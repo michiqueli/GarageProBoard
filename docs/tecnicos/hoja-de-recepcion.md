@@ -232,10 +232,12 @@ decidir:
   firmar: quién lo revisó es quien lo miró, no quien apretó guardar después.
 - **Se puede revisar hasta que la orden se factura**, no sólo mientras está en el taller: la
   prueba de ruta a veces se hace con la orden ya terminada.
-- **El semáforo impreso es forma**: círculo vacío, a medio llenar y lleno, con una raya para lo
-  que no se revisó. La Helvetica del PDF no trae ✓, y aunque la trajera, una tilde y una cruz
-  se confunden en una fotocopia mala. Con la revisión entera, cada copia pasa a dos hojas, y la
-  segunda dice de qué orden es.
+- **El semáforo impreso es color y forma**: un círculo verde con su tilde, uno ámbar a medio
+  llenar y uno rojo lleno, con una raya gris para lo que no se revisó. La tilde se dibuja,
+  porque la Helvetica del PDF no trae ✓. Al principio el «bien» era un círculo vacío, y en
+  papel se leía como una casilla sin marcar (10/10/2026). Los colores dan tres grises distintos,
+  así que en una láser blanco y negro o en una fotocopia la forma sigue diciendo qué es. Con
+  la revisión entera, cada copia pasa a dos hojas, y la segunda dice de qué orden es.
 - **«Pasar a presupuesto» suma trabajos sin precio** a la orden, uno por punto elegido, con el
   nombre y la nota: «Correas: la de accesorios, cuarteada». Se completan y se presupuestan con
   el circuito de siempre. El punto recuerda qué renglón salió de él, así no se ofrece dos veces;

@@ -163,31 +163,59 @@ function lugar(doc: Doc, y: number, alto: number, encabezado: string): number {
 }
 
 /**
- * El semáforo dibujado, no escrito: la orden sale de la láser del mostrador, en blanco y negro.
- * Bien es un círculo vacío, reparar uno a medio llenar, urgente uno lleno. Sin revisar, una raya:
- * no es ninguno de los tres.
+ * Los colores del semáforo impreso. Elegidos para que en una impresora blanco y negro, o en una
+ * fotocopia, salgan en tres grises distintos: el rojo oscuro, el ámbar claro.
+ */
+const COLOR_SEMAFORO: Record<EstadoRevision, string> = {
+  verde: '#2e7d32',
+  ambar: '#e09b00',
+  rojo: '#c62828',
+}
+
+/**
+ * El semáforo dibujado, no escrito. **Color y forma**: bien es un círculo verde con su tilde, reparar
+ * uno a medio llenar ámbar, urgente uno lleno rojo. El color se lee de un vistazo; la forma es
+ * lo que queda cuando la orden sale de la láser del mostrador en blanco y negro, o se
+ * fotocopia. Sin revisar, una raya gris: no es ninguno de los tres.
  */
 function semaforo(doc: Doc, estado: EstadoRevision | null, cx: number, cy: number) {
   const r = mm(1.4)
+  doc.save()
   doc.lineWidth(0.7)
   if (!estado) {
     doc
       .moveTo(cx - r, cy)
       .lineTo(cx + r, cy)
-      .stroke()
-    return
-  }
-  if (estado === 'rojo') {
-    doc.circle(cx, cy, r).fillAndStroke('#000', '#000')
-    return
-  }
-  if (estado === 'ambar') {
-    doc.save()
-    doc.circle(cx, cy, r).clip()
-    doc.rect(cx - r, cy - r, r, r * 2).fill('#000')
+      .stroke('#777')
     doc.restore()
+    return
   }
-  doc.circle(cx, cy, r).stroke()
+  const color = COLOR_SEMAFORO[estado]
+  if (estado === 'rojo') {
+    doc.circle(cx, cy, r).fillAndStroke(color, color)
+  } else {
+    if (estado === 'ambar') {
+      doc.save()
+      doc.circle(cx, cy, r).clip()
+      doc.rect(cx - r, cy - r, r, r * 2).fill(color)
+      doc.restore()
+    }
+    if (estado === 'verde') {
+      // La tilde dibujada —la Helvetica del PDF no la trae—: un círculo vacío se leía como
+      // una casilla sin marcar, que es justo lo contrario de «se revisó y está bien».
+      doc
+        .lineWidth(0.9)
+        .moveTo(cx - r * 0.5, cy + r * 0.05)
+        .lineTo(cx - r * 0.12, cy + r * 0.45)
+        .lineTo(cx + r * 0.55, cy - r * 0.4)
+        .stroke(color)
+      doc.lineWidth(0.7)
+    }
+    doc.circle(cx, cy, r).stroke(color)
+  }
+  doc.restore()
+  // Lo que venga después escribe en negro, como si el semáforo no hubiera pasado.
+  doc.fillColor('#000').strokeColor('#000')
 }
 
 const FILA_REVISION = mm(3.9)
