@@ -302,7 +302,7 @@ Diseñado el 09/10/2026 junto con la agenda de turnos del Hito 2, porque son la 
 la visita, la cola de las tablets, la derivación a una persona y el tótem, en
 [la recepción](../tecnicos/recepcion-y-turnos.md).
 
-- 🔨 **Tótem de recepción**, la pantalla en la puerta como la de un banco: ponés tu
+- ✅ **Tótem de recepción**, la pantalla en la puerta como la de un banco: ponés tu
       documento, si ya existís te saluda por tu nombre y si no te lo pide, elegís a qué
       viniste —ventas, servicios, repuestos, administración— y te llevás tu turno. Llamado
       por pantalla y medición de la espera por sector y por hora.
@@ -312,7 +312,7 @@ la visita, la cola de las tablets, la derivación a una persona y el tótem, en
       y resueltos en [la recepción](../tecnicos/recepcion-y-turnos.md): el documento **no
       devuelve el nombre de nadie, nunca** —sólo la hora del turno—; es dedo; y da el número
       **aunque se caiga la red**, en su propia serie, y lo manda cuando vuelve. Desde el
-      09/10/2026. Falta el llamado por pantalla y la medición de la espera
+      09/10/2026, con el llamador de la sala de espera y la espera por motivo y por hora
 - ⬜ **CRM**: prospectos, agenda del vendedor, contactos programados, demandas, contactos
       levantados en eventos. Y lo que de verdad compra un gerente comercial: **la
       verificación de que el vendedor hizo lo que tenía que hacer**
@@ -419,7 +419,8 @@ puesto por el dispositivo. Por qué no una app ahora y por qué no un usuario co
 - ⬜ Fichaje del piso de taller y escaneo de chasis por código de barras
 - ⬜ **Recepción de 0km**: leer el chasis del código de barras y fotodocumentar las averías
       de transporte antes de aceptar la unidad
-- ⬜ Ingreso y egreso de vehículos en tablet, viendo los turnos del día
+- 🔨 Ingreso y egreso de vehículos en tablet, viendo los turnos del día: el ingreso está, con la
+      cola de la puerta y los turnos que llegan; falta el egreso
 - ⬜ **Cola offline**: el fondo del taller no tiene wifi, y una app que necesita señal para
       fichar no se usa
 

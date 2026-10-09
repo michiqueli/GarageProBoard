@@ -162,6 +162,17 @@ const rutaPuerta = createRoute({
   ),
 })
 
+/** Cuánto se espera en la puerta, por motivo y por hora. */
+const rutaEsperas = createRoute({
+  getParentRoute: () => conSesion,
+  path: 'puerta/esperas',
+  staticData: { pantalla: 'recepcion' },
+  component: lazyRouteComponent(
+    () => import('./modulos/recepcion/PantallaEsperas.tsx'),
+    'PantallaEsperas',
+  ),
+})
+
 /** La agenda de turnos del taller. */
 const rutaAgenda = createRoute({
   getParentRoute: () => conSesion,
@@ -488,6 +499,7 @@ const arbol = raiz.addChildren([
     rutaRecepcionTablet,
     rutaPuerta,
     rutaAgenda,
+    rutaEsperas,
     rutaFichaOrden,
     rutaVehiculos,
     rutaFichaVehiculo,

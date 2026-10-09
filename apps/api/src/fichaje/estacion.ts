@@ -12,11 +12,13 @@ import type { FastifyRequest } from 'fastify'
 import { Observable } from 'rxjs'
 import { DB } from '../comun/simbolos.ts'
 
-export type TipoEstacion = 'taller' | 'reloj' | 'tablero' | 'totem'
+export type TipoEstacion = 'taller' | 'reloj' | 'tablero' | 'totem' | 'llamador'
 
 /** El tipo como lo guarda la base. Uno desconocido se lee como taller, que es el de siempre. */
 export function comoTipo(tipo: string): TipoEstacion {
-  return tipo === 'reloj' || tipo === 'tablero' || tipo === 'totem' ? tipo : 'taller'
+  return tipo === 'reloj' || tipo === 'tablero' || tipo === 'totem' || tipo === 'llamador'
+    ? tipo
+    : 'taller'
 }
 
 /**

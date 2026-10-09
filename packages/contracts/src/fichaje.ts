@@ -9,6 +9,7 @@ export const TIPOS_ESTACION = {
   reloj: 'Reloj: entrada y salida',
   tablero: 'Tablero: el televisor del piso',
   totem: 'Tótem: la puerta, para que el cliente se anote solo',
+  llamador: 'Llamador: el televisor de la sala de espera',
 } as const
 
 export type TipoEstacion = keyof typeof TIPOS_ESTACION

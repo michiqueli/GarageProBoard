@@ -12,10 +12,12 @@ import { montarApp } from './montar.tsx'
 const totem = { estado: vi.fn(), anotar: vi.fn() }
 const estacion = vi.fn()
 const recordada = vi.fn()
+const llamador = vi.fn()
 
 vi.mock('../src/modulos/fichaje/estacion.ts', () => ({
   apiEstacion: {
     fichaje: { estacion: () => estacion(), escanear: vi.fn(), tableroEstacion: vi.fn() },
+    llamador: { pantalla: () => llamador() },
     totem: {
       estado: () => totem.estado(),
       anotar: (x: unknown) => totem.anotar(x),
@@ -79,7 +81,7 @@ describe('el tótem', () => {
     expect(screen.getByText('Sin conexión: 1 por mandar')).toBeDefined()
 
     // Vuelve la red: se manda la misma visita, con el mismo id.
-    const { id } = totem.anotar.mock.calls[0]?.[0] as { id: string }
+    const { id } = (totem.anotar.mock.calls[0]?.[0] ?? {}) as { id: string }
     totem.anotar.mockResolvedValue({ numero: 'T-001', turnoHora: null })
     window.dispatchEvent(new Event('online'))
     await waitFor(() =>
@@ -111,5 +113,25 @@ describe('el tótem', () => {
     recordada.mockReturnValue(TOTEM)
     await montarApp('/fichaje')
     expect(await screen.findByRole('heading', { name: '¿A qué venís?' })).toBeDefined()
+  })
+})
+
+describe('el llamador', () => {
+  it('muestra el número que se está llamando, a quién buscar, y los anteriores', async () => {
+    estacion.mockResolvedValue({ ...TOTEM, nombre: 'Sala de espera', tipo: 'llamador' })
+    llamador.mockResolvedValue({
+      sucursal: 'Casa Central',
+      llamados: [
+        { numero: 'T-004', motivo: 'servicio', atiende: 'Andrea V.', en: new Date().toISOString() },
+        { numero: 'S-002', motivo: 'servicio', atiende: 'Diego S.', en: new Date().toISOString() },
+      ],
+      esperando: 3,
+    })
+    await montarApp('/fichaje')
+
+    expect(await screen.findByText('T-004')).toBeDefined()
+    expect(screen.getByText('Te atiende Andrea V.')).toBeDefined()
+    expect(screen.getByText('S-002')).toBeDefined()
+    expect(screen.getByText('Hay 3 personas esperando')).toBeDefined()
   })
 })

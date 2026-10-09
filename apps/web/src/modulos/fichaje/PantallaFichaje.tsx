@@ -9,6 +9,7 @@ import {
   tokenDeLaEstacion,
   tomarTokenDeLaUrl,
 } from './estacion.ts'
+import { Llamador } from './Llamador.tsx'
 import { beepError, beepIntermedio, beepOk } from './sonido.ts'
 import { TableroDelPiso } from './TableroDelPiso.tsx'
 import { Totem } from './Totem.tsx'
@@ -264,7 +265,7 @@ export function PantallaFichaje() {
   useEffect(() => {
     function alPresionar(e: KeyboardEvent) {
       // El tótem tiene su propio teclado: lo que se tipea ahí es un documento, no un escaneo.
-      if (tipo.current === 'totem') return
+      if (tipo.current === 'totem' || tipo.current === 'llamador') return
       const ahora = Date.now()
 
       // Buffer viejo o desbordado: basura de un escaneo fallido, o algo apoyado sobre el
@@ -307,6 +308,7 @@ export function PantallaFichaje() {
   if (!estacion) return <Aviso texto="Conectando…" />
   if (estacion.tipo === 'tablero') return <TableroDelPiso estacion={estacion} />
   if (estacion.tipo === 'totem') return <Totem estacion={estacion} />
+  if (estacion.tipo === 'llamador') return <Llamador estacion={estacion} />
   if (estado.fase === 'respuesta') return <Resultado r={estado.r} />
 
   const esperando = estado.fase === 'esperando'

@@ -427,3 +427,75 @@ export const contratoTotem = {
     .errors(NO_ES_TOTEM)
     .output(z.object({ numero: z.string(), turnoHora: z.string().nullable() })),
 }
+
+/**
+ * El televisor de la sala de espera: el número que se está llamando y quién lo atiende. Con el
+ * token del aparato, como el tablero del piso. **Sin nombres de clientes**: está colgado donde
+ * lo ve cualquiera.
+ */
+export const contratoLlamador = {
+  pantalla: conEstacion
+    .route({
+      method: 'GET',
+      path: '/llamador',
+      tags: [TAG],
+      operationId: 'llamador',
+      summary: 'Los últimos llamados de la sucursal y cuántos esperan',
+      description:
+        'Llamar es agarrar la visita: el número aparece con el nombre de quien la agarró. Se ' +
+        'muestran los de la última media hora, el más nuevo primero.',
+    })
+    .errors({
+      NO_ES_LLAMADOR: { status: 403, message: 'Esta pantalla no está registrada como llamador' },
+    })
+    .output(
+      z.object({
+        sucursal: z.string().nullable(),
+        llamados: z.array(
+          z.object({
+            numero: z.string(),
+            motivo: z.enum(MOTIVOS_VISITA),
+            /** Quién lo llamó: es a quien tiene que buscar. */
+            atiende: z.string(),
+            en: z.iso.datetime(),
+          }),
+        ),
+        esperando: z.number().int(),
+      }),
+    ),
+}
+
+const medidaEspera = z.object({
+  visitas: z.number().int(),
+  atendidas: z.number().int(),
+  seFueron: z.number().int(),
+  /** En minutos, de las que se atendieron. Sin ninguna atendida, no hay número. */
+  esperaMedia: z.number().nullable(),
+  esperaMaxima: z.number().nullable(),
+})
+
+/** Cuánto se espera en la puerta, por motivo y por hora de llegada. */
+export const contratoEsperas = {
+  medir: conPermiso('nucleo', 'ver', 'Visita')
+    .route({
+      method: 'GET',
+      path: '/recepcion/esperas',
+      tags: [TAG],
+      operationId: 'medirEsperas',
+      summary: 'La espera en la puerta entre dos días: por motivo y por hora de llegada',
+      description:
+        'La espera es desde que llegó hasta que alguien la agarró. Los que se fueron sin que los ' +
+        'atiendan se cuentan aparte: son el dato que esto viene a mostrar.',
+    })
+    .input(z.object({ desde: z.iso.date(), hasta: z.iso.date() }))
+    .errors({
+      RANGO_INVALIDO: { status: 422, message: 'Pedí hasta 92 días, y que el primero sea antes' },
+    })
+    .output(
+      z.object({
+        total: medidaEspera,
+        porMotivo: z.array(medidaEspera.extend({ motivo: z.enum(MOTIVOS_VISITA) })),
+        porHora: z.array(medidaEspera.extend({ hora: z.number().int().min(0).max(23) })),
+      }),
+    ),
+}

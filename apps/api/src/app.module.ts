@@ -27,6 +27,10 @@ import { ServicioOrganizacion } from './organizacion/organizacion.service.ts'
 import { ModuloPadron } from './padron/padron.module.ts'
 import { ControladorPersonal } from './personal/personal.controller.ts'
 import { ServicioPersonal } from './personal/personal.service.ts'
+import { ControladorEsperas } from './recepcion/esperas.controller.ts'
+import { ServicioEsperas } from './recepcion/esperas.service.ts'
+import { ControladorLlamador } from './recepcion/llamador.controller.ts'
+import { ServicioLlamador } from './recepcion/llamador.service.ts'
 import { ControladorRecepcion } from './recepcion/recepcion.controller.ts'
 import { ServicioRecepcion } from './recepcion/recepcion.service.ts'
 import { ControladorTotem } from './recepcion/totem.controller.ts'
@@ -98,6 +102,8 @@ import { ServicioVehiculos } from './vehiculos/vehiculos.service.ts'
     ControladorRecepcion,
     ControladorTurnos,
     ControladorTotem,
+    ControladorLlamador,
+    ControladorEsperas,
   ],
   providers: [
     ServicioUsuarios,
@@ -121,6 +127,8 @@ import { ServicioVehiculos } from './vehiculos/vehiculos.service.ts'
     ServicioRecepcion,
     ServicioTurnos,
     ServicioTotem,
+    ServicioLlamador,
+    ServicioEsperas,
     ServicioEstaciones,
     DatosDeLaEstacion,
   ],

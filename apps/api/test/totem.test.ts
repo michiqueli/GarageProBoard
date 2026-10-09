@@ -17,6 +17,7 @@ let app: NestFastifyApplication
 let gerente: string
 let tokenTotem: string
 let tokenReloj: string
+let tokenLlamador: string
 let tenantId: string
 let sucursalId: string
 
@@ -70,6 +71,7 @@ beforeAll(async () => {
 
   tokenTotem = await registrar('Tótem de la puerta', 'totem')
   tokenReloj = await registrar('Reloj', 'reloj')
+  tokenLlamador = await registrar('Sala de espera', 'llamador')
 }, 180_000)
 
 afterAll(async () => {
@@ -162,5 +164,60 @@ describe('el tótem', () => {
     const r = await anotar({ motivo: 'venta', numero: 9 }, tokenReloj)
     expect(r.statusCode).toBe(403)
     expect(r.json().code).toBe('NO_ES_TOTEM')
+  })
+})
+
+describe('el llamador y la espera', () => {
+  const HOY = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'America/Argentina/Buenos_Aires',
+  }).format(new Date())
+
+  function llamador(token = tokenLlamador) {
+    return app.inject({
+      method: 'GET',
+      url: '/api/llamador',
+      headers: { authorization: `Estacion ${token}` },
+    })
+  }
+
+  it('agarrar una visita la llama: el número, con quién lo atiende y sin el cliente', async () => {
+    const espera = (await visitasDeHoy()).find((v) => v.numero === 'T-002')
+    const r = await app.inject({
+      method: 'POST',
+      url: `/api/recepcion/visitas/${espera?.id}/atender`,
+      headers: { authorization: `Bearer ${gerente}` },
+    })
+    expect(r.statusCode, r.body).toBe(200)
+
+    const pantalla = await llamador()
+    expect(pantalla.statusCode, pantalla.body).toBe(200)
+    expect(pantalla.json().llamados[0]).toMatchObject({ numero: 'T-002', atiende: 'Prueba G.' })
+    expect(pantalla.json().esperando).toBeGreaterThan(0)
+    expect(JSON.stringify(pantalla.json())).not.toMatch(/Juan|Pérez/)
+  })
+
+  it('una estación que no es llamador no lo ve', async () => {
+    expect((await llamador(tokenTotem)).statusCode).toBe(403)
+  })
+
+  it('la espera del día, por motivo y por hora de llegada', async () => {
+    const r = await app.inject({
+      method: 'GET',
+      url: `/api/recepcion/esperas?desde=${HOY}&hasta=${HOY}`,
+      headers: { authorization: `Bearer ${gerente}` },
+    })
+    expect(r.statusCode, r.body).toBe(200)
+    const { total, porMotivo, porHora } = r.json()
+    expect(total.visitas).toBe(4)
+    expect(total.atendidas).toBe(1)
+    expect(total.esperaMedia).toBeGreaterThanOrEqual(0)
+    // En el orden en que se ofrecen: servicio primero.
+    expect(porMotivo.map((m: { motivo: string }) => m.motivo)).toEqual([
+      'servicio',
+      'venta',
+      'repuestos',
+      'otro',
+    ])
+    expect(porHora.reduce((a: number, h: { visitas: number }) => a + h.visitas, 0)).toBe(4)
   })
 })

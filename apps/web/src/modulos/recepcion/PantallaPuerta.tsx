@@ -1,6 +1,7 @@
 import { accesoDeRuta, contrato } from '@gpb/contracts'
 import { MOTIVOS_VISITA, MOTIVOS_VISITA_NOMBRE, type MotivoVisita, nivelEspera } from '@gpb/core'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { Link } from '@tanstack/react-router'
 import { type FormEvent, useEffect, useRef, useState } from 'react'
 import { confirmar } from '../../componentes/avisos.ts'
 import { Boton } from '../../componentes/Boton.tsx'
@@ -153,11 +154,19 @@ export function PantallaPuerta() {
       titulo="Recepción"
       requiere={accesoDeRuta(contrato.recepcion.hoy)}
       acciones={
-        puedeAnotar && !alta ? (
-          <Boton accion="global.nuevo" variante="principal" onClick={() => setAlta(true)}>
-            Anotar a alguien
-          </Boton>
-        ) : undefined
+        <span className="flex gap-2">
+          <Link
+            to="/puerta/esperas"
+            className="inline-flex h-campo items-center rounded-base border border-borde px-3 text-dato text-texto-suave hover:border-texto-tenue"
+          >
+            Esperas
+          </Link>
+          {puedeAnotar && !alta && (
+            <Boton accion="global.nuevo" variante="principal" onClick={() => setAlta(true)}>
+              Anotar a alguien
+            </Boton>
+          )}
+        </span>
       }
     >
       {alta && (

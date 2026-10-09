@@ -1,4 +1,4 @@
-import { cleanup, screen, within } from '@testing-library/react'
+import { cleanup, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { usarSesion } from '../src/sesion/almacen.ts'
@@ -23,11 +23,13 @@ const recepcion = {
   derivar: vi.fn(),
 }
 const renovar = vi.fn()
+const medir = vi.fn()
 
 vi.mock('../src/sesion/cliente.ts', () => ({
   api: {
     auth: { iniciar: vi.fn(), cerrar: vi.fn().mockResolvedValue({}), cambiarSucursal: vi.fn() },
     turnos: { listar: async () => ({ datos: [] }) },
+    esperas: { medir: (x: unknown) => medir(x) },
     recepcion: {
       hoy: () => recepcion.hoy(),
       mias: () => recepcion.mias(),
@@ -261,5 +263,38 @@ describe('la puerta', () => {
     await montarApp('/ordenes')
     await screen.findByRole('link', { name: 'Órdenes de trabajo' })
     expect(screen.queryByRole('link', { name: 'Recepción' })).toBeNull()
+  })
+})
+
+describe('las esperas', () => {
+  it('por motivo, con los que se fueron a la vista y la espera larga en rojo', async () => {
+    const m = (v: number, a: number, f: number, media: number | null) => ({
+      visitas: v,
+      atendidas: a,
+      seFueron: f,
+      esperaMedia: media,
+      esperaMaxima: media,
+    })
+    medir.mockResolvedValue({
+      total: m(10, 8, 2, 18.5),
+      porMotivo: [
+        { motivo: 'servicio', ...m(6, 6, 0, 9) },
+        { motivo: 'plan_ahorro', ...m(4, 2, 2, 35) },
+      ],
+      porHora: [{ hora: 10, ...m(10, 8, 2, 18.5) }],
+    })
+    await montarApp('/puerta/esperas')
+
+    const motivo = await screen.findByRole('region', { name: 'Por motivo' })
+    const plan = within(motivo).getByText('Plan de ahorro').closest('tr') as HTMLElement
+    expect(within(plan).getAllByText('35')[0]?.className).toMatch(/bg-critico-suave/)
+    expect(screen.getByText('18.5 min')).toBeDefined()
+    expect(
+      within(screen.getByRole('region', { name: 'Por hora de llegada' })).getByText('10 a 11 h'),
+    ).toBeDefined()
+
+    // ← → cambian el período.
+    await userEvent.keyboard('{ArrowRight}')
+    await waitFor(() => expect(medir).toHaveBeenCalledTimes(2))
   })
 })

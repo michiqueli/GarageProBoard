@@ -390,6 +390,21 @@ const ESTATICAS: EntradaIndice[] = [
     requiere: accesoDeRuta(contrato.recepcion.hoy),
   },
   {
+    id: 'recepcion.esperas',
+    titulo: 'Esperas en la puerta: por motivo y por hora',
+    donde: 'Recepción → Esperas',
+    claves: [
+      'espera',
+      'demora',
+      'se fueron',
+      'tiempo de atencion',
+      'sala de espera',
+      'estadisticas',
+    ],
+    destino: { to: '/puerta/esperas' },
+    requiere: accesoDeRuta(contrato.esperas.medir),
+  },
+  {
     id: 'recepcion.agenda',
     titulo: 'Agenda de turnos del taller',
     donde: 'Principal → Agenda',

@@ -190,6 +190,14 @@ Razonados en [contra qué competimos](competencia-dms.md); acá queda cómo se r
 - **El DNI se busca también adentro de los CUIL y CUIT**, los ocho del medio: casi nadie está
   cargado con el DNI solo. Si viene al taller y tiene turno hoy —a su nombre o de un auto del
   que es titular—, el tótem se lo lleva: la visita sale derivada a su asesor.
+- **Llamar es agarrar la visita.** No hay un botón «llamar» aparte: la recepcionista no va a
+  apretar dos cosas por persona. El llamador —una estación de tipo `llamador`, el televisor de
+  la sala— muestra los agarrados de la última media hora con el nombre y la inicial de quien
+  atiende, y cuántos esperan. Sin nombres de clientes: está donde lo ve cualquiera. Sin sonido
+  por ahora: el navegador no deja sonar una pantalla que nadie tocó.
+- **La espera se mide desde que llegó hasta que alguien la agarró**, por motivo y por hora de
+  llegada, con los que se fueron aparte. En tablas y no en gráficos: son pocas filas, y el
+  número exacto es lo que se discute. Está en Recepción → Esperas.
 - **La agenda pide la semana entera**, y la puerta pide la misma: lo que se agenda en una se
   ve en la otra sin volver a preguntar.
 
@@ -206,7 +214,7 @@ Razonados en [contra qué competimos](competencia-dms.md); acá queda cómo se r
 
 ## Cómo se construye
 
-Por orden, y cada paso se prueba en local de punta a punta. Del 1 al 5 están hechos desde el
+Por orden, y cada paso se prueba en local de punta a punta. Los seis están hechos desde el
 09/10/2026: la pantalla es **Recepción** en el menú (`/puerta`), la agenda es **Agenda**
 (`/agenda`), y el asistente de la tablet pasó a llamarse **Tablet de recepción** para que las
 dos entradas no arranquen igual.

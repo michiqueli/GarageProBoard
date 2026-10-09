@@ -19,11 +19,12 @@ type Registro = Awaited<ReturnType<typeof api.fichaje.registrarEstacion>>
 const FECHA = new Intl.DateTimeFormat('es-AR', { dateStyle: 'short', timeStyle: 'short' })
 
 /** Cómo se lee cada tipo en la tabla, en dos palabras. */
-const QUE_ES: Record<'taller' | 'reloj' | 'tablero' | 'totem', string> = {
+const QUE_ES: Record<'taller' | 'reloj' | 'tablero' | 'totem' | 'llamador', string> = {
   taller: 'Credencial y orden',
   reloj: 'Entrada y salida',
   tablero: 'Muestra el tablero',
   totem: 'El cliente se anota',
+  llamador: 'Llama los números',
 }
 
 const TIPOS = [
@@ -31,12 +32,15 @@ const TIPOS = [
   { valor: 'reloj' as const, texto: 'Reloj: entrada y salida' },
   { valor: 'tablero' as const, texto: 'Tablero: el televisor del piso' },
   { valor: 'totem' as const, texto: 'Tótem: la puerta, para que el cliente se anote' },
+  { valor: 'llamador' as const, texto: 'Llamador: el televisor de la sala de espera' },
 ]
 
 const QUE_HACE: Record<(typeof TIPOS)[number]['valor'], string> = {
   taller:
     'Dos escaneos: la credencial del mecánico y después la orden. Si esa orden estaba abierta para él, se cierra.',
   reloj: 'Un escaneo: la credencial marca entrada, y la siguiente vez, salida.',
+  llamador:
+    'No ficha nada. Es el televisor de la sala de espera: muestra el número que se está llamando y quién lo atiende, con letra grande. Es para colgar, no para tocar.',
   totem:
     'No ficha nada. Es la pantalla de la puerta: el cliente elige a qué viene, pone su documento si quiere y se lleva su número. Sigue dando números aunque se corte la red.',
   tablero:
@@ -278,7 +282,7 @@ function Formulario({ alTerminar }: { alTerminar: (registro?: Registro) => void 
   const primerCampo = useRef<HTMLInputElement>(null)
 
   const [nombre, setNombre] = useState('')
-  const [tipo, setTipo] = useState<'taller' | 'reloj' | 'tablero' | 'totem'>('taller')
+  const [tipo, setTipo] = useState<'taller' | 'reloj' | 'tablero' | 'totem' | 'llamador'>('taller')
   const [sucursalId, setSucursalId] = useState<string | null>(null)
 
   useEffect(() => {
