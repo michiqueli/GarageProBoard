@@ -26,6 +26,11 @@ export class ControladorRecepcion {
     return implement(c.hoy).handler(() => this.servicio.hoy())
   }
 
+  @Operacion(c.mias)
+  mias() {
+    return implement(c.mias).handler(() => this.servicio.mias())
+  }
+
   @Operacion(c.receptores)
   receptores() {
     return implement(c.receptores).handler(() => this.servicio.receptores())

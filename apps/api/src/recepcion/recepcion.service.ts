@@ -70,6 +70,34 @@ export class ServicioRecepcion {
     })
   }
 
+  /**
+   * Las abiertas de hoy que le derivaron —a su legajo— o que agarró. Una cuenta sin legajo
+   * sólo tiene las que agarró: a ella no se le puede derivar nada.
+   */
+  mias() {
+    return this.datos.transaccion(async (tx, sesion) => {
+      const [yo] = await tx
+        .select({ empleadoId: usuario.empleadoId })
+        .from(usuario)
+        .where(eq(usuario.id, sesion.usuarioId))
+      const filas = await tx
+        .select()
+        .from(visita)
+        .where(
+          and(
+            eq(visita.sucursalId, sesion.sucursalId),
+            eq(visita.fecha, diaArgentino()),
+            isNull(visita.cerradaEn),
+            yo?.empleadoId
+              ? or(eq(visita.derivadaA, yo.empleadoId), eq(visita.atendidaPor, sesion.usuarioId))
+              : eq(visita.atendidaPor, sesion.usuarioId),
+          ),
+        )
+        .orderBy(asc(visita.llegoEn))
+      return { datos: await conNombres(tx, filas) }
+    })
+  }
+
   receptores() {
     return this.datos.transaccion(async (tx, sesion) => ({
       datos: await receptoresDe(tx, sesion),

@@ -294,6 +294,7 @@ function Nav({ secciones }: { secciones: Seccion[] }) {
           <>
             <span className="size-[15px] shrink-0 [&>svg]:size-full">{s.icono}</span>
             {s.etiqueta}
+            {s.Contador && s.to && <s.Contador />}
           </>
         )
 

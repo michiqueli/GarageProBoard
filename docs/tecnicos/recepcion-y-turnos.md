@@ -174,6 +174,10 @@ Razonados en [contra qué competimos](competencia-dms.md); acá queda cómo se r
   «llegó» seguidos no anoten dos personas.
 - **El número de cupo por franja que configura el taller todavía no está**: la agenda muestra
   cuántos hay por hora y nada más. Se suma cuando un piloto diga cuál es el número.
+- **«Lo que le derivaron» no es una pantalla aparte**: es un número lleno al lado de
+  «Recepción» en el menú, en todas las pantallas, y en la puerta lo suyo va primero con «Para
+  vos». El vendedor ya entra a la puerta para atender; otra pantalla sería otro lugar donde
+  mirar.
 - **La agenda pide la semana entera**, y la puerta pide la misma: lo que se agenda en una se
   ve en la otra sin volver a preguntar.
 
@@ -190,7 +194,7 @@ Razonados en [contra qué competimos](competencia-dms.md); acá queda cómo se r
 
 ## Cómo se construye
 
-Por orden, y cada paso se prueba en local de punta a punta. Del 1 al 3 están hechos desde el
+Por orden, y cada paso se prueba en local de punta a punta. Del 1 al 4 están hechos desde el
 09/10/2026: la pantalla es **Recepción** en el menú (`/puerta`), la agenda es **Agenda**
 (`/agenda`), y el asistente de la tablet pasó a llamarse **Tablet de recepción** para que las
 dos entradas no arranquen igual.

@@ -1,6 +1,6 @@
 import 'reflect-metadata'
 import { eq } from '@gpb/db'
-import { vehiculo } from '@gpb/db/schema'
+import { usuario, vehiculo } from '@gpb/db/schema'
 import type { NestFastifyApplication } from '@nestjs/platform-fastify'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import {
@@ -347,5 +347,37 @@ describe('la cola de las tablets', () => {
     const cerrada = (await hoy()).find((x) => x.id === v.id)
     expect(cerrada?.atendidaPor?.nombre).toBe('Prueba Asesor de servicios')
     expect(cerrada?.atendidaEn).not.toBeNull()
+  })
+})
+
+describe('lo que le derivaron', () => {
+  it('cada uno ve las abiertas que le derivaron a su legajo y las que agarró', async () => {
+    // Una vendedora con cuenta, para que le deriven.
+    const [u] = await api.pg.dbDuenio
+      .select({ id: usuario.id })
+      .from(usuario)
+      .where(eq(usuario.email, 'asesor@puerta.test'))
+    await api.pg.dbDuenio
+      .update(usuario)
+      .set({ empleadoId: vendedorId })
+      .where(eq(usuario.id, u?.id as string))
+
+    const para = await anotar({ motivo: 'venta', nombre: 'Para Laura', derivadaA: vendedorId })
+    const otra = await anotar({ motivo: 'venta', nombre: 'Sin asignar' })
+    const cerrada = await anotar({ motivo: 'venta', nombre: 'Ya fue', derivadaA: vendedorId })
+    await pedir(recepcionista, 'POST', `/recepcion/visitas/${cerrada.id}/cerrar`, {
+      resultado: 'se_fue',
+    })
+    await pedir(asesor, 'POST', `/recepcion/visitas/${otra.id}/atender`)
+
+    const r = await pedir(asesor, 'GET', '/recepcion/visitas/mias')
+    expect(r.statusCode, r.body).toBe(200)
+    const ids = r.json().datos.map((v: { id: string }) => v.id)
+    expect(ids).toContain(para.id)
+    expect(ids).toContain(otra.id)
+    expect(ids).not.toContain(cerrada.id)
+
+    // A la recepcionista, sin legajo, no le derivaron nada.
+    expect((await pedir(recepcionista, 'GET', '/recepcion/visitas/mias')).json().datos).toEqual([])
   })
 })

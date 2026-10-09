@@ -13,6 +13,7 @@ import { api } from '../../sesion/cliente.ts'
 import { mensajeGeneral } from '../../sesion/consultas.ts'
 import { usePuedeUsar } from '../../sesion/permisos.ts'
 import { useAtajo, useFilasConTeclado } from '../../teclado/index.ts'
+import { useMias } from './ContadorPuerta.tsx'
 import { ElegirReceptor, type Receptor } from './ElegirReceptor.tsx'
 import { TurnosDeHoy } from './TurnosDeHoy.tsx'
 import { errorAlAtender, minutos, REFRESCO, useAhora, type Visita } from './visitas.ts'
@@ -92,7 +93,12 @@ export function PantallaPuerta() {
   })
 
   const todas = visitas.data?.datos ?? []
-  const esperando = todas.filter((v) => !v.atendidaEn && !v.cerradaEn)
+  // Las que le derivaron a quien mira van primero: es lo que tiene que atender él.
+  const mias = useMias()
+  const misIds = new Set((mias.data?.datos ?? []).map((v) => v.id))
+  const esperando = todas
+    .filter((v) => !v.atendidaEn && !v.cerradaEn)
+    .sort((a, b) => Number(misIds.has(b.id)) - Number(misIds.has(a.id)))
   const atendiendo = todas.filter((v) => v.atendidaEn && !v.cerradaEn)
   const terminadas = todas.filter((v) => v.cerradaEn)
   const abiertas = [...esperando, ...atendiendo]
@@ -130,6 +136,7 @@ export function PantallaPuerta() {
 
   const fila = (v: Visita, i: number) => ({
     v,
+    paraMi: misIds.has(v.id) && !v.atendidaEn,
     props: propsFila(i),
     ahora,
     receptores: receptores.data?.datos ?? [],
@@ -191,6 +198,8 @@ export function PantallaPuerta() {
 
 interface PropsFila {
   v: Visita
+  /** Se la derivaron a quien está mirando, y todavía nadie la agarró. */
+  paraMi: boolean
   props: { 'data-activa': string | undefined }
   ahora: number
   receptores: Receptor[]
@@ -273,7 +282,7 @@ function FilaTabla(f: PropsFila) {
       <td className={`${CELDA} font-mono font-semibold`}>{v.numero}</td>
       <td className={`${CELDA} text-texto-suave`}>{MOTIVOS_VISITA_NOMBRE[v.motivo]}</td>
       <td className={CELDA}>
-        <Quien v={v} />
+        <Quien v={v} paraMi={f.paraMi} />
       </td>
       <td className={`${CELDA} py-1`}>
         <QuienAtiende {...f} />
@@ -302,7 +311,7 @@ function Tarjeta(f: PropsFila) {
           <Espera v={v} ahora={f.ahora} />
         </span>
       </div>
-      <Quien v={v} />
+      <Quien v={v} paraMi={f.paraMi} />
       <QuienAtiende {...f} />
       <div className="flex flex-wrap gap-2">
         <Acciones {...f} />
@@ -311,11 +320,27 @@ function Tarjeta(f: PropsFila) {
   )
 }
 
-function Quien({ v }: { v: Visita }) {
-  if (!v.nombre && !v.telefono) return <span className="text-texto-tenue">Sin nombre</span>
+function Quien({ v, paraMi }: { v: Visita; paraMi: boolean }) {
+  // Lleno: alguien —el que mira— tiene que hacer algo.
+  const marca = paraMi && (
+    <span className="ml-2 inline-flex rounded-full bg-atencion px-1.5 text-etiqueta font-semibold text-fondo">
+      Para vos
+    </span>
+  )
+  if (!v.nombre && !v.telefono) {
+    return (
+      <span className="text-texto-tenue">
+        Sin nombre
+        {marca}
+      </span>
+    )
+  }
   return (
     <span className="grid leading-tight">
-      <span>{v.nombre ?? 'Sin nombre'}</span>
+      <span>
+        {v.nombre ?? 'Sin nombre'}
+        {marca}
+      </span>
       {v.telefono && <span className="text-etiqueta text-texto-suave">{v.telefono}</span>}
     </span>
   )

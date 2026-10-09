@@ -15,6 +15,7 @@ import { confirmarDialogo, montarApp, SESION, SESION_MECANICO } from './montar.t
 
 const recepcion = {
   hoy: vi.fn(),
+  mias: vi.fn(),
   receptores: vi.fn(),
   anotar: vi.fn(),
   atender: vi.fn(),
@@ -29,6 +30,7 @@ vi.mock('../src/sesion/cliente.ts', () => ({
     turnos: { listar: async () => ({ datos: [] }) },
     recepcion: {
       hoy: () => recepcion.hoy(),
+      mias: () => recepcion.mias(),
       receptores: () => recepcion.receptores(),
       anotar: (e: unknown) => recepcion.anotar(e),
       atender: (e: unknown) => recepcion.atender(e),
@@ -109,6 +111,7 @@ beforeEach(() => {
   usarSesion.getState().limpiar()
   entraComo(SESION)
   recepcion.hoy.mockResolvedValue({ datos: [RECIEN, HACE_RATO, ATENDIENDO, SE_FUE] })
+  recepcion.mias.mockResolvedValue({ datos: [] })
   recepcion.receptores.mockResolvedValue({
     datos: [
       { id: 'e2', nombre: 'Diego Sosa', puesto: 'asesor', conUsuario: true },
@@ -240,6 +243,17 @@ describe('la puerta', () => {
       nota: '',
     })
     expect(await screen.findByText('Anotado con el V-003')).toBeDefined()
+  })
+
+  it('lo que te derivaron va primero, dice «Para vos», y el menú cuenta cuántos te esperan', async () => {
+    recepcion.mias.mockResolvedValue({ datos: [HACE_RATO] })
+    await montarApp('/puerta')
+    const esperando = await screen.findByRole('region', { name: 'Esperando' })
+    await within(esperando).findByText('Para vos')
+
+    const filas = within(esperando).getAllByRole('row').slice(1)
+    expect(within(filas[0] as HTMLElement).getByText('V-001')).toBeDefined()
+    expect(screen.getByRole('status', { name: 'Te espera una persona' }).textContent).toBe('1')
   })
 
   it('el mecánico no tiene la puerta en el menú', async () => {

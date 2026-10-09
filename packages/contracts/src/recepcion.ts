@@ -100,6 +100,19 @@ export const contratoRecepcion = {
     })
     .output(z.object({ datos: z.array(visita) })),
 
+  mias: conPermiso('nucleo', 'ver', 'Visita')
+    .route({
+      method: 'GET',
+      path: '/recepcion/visitas/mias',
+      tags: [TAG],
+      operationId: 'visitasMias',
+      summary: 'Las de hoy que son de quien pide: las que le derivaron y las que agarró',
+      description:
+        'Las abiertas nada más. Es lo que cuenta el menú: sin esto, la derivación es un grito ' +
+        'por el salón.',
+    })
+    .output(z.object({ datos: z.array(visita) })),
+
   receptores: conPermiso('nucleo', 'ver', 'Visita')
     .route({
       method: 'GET',

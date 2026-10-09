@@ -1,6 +1,7 @@
 import { type Acceso, type Autorizacion, accesoDeRuta, contrato, permite } from '@gpb/contracts'
 import type { LinkProps } from '@tanstack/react-router'
-import type { ReactNode } from 'react'
+import type { ComponentType, ReactNode } from 'react'
+import { ContadorPuerta } from './modulos/recepcion/ContadorPuerta.tsx'
 
 /**
  * Las secciones del sistema, con lo que hace falta para verlas.
@@ -34,6 +35,11 @@ export interface Seccion {
    * personales —las teclas rápidas, el tema— que no dependen de ningún rol.
    */
   requiere?: Acceso
+  /**
+   * Un número al lado de la etiqueta, cuando hay algo esperando a quien usa el sistema. Es un
+   * componente y no un número porque cada uno pregunta lo suyo, y sólo lo pregunta si se ve.
+   */
+  Contador?: ComponentType
 }
 
 const trazo = { fill: 'none', stroke: 'currentColor', strokeWidth: 1.5 } as const
@@ -71,6 +77,7 @@ export const PRINCIPALES: Seccion[] = [
     etiqueta: 'Recepción',
     to: '/puerta',
     requiere: accesoDeRuta(contrato.recepcion.hoy),
+    Contador: ContadorPuerta,
     icono: (
       <svg viewBox="0 0 16 16" {...trazo} aria-hidden="true">
         <path d="M3 14V2.5h7V14" />
