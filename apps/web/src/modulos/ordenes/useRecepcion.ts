@@ -39,6 +39,11 @@ export interface DatosRecepcion {
    * con la orden: es lo que une cuánto esperó alguien con qué se le hizo.
    */
   visita: { id: string; numero: string } | null
+  /**
+   * La patente del turno cuando el auto no está cargado: el selector arranca buscándola, y si
+   * no aparece, ofrece darlo de alta.
+   */
+  dominioSugerido: string
 }
 
 const VACIA: DatosRecepcion = {
@@ -58,6 +63,7 @@ const VACIA: DatosRecepcion = {
   inventario: {},
   revision: {},
   visita: null,
+  dominioSugerido: '',
 }
 
 export type OrdenAbierta = Awaited<ReturnType<typeof api.ordenes.abrir>>
@@ -106,6 +112,7 @@ export function useRecepcion(alAbrir: (orden: OrdenAbierta) => void) {
       traeNombre: v.nombre ?? '',
       traeTelefono: v.telefono ?? '',
       pedido: v.turno?.pedido ?? '',
+      dominioSugerido: v.turno && !v.turno.vehiculoId ? (v.turno.dominio ?? '') : '',
     })
     setTocado(false)
     const { vehiculoId, dominio } = v.turno ?? {}

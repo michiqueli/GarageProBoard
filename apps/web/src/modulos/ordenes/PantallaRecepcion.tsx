@@ -1,6 +1,6 @@
 import { accesoDeRuta, contrato } from '@gpb/contracts'
 import { Link, useNavigate } from '@tanstack/react-router'
-import { type FormEvent, type ReactNode, useId } from 'react'
+import { type FormEvent, type ReactNode, useId, useState } from 'react'
 import { notificar } from '../../componentes/avisos.ts'
 import { Boton } from '../../componentes/Boton.tsx'
 import { Campo } from '../../componentes/Campo.tsx'
@@ -8,6 +8,8 @@ import { IconoImprimir } from '../../componentes/iconos.tsx'
 import { SelectorCliente } from '../../componentes/SelectorCliente.tsx'
 import { SelectorVehiculo } from '../../componentes/SelectorVehiculo.tsx'
 import { Shell } from '../../componentes/Shell.tsx'
+import { AltaVehiculo } from '../vehiculos/AltaVehiculo.tsx'
+import { pareceDominio } from '../vehiculos/datos-vehiculo.tsx'
 import { DiagramaDanios, ElegirCarroceria } from './DiagramaDanios.tsx'
 import { InventarioRecepcion } from './InventarioRecepcion.tsx'
 import { COMBUSTIBLES, imprimirOrden, nombreOrden } from './ordenes.ts'
@@ -31,6 +33,8 @@ export function PantallaRecepcion() {
     void navegar({ to: '/ordenes/$id', params: { id: o.id } })
   })
   const { datos: d, poner } = r
+  /** Lo buscado que no estaba, mientras se da de alta el auto. */
+  const [alta, setAlta] = useState<string | null>(null)
 
   function enviar(evento?: FormEvent) {
     evento?.preventDefault()
@@ -50,6 +54,17 @@ export function PantallaRecepcion() {
         </Link>
       }
     >
+      {/* Afuera del formulario de la recepción: un formulario no va adentro de otro. */}
+      {alta !== null && (
+        <AltaVehiculo
+          dominio={pareceDominio(alta)}
+          alCrear={(v) => {
+            r.elegirVehiculo(v)
+            setAlta(null)
+          }}
+          alCancelar={() => setAlta(null)}
+        />
+      )}
       <form onSubmit={enviar} aria-label="Recepción" className="grid gap-3">
         <div className="grid gap-4 rounded-base border border-borde bg-superficie p-3">
           <div className="grid gap-3 md:grid-cols-2">
@@ -58,6 +73,7 @@ export function PantallaRecepcion() {
                 etiqueta="Vehículo"
                 valor={d.vehiculo}
                 onChange={r.elegirVehiculo}
+                alNoEncontrar={setAlta}
                 autoFocus
               />
               {r.faltaVehiculo && (

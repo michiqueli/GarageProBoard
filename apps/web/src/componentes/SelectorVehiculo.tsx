@@ -19,14 +19,24 @@ export function SelectorVehiculo({
   valor,
   onChange,
   autoFocus = false,
+  inicial = '',
+  alNoEncontrar,
 }: {
   etiqueta: string
   valor: VehiculoElegido | null
   onChange: (vehiculo: VehiculoElegido | null) => void
   autoFocus?: boolean
+  /** Lo que ya viene buscado: la patente del turno. */
+  inicial?: string
+  /**
+   * Si está, lo que no se encuentra se ofrece para dar de alta ahí mismo. Es la recepción:
+   * con el cliente adelante, mandarlo a cargar el auto a otra pantalla es perder lo cargado.
+   */
+  alNoEncontrar?: ((texto: string) => void) | undefined
 }) {
   const id = useId()
-  const [buscar, setBuscar] = useState('')
+  const [buscar, setBuscar] = useState(inicial)
+  const puedeCrear = usePuedeUsar(contrato.vehiculos.crear)
   const lista = useRef<HTMLUListElement>(null)
   const campo = useRef<HTMLInputElement>(null)
   const tenantId = usarSesion((e) => e.datos?.tenant.id)
@@ -71,6 +81,9 @@ export function SelectorVehiculo({
       e.preventDefault()
       const primero = consulta.data?.datos[0]
       if (primero) onChange(primero)
+      // Sin ninguno, Enter abre el alta: es lo único que se puede hacer con lo escrito.
+      else if (consulta.data && alNoEncontrar && puedeCrear && texto.length >= 2)
+        alNoEncontrar(texto)
       return
     }
     if (e.key === 'ArrowDown') {
@@ -117,7 +130,19 @@ export function SelectorVehiculo({
           onKeyDown={moverEnLista}
           className="grid divide-y divide-borde-suave overflow-hidden rounded-base border border-borde bg-superficie"
         >
-          {resultados.length === 0 && (
+          {resultados.length === 0 && alNoEncontrar && puedeCrear && (
+            <li className="flex flex-wrap items-center gap-2 px-2.5 py-2 text-etiqueta text-texto-suave">
+              <span>Ningún vehículo coincide con «{texto}». Si es la primera vez que viene:</span>
+              <button
+                type="button"
+                onClick={() => alNoEncontrar(texto)}
+                className="inline-flex h-campo items-center rounded-base border border-marca bg-marca-suave px-3 font-semibold text-dato text-marca"
+              >
+                Darlo de alta
+              </button>
+            </li>
+          )}
+          {resultados.length === 0 && !(alNoEncontrar && puedeCrear) && (
             <li className="px-2.5 py-2 text-etiqueta text-texto-suave">
               Ningún vehículo coincide con «{texto}». Si es la primera vez que viene, dalo de alta
               en Vehículos.

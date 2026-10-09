@@ -14,6 +14,8 @@ import { api } from '../../sesion/cliente.ts'
 import { mensajeGeneral } from '../../sesion/consultas.ts'
 import { usePuedeUsar, useVeredicto } from '../../sesion/permisos.ts'
 import { ColaTablet } from '../recepcion/ColaTablet.tsx'
+import { AltaVehiculo } from '../vehiculos/AltaVehiculo.tsx'
+import { pareceDominio } from '../vehiculos/datos-vehiculo.tsx'
 import { DiagramaDanios, describirDanio, ElegirCarroceria } from './DiagramaDanios.tsx'
 import { InventarioRecepcion } from './InventarioRecepcion.tsx'
 import { COMBUSTIBLES, imprimirOrden, nombreOrden } from './ordenes.ts'
@@ -60,6 +62,8 @@ export function PantallaRecepcionTablet() {
   const r = useRecepcion(setAbierta)
   const { datos: d, poner } = r
   const conCola = usePuedeUsar(contrato.recepcion.hoy)
+  /** Lo buscado que no estaba, mientras se da de alta el auto. */
+  const [alta, setAlta] = useState<string | null>(null)
   const [enCola, setEnCola] = useState(true)
   const tenantId = usarSesion((e) => e.datos?.tenant.id)
   const cache = useQueryClient()
@@ -273,12 +277,26 @@ export function PantallaRecepcionTablet() {
           <>
             <Titulo>¿Qué vehículo entra?</Titulo>
             <div className="grid gap-1">
-              <SelectorVehiculo
-                etiqueta="Patente o chasis"
-                valor={d.vehiculo}
-                onChange={r.elegirVehiculo}
-                autoFocus
-              />
+              {alta === null ? (
+                <SelectorVehiculo
+                  key={d.visita?.id ?? 'sin-visita'}
+                  etiqueta="Patente o chasis"
+                  valor={d.vehiculo}
+                  onChange={r.elegirVehiculo}
+                  inicial={d.dominioSugerido}
+                  alNoEncontrar={setAlta}
+                  autoFocus
+                />
+              ) : (
+                <AltaVehiculo
+                  dominio={pareceDominio(alta)}
+                  alCrear={(v) => {
+                    r.elegirVehiculo(v)
+                    setAlta(null)
+                  }}
+                  alCancelar={() => setAlta(null)}
+                />
+              )}
               {intento.vehiculo && faltaEn.vehiculo && <Falta>{faltaEn.vehiculo}</Falta>}
               {d.vehiculo && (
                 <span className="text-etiqueta text-texto-suave">

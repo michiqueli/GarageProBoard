@@ -1,28 +1,19 @@
 import { accesoDeRuta, contrato } from '@gpb/contracts'
 import { ORPCError } from '@orpc/client'
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useQuery } from '@tanstack/react-query'
 import { getRouteApi, Link } from '@tanstack/react-router'
-import { type FormEvent, useEffect, useRef, useState } from 'react'
+import { useState } from 'react'
 import { Boton } from '../../componentes/Boton.tsx'
-import { Campo } from '../../componentes/Campo.tsx'
 import { BotonCopiar, copiarConAviso } from '../../componentes/Copiar.tsx'
 import { clicEnFila, FILA_CLICABLE } from '../../componentes/filas.ts'
 import { Patente } from '../../componentes/Patente.tsx'
-import { type ClienteElegido, SelectorCliente } from '../../componentes/SelectorCliente.tsx'
 import { Shell } from '../../componentes/Shell.tsx'
 import { ES_ESCRITORIO, useMedia } from '../../ganchos/useMedia.ts'
 import { usarSesion } from '../../sesion/almacen.ts'
 import { api } from '../../sesion/cliente.ts'
 import { usePuedeUsar } from '../../sesion/permisos.ts'
 import { useAtajo, useFilasConTeclado } from '../../teclado/index.ts'
-import {
-  CamposVehiculo,
-  DATOS_VACIOS,
-  type Datos,
-  hoy,
-  paraEnviar,
-  problemas,
-} from './datos-vehiculo.tsx'
+import { AltaVehiculo, mensajeDeGuardar } from './AltaVehiculo.tsx'
 
 // Por id y no importando la ruta: `rutas.tsx` importa esta pantalla, y el camino
 // inverso armaría un ciclo. El id igual está tipado — uno que no existe no compila.
@@ -243,120 +234,19 @@ function EnlaceFicha({ vehiculo }: { vehiculo: Vehiculo }) {
 }
 
 function FormAlta({ alTerminar }: { alTerminar: () => void }) {
-  const cache = useQueryClient()
   const navegar = ruta.useNavigate()
-  const primerCampo = useRef<HTMLInputElement>(null)
-  useEffect(() => {
-    primerCampo.current?.focus()
-  }, [])
-
-  const [chasis, setChasis] = useState('')
-  const [datos, setDatos] = useState<Datos>(DATOS_VACIOS)
-  const [titular, setTitular] = useState<ClienteElegido | null>(null)
-  const [desde, setDesde] = useState(hoy())
-  const [tocado, setTocado] = useState(false)
-
-  const errores = tocado ? problemas(datos) : {}
-  const chasisMal = tocado && !/^[A-HJ-NPR-Z0-9]{6,17}$/.test(chasis)
-
-  const guardar = useMutation({
-    mutationFn: () =>
-      api.vehiculos.crear({
-        chasis,
-        ...paraEnviar(datos),
-        titular: titular ? { clienteId: titular.id, desde } : null,
-      }),
-    onSuccess: async (creado) => {
-      await cache.invalidateQueries({ queryKey: ['vehiculos'] })
-      alTerminar()
-      void navegar({ to: '/vehiculos/$id', params: { id: creado.id } })
-    },
-    meta: { exito: 'Vehículo dado de alta', error: mensajeDeGuardar },
-  })
-
-  function enviar(evento: FormEvent) {
-    evento.preventDefault()
-    setTocado(true)
-    if (!/^[A-HJ-NPR-Z0-9]{6,17}$/.test(chasis) || Object.keys(problemas(datos)).length) return
-    guardar.mutate()
-  }
-
   return (
-    <section
-      aria-label="Nuevo vehículo"
-      className="grid gap-3 rounded-base border border-borde bg-superficie p-3"
-    >
-      <h2 className="font-display text-dato font-semibold">Nuevo vehículo</h2>
-      <form id="formulario-vehiculo" onSubmit={enviar} className="grid gap-3 md:grid-cols-3">
-        <Campo
-          ref={primerCampo}
-          etiqueta="Chasis"
-          required
-          value={chasis}
-          onChange={(e) => setChasis(e.target.value.toUpperCase().replace(/\s/g, ''))}
-          aria-invalid={chasisMal}
-          ayuda={
-            chasisMal
-              ? 'De 6 a 17 letras y números, sin I, O ni Q'
-              : 'Es la identidad del vehículo: no se cambia después'
-          }
-        />
-        <CamposVehiculo
-          datos={datos}
-          cambiar={(parcial) => setDatos((d) => ({ ...d, ...parcial }))}
-          errores={errores}
-        />
-        <div className="md:col-span-2">
-          <SelectorCliente etiqueta="Titular" valor={titular} onChange={setTitular} />
-        </div>
-        {titular ? (
-          <Campo
-            etiqueta="Titular desde"
-            type="date"
-            max={hoy()}
-            required
-            value={desde}
-            onChange={(e) => setDesde(e.target.value)}
-          />
-        ) : (
-          <p className="self-end pb-2 text-etiqueta text-texto-tenue">
-            Sin titular si está en stock.
-          </p>
-        )}
-      </form>
-
-      <div className="flex gap-2">
-        <Boton
-          accion="global.guardar"
-          variante="principal"
-          deshabilitado={guardar.isPending}
-          onClick={() =>
-            (
-              document.getElementById('formulario-vehiculo') as HTMLFormElement | null
-            )?.requestSubmit()
-          }
-        >
-          Guardar
-        </Boton>
-        <Boton accion="global.cancelar" onClick={alTerminar}>
-          Cancelar
-        </Boton>
-      </div>
-    </section>
+    <AltaVehiculo
+      alCancelar={alTerminar}
+      alCrear={(creado) => {
+        alTerminar()
+        void navegar({ to: '/vehiculos/$id', params: { id: creado.id } })
+      }}
+    />
   )
 }
 
-/** Un error al guardar dice qué hacer; la patente repetida, además, de qué vehículo es. */
-export function mensajeDeGuardar(error: unknown): string {
-  if (error instanceof ORPCError) {
-    if (error.code === 'DOMINIO_DUPLICADO') {
-      const chasis = (error.data as { chasis?: string } | undefined)?.chasis
-      return `Esa patente ya la tiene el vehículo con chasis ${chasis}. Revisá cuál de los dos está mal.`
-    }
-    return error.message
-  }
-  return 'No se pudo conectar con el servidor. Probá de nuevo en un momento.'
-}
+export { mensajeDeGuardar }
 
 /**
  * Un error dice qué hacer. «Probá refrescar» es un buen consejo ante un corte de red y

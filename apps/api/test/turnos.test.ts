@@ -248,3 +248,38 @@ describe('cuando llega', () => {
     })
   })
 })
+
+describe('el auto que no estaba cargado', () => {
+  it('se da de alta al recibirlo, y el turno queda con él', async () => {
+    const t = await agendar({
+      fechaHora: MANANA.hora,
+      dominio: 'AH555JJ',
+      nombre: 'Nuevo cliente',
+      pedido: 'Primer service',
+    })
+    const visita = (await pedir(recepcionista, 'POST', `/turnos/${t.id}/llego`)).json()
+    expect(visita.turno).toMatchObject({ vehiculoId: null, dominio: 'AH555JJ' })
+
+    const gerente = await entrar('gerente@agenda.test')
+    const auto = await pedir(gerente, 'POST', '/vehiculos', {
+      chasis: '9BWZZZ377VT009999',
+      dominio: 'AH555JJ',
+    })
+    expect(auto.statusCode, auto.body).toBe(201)
+    await pedir(gerente, 'POST', `/recepcion/visitas/${visita.id}/atender`)
+    const orden = await pedir(gerente, 'POST', '/ordenes', {
+      vehiculoId: auto.json().id,
+      pedido: 'Primer service',
+      visitaId: visita.id,
+    })
+    expect(orden.statusCode, orden.body).toBe(201)
+
+    const agenda = await pedir(
+      recepcionista,
+      'GET',
+      `/turnos?desde=${MANANA.dia}&hasta=${MANANA.dia}`,
+    )
+    const conAuto = agenda.json().datos.find((x: { id: string }) => x.id === t.id)
+    expect(conAuto.vehiculo).toMatchObject({ id: auto.json().id, dominio: 'AH555JJ' })
+  })
+})

@@ -28,12 +28,17 @@ const listarPuntos = vi.fn()
 const listarRepuestos = vi.fn()
 const listarPedidos = vi.fn()
 const renovar = vi.fn()
+const crearVehiculo = vi.fn()
 const recepcion = { hoy: vi.fn(), atender: vi.fn(), soltar: vi.fn() }
 
 vi.mock('../src/sesion/cliente.ts', () => ({
   api: {
     auth: { iniciar: vi.fn(), cerrar: vi.fn().mockResolvedValue({}), cambiarSucursal: vi.fn() },
-    vehiculos: { listar: (x: unknown) => listarVehiculos(x) },
+    vehiculos: {
+      listar: (x: unknown) => listarVehiculos(x),
+      crear: (x: unknown) => crearVehiculo(x),
+      marcas: async () => ({ datos: [] }),
+    },
     repuestos: { listar: (x: unknown) => listarRepuestos(x) },
     pedidosRepuestos: { listar: (x: unknown) => listarPedidos(x) },
     clientes: { listar: vi.fn().mockResolvedValue({ datos: [], total: 0 }) },
@@ -139,6 +144,7 @@ const [BOCINA, CORREAS, PASTILLAS] = PUNTOS as [
 
 beforeEach(() => {
   for (const f of [
+    crearVehiculo,
     ...Object.values(ordenes),
     ...Object.values(recepcion),
     listarVehiculos,
@@ -1013,6 +1019,42 @@ describe('la cola de la tablet', () => {
       'value',
       'Service de 20.000',
     )
+  })
+
+  it('si el auto del turno no está cargado, se da de alta ahí mismo y queda elegido', async () => {
+    const sinAuto = {
+      ...ESPERA,
+      turno: {
+        id: 't2',
+        fechaHora: new Date().toISOString(),
+        pedido: 'Primer service',
+        vehiculoId: null,
+        dominio: 'AH555JJ',
+      },
+    }
+    recepcion.hoy.mockResolvedValue({ datos: [sinAuto] })
+    recepcion.atender.mockResolvedValue({ ...sinAuto, atendidaEn: new Date().toISOString() })
+    listarVehiculos.mockResolvedValue({ datos: [], total: 0 })
+    crearVehiculo.mockResolvedValue({ ...VEHICULO_ELEGIBLE, dominio: 'AH555JJ' })
+    await montarApp('/recepcion')
+
+    await userEvent.click(await screen.findByRole('button', { name: /S-004/ }))
+    // Arranca buscando la patente del turno, y como no está, ofrece darla de alta.
+    expect(await screen.findByLabelText('Patente o chasis')).toHaveProperty('value', 'AH555JJ')
+    await userEvent.click(await screen.findByRole('button', { name: 'Darlo de alta' }))
+
+    const alta = screen.getByRole('region', { name: 'Nuevo vehículo' })
+    expect(within(alta).getByLabelText('Patente')).toHaveProperty('value', 'AH555JJ')
+    await userEvent.type(within(alta).getByLabelText('Chasis'), '9BWZZZ377VT009999')
+    await userEvent.click(within(alta).getByRole('button', { name: /Guardar/ }))
+
+    await waitFor(() =>
+      expect(crearVehiculo).toHaveBeenCalledWith(
+        expect.objectContaining({ chasis: '9BWZZZ377VT009999', dominio: 'AH555JJ' }),
+      ),
+    )
+    expect(await screen.findByText('Titular: Transportes del Sur SRL')).toBeDefined()
+    expect(screen.queryByRole('region', { name: 'Nuevo vehículo' })).toBeNull()
   })
 
   it('«Devolver a la cola» la suelta y vuelve a la lista', async () => {

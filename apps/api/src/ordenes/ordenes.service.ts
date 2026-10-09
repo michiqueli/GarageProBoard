@@ -47,6 +47,7 @@ import {
   sucursal,
   tipoComprobante,
   titularidad,
+  turno,
   usuario,
   vehiculo,
   visita,
@@ -362,7 +363,7 @@ export class ServicioOrdenes {
 
       if (entrada.visitaId) {
         const ahora = new Date()
-        await tx
+        const [cerrada] = await tx
           .update(visita)
           .set({
             resultado: 'orden',
@@ -374,6 +375,15 @@ export class ServicioOrdenes {
             actualizadoEn: ahora,
           })
           .where(eq(visita.id, entrada.visitaId))
+          .returning({ turnoId: visita.turnoId })
+        // El turno que se agendó con la patente sola queda con el auto que se recibió: si se
+        // dio de alta recién, la agenda ya lo muestra con su marca y su modelo.
+        if (cerrada?.turnoId) {
+          await tx
+            .update(turno)
+            .set({ vehiculoId: auto.id, actualizadoEn: ahora })
+            .where(and(eq(turno.id, cerrada.turnoId), isNull(turno.vehiculoId)))
+        }
       }
 
       await this.auditar(

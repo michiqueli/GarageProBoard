@@ -26,6 +26,12 @@ export function dominioValido(dominio: string): boolean {
 }
 
 /** «AB 123 CD» o «ABC 123», como está en la chapa. */
+/** Lo buscado, si es una patente; si era un chasis o un nombre, nada. */
+export function pareceDominio(texto: string): string {
+  const d = normalizarDominio(texto)
+  return dominioValido(d) ? d : ''
+}
+
 export function formatearDominio(dominio: string): string {
   return dominio.length === 7
     ? `${dominio.slice(0, 2)} ${dominio.slice(2, 5)} ${dominio.slice(5)}`
