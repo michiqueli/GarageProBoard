@@ -3,7 +3,7 @@ import { empleado, entidadComercial, estacionFichaje, jornada, sucursal } from '
 import { Inject, Injectable } from '@nestjs/common'
 import { auditar } from '../comun/auditoria.ts'
 import { DatosDelTenant } from '../comun/datos.ts'
-import { generarToken, hashDeToken } from './estacion.ts'
+import { comoTipo, generarToken, hashDeToken, type TipoEstacion } from './estacion.ts'
 import { diaArgentino } from './fichaje.service.ts'
 import { armarTablero } from './tablero.ts'
 
@@ -37,7 +37,7 @@ export class ServicioEstaciones {
    * nosotros lo podemos volver a leer. Si se pierde, se registra la estación de nuevo.
    */
   registrar(
-    entrada: { nombre: string; tipo: 'taller' | 'reloj' | 'tablero'; sucursalId: string },
+    entrada: { nombre: string; tipo: TipoEstacion; sucursalId: string },
     baseUrl: string,
     ip?: string,
   ) {
@@ -191,10 +191,7 @@ function aSalida(f: {
   return {
     id: f.id,
     nombre: f.nombre,
-    tipo:
-      f.tipo === 'reloj' || f.tipo === 'tablero'
-        ? (f.tipo as 'reloj' | 'tablero')
-        : ('taller' as const),
+    tipo: comoTipo(f.tipo),
     sucursalId: f.sucursalId,
     sucursal: f.sucursal,
     activa: f.activa,

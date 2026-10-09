@@ -1,9 +1,17 @@
 import { ORPCError } from '@orpc/client'
 import type { ReactNode } from 'react'
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { apiEstacion, olvidarEstacion, tokenDeLaEstacion, tomarTokenDeLaUrl } from './estacion.ts'
+import {
+  apiEstacion,
+  estacionRecordada,
+  olvidarEstacion,
+  recordarEstacion,
+  tokenDeLaEstacion,
+  tomarTokenDeLaUrl,
+} from './estacion.ts'
 import { beepError, beepIntermedio, beepOk } from './sonido.ts'
 import { TableroDelPiso } from './TableroDelPiso.tsx'
+import { Totem } from './Totem.tsx'
 
 type Respuesta = Awaited<ReturnType<typeof apiEstacion.fichaje.escanear>>
 type Estacion = Awaited<ReturnType<typeof apiEstacion.fichaje.estacion>>
@@ -112,6 +120,7 @@ export function PantallaFichaje() {
           if (!vivo) return
           setProblema(null)
           setEstacion(e)
+          recordarEstacion(e)
         })
         .catch((error: unknown) => {
           if (!vivo) return
@@ -122,6 +131,9 @@ export function PantallaFichaje() {
           }
           // Cualquier otra cosa es el servidor, no la estación. Se reintenta solo.
           setProblema('Sin conexión con el servidor. Reintentando…')
+          // El tótem arranca igual con lo que recordaba: tiene que dar números sin red.
+          const recordada = estacionRecordada()
+          if (recordada?.tipo === 'totem') setEstacion(recordada)
           id = setTimeout(intentar, MS_REINTENTO)
         })
     }
@@ -246,8 +258,13 @@ export function PantallaFichaje() {
    * El lector tipea y manda Enter. Un humano tipeando hace exactamente lo mismo, y por eso el
    * fallback numérico no necesita una línea aparte: es el mismo camino.
    */
+  const tipo = useRef<string | null>(null)
+  tipo.current = estacion?.tipo ?? null
+
   useEffect(() => {
     function alPresionar(e: KeyboardEvent) {
+      // El tótem tiene su propio teclado: lo que se tipea ahí es un documento, no un escaneo.
+      if (tipo.current === 'totem') return
       const ahora = Date.now()
 
       // Buffer viejo o desbordado: basura de un escaneo fallido, o algo apoyado sobre el
@@ -289,6 +306,7 @@ export function PantallaFichaje() {
   if (problema && !estacion) return <Aviso texto={problema} />
   if (!estacion) return <Aviso texto="Conectando…" />
   if (estacion.tipo === 'tablero') return <TableroDelPiso estacion={estacion} />
+  if (estacion.tipo === 'totem') return <Totem estacion={estacion} />
   if (estado.fase === 'respuesta') return <Resultado r={estado.r} />
 
   const esperando = estado.fase === 'esperando'

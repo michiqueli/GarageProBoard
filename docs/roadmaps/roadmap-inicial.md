@@ -302,16 +302,17 @@ Diseñado el 09/10/2026 junto con la agenda de turnos del Hito 2, porque son la 
 la visita, la cola de las tablets, la derivación a una persona y el tótem, en
 [la recepción](../tecnicos/recepcion-y-turnos.md).
 
-- ⬜ **Tótem de recepción**, la pantalla en la puerta como la de un banco: ponés tu
+- 🔨 **Tótem de recepción**, la pantalla en la puerta como la de un banco: ponés tu
       documento, si ya existís te saluda por tu nombre y si no te lo pide, elegís a qué
       viniste —ventas, servicios, repuestos, administración— y te llevás tu turno. Llamado
       por pantalla y medición de la espera por sector y por hora.
       **Es el único lugar donde se captura al que no compró**: el que vino a preguntar por un
       usado y se fue hoy no existe en ningún sistema
-- ⬜ Tres cuidados del tótem, que se deciden al construirlo y están razonados en
-      [contra qué competimos](../tecnicos/competencia-dms.md): tipear un documento **no puede
-      devolver el nombre de nadie** sin una confirmación más; es la otra excepción a la
-      densidad (dedo, 44px); y tiene que emitir el turno **aunque se caiga la red**
+- ✅ Tres cuidados del tótem, razonados en [contra qué competimos](../tecnicos/competencia-dms.md)
+      y resueltos en [la recepción](../tecnicos/recepcion-y-turnos.md): el documento **no
+      devuelve el nombre de nadie, nunca** —sólo la hora del turno—; es dedo; y da el número
+      **aunque se caiga la red**, en su propia serie, y lo manda cuando vuelve. Desde el
+      09/10/2026. Falta el llamado por pantalla y la medición de la espera
 - ⬜ **CRM**: prospectos, agenda del vendedor, contactos programados, demandas, contactos
       levantados en eventos. Y lo que de verdad compra un gerente comercial: **la
       verificación de que el vendedor hizo lo que tenía que hacer**

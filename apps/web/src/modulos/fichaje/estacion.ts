@@ -45,8 +45,34 @@ export function tokenDeLaEstacion(): string | null {
 export function olvidarEstacion(): void {
   try {
     localStorage.removeItem(CLAVE)
+    localStorage.removeItem(CLAVE_DATOS)
   } catch {
     // Nada que hacer: si no se puede leer, tampoco se puede borrar.
+  }
+}
+
+const CLAVE_DATOS = 'gpb.estacion.datos'
+
+type DatosEstacion = Awaited<ReturnType<ClienteApi['fichaje']['estacion']>>
+
+/**
+ * Quién es esta estación, recordado de la última vez que contestó el servidor. Es para el
+ * tótem, que tiene que dar números aunque arranque sin red; las demás sin red no sirven igual.
+ */
+export function recordarEstacion(datos: DatosEstacion): void {
+  try {
+    localStorage.setItem(CLAVE_DATOS, JSON.stringify(datos))
+  } catch {
+    // Sin almacenamiento, el tótem necesita red para arrancar.
+  }
+}
+
+export function estacionRecordada(): DatosEstacion | null {
+  try {
+    const crudo = localStorage.getItem(CLAVE_DATOS)
+    return crudo ? (JSON.parse(crudo) as DatosEstacion) : null
+  } catch {
+    return null
   }
 }
 

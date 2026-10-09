@@ -178,6 +178,18 @@ Razonados en [contra qué competimos](competencia-dms.md); acá queda cómo se r
   «Recepción» en el menú, en todas las pantallas, y en la puerta lo suyo va primero con «Para
   vos». El vendedor ya entra a la puerta para atender; otra pantalla sería otro lugar donde
   mirar.
+- **El tótem numera en su propia serie, la T**, y no con la letra del motivo. Numera solo
+  cuando no hay red, y si compartiera la S con la recepcionista, los dos darían el S-014 a dos
+  personas. Con red, la cuenta la lleva el servidor y el tótem la alcanza al arrancar; si a uno
+  se le borró la cuenta y da un número ya dado, el servidor le da el siguiente. **Con más de un
+  tótem en la misma sucursal comparten la T**: es lo que falta, una letra por tótem, y se
+  decide con el segundo tótem enfrente.
+- **La cola sin red vive en el almacenamiento del navegador**, no en IndexedDB: son unas pocas
+  visitas chicas, y se mandan apenas vuelve la red. El tótem también recuerda quién es, así
+  arranca aunque se prenda sin conexión.
+- **El DNI se busca también adentro de los CUIL y CUIT**, los ocho del medio: casi nadie está
+  cargado con el DNI solo. Si viene al taller y tiene turno hoy —a su nombre o de un auto del
+  que es titular—, el tótem se lo lleva: la visita sale derivada a su asesor.
 - **La agenda pide la semana entera**, y la puerta pide la misma: lo que se agenda en una se
   ve en la otra sin volver a preguntar.
 
@@ -194,7 +206,7 @@ Razonados en [contra qué competimos](competencia-dms.md); acá queda cómo se r
 
 ## Cómo se construye
 
-Por orden, y cada paso se prueba en local de punta a punta. Del 1 al 4 están hechos desde el
+Por orden, y cada paso se prueba en local de punta a punta. Del 1 al 5 están hechos desde el
 09/10/2026: la pantalla es **Recepción** en el menú (`/puerta`), la agenda es **Agenda**
 (`/agenda`), y el asistente de la tablet pasó a llamarse **Tablet de recepción** para que las
 dos entradas no arranquen igual.

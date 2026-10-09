@@ -12,6 +12,13 @@ import type { FastifyRequest } from 'fastify'
 import { Observable } from 'rxjs'
 import { DB } from '../comun/simbolos.ts'
 
+export type TipoEstacion = 'taller' | 'reloj' | 'tablero' | 'totem'
+
+/** El tipo como lo guarda la base. Uno desconocido se lee como taller, que es el de siempre. */
+export function comoTipo(tipo: string): TipoEstacion {
+  return tipo === 'reloj' || tipo === 'tablero' || tipo === 'totem' ? tipo : 'taller'
+}
+
 /**
  * La estación de fichaje que está pidiendo.
  *
@@ -24,7 +31,7 @@ export interface Estacion {
   id: string
   tenantId: string
   sucursalId: string
-  tipo: 'taller' | 'reloj' | 'tablero'
+  tipo: TipoEstacion
   nombre: string
   ip?: string | undefined
 }
@@ -114,7 +121,7 @@ export class AutenticadorDeEstaciones {
       id: fila.estacion_id,
       tenantId: fila.tenant_id,
       sucursalId: fila.sucursal_id,
-      tipo: fila.tipo === 'reloj' || fila.tipo === 'tablero' ? fila.tipo : 'taller',
+      tipo: comoTipo(fila.tipo),
       nombre: fila.nombre,
     }
   }

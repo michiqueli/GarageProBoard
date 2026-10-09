@@ -1,6 +1,6 @@
 import { ESTADOS_TURNO, MAXIMO_NOTA_VISITA, MOTIVOS_VISITA } from '@gpb/core'
 import { z } from 'zod'
-import { conPermiso } from './acceso.ts'
+import { conEstacion, conPermiso } from './acceso.ts'
 import { PUESTOS_ORDENADOS } from './personal.ts'
 
 const TAG = 'Recepción'
@@ -370,4 +370,60 @@ export const contratoTurnos = {
     .input(z.object({ id: z.uuid() }))
     .errors({ ...NO_ENCONTRADO_TURNO, ...TURNO_CERRADO })
     .output(visita),
+}
+
+const NO_ES_TOTEM = {
+  NO_ES_TOTEM: { status: 403, message: 'Esta pantalla no está registrada como tótem' },
+} as const
+
+/**
+ * El tótem de la puerta: el cliente se anota solo. Se autentica con el token del aparato,
+ * como el reloj del taller: ahí no hay nadie con sesión.
+ *
+ * **Emite el número aunque se caiga la red**: la visita la crea el tótem, con su id y su
+ * número, y la manda cuando puede. El servidor la acepta una sola vez por id, así que
+ * reintentar no anota dos personas.
+ */
+export const contratoTotem = {
+  estado: conEstacion
+    .route({
+      method: 'GET',
+      path: '/totem/estado',
+      tags: [TAG],
+      operationId: 'estadoTotem',
+      summary: 'El último número que dio hoy, para seguir la cuenta si el tótem se reinició',
+    })
+    .errors(NO_ES_TOTEM)
+    .output(z.object({ fecha: z.iso.date(), ultimo: z.number().int() })),
+
+  anotar: conEstacion
+    .route({
+      method: 'POST',
+      path: '/totem/visitas',
+      tags: [TAG],
+      operationId: 'anotarEnTotem',
+      summary: 'Alguien se anotó en el tótem',
+      description:
+        'Con documento, se busca la persona y, si viene al taller, su turno de hoy. **Nunca ' +
+        'devuelve un nombre**: cualquiera puede tipear el documento de otro. Lo único que ' +
+        'contesta es la hora del turno, que no le dice nada a quien no es el dueño.',
+    })
+    .input(
+      z.object({
+        /** Lo genera el tótem: es lo que hace que reintentar no anote dos veces. */
+        id: z.uuid(),
+        motivo: z.enum(MOTIVOS_VISITA),
+        documento: z
+          .string()
+          .regex(/^\d{7,8}$/, 'El documento son 7 u 8 números')
+          .nullable()
+          .optional(),
+        /** El número que el tótem le dio. Si ya estaba dado, se le da el siguiente. */
+        numero: z.number().int().positive(),
+        /** Cuando se anotó, con la hora del tótem: puede llegar más tarde, si no había red. */
+        llegoEn: z.iso.datetime({ offset: true }),
+      }),
+    )
+    .errors(NO_ES_TOTEM)
+    .output(z.object({ numero: z.string(), turnoHora: z.string().nullable() })),
 }

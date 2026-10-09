@@ -157,6 +157,9 @@ const NO_AUDITAN: Readonly<Record<string, string>> = {
   'turnos.noVino': 'Es el estado del turno, que el trigger guarda con quién lo cambió.',
   'turnos.llego':
     'Cambia el estado del turno, que el trigger cuenta, y anota la visita, que dice quién la anotó.',
+  'totem.anotar':
+    'Es alguien que cruza la puerta: la visita dice que la anotó el tótem y a qué hora. Si se ' +
+    'llevó un turno, el trigger de turno guarda el cambio de estado.',
   'recepcion.soltar':
     'Vacía quién la agarró y cuándo: el trigger guarda el antes, que es lo que importa saber.',
   'recepcion.cerrar':

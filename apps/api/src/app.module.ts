@@ -29,6 +29,8 @@ import { ControladorPersonal } from './personal/personal.controller.ts'
 import { ServicioPersonal } from './personal/personal.service.ts'
 import { ControladorRecepcion } from './recepcion/recepcion.controller.ts'
 import { ServicioRecepcion } from './recepcion/recepcion.service.ts'
+import { ControladorTotem } from './recepcion/totem.controller.ts'
+import { ServicioTotem } from './recepcion/totem.service.ts'
 import { ControladorTurnos } from './recepcion/turnos.controller.ts'
 import { ServicioTurnos } from './recepcion/turnos.service.ts'
 import { ServicioCompras } from './repuestos/compras.service.ts'
@@ -95,6 +97,7 @@ import { ServicioVehiculos } from './vehiculos/vehiculos.service.ts'
     ControladorRevision,
     ControladorRecepcion,
     ControladorTurnos,
+    ControladorTotem,
   ],
   providers: [
     ServicioUsuarios,
@@ -117,6 +120,7 @@ import { ServicioVehiculos } from './vehiculos/vehiculos.service.ts'
     ServicioRevision,
     ServicioRecepcion,
     ServicioTurnos,
+    ServicioTotem,
     ServicioEstaciones,
     DatosDeLaEstacion,
   ],

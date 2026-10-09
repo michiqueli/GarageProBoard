@@ -19,22 +19,26 @@ type Registro = Awaited<ReturnType<typeof api.fichaje.registrarEstacion>>
 const FECHA = new Intl.DateTimeFormat('es-AR', { dateStyle: 'short', timeStyle: 'short' })
 
 /** Cómo se lee cada tipo en la tabla, en dos palabras. */
-const QUE_ES: Record<'taller' | 'reloj' | 'tablero', string> = {
+const QUE_ES: Record<'taller' | 'reloj' | 'tablero' | 'totem', string> = {
   taller: 'Credencial y orden',
   reloj: 'Entrada y salida',
   tablero: 'Muestra el tablero',
+  totem: 'El cliente se anota',
 }
 
 const TIPOS = [
   { valor: 'taller' as const, texto: 'Taller: credencial y orden' },
   { valor: 'reloj' as const, texto: 'Reloj: entrada y salida' },
   { valor: 'tablero' as const, texto: 'Tablero: el televisor del piso' },
+  { valor: 'totem' as const, texto: 'Tótem: la puerta, para que el cliente se anote' },
 ]
 
 const QUE_HACE: Record<(typeof TIPOS)[number]['valor'], string> = {
   taller:
     'Dos escaneos: la credencial del mecánico y después la orden. Si esa orden estaba abierta para él, se cierra.',
   reloj: 'Un escaneo: la credencial marca entrada, y la siguiente vez, salida.',
+  totem:
+    'No ficha nada. Es la pantalla de la puerta: el cliente elige a qué viene, pone su documento si quiere y se lleva su número. Sigue dando números aunque se corte la red.',
   tablero:
     'No ficha nada. Muestra qué autos hay en el taller, quién los tiene y cuánto llevan, con letra grande y refrescándose sola. Es para colgar, no para tocar.',
 }
@@ -274,7 +278,7 @@ function Formulario({ alTerminar }: { alTerminar: (registro?: Registro) => void 
   const primerCampo = useRef<HTMLInputElement>(null)
 
   const [nombre, setNombre] = useState('')
-  const [tipo, setTipo] = useState<'taller' | 'reloj' | 'tablero'>('taller')
+  const [tipo, setTipo] = useState<'taller' | 'reloj' | 'tablero' | 'totem'>('taller')
   const [sucursalId, setSucursalId] = useState<string | null>(null)
 
   useEffect(() => {

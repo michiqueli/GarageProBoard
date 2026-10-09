@@ -29,6 +29,8 @@ vi.mock('../src/modulos/fichaje/estacion.ts', () => ({
   tomarTokenDeLaUrl: () => undefined,
   tokenDeLaEstacion: () => token(),
   olvidarEstacion: vi.fn(),
+  recordarEstacion: vi.fn(),
+  estacionRecordada: () => null,
 }))
 
 // El alfabeto es el de Crockford y **no tiene I, L, O ni U**, que se leen y se tipean mal.

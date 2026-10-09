@@ -60,6 +60,13 @@ export const PUESTOS_POR_MOTIVO: Record<MotivoVisita, readonly string[]> = {
   otro: [],
 }
 
+/**
+ * La letra de los números que da el tótem. **Una serie propia**, separada de las del
+ * mostrador: el tótem numera solo cuando se corta la red, y si compartiera la S con la
+ * recepcionista, los dos darían el S-014 a dos personas distintas.
+ */
+export const LETRA_TOTEM = 'T'
+
 /** El número como se llama y como se lee: `S-014`. */
 export function numeroVisita(letra: string, numero: number): string {
   return `${letra}-${String(numero).padStart(3, '0')}`
