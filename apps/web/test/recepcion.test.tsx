@@ -26,6 +26,7 @@ const renovar = vi.fn()
 vi.mock('../src/sesion/cliente.ts', () => ({
   api: {
     auth: { iniciar: vi.fn(), cerrar: vi.fn().mockResolvedValue({}), cambiarSucursal: vi.fn() },
+    turnos: { listar: async () => ({ datos: [] }) },
     recepcion: {
       hoy: () => recepcion.hoy(),
       receptores: () => recepcion.receptores(),

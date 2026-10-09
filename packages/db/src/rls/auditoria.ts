@@ -129,6 +129,10 @@ export const TABLAS_AUDITADAS: readonly TablaAuditada[] = [
   { tabla: 'usuario_sucursal' },
   { tabla: 'dispositivo' },
   {
+    tabla: 'turno',
+    nota: 'Quién agendó, quién lo movió de día y quién lo canceló: es lo que se discute cuando el cliente dice que tenía turno.',
+  },
+  {
     tabla: 'visita',
     solo: ['update', 'delete'],
     nota: 'Anotar a quien llega es lo normal. Lo que sí: a quién se lo derivó, quién lo agarró y cómo terminó, que es lo que se discute cuando un cliente dice que esperó una hora.',

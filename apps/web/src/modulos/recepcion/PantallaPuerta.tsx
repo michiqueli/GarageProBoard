@@ -1,19 +1,11 @@
-import { accesoDeRuta, contrato, PUESTOS, type Puesto } from '@gpb/contracts'
-import {
-  MOTIVOS_VISITA,
-  MOTIVOS_VISITA_NOMBRE,
-  type MotivoVisita,
-  nivelEspera,
-  PUESTOS_POR_MOTIVO,
-} from '@gpb/core'
-
+import { accesoDeRuta, contrato } from '@gpb/contracts'
+import { MOTIVOS_VISITA, MOTIVOS_VISITA_NOMBRE, type MotivoVisita, nivelEspera } from '@gpb/core'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { type FormEvent, useEffect, useRef, useState } from 'react'
 import { confirmar } from '../../componentes/avisos.ts'
 import { Boton } from '../../componentes/Boton.tsx'
 import { Campo } from '../../componentes/Campo.tsx'
 import { IconoListo } from '../../componentes/iconos.tsx'
-import { Selector } from '../../componentes/Selector.tsx'
 import { Shell } from '../../componentes/Shell.tsx'
 import { ES_ESCRITORIO, useMedia } from '../../ganchos/useMedia.ts'
 import { usarSesion } from '../../sesion/almacen.ts'
@@ -21,9 +13,9 @@ import { api } from '../../sesion/cliente.ts'
 import { mensajeGeneral } from '../../sesion/consultas.ts'
 import { usePuedeUsar } from '../../sesion/permisos.ts'
 import { useAtajo, useFilasConTeclado } from '../../teclado/index.ts'
+import { ElegirReceptor, type Receptor } from './ElegirReceptor.tsx'
+import { TurnosDeHoy } from './TurnosDeHoy.tsx'
 import { errorAlAtender, minutos, REFRESCO, useAhora, type Visita } from './visitas.ts'
-
-type Receptor = Awaited<ReturnType<typeof api.recepcion.receptores>>['datos'][number]
 
 const HORA = new Intl.DateTimeFormat('es-AR', { hour: '2-digit', minute: '2-digit' })
 
@@ -164,6 +156,8 @@ export function PantallaPuerta() {
       {alta && (
         <Anotar receptores={receptores.data?.datos ?? []} alTerminar={() => setAlta(false)} />
       )}
+
+      <TurnosDeHoy />
 
       {visitas.isPending && <Esqueleto />}
       {visitas.isError && (
@@ -399,65 +393,6 @@ function Espera({ v, ahora }: { v: Visita; ahora: number }) {
     rojo: 'rounded-full border border-critico bg-critico-suave px-2 font-semibold text-critico',
   }[nivel]
   return <span className={`inline-flex font-mono text-etiqueta ${clases}`}>{m} min</span>
-}
-
-/**
- * Los que pueden atender este motivo primero —vendedores para un plan de ahorro, asesores
- * para servicio— y después el resto, porque el gerente atiende a cualquiera.
- */
-function ElegirReceptor({
-  motivo,
-  valor,
-  receptores,
-  onChange,
-  actual,
-  compacto = false,
-}: {
-  motivo: MotivoVisita
-  valor: string | null
-  receptores: Receptor[]
-  onChange: (id: string | null) => void
-  actual?: { id: string; nombre: string } | null
-  compacto?: boolean
-}) {
-  const propios = PUESTOS_POR_MOTIVO[motivo]
-  const ordenados = [...receptores].sort(
-    (a, b) => Number(!propios.includes(a.puesto)) - Number(!propios.includes(b.puesto)),
-  )
-  const opciones = ordenados.map((r) => ({
-    valor: r.id,
-    texto: `${r.nombre} · ${PUESTOS[r.puesto as Puesto]}`,
-  }))
-  if (actual && !opciones.some((o) => o.valor === actual.id)) {
-    opciones.unshift({ valor: actual.id, texto: actual.nombre })
-  }
-
-  if (compacto) {
-    return (
-      <select
-        aria-label="Lo atiende"
-        value={valor ?? ''}
-        onChange={(e) => onChange(e.target.value || null)}
-        className="h-7 max-w-56 rounded-base border border-borde bg-superficie-2 px-1.5 text-etiqueta text-texto"
-      >
-        <option value="">Sin asignar</option>
-        {opciones.map((o) => (
-          <option key={o.valor} value={o.valor}>
-            {o.texto}
-          </option>
-        ))}
-      </select>
-    )
-  }
-  return (
-    <Selector
-      etiqueta="Lo atiende"
-      valor={valor}
-      vacio="Sin asignar"
-      onChange={onChange}
-      opciones={opciones}
-    />
-  )
 }
 
 /** Anotar a alguien que llegó: a qué vino, quién es y quién lo atiende. */

@@ -165,6 +165,18 @@ Razonados en [contra qué competimos](competencia-dms.md); acá queda cómo se r
    uno. Si no hay red queda en una cola local y se manda cuando vuelve; el servidor la acepta
    una sola vez por id. El número que el cliente tiene en la mano no cambia.
 
+## Lo que se decidió al construirlo
+
+- **El turno guarda el asesor como empleado**, igual que la visita: al llegar, la visita sale
+  derivada a él. Si ya no recibe —se fue, cambió de sucursal—, llega igual, sin asignar.
+- **Si el turno no dice a nombre de quién**, la visita sale con el titular del auto.
+- **Un turno llega una sola vez**: un índice único sobre el turno de la visita hace que dos
+  «llegó» seguidos no anoten dos personas.
+- **El número de cupo por franja que configura el taller todavía no está**: la agenda muestra
+  cuántos hay por hora y nada más. Se suma cuando un piloto diga cuál es el número.
+- **La agenda pide la semana entera**, y la puerta pide la misma: lo que se agenda en una se
+  ve en la otra sin volver a preguntar.
+
 ## Lo que no es esto
 
 - **El llamador** —el televisor que muestra «S-014 → Mostrador 2»— usa los mismos datos y
@@ -178,10 +190,10 @@ Razonados en [contra qué competimos](competencia-dms.md); acá queda cómo se r
 
 ## Cómo se construye
 
-Por orden, y cada paso se prueba en local de punta a punta. El 1 y el 2 están hechos desde el
-09/10/2026:
-la pantalla es **Recepción** en el menú (`/puerta`), y el asistente de la tablet pasó a llamarse
-**Tablet de recepción** para que las dos entradas no arranquen igual.
+Por orden, y cada paso se prueba en local de punta a punta. Del 1 al 3 están hechos desde el
+09/10/2026: la pantalla es **Recepción** en el menú (`/puerta`), la agenda es **Agenda**
+(`/agenda`), y el asistente de la tablet pasó a llamarse **Tablet de recepción** para que las
+dos entradas no arranquen igual.
 
 1. **Las visitas y la pantalla de la recepcionista.** La tabla, `Visita`, los receptores, y
    la pantalla con «Esperando» y «Atendiendo»: anotar, derivar, atender, cerrar y «se fue».

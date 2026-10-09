@@ -6,6 +6,8 @@ import { api } from '../../sesion/cliente.ts'
 import { mensajeGeneral } from '../../sesion/consultas.ts'
 import { errorAlAtender, minutos, REFRESCO, useAhora, type Visita } from './visitas.ts'
 
+const HORA = new Intl.DateTimeFormat('es-AR', { hour: '2-digit', minute: '2-digit' })
+
 /**
  * Lo primero que ve la tablet: a quién esperan en el taller. El porqué de una cola y no
  * «mandárselo a la tablet 2», en `docs/tecnicos/recepcion-y-turnos.md`.
@@ -167,6 +169,12 @@ function Tarjeta({
           {accion}
         </span>
         <span className="flex flex-wrap items-center gap-x-3 text-etiqueta text-texto-suave">
+          {v.turno && (
+            <span className="font-medium text-texto">
+              Turno {HORA.format(new Date(v.turno.fechaHora))}
+              {v.turno.dominio ? ` · ${v.turno.dominio}` : ''}
+            </span>
+          )}
           {v.telefono && <span>{v.telefono}</span>}
           {v.derivadaA && <span>Para {v.derivadaA.nombre}</span>}
           {v.nota && <span className="truncate">{v.nota}</span>}

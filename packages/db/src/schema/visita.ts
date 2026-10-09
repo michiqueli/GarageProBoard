@@ -9,14 +9,58 @@ import {
   text,
   timestamp,
   unique,
+  uniqueIndex,
   uuid,
 } from 'drizzle-orm/pg-core'
-import { actualizadoEn, pk, tenantId } from './_comunes.ts'
+import { actualizadoEn, creadoEn, pk, tenantId } from './_comunes.ts'
 import { usuario } from './acceso.ts'
 import { empleado, entidadComercial } from './comercial.ts'
 import { orden } from './orden.ts'
 import { sucursal } from './organizacion.ts'
 import { tenant } from './tenant.ts'
+import { vehiculo } from './vehiculo.ts'
+
+/**
+ * Un turno de servicio: quién va a venir, cuándo y a qué. El porqué, en
+ * `docs/tecnicos/recepcion-y-turnos.md`.
+ *
+ * **El auto y la persona pueden no estar cargados.** Se agenda por teléfono, y cargar un
+ * vehículo entero para anotar un turno es lo que hace que la gente use un cuaderno: alcanza
+ * con la patente y un nombre. Si están, mejor: el turno llega a la tablet con el auto puesto.
+ *
+ * **Sin cupos**: la agenda cuenta cuántos hay por franja pero no impide. El que atiende el
+ * teléfono sabe que el jueves falta un mecánico.
+ */
+export const turno = pgTable(
+  'turno',
+  {
+    id: pk(),
+    tenantId: tenantId().references(() => tenant.id),
+    sucursalId: uuid()
+      .notNull()
+      .references(() => sucursal.id),
+    fechaHora: timestamp({ withTimezone: true }).notNull(),
+    vehiculoId: uuid().references(() => vehiculo.id),
+    /** La patente como la dijo, cuando el auto no está cargado. */
+    dominio: text(),
+    entidadId: uuid().references(() => entidadComercial.id),
+    nombre: text(),
+    telefono: text(),
+    /** Qué le pasa o qué service es. Pasa a la orden como «qué pide». */
+    pedido: text().notNull(),
+    /** Si pidió a alguien. Es a quien se le deriva cuando llega. */
+    asesorId: uuid().references(() => empleado.id),
+    estado: text().notNull().default('agendado'),
+    creadoPor: uuid().references(() => usuario.id),
+    creadoEn: creadoEn(),
+    actualizadoEn: actualizadoEn(),
+  },
+  (t) => [
+    index('turno_fecha_idx').on(t.tenantId, t.sucursalId, t.fechaHora),
+    check('turno_estado_valido', sql`${t.estado} in ('agendado', 'llego', 'ausente', 'cancelado')`),
+    check('turno_pedido_valido', sql`length(btrim(${t.pedido})) between 3 and 500`),
+  ],
+)
 
 /**
  * Alguien que está en la concesionaria. El porqué, en `docs/tecnicos/recepcion-y-turnos.md`.
@@ -65,6 +109,8 @@ export const visita = pgTable(
     cerradaEn: timestamp({ withTimezone: true }),
     resultado: text(),
     ordenId: uuid().references(() => orden.id),
+    /** El turno del que viene, si vino con turno. */
+    turnoId: uuid().references(() => turno.id),
     nota: text(),
     /** Quién la anotó. Vacío cuando la anotó el tótem. */
     creadaPor: uuid().references(() => usuario.id),
@@ -74,6 +120,8 @@ export const visita = pgTable(
   },
   (t) => [
     unique('visita_numero_uq').on(t.sucursalId, t.fecha, t.letra, t.numero),
+    // Un turno llega una sola vez: dos «llegó» seguidos no anotan dos visitas.
+    uniqueIndex('visita_turno_uq').on(t.turnoId).where(sql`turno_id is not null`),
     index('visita_dia_idx').on(t.tenantId, t.sucursalId, t.fecha),
     // Escrito a mano y no armado desde `@gpb/core`: drizzle-kit no resuelve los paquetes del
     // workspace al generar.

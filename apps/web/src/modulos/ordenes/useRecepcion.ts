@@ -90,21 +90,36 @@ export function useRecepcion(alAbrir: (orden: OrdenAbierta) => void) {
 
   /**
    * Empezar desde una visita de la cola: quien la anotó en la puerta ya dijo quién es y su
-   * teléfono, y es quien trae el auto. Lo demás arranca vacío, como siempre.
+   * teléfono, y es quien trae el auto. Si vino con turno, el pedido es el del turno y el auto
+   * se busca solo; si el auto no está cargado, se elige como siempre.
    */
   function desdeVisita(v: {
     id: string
     numero: string
     nombre: string | null
     telefono: string | null
+    turno: { pedido: string; vehiculoId: string | null; dominio: string | null } | null
   }) {
     setDatos({
       ...VACIA,
       visita: { id: v.id, numero: v.numero },
       traeNombre: v.nombre ?? '',
       traeTelefono: v.telefono ?? '',
+      pedido: v.turno?.pedido ?? '',
     })
     setTocado(false)
+    const { vehiculoId, dominio } = v.turno ?? {}
+    if (vehiculoId && dominio) {
+      void api.vehiculos
+        .listar({ pagina: 1, porPagina: 5, buscar: dominio })
+        .then((r) => {
+          const auto = r.datos.find((x) => x.id === vehiculoId)
+          // Si ya eligió otro mientras tanto, no se lo pisa.
+          if (auto)
+            setDatos((d) => (d.vehiculo ? d : { ...d, vehiculo: auto, paga: auto.titular ?? null }))
+        })
+        .catch(() => {})
+    }
   }
 
   /** Lo que el modelo ya sabe manda; lo elegido sólo llena el hueco. */

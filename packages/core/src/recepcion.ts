@@ -84,5 +84,12 @@ export function nivelEspera(minutos: number): NivelEspera {
   return 'bien'
 }
 
+/**
+ * Lo que le pasa a un turno. «Llegó» es que se convirtió en una visita; un turno que nadie
+ * marcó como llegado al terminar el día pasa a «ausente» solo.
+ */
+export const ESTADOS_TURNO = ['agendado', 'llego', 'ausente', 'cancelado'] as const
+export type EstadoTurno = (typeof ESTADOS_TURNO)[number]
+
 /** Lo que se le permite escribir en la línea de la visita. */
 export const MAXIMO_NOTA_VISITA = 200

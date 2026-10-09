@@ -714,6 +714,7 @@ const NOMBRE_TABLA: Record<string, string> = {
   hoja_imagen: 'el dibujo de la hoja de recepción',
   revision_punto: 'un punto de la revisión de la hoja',
   visita: 'una visita de la recepción',
+  turno: 'un turno del taller',
   repuesto: 'el repuesto',
   repuesto_stock: 'la ubicación y el mínimo del repuesto',
   movimiento_stock: 'un movimiento de stock',

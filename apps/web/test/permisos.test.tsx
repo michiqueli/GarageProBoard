@@ -35,6 +35,7 @@ vi.mock('../src/sesion/cliente.ts', () => ({
       leerAvisos: (...a: unknown[]) => leerAvisos(...a),
     },
     vehiculos: { listar: (...a: unknown[]) => listarVehiculos(...a) },
+    turnos: { listar: async () => ({ datos: [] }) },
     recepcion: {
       hoy: async () => ({ datos: [] }),
       receptores: async () => ({ datos: [] }),

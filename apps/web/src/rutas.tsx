@@ -162,6 +162,17 @@ const rutaPuerta = createRoute({
   ),
 })
 
+/** La agenda de turnos del taller. */
+const rutaAgenda = createRoute({
+  getParentRoute: () => conSesion,
+  path: 'agenda',
+  staticData: { pantalla: 'recepcion' },
+  component: lazyRouteComponent(
+    () => import('./modulos/recepcion/PantallaAgenda.tsx'),
+    'PantallaAgenda',
+  ),
+})
+
 const rutaOrdenes = createRoute({
   getParentRoute: () => conSesion,
   path: 'ordenes',
@@ -476,6 +487,7 @@ const arbol = raiz.addChildren([
     rutaRecepcion,
     rutaRecepcionTablet,
     rutaPuerta,
+    rutaAgenda,
     rutaFichaOrden,
     rutaVehiculos,
     rutaFichaVehiculo,

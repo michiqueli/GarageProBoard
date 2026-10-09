@@ -1,4 +1,4 @@
-import { MAXIMO_NOTA_VISITA, MOTIVOS_VISITA } from '@gpb/core'
+import { ESTADOS_TURNO, MAXIMO_NOTA_VISITA, MOTIVOS_VISITA } from '@gpb/core'
 import { z } from 'zod'
 import { conPermiso } from './acceso.ts'
 import { PUESTOS_ORDENADOS } from './personal.ts'
@@ -29,6 +29,19 @@ export const visita = z.object({
   resultado: z.enum(['atendida', 'se_fue', 'orden']).nullable(),
   ordenId: z.uuid().nullable(),
   nota: z.string().nullable(),
+  /**
+   * El turno del que viene, con lo que hace falta para empezar a recibir el auto: la tablet
+   * lo pone sin preguntar.
+   */
+  turno: z
+    .object({
+      id: z.uuid(),
+      fechaHora: z.iso.datetime(),
+      pedido: z.string(),
+      vehiculoId: z.uuid().nullable(),
+      dominio: z.string().nullable(),
+    })
+    .nullable(),
 })
 
 /** Alguien a quien se le puede derivar una visita. */
@@ -189,5 +202,159 @@ export const contratoRecepcion = {
     })
     .input(z.object({ id: z.uuid(), resultado: z.enum(['atendida', 'se_fue']), nota }))
     .errors({ ...NO_ENCONTRADA, ...YA_CERRADA })
+    .output(visita),
+}
+
+const TAG_TURNOS = 'Turnos'
+
+/** Un turno de servicio, como lo muestra la agenda. */
+export const turno = z.object({
+  id: z.uuid(),
+  fechaHora: z.iso.datetime(),
+  estado: z.enum(ESTADOS_TURNO),
+  pedido: z.string(),
+  entidadId: z.uuid().nullable(),
+  nombre: z.string().nullable(),
+  telefono: z.string().nullable(),
+  /** El auto cargado, o sólo la patente que dijo por teléfono. */
+  vehiculo: z
+    .object({ id: z.uuid(), dominio: z.string().nullable(), descripcion: z.string() })
+    .nullable(),
+  dominio: z.string().nullable(),
+  asesor: persona.nullable(),
+  /** La visita en la que se convirtió al llegar. */
+  visitaId: z.uuid().nullable(),
+})
+
+const baseTurno = z.object({
+  fechaHora: z.iso.datetime({ offset: true }),
+  vehiculoId: z.uuid().nullable().optional(),
+  dominio: opcional(10, 'La patente tiene hasta 10 caracteres'),
+  entidadId: z.uuid().nullable().optional(),
+  nombre: opcional(120, 'El nombre es largo: hasta 120 letras'),
+  telefono: opcional(40, 'El teléfono es largo: hasta 40 caracteres'),
+  pedido: z
+    .string()
+    .trim()
+    .min(3, 'Anotá qué le pasa o qué service es')
+    .max(500, 'Es largo: hasta 500 letras'),
+  asesorId: z.uuid().nullable().optional(),
+})
+
+/**
+ * Lo mínimo para agendar por teléfono: el auto —o sólo su patente— y a nombre de quién. Si el
+ * auto está cargado, su titular alcanza como «quién».
+ */
+function reglasTurno(t: z.infer<typeof baseTurno>, ctx: z.RefinementCtx) {
+  if (!t.vehiculoId && !t.dominio) {
+    ctx.addIssue({
+      code: 'custom',
+      message: 'Elegí el auto o escribí la patente',
+      path: ['dominio'],
+    })
+  }
+  if (!t.vehiculoId && !t.entidadId && !t.nombre) {
+    ctx.addIssue({ code: 'custom', message: 'Anotá a nombre de quién', path: ['nombre'] })
+  }
+}
+
+const datosTurno = baseTurno.superRefine(reglasTurno)
+
+const NO_ENCONTRADO_TURNO = {
+  NO_ENCONTRADO: { status: 404, message: 'Ese turno, auto o persona no existe' },
+} as const
+
+const TURNO_CERRADO = {
+  TURNO_CERRADO: {
+    status: 409,
+    message: 'Ese turno ya no está agendado: llegó, no vino o se canceló',
+  },
+} as const
+
+/**
+ * La agenda del taller. Los turnos los carga el taller —por teléfono, por WhatsApp—; el
+ * pedido del cliente desde la web vendrá después, sobre lo mismo.
+ */
+export const contratoTurnos = {
+  listar: conPermiso('servicios', 'ver', 'Turno')
+    .route({
+      method: 'GET',
+      path: '/turnos',
+      tags: [TAG_TURNOS],
+      operationId: 'listarTurnos',
+      summary: 'Los turnos de la sucursal entre dos días, en orden',
+      description:
+        'Los de días pasados que nadie marcó como llegados pasan a «no vino» al pedirlos: no ' +
+        'hay un proceso nocturno que recorra todas las concesionarias.',
+    })
+    .input(z.object({ desde: z.iso.date(), hasta: z.iso.date() }))
+    .errors({
+      RANGO_INVALIDO: { status: 422, message: 'Pedí hasta 42 días, y que el primero sea antes' },
+    })
+    .output(z.object({ datos: z.array(turno) })),
+
+  crear: conPermiso('servicios', 'crear', 'Turno')
+    .route({
+      method: 'POST',
+      path: '/turnos',
+      tags: [TAG_TURNOS],
+      operationId: 'crearTurno',
+      summary: 'Agendar un turno',
+      successStatus: 201,
+    })
+    .input(datosTurno)
+    .errors({ ...NO_ENCONTRADO_TURNO, ...NO_ES_RECEPTOR })
+    .output(turno),
+
+  editar: conPermiso('servicios', 'editar', 'Turno')
+    .route({
+      method: 'PUT',
+      path: '/turnos/{id}',
+      tags: [TAG_TURNOS],
+      operationId: 'editarTurno',
+      summary: 'Cambiar un turno agendado: otro día, otra hora, otro pedido',
+    })
+    .input(baseTurno.extend({ id: z.uuid() }).superRefine(reglasTurno))
+    .errors({ ...NO_ENCONTRADO_TURNO, ...TURNO_CERRADO, ...NO_ES_RECEPTOR })
+    .output(turno),
+
+  cancelar: conPermiso('servicios', 'editar', 'Turno')
+    .route({
+      method: 'POST',
+      path: '/turnos/{id}/cancelar',
+      tags: [TAG_TURNOS],
+      operationId: 'cancelarTurno',
+      summary: 'Cancelarlo: avisó que no viene',
+      description: 'No se borra: queda en la agenda como cancelado, con quién lo canceló.',
+    })
+    .input(z.object({ id: z.uuid() }))
+    .errors({ ...NO_ENCONTRADO_TURNO, ...TURNO_CERRADO })
+    .output(turno),
+
+  noVino: conPermiso('servicios', 'editar', 'Turno')
+    .route({
+      method: 'POST',
+      path: '/turnos/{id}/ausente',
+      tags: [TAG_TURNOS],
+      operationId: 'turnoAusente',
+      summary: 'Marcar que no vino, sin esperar a que termine el día',
+    })
+    .input(z.object({ id: z.uuid() }))
+    .errors({ ...NO_ENCONTRADO_TURNO, ...TURNO_CERRADO })
+    .output(turno),
+
+  llego: conPermiso('servicios', 'editar', 'Turno')
+    .route({
+      method: 'POST',
+      path: '/turnos/{id}/llego',
+      tags: [TAG_TURNOS],
+      operationId: 'turnoLlego',
+      summary: 'Llegó: se anota como visita de servicio, con su número del día',
+      description:
+        'La visita sale con el nombre, el teléfono y el asesor del turno, y entra a la cola de ' +
+        'las tablets con el auto y el pedido para empezar a recibirlo.',
+    })
+    .input(z.object({ id: z.uuid() }))
+    .errors({ ...NO_ENCONTRADO_TURNO, ...TURNO_CERRADO })
     .output(visita),
 }

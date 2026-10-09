@@ -931,6 +931,7 @@ describe('la cola de la tablet', () => {
     resultado: null,
     ordenId: null,
     nota: null,
+    turno: null,
   }
   const DE_OTRO = {
     ...ESPERA,
@@ -983,6 +984,34 @@ describe('la cola de la tablet', () => {
       expect(ordenes.abrir).toHaveBeenCalledWith(
         expect.objectContaining({ visitaId: 'v1', traeTelefono: '351 555-1234' }),
       ),
+    )
+  })
+
+  it('si vino con turno, arranca con su pedido y con el auto ya elegido', async () => {
+    const conTurno = {
+      ...ESPERA,
+      turno: {
+        id: 't1',
+        fechaHora: new Date().toISOString(),
+        pedido: 'Service de 20.000',
+        vehiculoId: VEHICULO_ELEGIBLE.id,
+        dominio: 'AB123CD',
+      },
+    }
+    recepcion.hoy.mockResolvedValue({ datos: [conTurno] })
+    recepcion.atender.mockResolvedValue({ ...conTurno, atendidaEn: new Date().toISOString() })
+    listarVehiculos.mockResolvedValue({ datos: [VEHICULO_ELEGIBLE], total: 1 })
+    await montarApp('/recepcion')
+
+    expect(await screen.findByText(/Turno .* · AB123CD/)).toBeDefined()
+    await userEvent.click(screen.getByRole('button', { name: /S-004/ }))
+    expect(await screen.findByText('Titular: Transportes del Sur SRL')).toBeDefined()
+    expect(listarVehiculos).toHaveBeenCalledWith(expect.objectContaining({ buscar: 'AB123CD' }))
+
+    await userEvent.click(screen.getByRole('button', { name: /Qué pide/ }))
+    expect(screen.getByLabelText('Qué pide el cliente')).toHaveProperty(
+      'value',
+      'Service de 20.000',
     )
   })
 

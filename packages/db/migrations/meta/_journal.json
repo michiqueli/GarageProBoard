@@ -197,6 +197,13 @@
       "when": 1791560397385,
       "tag": "0027_recepcion_visitas",
       "breakpoints": true
+    },
+    {
+      "idx": 28,
+      "version": "7",
+      "when": 1791582683273,
+      "tag": "0028_recepcion_turnos",
+      "breakpoints": true
     }
   ]
 }

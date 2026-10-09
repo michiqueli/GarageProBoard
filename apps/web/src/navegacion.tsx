@@ -80,6 +80,19 @@ export const PRINCIPALES: Seccion[] = [
     ),
   },
   {
+    id: 'agenda',
+    etiqueta: 'Agenda',
+    to: '/agenda',
+    requiere: accesoDeRuta(contrato.turnos.listar),
+    icono: (
+      <svg viewBox="0 0 16 16" {...trazo} aria-hidden="true">
+        <rect x="2" y="3" width="12" height="11" rx="1" />
+        <path d="M2 6.5h12M5.5 1.5v3M10.5 1.5v3" />
+        <path d="M5 9h1.5M9.5 9H11M5 11.5h1.5" />
+      </svg>
+    ),
+  },
+  {
     // Con entrada propia y no sólo el botón «Vista tablet» de la recepción: en la tablet el
     // menú es lo único a mano, y nadie va a pasar por la vista de escritorio para llegar.
     // «Tablet de recepción» y no «Recepción en tablet»: dos entradas que arrancan igual se

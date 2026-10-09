@@ -390,6 +390,23 @@ const ESTATICAS: EntradaIndice[] = [
     requiere: accesoDeRuta(contrato.recepcion.hoy),
   },
   {
+    id: 'recepcion.agenda',
+    titulo: 'Agenda de turnos del taller',
+    donde: 'Principal → Agenda',
+    claves: [
+      'turnos',
+      'agendar',
+      'reservar',
+      'citas',
+      'service',
+      'semana',
+      'calendario',
+      'no vino',
+    ],
+    destino: { to: '/agenda' },
+    requiere: accesoDeRuta(contrato.turnos.listar),
+  },
+  {
     id: 'ordenes.recepcionTablet',
     titulo: 'Recibir un vehículo en tablet',
     donde: 'Principal → Tablet de recepción',

@@ -48,6 +48,7 @@ export const SUJETOS = [
   'Configuracion',
   'Auditoria',
   'Visita',
+  'Turno',
   'all',
 ] as const
 
@@ -85,6 +86,7 @@ const SUSTANTIVOS: Record<Sujeto, string> = {
   Configuracion: 'la configuración',
   Auditoria: 'el registro de ingresos y cambios',
   Visita: 'las visitas de la recepción',
+  Turno: 'los turnos del taller',
   all: 'todo el sistema',
 }
 
@@ -239,7 +241,10 @@ export const ROLES_PREDEFINIDOS: RolPredefinido[] = [
     nombre: 'Asesor de servicios',
     descripcion: 'Recibe vehículos, abre y cierra órdenes, atiende al cliente.',
     habilidades: [
-      { action: ['ver', 'crear', 'editar'], subject: ['Orden', 'Vehiculo', 'Cliente', 'Visita'] },
+      {
+        action: ['ver', 'crear', 'editar'],
+        subject: ['Orden', 'Vehiculo', 'Cliente', 'Visita', 'Turno'],
+      },
       { action: 'ver', subject: ['Repuesto', 'Comprobante'] },
       // El legajo lleva sueldos y categoría: no lo ve quien atiende el mostrador.
       { action: 'ver', subject: 'Empleado', inverted: true, reason: 'Contiene datos de sueldo.' },
@@ -297,10 +302,10 @@ export const ROLES_PREDEFINIDOS: RolPredefinido[] = [
   {
     nombre: 'Recepcionista',
     descripcion:
-      'Atiende la puerta: anota a quien llega, lo deriva a quien lo va a atender y sigue la ' +
-      'espera.',
+      'Atiende la puerta y el teléfono: agenda los turnos, anota a quien llega, lo deriva a ' +
+      'quien lo va a atender y sigue la espera.',
     habilidades: [
-      { action: ['ver', 'crear', 'editar'], subject: 'Visita' },
+      { action: ['ver', 'crear', 'editar'], subject: ['Visita', 'Turno'] },
       // Busca a quien llega por su documento y por su auto. Las órdenes no: si las viera,
       // entraría a Órdenes de trabajo en vez de a la puerta, que es lo suyo.
       { action: 'ver', subject: ['Cliente', 'Vehiculo'] },

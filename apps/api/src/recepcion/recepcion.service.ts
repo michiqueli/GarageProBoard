@@ -1,6 +1,14 @@
 import { LETRA_VISITA, type MotivoVisita, numeroVisita } from '@gpb/core'
 import { and, asc, type Db, eq, inArray, isNull, notInArray, or, sql } from '@gpb/db'
-import { empleado, entidadComercial, usuario, visita, visitaSecuencia } from '@gpb/db/schema'
+import {
+  empleado,
+  entidadComercial,
+  turno,
+  usuario,
+  vehiculo,
+  visita,
+  visitaSecuencia,
+} from '@gpb/db/schema'
 import { Inject, Injectable } from '@nestjs/common'
 import type { Sesion } from '../comun/contexto.ts'
 import { DatosDelTenant } from '../comun/datos.ts'
@@ -26,7 +34,11 @@ type Fila = typeof visita.$inferSelect
 const NO_RECIBEN = ['mecanico', 'lavador', 'chofer']
 
 /** «Jorge Pérez», o la razón social si no tiene nombre de persona. */
-function nombreDe(e: { nombre: string | null; apellido: string | null; razonSocial: string }) {
+export function nombreDe(e: {
+  nombre: string | null
+  apellido: string | null
+  razonSocial: string
+}) {
   return `${e.nombre ?? ''} ${e.apellido ?? ''}`.trim() || e.razonSocial
 }
 
@@ -65,60 +77,9 @@ export class ServicioRecepcion {
   }
 
   anotar(entrada: EntradaVisita) {
-    return this.datos.transaccion(async (tx, sesion) => {
-      let { nombre, telefono } = entrada
-      if (entrada.entidadId) {
-        const [quien] = await tx
-          .select()
-          .from(entidadComercial)
-          .where(eq(entidadComercial.id, entrada.entidadId))
-        if (!quien) throw new ErrorRecepcion('NO_ENCONTRADO')
-        // Lo que dijo manda; lo que no dijo sale de su ficha.
-        nombre = nombre || nombreDe(quien)
-        telefono = telefono || quien.telefono
-      }
-      if (entrada.derivadaA) await verificarReceptor(tx, sesion, entrada.derivadaA)
-
-      const fecha = diaArgentino()
-      const letra = LETRA_VISITA[entrada.motivo]
-      // El siguiente de la letra en el día, atómico: dos anotadas a la vez no comparten número.
-      const [secuencia] = await tx
-        .insert(visitaSecuencia)
-        .values({
-          tenantId: sesion.tenantId,
-          sucursalId: sesion.sucursalId,
-          fecha,
-          letra,
-          ultimo: 1,
-        })
-        .onConflictDoUpdate({
-          target: [visitaSecuencia.sucursalId, visitaSecuencia.fecha, visitaSecuencia.letra],
-          set: { ultimo: sql`${visitaSecuencia.ultimo} + 1` },
-        })
-        .returning({ ultimo: visitaSecuencia.ultimo })
-      if (!secuencia) throw new Error('No se pudo numerar la visita.')
-
-      const [creada] = await tx
-        .insert(visita)
-        .values({
-          tenantId: sesion.tenantId,
-          sucursalId: sesion.sucursalId,
-          fecha,
-          letra,
-          numero: secuencia.ultimo,
-          origen: 'recepcion',
-          motivo: entrada.motivo,
-          entidadId: entrada.entidadId ?? null,
-          nombre: nombre ?? null,
-          telefono: telefono ?? null,
-          derivadaA: entrada.derivadaA ?? null,
-          nota: entrada.nota ?? null,
-          creadaPor: sesion.usuarioId,
-        })
-        .returning()
-      if (!creada) throw new Error('No se pudo anotar la visita.')
-      return una(tx, creada)
-    })
+    return this.datos.transaccion(async (tx, sesion) =>
+      una(tx, await nuevaVisita(tx, sesion, entrada)),
+    )
   }
 
   derivar(id: string, derivadaA: string | null) {
@@ -200,6 +161,64 @@ export class ServicioRecepcion {
   }
 }
 
+/**
+ * Anota una visita con el número siguiente de su letra en el día. La usan la puerta y el turno
+ * que llega, que es la misma visita con el turno al lado.
+ */
+export async function nuevaVisita(
+  tx: Db,
+  sesion: Sesion,
+  entrada: EntradaVisita & { turnoId?: string | null },
+): Promise<Fila> {
+  let { nombre, telefono } = entrada
+  if (entrada.entidadId) {
+    const [quien] = await tx
+      .select()
+      .from(entidadComercial)
+      .where(eq(entidadComercial.id, entrada.entidadId))
+    if (!quien) throw new ErrorRecepcion('NO_ENCONTRADO')
+    // Lo que dijo manda; lo que no dijo sale de su ficha.
+    nombre = nombre || nombreDe(quien)
+    telefono = telefono || quien.telefono
+  }
+  if (entrada.derivadaA) await verificarReceptor(tx, sesion, entrada.derivadaA)
+
+  const fecha = diaArgentino()
+  const letra = LETRA_VISITA[entrada.motivo]
+  // El siguiente de la letra en el día, atómico: dos anotadas a la vez no comparten número.
+  const [secuencia] = await tx
+    .insert(visitaSecuencia)
+    .values({ tenantId: sesion.tenantId, sucursalId: sesion.sucursalId, fecha, letra, ultimo: 1 })
+    .onConflictDoUpdate({
+      target: [visitaSecuencia.sucursalId, visitaSecuencia.fecha, visitaSecuencia.letra],
+      set: { ultimo: sql`${visitaSecuencia.ultimo} + 1` },
+    })
+    .returning({ ultimo: visitaSecuencia.ultimo })
+  if (!secuencia) throw new Error('No se pudo numerar la visita.')
+
+  const [creada] = await tx
+    .insert(visita)
+    .values({
+      tenantId: sesion.tenantId,
+      sucursalId: sesion.sucursalId,
+      fecha,
+      letra,
+      numero: secuencia.ultimo,
+      origen: 'recepcion',
+      motivo: entrada.motivo,
+      entidadId: entrada.entidadId ?? null,
+      nombre: nombre ?? null,
+      telefono: telefono ?? null,
+      derivadaA: entrada.derivadaA ?? null,
+      turnoId: entrada.turnoId ?? null,
+      nota: entrada.nota ?? null,
+      creadaPor: sesion.usuarioId,
+    })
+    .returning()
+  if (!creada) throw new Error('No se pudo anotar la visita.')
+  return creada
+}
+
 /** La visita para cambiarla, trabada hasta el final de la transacción. */
 async function abierta(tx: Db, id: string): Promise<Fila> {
   const [v] = await tx.select().from(visita).where(eq(visita.id, id)).for('update')
@@ -239,12 +258,12 @@ async function receptoresDe(tx: Db, sesion: Sesion) {
     .sort((a, b) => a.nombre.localeCompare(b.nombre, 'es'))
 }
 
-async function verificarReceptor(tx: Db, sesion: Sesion, id: string) {
+export async function verificarReceptor(tx: Db, sesion: Sesion, id: string) {
   const posibles = await receptoresDe(tx, sesion)
   if (!posibles.some((p) => p.id === id)) throw new ErrorRecepcion('NO_ES_RECEPTOR')
 }
 
-async function una(tx: Db, fila: Fila) {
+export async function una(tx: Db, fila: Fila) {
   const [v] = await conNombres(tx, [fila])
   if (!v) throw new Error('No se pudo leer la visita.')
   return v
@@ -254,6 +273,26 @@ async function una(tx: Db, fila: Fila) {
 async function conNombres(tx: Db, filas: Fila[]) {
   const empleados = [...new Set(filas.flatMap((f) => (f.derivadaA ? [f.derivadaA] : [])))]
   const usuarios = [...new Set(filas.flatMap((f) => (f.atendidaPor ? [f.atendidaPor] : [])))]
+  const turnos = [...new Set(filas.flatMap((f) => (f.turnoId ? [f.turnoId] : [])))]
+
+  const deTurno = new Map(
+    turnos.length
+      ? (
+          await tx
+            .select({
+              id: turno.id,
+              fechaHora: turno.fechaHora,
+              pedido: turno.pedido,
+              vehiculoId: turno.vehiculoId,
+              // La patente del auto cargado, o la que dijo por teléfono.
+              dominio: sql<string | null>`coalesce(${vehiculo.dominio}, ${turno.dominio})`,
+            })
+            .from(turno)
+            .leftJoin(vehiculo, eq(vehiculo.id, turno.vehiculoId))
+            .where(inArray(turno.id, turnos))
+        ).map((t) => [t.id, { ...t, fechaHora: t.fechaHora.toISOString() }])
+      : [],
+  )
 
   const nombresEmpleado = new Map(
     empleados.length
@@ -301,5 +340,6 @@ async function conNombres(tx: Db, filas: Fila[]) {
     resultado: f.resultado as 'atendida' | 'se_fue' | 'orden' | null,
     ordenId: f.ordenId,
     nota: f.nota,
+    turno: (f.turnoId && deTurno.get(f.turnoId)) || null,
   }))
 }
