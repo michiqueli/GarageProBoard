@@ -3,6 +3,9 @@ import {
   DANIOS,
   ELEMENTOS_INVENTARIO,
   type ElementoInventario,
+  ESTADOS_REVISION,
+  ESTADOS_REVISION_INFO,
+  type EstadoRevision,
   INVENTARIO,
   type TipoDanio,
 } from '@gpb/core'
@@ -54,6 +57,11 @@ export interface DatosOrdenImpresa {
   /** Las marcas, en fracción del ancho y del alto del dibujo. */
   danios: Array<{ tipo: TipoDanio; x: number; y: number; nota: string | null }>
   inventario: Partial<Record<ElementoInventario, ControlInventario>>
+  /**
+   * Los puntos de la revisión en el orden de la hoja, contestados o no. Sin ninguno contestado
+   * —las órdenes de antes de la revisión, o una que nadie revisó— el bloque no sale.
+   */
+  revision: Array<{ nombre: string; estado: EstadoRevision | null; nota: string | null }>
   asesor: string
   mecanico: string | null
   items: Array<{
@@ -131,6 +139,133 @@ function caja(doc: Doc, y: number, alto: number, titulo?: string) {
       .text(titulo.toUpperCase(), IZQ + mm(3), y + mm(2))
     doc.fillColor('#000')
   }
+}
+
+/** Hasta dónde se escribe en una hoja. La firma del cliente se reserva aparte. */
+const FONDO = 297 * MM - mm(12)
+
+/**
+ * Si lo que sigue no entra, se sigue en otra hoja. La orden con revisión, varias marcas y
+ * muchos renglones no entra en una A4, y lo que se escribe por debajo del borde no se imprime:
+ * desaparece sin aviso, que es peor que una hoja más.
+ */
+function lugar(doc: Doc, y: number, alto: number, encabezado: string): number {
+  if (y + alto <= FONDO) return y
+  doc.addPage()
+  // Una hoja suelta tiene que decir de qué orden es: las dos copias se separan en el mostrador.
+  doc
+    .font(NEGRITA)
+    .fontSize(9)
+    .fillColor('#555')
+    .text(encabezado, IZQ, mm(12), { width: UTIL })
+    .fillColor('#000')
+  return mm(19)
+}
+
+/**
+ * El semáforo dibujado, no escrito: la orden sale de la láser del mostrador, en blanco y negro.
+ * Bien es un círculo vacío, reparar uno a medio llenar, urgente uno lleno. Sin revisar, una raya:
+ * no es ninguno de los tres.
+ */
+function semaforo(doc: Doc, estado: EstadoRevision | null, cx: number, cy: number) {
+  const r = mm(1.4)
+  doc.lineWidth(0.7)
+  if (!estado) {
+    doc
+      .moveTo(cx - r, cy)
+      .lineTo(cx + r, cy)
+      .stroke()
+    return
+  }
+  if (estado === 'rojo') {
+    doc.circle(cx, cy, r).fillAndStroke('#000', '#000')
+    return
+  }
+  if (estado === 'ambar') {
+    doc.save()
+    doc.circle(cx, cy, r).clip()
+    doc.rect(cx - r, cy - r, r, r * 2).fill('#000')
+    doc.restore()
+  }
+  doc.circle(cx, cy, r).stroke()
+}
+
+const FILA_REVISION = mm(3.9)
+
+/**
+ * La revisión con su semáforo, en tres columnas, y abajo lo que hay que reparar con su nota
+ * entera. Devuelve el alto que ocupó, o cero si no hay nada contestado.
+ */
+function revision(doc: Doc, o: DatosOrdenImpresa, yPedido: number, encabezado: string): number {
+  if (!o.revision.some((p) => p.estado)) return 0
+  const columnas = 3
+  const filas = Math.ceil(o.revision.length / columnas)
+  const conTrabajo = o.revision.filter((p) => p.estado === 'ambar' || p.estado === 'rojo')
+  doc.font(NORMAL).fontSize(8)
+  const anchoNota = UTIL - mm(10)
+  const altoNotas = conTrabajo.reduce(
+    (a, p) =>
+      a +
+      Math.max(
+        FILA_REVISION,
+        doc.heightOfString(`${p.nombre}${p.nota ? ` — ${p.nota}` : ''}`, { width: anchoNota }),
+      ),
+    0,
+  )
+  const alto = mm(9) + filas * FILA_REVISION + (conTrabajo.length ? mm(5) + altoNotas : 0) + mm(2)
+  const y = lugar(doc, yPedido, alto, encabezado)
+
+  caja(doc, y, alto, 'Revisión')
+  // La referencia, arriba a la derecha: sin ella el medio círculo no dice nada.
+  let xr = DER - mm(3)
+  for (const e of [...ESTADOS_REVISION].reverse()) {
+    const texto = ESTADOS_REVISION_INFO[e].corto
+    const ancho = doc.font(NORMAL).fontSize(7).widthOfString(texto)
+    xr -= ancho
+    doc.fillColor('#555').text(texto, xr, y + mm(2), { lineBreak: false })
+    semaforo(doc, e, xr - mm(2.4), y + mm(3.1))
+    xr -= mm(6)
+  }
+  doc.fillColor('#000')
+
+  const anchoColumna = (UTIL - mm(6)) / columnas
+  o.revision.forEach((p, i) => {
+    const columna = Math.floor(i / filas)
+    const fila = i % filas
+    const x = IZQ + mm(3) + columna * anchoColumna
+    const yy = y + mm(7.5) + fila * FILA_REVISION
+    semaforo(doc, p.estado, x + mm(1.4), yy + mm(1.3))
+    doc
+      .font(p.estado === 'rojo' || p.estado === 'ambar' ? NEGRITA : NORMAL)
+      .fontSize(8)
+      .text(p.nombre, x + mm(4.5), yy, {
+        width: anchoColumna - mm(6),
+        lineBreak: false,
+        ellipsis: true,
+        height: doc.currentLineHeight(),
+      })
+  })
+
+  if (conTrabajo.length) {
+    let yy = y + mm(7.5) + filas * FILA_REVISION + mm(1.5)
+    doc
+      .font(NEGRITA)
+      .fontSize(7)
+      .fillColor('#555')
+      .text('PARA REPARAR', IZQ + mm(3), yy)
+      .fillColor('#000')
+    yy += mm(3.5)
+    for (const p of conTrabajo) {
+      semaforo(doc, p.estado, IZQ + mm(4.4), yy + mm(1.3))
+      doc
+        .font(NEGRITA)
+        .fontSize(8)
+        .text(p.nombre, IZQ + mm(7.5), yy, { width: anchoNota, continued: Boolean(p.nota) })
+      if (p.nota) doc.font(NORMAL).text(` — ${p.nota}`)
+      yy = doc.y + mm(0.4)
+    }
+  }
+  return y - yPedido + alto
 }
 
 const ALTO_DIBUJO = mm(58)
@@ -392,11 +527,16 @@ function hoja(doc: Doc, o: DatosOrdenImpresa, copia: 'TALLER' | 'CLIENTE') {
 
   y += estadoDelVehiculo(doc, o, y) + mm(3)
 
+  const continua = `ORDEN DE TRABAJO N° ${String(o.numero).padStart(6, '0')} · COPIA ${copia} · CONTINUACIÓN`
+  const altoRevision = revision(doc, o, y, continua)
+  if (altoRevision) y += altoRevision + mm(3)
+
   // Trabajos y repuestos
   if (o.items.length) {
     const conPrecios = copia === 'CLIENTE'
     const filas = o.items.length
     const alto = mm(10) + filas * mm(5.5) + (conPrecios ? mm(7) : 0)
+    y = lugar(doc, y, alto, continua)
     caja(doc, y, alto, 'Trabajos y repuestos')
     let yy = y + mm(7)
     for (const i of o.items) {
@@ -443,6 +583,9 @@ function hoja(doc: Doc, o: DatosOrdenImpresa, copia: 'TALLER' | 'CLIENTE') {
   }
 
   if (copia === 'CLIENTE') {
+    // La firma va al pie, y si lo de arriba llegó hasta ahí, al pie de la hoja siguiente: una
+    // firma encimada sobre la revisión no la puede leer nadie.
+    y = lugar(doc, y, mm(12) + mm(33), continua)
     const yFirma = Math.max(y + mm(12), 297 * MM - mm(45))
     doc
       .font(NORMAL)

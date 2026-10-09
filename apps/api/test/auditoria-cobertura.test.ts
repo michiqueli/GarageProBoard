@@ -79,6 +79,8 @@ const AUDITAN: readonly string[] = [
   'ordenes.presupuestar',
   'ordenes.enviarPresupuesto',
   'ordenes.responderPresupuesto',
+  'ordenes.revisar',
+  'ordenes.pasarAPresupuesto',
   'organizacion.crearEmpresa',
   'organizacion.editarEmpresa',
   'organizacion.crearSucursal',
@@ -132,6 +134,15 @@ const NO_AUDITAN: Readonly<Record<string, string>> = {
     'subir inserta una y marca la anterior. La narracion diria lo mismo que las dos filas.',
   'hojas.quitar':
     'Marca la imagen propia como reemplazada, y eso es una sola columna que el trigger ya cuenta.',
+  'revision.crear':
+    'El trigger de revision_punto guarda el punto entero con quién y cuándo; la narración ' +
+    'repetiría el nombre y la sección, que es todo lo que tiene.',
+  'revision.editar':
+    'Cambiar el nombre o apagar un punto son dos columnas que el trigger ya cuenta con su ' +
+    'antes y su después.',
+  'revision.mover':
+    'Es el lugar del punto en la lista: el trigger registra el cambio de orden, y no hay nada ' +
+    'del negocio que contar además.',
   'configuracion.guardar': 'Son las preferencias propias: el tema de cada uno no es del resto.',
   'configuracion.guardarAtajos': 'El mapa de teclas es de quien lo usa, y de nadie más.',
   'fichaje.escanear':

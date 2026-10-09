@@ -26,6 +26,7 @@ export const TABLAS_CON_TENANT = [
   'compra',
   'compra_renglon',
   'repuestos_secuencia',
+  'revision_punto',
   'entidad_comercial',
   'cliente',
   'proveedor',

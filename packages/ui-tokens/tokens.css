@@ -63,6 +63,7 @@
   --color-ok: #3fbf8f;
   --color-ok-suave: #3fbf8f24;
   --color-atencion: #d9962b;
+  --color-atencion-suave: #d9962b24;
   --color-critico: #e0705c;
   --color-critico-suave: #e0705c24;
   --color-info: #5aa9e6;
@@ -126,6 +127,7 @@
   --color-ok: #1c8a63;
   --color-ok-suave: #1c8a631a;
   --color-atencion: #a96c10;
+  --color-atencion-suave: #a96c101a;
   --color-critico: #b2412c;
   --color-critico-suave: #b2412c1a;
   --color-info: #2a6fa8;

@@ -11,6 +11,7 @@ import { mensajeGeneral } from '../../sesion/consultas.ts'
 import type { Danio } from './DiagramaDanios.tsx'
 import type { Inventario } from './InventarioRecepcion.tsx'
 import { type Combustible, nombreOrden } from './ordenes.ts'
+import type { Cambio, PuntoRevisado } from './RevisionRecepcion.tsx'
 
 export interface DatosRecepcion {
   vehiculo: VehiculoElegido | null
@@ -31,6 +32,8 @@ export interface DatosRecepcion {
   carroceria: Carroceria | null
   danios: Danio[]
   inventario: Inventario
+  /** Lo contestado de la revisión, por punto. Lo que no está, no se revisó. */
+  revision: Record<string, Cambio>
 }
 
 const VACIA: DatosRecepcion = {
@@ -48,6 +51,7 @@ const VACIA: DatosRecepcion = {
   carroceria: null,
   danios: [],
   inventario: {},
+  revision: {},
 }
 
 export type OrdenAbierta = Awaited<ReturnType<typeof api.ordenes.abrir>>
@@ -88,6 +92,25 @@ export function useRecepcion(alAbrir: (orden: OrdenAbierta) => void) {
    */
   const hojas = useQuery({ queryKey: ['hojas', tenantId], queryFn: () => api.hojas.listar() })
   const hojaImagenId = hojas.data?.datos.find((h) => h.tipo === hojaTipo)?.propia?.id ?? null
+  /** Los puntos que revisa el taller. Como los dibujos: se piden una vez y quedan en la caché. */
+  const catalogo = useQuery({
+    queryKey: ['revision', tenantId],
+    queryFn: () => api.revision.listar(),
+  })
+  const puntosRevision: PuntoRevisado[] = (catalogo.data?.datos ?? [])
+    .filter((p) => p.activo)
+    .map((p) => ({
+      puntoId: p.id,
+      seccion: p.seccion,
+      nombre: p.nombre,
+      estado: datos.revision[p.id]?.estado ?? null,
+      nota: datos.revision[p.id]?.nota ?? null,
+    }))
+
+  function contestar(puntoId: string, cambio: Cambio) {
+    setDatos((d) => ({ ...d, revision: { ...d.revision, [puntoId]: cambio } }))
+  }
+
   /** Se pregunta cuando nadie lo sabe: con un modelo sin carrocería, o sin modelo cargado. */
   const faltaCarroceria = !datos.vehiculo?.carroceria
 
@@ -117,6 +140,10 @@ export function useRecepcion(alAbrir: (orden: OrdenAbierta) => void) {
         carroceria: datos.carroceria,
         danios: datos.danios.map(({ tipo, x, y, nota }) => ({ tipo, x, y, nota })),
         inventario: datos.inventario,
+        // Sólo lo contestado: lo que nadie tocó queda sin revisar, que no es lo mismo que bien.
+        revision: Object.entries(datos.revision)
+          .filter(([, c]) => c.estado)
+          .map(([puntoId, c]) => ({ puntoId, estado: c.estado, nota: c.nota })),
         items: [],
       }),
     onSuccess: async (o) => {
@@ -170,6 +197,8 @@ export function useRecepcion(alAbrir: (orden: OrdenAbierta) => void) {
     hojaImagenId,
     faltaCarroceria,
     elegirCarroceria,
+    puntosRevision,
+    contestar,
     enviar,
     empezarOtra,
     abriendo: abrir.isPending,

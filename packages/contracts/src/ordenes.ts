@@ -2,6 +2,9 @@ import {
   CARROCERIAS,
   CONTROLES_INVENTARIO,
   ELEMENTOS_INVENTARIO,
+  ESTADOS_REVISION,
+  MAXIMO_NOTA_PUNTO,
+  SECCIONES_REVISION,
   TIPOS_DANIO,
   TIPOS_HOJA,
 } from '@gpb/core'
@@ -71,6 +74,45 @@ export const inventarioRecepcion = z.partialRecord(
   z.enum(ELEMENTOS_INVENTARIO),
   z.enum(CONTROLES_INVENTARIO),
 )
+
+/**
+ * Un punto de la revisión, contestado o no.
+ *
+ * La orden trae **todos**: los que se contestaron, con el nombre que tenía el punto en ese
+ * momento, y los que el taller revisa hoy y nadie tocó, con `estado` en `null`. Sin revisar no
+ * es verde: es lo que la hoja tiene que decir cuando nadie lo miró.
+ */
+export const respuestaRevision = z.object({
+  puntoId: z.uuid(),
+  seccion: z.enum(SECCIONES_REVISION),
+  nombre: z.string(),
+  estado: z.enum(ESTADOS_REVISION).nullable(),
+  nota: z.string().nullable(),
+  /** Quién lo contestó y cuándo. La revisión se llena en dos momentos, y no siempre la misma persona. */
+  por: z.string().nullable(),
+  en: z.iso.datetime().nullable(),
+  /** El renglón de trabajo que salió de este punto, si se pasó a presupuesto y sigue en la orden. */
+  itemId: z.uuid().nullable(),
+})
+
+/** Lo que se contesta de un punto. `estado` en `null` lo vuelve a dejar sin revisar. */
+const respuestaEntrada = z.object({
+  puntoId: z.uuid(),
+  estado: z.enum(ESTADOS_REVISION).nullable(),
+  nota: z
+    .string()
+    .trim()
+    .max(MAXIMO_NOTA_PUNTO, 'La nota de un punto es corta: lo largo va en las observaciones')
+    .transform((v) => v || null)
+    .nullish(),
+})
+
+const PUNTO_INVALIDO = {
+  PUNTO_INVALIDO: {
+    status: 422,
+    message: 'Alguno de esos puntos de la revisión no existe o el taller ya no lo revisa',
+  },
+} as const
 
 export const ordenResumen = z.object({
   id: z.uuid(),
@@ -167,6 +209,8 @@ export const ordenDetalle = ordenResumen.extend({
   observaciones: z.string().nullable(),
   danios: z.array(danioRecepcion),
   inventario: inventarioRecepcion,
+  /** Los puntos de la revisión, por sección y en el orden del taller. */
+  revision: z.array(respuestaRevision),
   /** Qué carrocería se dibujó: decide cuál de los dibujos del sistema usar si no hay propio. */
   hojaTipo: z.enum(TIPOS_HOJA),
   /**
@@ -291,9 +335,12 @@ export const contratoOrdenes = {
       datosRecepcion.extend({
         vehiculoId: z.uuid(),
         items: z.array(itemEntrada).default([]),
+        /** Lo que se revisó en el mostrador. La inspección dinámica se completa después, en el taller. */
+        revision: z.array(respuestaEntrada).default([]),
       }),
     )
     .errors({
+      ...PUNTO_INVALIDO,
       NO_ENCONTRADO: { status: 404, message: 'Ese vehículo, cliente o mecánico no existe' },
       VEHICULO_CON_ORDEN: {
         status: 409,
@@ -316,6 +363,44 @@ export const contratoOrdenes = {
       ...NO_ENCONTRADA,
       ...ESTADO_INVALIDO,
       NO_ENCONTRADO: { status: 404, message: 'Ese cliente o mecánico no existe' },
+    })
+    .output(ordenDetalle),
+
+  revisar: conPermiso('servicios', 'editar', 'Orden')
+    .route({
+      method: 'PUT',
+      path: '/ordenes/{id}/revision',
+      tags: [TAG],
+      operationId: 'revisarOrden',
+      summary: 'Contestar puntos de la revisión: el semáforo y su nota',
+      description:
+        'Cambia sólo los puntos que se mandan; el resto queda como estaba. Cada punto que ' +
+        'cambia queda firmado con quién y cuándo, porque la revisión se completa en dos ' +
+        'momentos: en el mostrador, y después de la prueba de ruta.',
+    })
+    .input(conId.extend({ respuestas: z.array(respuestaEntrada).min(1) }))
+    .errors({ ...NO_ENCONTRADA, ...ESTADO_INVALIDO, ...PUNTO_INVALIDO })
+    .output(ordenDetalle),
+
+  pasarAPresupuesto: conPermiso('servicios', 'editar', 'Orden')
+    .route({
+      method: 'POST',
+      path: '/ordenes/{id}/revision/trabajos',
+      tags: [TAG],
+      operationId: 'pasarRevisionAPresupuesto',
+      summary: 'Sumar a la orden, como trabajos, lo que la revisión dejó en ámbar o en rojo',
+      description:
+        'Cada punto elegido entra como un trabajo sin precio, para completarlo y pedir ' +
+        'autorización con un presupuesto. No se cobra solo: elegir qué se ofrece es de una persona.',
+    })
+    .input(conId.extend({ puntoIds: z.array(z.uuid()).min(1, 'Elegí qué puntos se presupuestan') }))
+    .errors({
+      ...NO_ENCONTRADA,
+      ...ESTADO_INVALIDO,
+      PUNTO_INVALIDO: {
+        status: 422,
+        message: 'Alguno de esos puntos no está en ámbar ni en rojo, o ya se pasó a la orden',
+      },
     })
     .output(ordenDetalle),
 

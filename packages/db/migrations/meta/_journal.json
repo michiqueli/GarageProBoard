@@ -183,6 +183,13 @@
       "when": 1790725842585,
       "tag": "0025_sin_silueta",
       "breakpoints": true
+    },
+    {
+      "idx": 26,
+      "version": "7",
+      "when": 1791311492319,
+      "tag": "0026_revision_de_la_hoja",
+      "breakpoints": true
     }
   ]
 }

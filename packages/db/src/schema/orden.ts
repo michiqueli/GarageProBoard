@@ -1,4 +1,10 @@
-import type { ControlInventario, ElementoInventario, TipoDanio } from '@gpb/core'
+import type {
+  ControlInventario,
+  ElementoInventario,
+  EstadoRevision,
+  SeccionRevision,
+  TipoDanio,
+} from '@gpb/core'
 import { sql } from 'drizzle-orm'
 import {
   type AnyPgColumn,
@@ -51,6 +57,27 @@ export interface DanioRecepcion {
 }
 
 export type InventarioRecepcion = Partial<Record<ElementoInventario, ControlInventario>>
+
+/**
+ * Lo que se contestó de un punto de la revisión.
+ *
+ * El nombre y la sección **se copian** del catálogo al contestar: el taller puede renombrar o
+ * apagar el punto mañana, y esta orden se tiene que seguir leyendo como se firmó.
+ */
+export interface RespuestaRevision {
+  estado: EstadoRevision
+  nota: string | null
+  nombre: string
+  seccion: SeccionRevision
+  /** Quién lo contestó y cuándo: la revisión se llena en dos momentos, y por dos personas. */
+  por: string
+  en: string
+  /** El renglón de trabajo que salió de este punto al pasarlo a presupuesto. */
+  itemId: string | null
+}
+
+/** Por id del punto. Un punto que no figura no se revisó, que no es lo mismo que «está bien». */
+export type RevisionOrden = Record<string, RespuestaRevision>
 
 /**
  * La orden de trabajo: el auto que entró, qué pidió el cliente, qué se le hizo y qué se
@@ -127,6 +154,12 @@ export const orden = pgTable(
     hojaImagenId: uuid().references(() => hojaImagen.id),
     /** Lo que vino con el auto: el auxilio, el gato. Lo que no figura, no se revisó. */
     inventario: jsonb().$type<InventarioRecepcion>().notNull().default(sql`'{}'::jsonb`),
+    /**
+     * Los puntos revisados, con su semáforo. En la orden y no en una tabla aparte por lo mismo
+     * que las marcas del dibujo: así la audita el trigger de `orden`, y lo que importa saber es
+     * si alguien cambió un rojo por un verde después.
+     */
+    revision: jsonb().$type<RevisionOrden>().notNull().default(sql`'{}'::jsonb`),
     entregaEstimada: date(),
 
     asesorId: uuid()
@@ -162,6 +195,7 @@ export const orden = pgTable(
     check('orden_danios_lista', sql`jsonb_typeof(${t.danios}) = 'array'`),
     check('orden_hoja_tipo_valido', sql`${t.hojaTipo} in ('sedan', 'hatchback', 'suv', 'pickup')`),
     check('orden_inventario_objeto', sql`jsonb_typeof(${t.inventario}) = 'object'`),
+    check('orden_revision_objeto', sql`jsonb_typeof(${t.revision}) = 'object'`),
     check('orden_codigo_qr_formato', sql`${t.codigoQr} ~ '^[0-9A-HJKMNP-TV-Z]{8}$'`),
   ],
 )

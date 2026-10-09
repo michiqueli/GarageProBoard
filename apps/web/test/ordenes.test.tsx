@@ -19,9 +19,12 @@ const ordenes = {
   responderPresupuesto: vi.fn(),
   enviarPresupuesto: vi.fn(),
   pdfPresupuesto: vi.fn(),
+  revisar: vi.fn(),
+  pasarAPresupuesto: vi.fn(),
 }
 const listarVehiculos = vi.fn()
 const listarHojas = vi.fn()
+const listarPuntos = vi.fn()
 const listarRepuestos = vi.fn()
 const listarPedidos = vi.fn()
 const renovar = vi.fn()
@@ -33,6 +36,7 @@ vi.mock('../src/sesion/cliente.ts', () => ({
     repuestos: { listar: (x: unknown) => listarRepuestos(x) },
     pedidosRepuestos: { listar: (x: unknown) => listarPedidos(x) },
     clientes: { listar: vi.fn().mockResolvedValue({ datos: [], total: 0 }) },
+    revision: { listar: () => listarPuntos() },
     hojas: {
       listar: () => listarHojas(),
       imagen: vi.fn().mockResolvedValue(new Blob([new Uint8Array([1])], { type: 'image/png' })),
@@ -90,6 +94,8 @@ const FICHA = {
   hojaImagenId: null,
   danios: [],
   inventario: {},
+  // Sin revisión: la sección no aparece. La revisión se prueba en las suyas.
+  revision: [] as Array<Record<string, unknown>>,
   terminadaEn: null,
   entregadaEn: null,
   factura: null,
@@ -109,8 +115,25 @@ const FICHA = {
   ],
 }
 
+/** Tres puntos del catálogo del taller, uno en la sección que se completa en el taller. */
+const PUNTOS = [
+  { id: 'a0000000-0000-4000-8000-000000000001', seccion: 'interior', nombre: 'Bocina' },
+  { id: 'a0000000-0000-4000-8000-000000000002', seccion: 'motor', nombre: 'Correas' },
+  {
+    id: 'a0000000-0000-4000-8000-000000000003',
+    seccion: 'dinamica',
+    nombre: 'Pastillas y discos de freno',
+  },
+].map((p, i) => ({ ...p, orden: i + 1, activo: true, propio: false }))
+const [BOCINA, CORREAS, PASTILLAS] = PUNTOS as [
+  (typeof PUNTOS)[number],
+  (typeof PUNTOS)[number],
+  (typeof PUNTOS)[number],
+]
+
 beforeEach(() => {
-  for (const f of [...Object.values(ordenes), listarVehiculos, listarHojas, renovar]) f.mockReset()
+  for (const f of [...Object.values(ordenes), listarVehiculos, listarHojas, listarPuntos, renovar])
+    f.mockReset()
   usarSesion.getState().limpiar()
   renovar.mockImplementation(async () => {
     usarSesion.getState().establecer(SESION)
@@ -119,6 +142,7 @@ beforeEach(() => {
   ordenes.listar.mockResolvedValue({ datos: [ORDEN], total: 1 })
   ordenes.ficha.mockResolvedValue(FICHA)
   ordenes.personal.mockResolvedValue({ datos: [] })
+  listarPuntos.mockResolvedValue({ datos: PUNTOS })
   // El taller todavía no subió sus dibujos: es el caso de la mayoría al arrancar.
   listarHojas.mockResolvedValue({
     datos: ['sedan', 'hatchback', 'suv', 'pickup'].map((tipo) => ({ tipo, propia: null })),
@@ -383,9 +407,15 @@ describe('la recepción en tablet', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Está todo' }))
     await userEvent.click(screen.getByRole('button', { name: 'Siguiente' }))
 
-    await screen.findByText('Revisalo con el cliente')
+    await screen.findByText('¿Qué le falta?')
+    const correas = screen.getByRole('group', { name: 'Correas' })
+    await userEvent.click(within(correas).getByText('Urgente'))
+    await userEvent.click(screen.getByRole('button', { name: 'Siguiente' }))
+
+    await screen.findByText('Repasalo con el cliente')
     expect(screen.getByText('R Rayón')).toBeDefined()
     expect(screen.getByText('Todo lo revisado está')).toBeDefined()
+    expect(screen.getByText('1 urgente')).toBeDefined()
     await userEvent.click(screen.getByRole('button', { name: /Abrir la orden/ }))
 
     await waitFor(() =>
@@ -394,6 +424,7 @@ describe('la recepción en tablet', () => {
           vehiculoId: ORDEN.vehiculo.id,
           pedido: 'Cambio de aceite',
           danios: [{ tipo: 'rayon', x: 0.5, y: 0.5, nota: null }],
+          revision: [{ puntoId: CORREAS.id, estado: 'rojo', nota: null }],
         }),
       ),
     )
@@ -407,7 +438,7 @@ describe('la recepción en tablet', () => {
   it('«Cambiar» en el repaso lleva al paso donde se carga ese dato', async () => {
     await montarApp('/recepcion')
     await screen.findByLabelText('Patente o chasis')
-    await userEvent.click(screen.getByRole('button', { name: /Revisar/ }))
+    await userEvent.click(screen.getByRole('button', { name: /Repasar/ }))
     await userEvent.click(screen.getByRole('button', { name: 'Cambiar qué pide' }))
     expect(await screen.findByText('¿Qué pide el cliente?')).toBeDefined()
   })
@@ -417,6 +448,143 @@ describe('la recepción en tablet', () => {
     await screen.findByLabelText('Patente o chasis')
     await router.navigate({ to: '/ordenes' })
     await waitFor(() => expect(document.documentElement.dataset.densidad).toBeUndefined())
+  })
+})
+
+describe('la revisión', () => {
+  it('en la recepción: sin tocar no es verde, lo que no está bien lleva nota, y va con la orden', async () => {
+    ordenes.abrir.mockResolvedValue({ ...FICHA, estado: 'recibida' })
+    await montarApp('/ordenes/nueva')
+    await elegirVehiculo('Vehículo')
+    await userEvent.type(screen.getByLabelText('Qué pide el cliente'), 'Service')
+
+    const revision = screen.getByRole('region', { name: 'Revisión' })
+    // La sección del taller avisa que se completa después.
+    expect(
+      within(revision).getByText('Pide prueba de ruta: se completa en el taller'),
+    ).toBeDefined()
+
+    const correas = within(revision).getByRole('group', { name: 'Correas' })
+    await userEvent.click(within(correas).getByText('Reparar'))
+    await userEvent.type(within(revision).getByLabelText('Qué tiene: Correas'), 'Cuarteada')
+    // «Todo bien» en una sección marca lo que falta de esa sección, y nada más.
+    await userEvent.click(
+      within(revision).getAllByRole('button', { name: 'Todo bien' })[0] as HTMLElement,
+    )
+
+    await userEvent.keyboard('{F2}')
+    await waitFor(() => expect(ordenes.abrir).toHaveBeenCalled())
+    const enviada = ordenes.abrir.mock.calls[0]?.[0] as { revision: unknown[] }
+    expect(enviada.revision).toEqual(
+      expect.arrayContaining([
+        { puntoId: CORREAS.id, estado: 'ambar', nota: 'Cuarteada' },
+        { puntoId: BOCINA.id, estado: 'verde', nota: null },
+      ]),
+    )
+    // Las pastillas nadie las tocó: no viajan, y quedan sin revisar.
+    expect(enviada.revision).toHaveLength(2)
+  })
+
+  const REVISADA = {
+    ...FICHA,
+    revision: [
+      {
+        puntoId: BOCINA.id,
+        seccion: 'interior',
+        nombre: 'Bocina',
+        estado: 'verde',
+        nota: null,
+        por: 'Martín Gutiérrez',
+        en: '2026-10-06T12:00:00.000Z',
+        itemId: null,
+      },
+      {
+        puntoId: CORREAS.id,
+        seccion: 'motor',
+        nombre: 'Correas',
+        estado: 'ambar',
+        nota: 'Cuarteada',
+        por: 'Martín Gutiérrez',
+        en: '2026-10-06T12:00:00.000Z',
+        itemId: null,
+      },
+      {
+        puntoId: PASTILLAS.id,
+        seccion: 'dinamica',
+        nombre: 'Pastillas y discos de freno',
+        estado: null,
+        nota: null,
+        por: null,
+        en: null,
+        itemId: null,
+      },
+    ],
+  }
+
+  it('en la ficha se completa después, y se guarda sólo lo que cambió', async () => {
+    ordenes.ficha.mockResolvedValue(REVISADA)
+    ordenes.revisar.mockResolvedValue(REVISADA)
+    await montarApp(`/ordenes/${ORDEN.id}`)
+    const revision = await screen.findByRole('region', { name: 'Revisión' })
+    expect(within(revision).getByText('1 sin revisar')).toBeDefined()
+
+    const pastillas = within(revision).getByRole('group', { name: 'Pastillas y discos de freno' })
+    await userEvent.click(within(pastillas).getByText('Urgente'))
+    await userEvent.click(within(revision).getByRole('button', { name: 'Guardar la revisión' }))
+    await waitFor(() =>
+      expect(ordenes.revisar).toHaveBeenCalledWith({
+        id: ORDEN.id,
+        respuestas: [{ puntoId: PASTILLAS.id, estado: 'rojo', nota: null }],
+      }),
+    )
+  })
+
+  it('lo ámbar pasa a la orden como trabajo, sin perder lo que se estaba escribiendo', async () => {
+    ordenes.ficha.mockResolvedValue(REVISADA)
+    const NUEVO = {
+      ...(FICHA.items[0] as (typeof FICHA.items)[number]),
+      id: '55555555-5555-4555-8555-555555555555',
+      descripcion: 'Correas: Cuarteada',
+      precioUnitario: '0.0000',
+      total: '0.00',
+    }
+    const PASADA = {
+      ...REVISADA,
+      items: [...FICHA.items, NUEVO],
+      revision: REVISADA.revision.map((r) =>
+        r.puntoId === CORREAS.id ? { ...r, itemId: NUEVO.id } : r,
+      ),
+    }
+    ordenes.pasarAPresupuesto.mockImplementation(async () => {
+      // Después de pasar, la orden que se vuelve a pedir ya trae el renglón.
+      ordenes.ficha.mockResolvedValue(PASADA)
+      return PASADA
+    })
+    await montarApp(`/ordenes/${ORDEN.id}`)
+
+    // Alguien está corrigiendo un renglón y no guardó.
+    const items = await screen.findByRole('region', { name: 'Trabajos y repuestos' })
+    const descripcion = within(items).getByDisplayValue('Service')
+    await userEvent.type(descripcion, ' completo')
+
+    const revision = screen.getByRole('region', { name: 'Revisión' })
+    await userEvent.click(within(revision).getByRole('button', { name: 'Pasar a presupuesto' }))
+    const puntos = await screen.findByRole('list', { name: 'Puntos a presupuestar' })
+    expect(within(puntos).getByText('Correas: Cuarteada')).toBeDefined()
+    // Lo verde no se ofrece.
+    expect(within(puntos).queryByText('Bocina')).toBeNull()
+
+    await userEvent.click(screen.getByRole('button', { name: 'Sumar el trabajo' }))
+    await waitFor(() =>
+      expect(ordenes.pasarAPresupuesto).toHaveBeenCalledWith({
+        id: ORDEN.id,
+        puntoIds: [CORREAS.id],
+      }),
+    )
+    // El renglón nuevo aparece, y lo que se estaba escribiendo sigue ahí.
+    expect(await within(items).findByDisplayValue('Correas: Cuarteada')).toBeDefined()
+    expect(within(items).getByDisplayValue('Service completo')).toBeDefined()
+    expect(within(revision).getByText('· en la orden')).toBeDefined()
   })
 })
 

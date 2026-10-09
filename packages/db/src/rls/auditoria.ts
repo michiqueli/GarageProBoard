@@ -71,6 +71,12 @@ export const TABLAS_AUDITADAS: readonly TablaAuditada[] = [
   },
   { tabla: 'orden' },
   { tabla: 'orden_presupuesto' },
+  {
+    tabla: 'revision_punto',
+    nota:
+      'Qué se revisa cuando entra un auto. Apagar un punto es dejar de mirarlo en todos los ' +
+      'autos que vengan, y eso tiene que tener nombre y fecha.',
+  },
   { tabla: 'repuesto' },
   {
     tabla: 'repuesto_stock',

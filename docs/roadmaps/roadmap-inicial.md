@@ -106,7 +106,7 @@ después. El mapa, la configuración por módulo y quién puede tocarla, en
       tocar sus credenciales. Ningún rol predefinido la trae salvo el gerente
 - 🔨 Pantalla de configuración **adentro de cada módulo**, más un índice que las liste. La
       primera es la hoja de recepción, en `/hoja-recepcion`: los dibujos del vehículo sobre los
-      que marca el que recibe
+      que marca el que recibe, y los puntos de la revisión
 - ✅ **Buscador del sistema en la barra lateral**, la misma cosa que la paleta de `F10`:
       «afip» lista certificados, padrón, puntos de venta y facturación. Índice en
       `apps/web/src/indice.ts`, con palabras clave por entrada y filtrado por permiso
@@ -403,8 +403,11 @@ puesto por el dispositivo. Por qué no una app ahora y por qué no un usuario co
       cada concesionaria, y la orden se queda con la imagen exacta con la que se firmó —ver
       [la hoja de recepción](../tecnicos/hoja-de-recepcion.md)—. Falta el juego de dibujos por
       omisión, las **fotos del vehículo** y la **firma del cliente en pantalla**
-- ⬜ **La revisión de la hoja**: los veintitrés puntos con semáforo, configurables por taller, y
-      pasar a presupuesto lo que quede en ámbar y en rojo. Decidido, sin construir
+- ✅ **La revisión de la hoja**: los puntos de VW con semáforo —veintinueve con los
+      neumáticos—, que cada taller apaga, ordena y completa con los suyos. Se contesta en la
+      recepción y se completa en la orden después de la prueba de ruta, firmado punto por punto;
+      sale impresa con el semáforo como forma, y lo ámbar y lo rojo pasa a la orden como trabajos
+      para presupuestar. Desde el 06/10/2026
 - ⬜ Fichaje del piso de taller y escaneo de chasis por código de barras
 - ⬜ **Recepción de 0km**: leer el chasis del código de barras y fotodocumentar las averías
       de transporte antes de aceptar la unidad

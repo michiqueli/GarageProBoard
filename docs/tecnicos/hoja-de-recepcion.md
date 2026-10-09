@@ -210,9 +210,41 @@ para las dos mitades.
 
 ---
 
+## Lo que se decidió al construir la revisión
+
+Construida el 06/10/2026. Lo de arriba se mantuvo; esto es lo que no estaba dicho y hubo que
+decidir:
+
+- **Son veintinueve, no veintitrés.** Los veintitrés de VW más los neumáticos de su pie de
+  página: los cuatro, el auxilio y la llave antirrobo. La semilla vive en `@gpb/core`
+  (`PUNTOS_REVISION_INICIALES`), y es la única copia de la lista.
+- **Se siembra la primera vez que se pide**, no al dar de alta la concesionaria. Así las que
+  ya existían la reciben sin una migración que repita la lista en SQL, y el back-office no
+  necesita permiso para escribir otra tabla de la concesionaria. Que haya algún punto —aunque
+  estén todos apagados— alcanza para no sembrar: como no se borran, «ninguno» sólo puede
+  querer decir «nunca los tuvo». Un índice único sobre la clave hace que dos pedidos
+  simultáneos no siembren dos veces.
+- **Las respuestas van en `orden.revision`**, un `jsonb` por id de punto, por lo mismo que las
+  marcas del dibujo: así las audita el trigger de `orden`, y lo que importa saber es si alguien
+  cambió un rojo por un verde después. Cada respuesta **copia el nombre y la sección** del
+  punto: renombrarlo o apagarlo mañana no reescribe la orden.
+- **Cada punto se firma con quién y cuándo**, y contestar lo mismo que estaba no lo vuelve a
+  firmar: quién lo revisó es quien lo miró, no quien apretó guardar después.
+- **Se puede revisar hasta que la orden se factura**, no sólo mientras está en el taller: la
+  prueba de ruta a veces se hace con la orden ya terminada.
+- **El semáforo impreso es forma**: círculo vacío, a medio llenar y lleno, con una raya para lo
+  que no se revisó. La Helvetica del PDF no trae ✓, y aunque la trajera, una tilde y una cruz
+  se confunden en una fotocopia mala. Con la revisión entera, cada copia pasa a dos hojas, y la
+  segunda dice de qué orden es.
+- **«Pasar a presupuesto» suma trabajos sin precio** a la orden, uno por punto elegido, con el
+  nombre y la nota: «Correas: la de accesorios, cuarteada». Se completan y se presupuestan con
+  el circuito de siempre. El punto recuerda qué renglón salió de él, así no se ofrece dos veces;
+  si el renglón se quita, vuelve a estar para ofrecer.
+
 ## Cómo se implementa
 
-Por orden, porque cada paso deja el sistema andando:
+Por orden, porque cada paso deja el sistema andando. Del 1 al 7 están hechos; del juego por
+omisión falta comprar los dibujos.
 
 1. **El modelo de datos del dibujo**: la tabla de hojas con sus versiones y sus imágenes, y las
    marcas que pasan de `{ zona, x, y }` a `{ x, y }` en fracción. Con la migración de las que

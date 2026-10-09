@@ -11,6 +11,7 @@ import { Shell } from '../../componentes/Shell.tsx'
 import { DiagramaDanios, ElegirCarroceria } from './DiagramaDanios.tsx'
 import { InventarioRecepcion } from './InventarioRecepcion.tsx'
 import { COMBUSTIBLES, imprimirOrden, nombreOrden } from './ordenes.ts'
+import { RevisionRecepcion } from './RevisionRecepcion.tsx'
 import { useRecepcion } from './useRecepcion.ts'
 
 /**
@@ -156,6 +157,13 @@ export function PantallaRecepcion() {
               ayuda="Lo que no entra en el dibujo: testigos prendidos, olor a quemado, objetos adentro"
             />
           </div>
+        </Bloque>
+
+        <Bloque
+          titulo="Revisión"
+          ayuda="Lo que quede en ámbar o en rojo se le puede presupuestar desde la orden"
+        >
+          <RevisionRecepcion puntos={r.puntosRevision} onChange={r.contestar} enRecepcion />
         </Bloque>
 
         <div className="flex flex-wrap items-center gap-2">

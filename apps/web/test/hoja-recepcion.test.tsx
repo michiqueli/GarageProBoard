@@ -5,6 +5,7 @@ import { usarSesion } from '../src/sesion/almacen.ts'
 import { confirmarDialogo, montarApp, SESION, SESION_MECANICO } from './montar.tsx'
 
 const hojas = { listar: vi.fn(), subir: vi.fn(), imagen: vi.fn(), quitar: vi.fn() }
+const revision = { listar: vi.fn(), crear: vi.fn(), editar: vi.fn(), mover: vi.fn() }
 const renovar = vi.fn()
 
 vi.mock('../src/sesion/cliente.ts', () => ({
@@ -15,6 +16,12 @@ vi.mock('../src/sesion/cliente.ts', () => ({
       subir: (x: unknown) => hojas.subir(x),
       imagen: (x: unknown) => hojas.imagen(x),
       quitar: (x: unknown) => hojas.quitar(x),
+    },
+    revision: {
+      listar: () => revision.listar(),
+      crear: (x: unknown) => revision.crear(x),
+      editar: (x: unknown) => revision.editar(x),
+      mover: (x: unknown) => revision.mover(x),
     },
   },
   renovar: () => renovar(),
@@ -36,8 +43,16 @@ const propia = {
   creadoPor: null,
 }
 
+/** Dos puntos de motor y uno de la sección que se completa en el taller. */
+const PUNTOS = [
+  { id: 'a0000000-0000-4000-8000-000000000001', seccion: 'motor', nombre: 'Correas' },
+  { id: 'a0000000-0000-4000-8000-000000000002', seccion: 'motor', nombre: 'Estado de batería' },
+  { id: 'a0000000-0000-4000-8000-000000000003', seccion: 'dinamica', nombre: 'Escape' },
+].map((p, i) => ({ ...p, orden: i + 1, activo: true, propio: false }))
+
 beforeEach(() => {
-  for (const f of [...Object.values(hojas), renovar]) f.mockReset()
+  for (const f of [...Object.values(hojas), ...Object.values(revision), renovar]) f.mockReset()
+  revision.listar.mockResolvedValue({ datos: PUNTOS })
   usarSesion.getState().limpiar()
   renovar.mockImplementation(async () => {
     usarSesion.getState().establecer(SESION)
@@ -102,6 +117,48 @@ describe('la hoja de recepción', () => {
     await waitFor(() => expect(hojas.quitar).toHaveBeenCalledWith({ tipo: 'sedan' }))
   })
 
+  it('los puntos de la revisión van por sección, y la del taller dice que es después', async () => {
+    await montarApp('/hoja-recepcion')
+    const motor = await screen.findByRole('region', { name: 'Motor' })
+    expect(within(motor).getByText('Correas')).toBeDefined()
+    const dinamica = screen.getByRole('region', { name: 'Inspección dinámica' })
+    expect(within(dinamica).getByText('Se completa en el taller, con prueba de ruta')).toBeDefined()
+    // En la punta no se sube, y en el fondo no se baja.
+    const [subir] = within(motor).getAllByRole('button', { name: 'Subir' })
+    expect(subir).toHaveProperty('disabled', true)
+  })
+
+  it('agregar un punto pregunta qué se revisa y lo manda a su sección', async () => {
+    revision.crear.mockResolvedValue({ datos: PUNTOS })
+    await montarApp('/hoja-recepcion')
+    const motor = await screen.findByRole('region', { name: 'Motor' })
+    await userEvent.click(within(motor).getByRole('button', { name: 'Agregar' }))
+    const dialogo = await screen.findByRole('alertdialog')
+    await userEvent.type(within(dialogo).getByLabelText('Qué se revisa'), 'Equipo de GNC')
+    await userEvent.click(within(dialogo).getByRole('button', { name: 'Agregar' }))
+    await waitFor(() =>
+      expect(revision.crear).toHaveBeenCalledWith({ seccion: 'motor', nombre: 'Equipo de GNC' }),
+    )
+  })
+
+  it('apagar un punto pregunta antes, y dice que las órdenes viejas lo siguen mostrando', async () => {
+    revision.editar.mockResolvedValue({ datos: PUNTOS })
+    await montarApp('/hoja-recepcion')
+    const motor = await screen.findByRole('region', { name: 'Motor' })
+    await userEvent.click(
+      within(motor).getAllByRole('button', { name: 'Apagar' })[0] as HTMLElement,
+    )
+    const dialogo = await confirmarDialogo('Dejar de revisarlo')
+    expect(dialogo.textContent).toMatch(/lo siguen mostrando/)
+    await waitFor(() =>
+      expect(revision.editar).toHaveBeenCalledWith({
+        id: PUNTOS[0]?.id,
+        nombre: 'Correas',
+        activo: false,
+      }),
+    )
+  })
+
   /** Ver el dibujo es ver órdenes; cambiarlo es configurar el módulo, que es otra cosa. */
   it('el mecánico ve los dibujos y no los botones de cambiarlos', async () => {
     renovar.mockImplementation(async () => {
@@ -112,5 +169,8 @@ describe('la hoja de recepción', () => {
     expect(await screen.findByText('Sedán')).toBeDefined()
     expect(screen.queryByRole('button', { name: 'Subir el mío' })).toBeNull()
     expect(screen.queryByRole('button', { name: 'Quitar' })).toBeNull()
+    // Y los puntos, igual: los ve, no los toca.
+    expect(await screen.findByText('Correas')).toBeDefined()
+    expect(screen.queryByRole('button', { name: 'Apagar' })).toBeNull()
   })
 })

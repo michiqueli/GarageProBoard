@@ -1,9 +1,9 @@
 import { accesoDeRuta, contrato } from '@gpb/contracts'
-import { formatearImporte, plata } from '@gpb/core'
+import { ESTADOS_CON_TRABAJO, formatearImporte, plata, trabajoDePunto } from '@gpb/core'
 import { ORPCError } from '@orpc/client'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { getRouteApi, Link, useNavigate } from '@tanstack/react-router'
-import { type ReactNode, useEffect, useMemo, useState } from 'react'
+import { type ReactNode, useEffect, useMemo, useRef, useState } from 'react'
 import { confirmar, notificar, preguntar } from '../../componentes/avisos.ts'
 import { Boton, clasesBoton } from '../../componentes/Boton.tsx'
 import { Campo } from '../../componentes/Campo.tsx'
@@ -40,6 +40,7 @@ import {
   nombreOrden,
 } from './ordenes.ts'
 import { Texto } from './PantallaRecepcion.tsx'
+import { type Cambio, RevisionRecepcion, Semaforo } from './RevisionRecepcion.tsx'
 
 const ruta = getRouteApi('/con-sesion/ordenes/$id')
 
@@ -99,6 +100,7 @@ export function PantallaFichaOrden() {
   const cache = useQueryClient()
   const puedeEditar = usePuedeUsar(contrato.ordenes.items)
   const puedeAnular = usePuedeUsar(contrato.ordenes.anular)
+  const puedeRevisar = usePuedeUsar(contrato.ordenes.revisar)
   const [modificando, setModificando] = useState(false)
 
   const consulta = useQuery({
@@ -319,6 +321,12 @@ export function PantallaFichaOrden() {
             />
           )}
 
+          <Revision
+            orden={o}
+            editable={puedeRevisar && !['facturada', 'entregada', 'anulada'].includes(o.estado)}
+            puedePasar={puedeEditar && enTaller}
+            guardada={actualizar}
+          />
           <Items orden={o} editable={puedeEditar && enTaller} guardada={actualizar} />
           <Presupuestos orden={o} editable={puedeEditar && enTaller} guardada={actualizar} />
           <PedidosDeLaOrden orden={o} />
@@ -548,6 +556,204 @@ function FormRecepcion({
   )
 }
 
+/**
+ * La revisión de la hoja, en la orden: lo que se contestó en el mostrador y lo que falta, que
+ * se completa acá después de la prueba de ruta. Cada punto que se guarda queda firmado con quién
+ * y cuándo.
+ *
+ * Lo que quedó en ámbar o en rojo es trabajo para ofrecer, y **no se cobra solo**: «Pasar a
+ * presupuesto» deja elegir qué puntos entran como trabajos sin precio, que se completan y se
+ * presupuestan con el circuito de siempre.
+ */
+function Revision({
+  orden: o,
+  editable,
+  puedePasar,
+  guardada,
+}: {
+  orden: Orden
+  editable: boolean
+  puedePasar: boolean
+  guardada: (o: Orden) => Promise<void>
+}) {
+  const [cambios, setCambios] = useState<Record<string, Cambio>>({})
+  const [pasando, setPasando] = useState(false)
+  const hayCambios = Object.keys(cambios).length > 0
+  useCambiosSinGuardar(hayCambios)
+
+  const puntos = o.revision.map((p) => {
+    const c = cambios[p.puntoId]
+    return c ? { ...p, ...c } : p
+  })
+  const paraOfrecer = o.revision.filter(
+    (p) => p.estado && ESTADOS_CON_TRABAJO.includes(p.estado) && !p.itemId,
+  )
+  const cuenta = (e: string) => o.revision.filter((p) => p.estado === e).length
+  const sinRevisar = o.revision.filter((p) => !p.estado).length
+
+  const guardar = useMutation({
+    mutationFn: () =>
+      api.ordenes.revisar({
+        id: o.id,
+        respuestas: Object.entries(cambios).map(([puntoId, c]) => ({ puntoId, ...c })),
+      }),
+    onSuccess: async (nueva) => {
+      setCambios({})
+      await guardada(nueva)
+    },
+    meta: { exito: 'Revisión guardada' },
+  })
+
+  async function descartar() {
+    if (
+      await confirmar({
+        titulo: '¿Descartar los cambios de la revisión?',
+        texto: 'Los puntos vuelven a como estaban guardados.',
+        confirmar: 'Descartar',
+        peligro: true,
+      })
+    ) {
+      setCambios({})
+    }
+  }
+
+  if (!o.revision.length) return null
+
+  return (
+    <Seccion
+      titulo="Revisión"
+      accion={
+        <span className="flex flex-wrap items-center gap-2 text-etiqueta text-texto-suave">
+          {cuenta('rojo') > 0 && (
+            <span className="inline-flex items-center gap-1">
+              <Semaforo estado="rojo" /> {cuenta('rojo')}
+            </span>
+          )}
+          {cuenta('ambar') > 0 && (
+            <span className="inline-flex items-center gap-1">
+              <Semaforo estado="ambar" /> {cuenta('ambar')}
+            </span>
+          )}
+          {sinRevisar > 0 && <span className="text-texto-tenue">{sinRevisar} sin revisar</span>}
+          {puedePasar && paraOfrecer.length > 0 && !pasando && (
+            <Boton
+              tamano="chico"
+              icono={<IconoAgregar />}
+              deshabilitado={hayCambios}
+              onClick={() => setPasando(true)}
+            >
+              Pasar a presupuesto
+            </Boton>
+          )}
+        </span>
+      }
+    >
+      {pasando && (
+        <PasarAPresupuesto
+          orden={o}
+          puntos={paraOfrecer}
+          alTerminar={async (nueva) => {
+            setPasando(false)
+            if (nueva) await guardada(nueva)
+          }}
+        />
+      )}
+      <div className="px-3 py-2.5">
+        <RevisionRecepcion
+          puntos={puntos}
+          onChange={
+            editable ? (puntoId, c) => setCambios((xs) => ({ ...xs, [puntoId]: c })) : undefined
+          }
+        />
+      </div>
+      {hayCambios && (
+        <div className="flex flex-wrap items-center gap-2 border-t border-borde px-3 py-2">
+          <Boton
+            variante="principal"
+            deshabilitado={guardar.isPending}
+            onClick={() => guardar.mutate()}
+          >
+            Guardar la revisión
+          </Boton>
+          <Boton onClick={() => void descartar()}>Descartar</Boton>
+          <span className="text-etiqueta text-texto-tenue">
+            {Object.keys(cambios).length} sin guardar
+          </span>
+        </div>
+      )}
+    </Seccion>
+  )
+}
+
+function PasarAPresupuesto({
+  orden: o,
+  puntos,
+  alTerminar,
+}: {
+  orden: Orden
+  puntos: Orden['revision']
+  alTerminar: (nueva?: Orden) => Promise<void>
+}) {
+  const [elegidos, setElegidos] = useState<Set<string>>(() => new Set(puntos.map((p) => p.puntoId)))
+
+  const pasar = useMutation({
+    mutationFn: () => api.ordenes.pasarAPresupuesto({ id: o.id, puntoIds: [...elegidos] }),
+    onSuccess: (nueva) => alTerminar(nueva),
+    meta: {
+      exito: () =>
+        elegidos.size === 1
+          ? 'Se sumó el trabajo a la orden: ponele precio y pedí autorización'
+          : `Se sumaron ${elegidos.size} trabajos a la orden: poneles precio y pedí autorización`,
+    },
+  })
+
+  useAtajo('global.cancelar', () => void alTerminar())
+
+  return (
+    <div className="grid gap-3 border-b border-borde-suave bg-superficie-2 px-3 py-3">
+      <p className="text-dato text-texto-suave">
+        Elegí qué se le ofrece al cliente. Entran como trabajos sin precio: completalos en la lista
+        de trabajos y pedí autorización con un presupuesto.
+      </p>
+      <ul aria-label="Puntos a presupuestar" className="grid gap-1">
+        {puntos.map((p) => (
+          <li key={p.puntoId}>
+            <label className="flex items-baseline gap-3 text-dato">
+              <input
+                type="checkbox"
+                className="accent-marca"
+                checked={elegidos.has(p.puntoId)}
+                onChange={(e) =>
+                  setElegidos((xs) => {
+                    const n = new Set(xs)
+                    if (e.target.checked) n.add(p.puntoId)
+                    else n.delete(p.puntoId)
+                    return n
+                  })
+                }
+              />
+              <span className="flex-1">{trabajoDePunto(p.nombre, p.nota)}</span>
+              <Semaforo estado={p.estado} />
+            </label>
+          </li>
+        ))}
+      </ul>
+      <div className="flex gap-2">
+        <Boton
+          variante="principal"
+          deshabilitado={!elegidos.size || pasar.isPending}
+          onClick={() => pasar.mutate()}
+        >
+          {elegidos.size === 1 ? 'Sumar el trabajo' : `Sumar ${elegidos.size} trabajos`}
+        </Boton>
+        <Boton accion="global.cancelar" onClick={() => void alTerminar()}>
+          Cancelar
+        </Boton>
+      </div>
+    </div>
+  )
+}
+
 function Items({
   orden: o,
   editable,
@@ -575,10 +781,15 @@ function Items({
   useCambiosSinGuardar(cambios)
 
   // Si la orden cambia desde afuera (otro puesto, un estado), se toma la nueva versión
-  // mientras no haya cambios sin guardar acá.
+  // mientras no haya cambios sin guardar acá. Si los hay, se suman los renglones que aparecieron
+  // —los que salen de la revisión, por ejemplo—: guardar la lista sin ellos los borraría.
+  const conocidos = useRef(new Set(o.items.map((i) => i.id)))
   // biome-ignore lint/correctness/useExhaustiveDependencies: se resincroniza sólo cuando cambia la orden guardada
   useEffect(() => {
+    const nuevos = desdeOrden().filter((i) => !conocidos.current.has(i.id as string))
+    conocidos.current = new Set(o.items.map((i) => i.id))
     if (!cambios) setItems(desdeOrden())
+    else if (nuevos.length) setItems((xs) => [...xs, ...nuevos])
   }, [o.items])
 
   const total = useMemo(

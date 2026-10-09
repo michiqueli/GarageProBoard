@@ -143,6 +143,7 @@ export function sobreQue(tabla: string, antes: Foto, despues: Foto): string {
   if (tabla === 'comprobante' && dato('comprobante')) return `la ${String(dato('comprobante'))}`
   if (tabla === 'comprobante') return 'un comprobante'
   if (tabla === 'orden') return `la orden ${String(dato('numero'))}`
+  if (tabla === 'revision_punto') return `el punto de revisión «${String(dato('nombre'))}»`
   if (tabla === 'repuesto') return `el repuesto ${String(dato('codigo'))}`
   if (tabla === 'pedido_repuestos') return `el pedido de repuestos ${String(dato('numero'))}`
   if (tabla === 'compra') return `la compra ${String(dato('numero'))}`
@@ -708,6 +709,8 @@ const NOMBRE_TABLA: Record<string, string> = {
   comprobante_renglon: 'un renglón de un comprobante',
   orden: 'la orden de trabajo',
   orden_presupuesto: 'el presupuesto',
+  hoja_imagen: 'el dibujo de la hoja de recepción',
+  revision_punto: 'un punto de la revisión de la hoja',
   repuesto: 'el repuesto',
   repuesto_stock: 'la ubicación y el mínimo del repuesto',
   movimiento_stock: 'un movimiento de stock',

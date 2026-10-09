@@ -61,6 +61,24 @@ export class ControladorOrdenes {
     )
   }
 
+  @Operacion(c.revisar)
+  revisar(@Req() pedido: FastifyRequest) {
+    return implement(c.revisar).handler(({ input, errors }) =>
+      this.servicio
+        .revisar(input.id, input.respuestas, pedido.ip)
+        .catch((e) => traducir(e, errors)),
+    )
+  }
+
+  @Operacion(c.pasarAPresupuesto)
+  pasarAPresupuesto(@Req() pedido: FastifyRequest) {
+    return implement(c.pasarAPresupuesto).handler(({ input, errors }) =>
+      this.servicio
+        .pasarAPresupuesto(input.id, input.puntoIds, pedido.ip)
+        .catch((e) => traducir(e, errors)),
+    )
+  }
+
   @Operacion(c.items)
   items(@Req() pedido: FastifyRequest) {
     return implement(c.items).handler(({ input, errors }) =>
@@ -184,6 +202,7 @@ export class ControladorOrdenes {
             : null,
           danios: o.danios,
           inventario: o.inventario,
+          revision: o.revision.map(({ nombre, estado, nota }) => ({ nombre, estado, nota })),
           asesor: o.asesor,
           mecanico: o.mecanico?.nombre ?? null,
           // Lo que el cliente rechazó no va en la orden impresa: no se hace ni se cobra.

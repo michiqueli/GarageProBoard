@@ -1,11 +1,15 @@
 import {
   type Carroceria,
+  ESTADOS_CON_TRABAJO,
+  type EstadoRevision,
   HOJA_DE,
   HOJA_POR_OMISION,
   plata,
   puedeSobre,
+  type SeccionRevision,
   type TipoDanio,
   type TipoHoja,
+  trabajoDePunto,
 } from '@gpb/core'
 import {
   and,
@@ -37,6 +41,8 @@ import {
   ordenPresupuesto,
   ordenSecuencia,
   pedidoRepuestos,
+  type RevisionOrden,
+  revisionPunto,
   sesionTrabajo,
   sucursal,
   tipoComprobante,
@@ -54,6 +60,7 @@ import { generarCodigoQr } from '../comun/qr.ts'
 import { CORREO } from '../comun/simbolos.ts'
 import { cerrarSesionesDeLaOrden } from '../fichaje/tablero.ts'
 import { moverDiferencia, porRepuesto, repuestosExisten } from '../repuestos/stock.ts'
+import { enOrdenDeHoja, puntosDelTaller } from '../revision/revision.service.ts'
 
 type Codigo =
   | 'NO_ENCONTRADA'
@@ -64,6 +71,7 @@ type Codigo =
   | 'REPUESTO_INVALIDO'
   | 'PRESUPUESTO_PENDIENTE'
   | 'ITEM_INVALIDO'
+  | 'PUNTO_INVALIDO'
   | 'CORREO_NO_CONFIGURADO'
   | 'CORREO_NO_ENVIADO'
 
@@ -133,6 +141,13 @@ function marcas(danios: DanioEntrada[]): DanioRecepcion[] {
     y: cortar(d.y),
     nota: d.nota || null,
   }))
+}
+
+/** Lo que se contesta de un punto. Sin `nota`, queda la que tenía; con `null`, se borra. */
+export interface RespuestaEntrada {
+  puntoId: string
+  estado: EstadoRevision | null
+  nota?: string | null | undefined
 }
 
 export interface ItemEntrada {
@@ -230,7 +245,14 @@ export class ServicioOrdenes {
 
   // ── recepción ───────────────────────────────────────────────────────────────
 
-  abrir(entrada: DatosRecepcion & { vehiculoId: string; items: ItemEntrada[] }, ip?: string) {
+  abrir(
+    entrada: DatosRecepcion & {
+      vehiculoId: string
+      items: ItemEntrada[]
+      revision?: RespuestaEntrada[] | undefined
+    },
+    ip?: string,
+  ) {
     return this.datos.transaccion(async (tx, sesion) => {
       const [auto] = await tx
         .select({
@@ -262,6 +284,7 @@ export class ServicioOrdenes {
         .where(and(eq(titularidad.vehiculoId, auto.id), isNull(titularidad.hasta)))
       const pagaId = entrada.pagaId ?? titular?.id ?? null
       await this.verificarReferencias(tx, pagaId)
+      const { revision } = await this.contestar(tx, sesion, {}, entrada.revision ?? [])
 
       // El número siguiente de la sucursal, atómico: dos recepciones a la vez no comparten.
       const [secuencia] = await tx
@@ -296,6 +319,7 @@ export class ServicioOrdenes {
           hojaImagenId: hoja.hojaImagenId,
           danios: marcas(entrada.danios ?? []),
           inventario: entrada.inventario ?? {},
+          revision,
           entregaEstimada: entrada.entregaEstimada ?? null,
           asesorId: sesion.usuarioId,
         })
@@ -377,6 +401,90 @@ export class ServicioOrdenes {
           id,
           'modificacion',
           { numero: o.numero, recepcion: true },
+          ip,
+        )
+      },
+    )
+  }
+
+  // ── revisión ────────────────────────────────────────────────────────────────
+
+  /**
+   * Contesta puntos de la revisión. Se puede mientras la orden no esté cerrada: la inspección
+   * dinámica se completa después de la prueba de ruta, y a veces la orden ya está en caja.
+   */
+  revisar(id: string, respuestas: RespuestaEntrada[], ip?: string) {
+    return this.conOrden(
+      id,
+      CERRADA,
+      'Una orden facturada, entregada o anulada ya no se revisa.',
+      async (tx, sesion, o) => {
+        const { revision, cambiados } = await this.contestar(tx, sesion, o.revision, respuestas)
+        if (!cambiados) return
+        await tx.update(orden).set({ revision, actualizadoEn: new Date() }).where(eq(orden.id, id))
+        await this.auditar(
+          tx,
+          sesion,
+          id,
+          'modificacion',
+          { numero: o.numero, revision: cambiados },
+          ip,
+        )
+      },
+    )
+  }
+
+  /**
+   * Lo que quedó en ámbar o en rojo, a la orden como trabajos **sin precio**: se completan y se
+   * presupuestan con el circuito de siempre. Que un color agregue solo algo que se cobra es la
+   * clase de automatismo que termina en una discusión en el mostrador; por eso es un botón, y
+   * por eso se elige qué puntos.
+   */
+  pasarAPresupuesto(id: string, puntoIds: string[], ip?: string) {
+    return this.conOrdenEn(
+      id,
+      EN_TALLER,
+      'Sólo se suman trabajos a una orden que está en el taller.',
+      async (tx, sesion, o) => {
+        const renglones = await tx
+          .select({ id: ordenItem.id, orden: ordenItem.orden })
+          .from(ordenItem)
+          .where(eq(ordenItem.ordenId, id))
+        const vivos = new Set(renglones.map((r) => r.id))
+        const elegidos = [...new Set(puntoIds)].map((p) => [p, o.revision[p]] as const)
+        const valen = elegidos.every(
+          ([, r]) =>
+            r && ESTADOS_CON_TRABAJO.includes(r.estado) && !(r.itemId && vivos.has(r.itemId)),
+        )
+        if (!valen) throw new ErrorOrdenes('PUNTO_INVALIDO')
+
+        // Van al final, en el orden en que se eligieron.
+        const ultimo = renglones.reduce((a, r) => Math.max(a, r.orden), 0)
+        const revision: RevisionOrden = { ...o.revision }
+        for (const [n, [puntoId, r]] of elegidos.entries()) {
+          if (!r) continue
+          const [creado] = await tx
+            .insert(ordenItem)
+            .values({
+              tenantId: sesion.tenantId,
+              ordenId: id,
+              tipo: 'trabajo',
+              orden: ultimo + n + 1,
+              descripcion: trabajoDePunto(r.nombre, r.nota),
+              cantidad: '1',
+              precioUnitario: '0',
+            })
+            .returning({ id: ordenItem.id })
+          if (!creado) throw new Error('No se pudo sumar el trabajo a la orden.')
+          revision[puntoId] = { ...r, itemId: creado.id }
+        }
+        await tx.update(orden).set({ revision, actualizadoEn: new Date() }).where(eq(orden.id, id))
+        await this.auditar(
+          tx,
+          sesion,
+          id,
+          'modificacion',
+          { numero: o.numero, desdeRevision: elegidos.length },
           ip,
         )
       },
@@ -987,6 +1095,93 @@ export class ServicioOrdenes {
     return { hojaTipo, hojaImagenId: imagen?.id ?? null }
   }
 
+  /**
+   * Aplica respuestas sobre la revisión que había, y devuelve la nueva y cuántos puntos
+   * cambiaron de verdad.
+   *
+   * Un punto que se contesta igual que estaba no se vuelve a firmar: quién lo revisó es quien lo
+   * miró, no quien apretó guardar después. Y uno apagado se puede corregir si ya estaba
+   * contestado, pero no contestar de nuevo: el taller dejó de revisarlo.
+   */
+  private async contestar(
+    tx: Db,
+    sesion: Sesion,
+    actual: RevisionOrden,
+    respuestas: RespuestaEntrada[],
+  ): Promise<{ revision: RevisionOrden; cambiados: number }> {
+    if (!respuestas.length) return { revision: actual, cambiados: 0 }
+    const puntos = new Map((await puntosDelTaller(tx, sesion)).map((p) => [p.id, p]))
+    const revision: RevisionOrden = { ...actual }
+    const en = new Date().toISOString()
+    let cambiados = 0
+
+    for (const r of respuestas) {
+      const punto = puntos.get(r.puntoId)
+      const previa = revision[r.puntoId]
+      if (!punto || (!punto.activo && !previa)) throw new ErrorOrdenes('PUNTO_INVALIDO')
+
+      if (r.estado === null) {
+        if (previa) {
+          delete revision[r.puntoId]
+          cambiados++
+        }
+        continue
+      }
+      const nota = r.nota === undefined ? (previa?.nota ?? null) : r.nota || null
+      if (previa && previa.estado === r.estado && previa.nota === nota) continue
+      revision[r.puntoId] = {
+        estado: r.estado,
+        nota,
+        nombre: punto.nombre,
+        seccion: punto.seccion as SeccionRevision,
+        por: sesion.usuarioId,
+        en,
+        itemId: previa?.itemId ?? null,
+      }
+      cambiados++
+    }
+    return { revision, cambiados }
+  }
+
+  /**
+   * La revisión entera de la orden: lo contestado, con el nombre que tenía el punto, y lo que el
+   * taller revisa hoy sin contestar. Un punto apagado que nadie contestó no aparece: en esta
+   * orden, no se revisaba.
+   */
+  private async revisionDe(tx: Db, o: typeof orden.$inferSelect, items: string[]) {
+    const catalogo = await tx.select().from(revisionPunto)
+    const contestados = o.revision
+    const quienes = [...new Set(Object.values(contestados).map((r) => r.por))]
+    const gente = quienes.length
+      ? await tx
+          .select({ id: usuario.id, nombre: usuario.nombre, apellido: usuario.apellido })
+          .from(usuario)
+          .where(inArray(usuario.id, quienes))
+      : []
+    const nombre = (id: string) => {
+      const u = gente.find((g) => g.id === id)
+      return u ? `${u.nombre} ${u.apellido}`.trim() : null
+    }
+    const vivos = new Set(items)
+
+    const filas = catalogo
+      .filter((p) => contestados[p.id] || p.activo)
+      .map((p) => {
+        const r = contestados[p.id]
+        return { seccion: r?.seccion ?? (p.seccion as SeccionRevision), orden: p.orden, p, r }
+      })
+    return enOrdenDeHoja(filas).map(({ seccion, p, r }) => ({
+      puntoId: p.id,
+      seccion,
+      nombre: r?.nombre ?? p.nombre,
+      estado: r?.estado ?? null,
+      nota: r?.nota ?? null,
+      por: r ? nombre(r.por) : null,
+      en: r?.en ?? null,
+      itemId: r?.itemId && vivos.has(r.itemId) ? r.itemId : null,
+    }))
+  }
+
   private async verificarReferencias(tx: Db, pagaId: string | null) {
     if (pagaId) {
       const [c] = await tx.select({ id: cliente.id }).from(cliente).where(eq(cliente.id, pagaId))
@@ -1110,6 +1305,11 @@ export class ServicioOrdenes {
       observaciones: o.observaciones,
       danios: o.danios,
       inventario: o.inventario,
+      revision: await this.revisionDe(
+        tx,
+        o,
+        items.map((i) => i.id),
+      ),
       hojaTipo: o.hojaTipo as TipoHoja,
       hojaImagenId: o.hojaImagenId,
       terminadaEn: o.terminadaEn?.toISOString() ?? null,

@@ -372,7 +372,7 @@ const ESTATICAS: EntradaIndice[] = [
   {
     id: 'ordenes.recepcionTablet',
     titulo: 'Recibir un vehículo en tablet',
-    donde: 'Órdenes de trabajo → Recibir un vehículo → Vista tablet',
+    donde: 'Principal → Recepción en tablet',
     claves: [
       'tablet',
       'tactil',
@@ -387,7 +387,7 @@ const ESTATICAS: EntradaIndice[] = [
   },
   {
     id: 'ordenes.hojaRecepcion',
-    titulo: 'Hoja de recepción: los dibujos del vehículo',
+    titulo: 'Hoja de recepción: los dibujos y los puntos de revisión',
     donde: 'Órdenes de trabajo → Hoja de recepción',
     claves: [
       'dibujo del auto',
@@ -399,6 +399,11 @@ const ESTATICAS: EntradaIndice[] = [
       'rayones',
       'sedan hatchback pickup',
       'hoja impresa',
+      'revision',
+      'semaforo',
+      'puntos de control',
+      'checklist',
+      'inspeccion',
     ],
     destino: { to: '/hoja-recepcion' },
     requiere: accesoDeRuta(contrato.hojas.listar),

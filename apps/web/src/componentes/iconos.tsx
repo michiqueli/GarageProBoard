@@ -149,3 +149,19 @@ export function IconoCerrar() {
     </svg>
   )
 }
+
+export function IconoSubir() {
+  return (
+    <svg {...trazo} aria-hidden="true">
+      <path d="M8 13V3M4 7l4-4 4 4" />
+    </svg>
+  )
+}
+
+export function IconoBajar() {
+  return (
+    <svg {...trazo} aria-hidden="true">
+      <path d="M8 3v10M4 9l4 4 4-4" />
+    </svg>
+  )
+}

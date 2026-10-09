@@ -37,6 +37,8 @@ import {
   ControladorRepuestos,
 } from './repuestos/repuestos.controller.ts'
 import { ServicioRepuestos } from './repuestos/repuestos.service.ts'
+import { ControladorRevision } from './revision/revision.controller.ts'
+import { ServicioRevision } from './revision/revision.service.ts'
 import { ControladorRoles } from './roles/roles.controller.ts'
 import { ServicioRoles } from './roles/roles.service.ts'
 import { ControladorSalud } from './salud/salud.controller.ts'
@@ -86,6 +88,7 @@ import { ServicioVehiculos } from './vehiculos/vehiculos.service.ts'
     ControladorPersonal,
     ControladorFichaje,
     ControladorHojas,
+    ControladorRevision,
   ],
   providers: [
     ServicioUsuarios,
@@ -105,6 +108,7 @@ import { ServicioVehiculos } from './vehiculos/vehiculos.service.ts'
     ServicioPersonal,
     ServicioFichaje,
     ServicioHojas,
+    ServicioRevision,
     ServicioEstaciones,
     DatosDeLaEstacion,
   ],

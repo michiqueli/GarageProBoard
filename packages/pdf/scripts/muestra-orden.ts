@@ -1,9 +1,17 @@
 // node scripts/muestra-orden.ts <carpeta>
 import { writeFileSync } from 'node:fs'
 import { join } from 'node:path'
+import { type EstadoRevision, PUNTOS_REVISION_INICIALES } from '@gpb/core'
 import { generarOrdenPdf } from '../src/orden.ts'
 
 const carpeta = process.argv[2] ?? '.'
+
+const MUESTRA: Record<string, { estado: EstadoRevision; nota: string | null }> = {
+  correas: { estado: 'ambar', nota: 'La de accesorios, cuarteada' },
+  bateria: { estado: 'rojo', nota: 'No arranca en frío: 9,8 V en reposo' },
+  escobillas_delanteras: { estado: 'ambar', nota: null },
+  neumatico_ti: { estado: 'ambar', nota: 'Dibujo al límite' },
+}
 writeFileSync(
   join(carpeta, 'orden.pdf'),
   await generarOrdenPdf({
@@ -51,6 +59,14 @@ writeFileSync(
       balizas: 'falta',
       cedula: 'esta',
     },
+    // La revisión de una recepción real: casi todo bien, algo para reparar, uno urgente y la
+    // inspección dinámica todavía sin hacer, que se completa después de la prueba de ruta.
+    revision: PUNTOS_REVISION_INICIALES.map((p) => ({
+      nombre: p.nombre,
+      ...(p.seccion === 'dinamica'
+        ? { estado: null, nota: null }
+        : (MUESTRA[p.clave] ?? { estado: 'verde' as const, nota: null })),
+    })),
     asesor: 'Martín Gutiérrez',
     mecanico: 'Pedro Sosa',
     items: [

@@ -16,6 +16,7 @@ import { usarSesion } from '../../sesion/almacen.ts'
 import { api } from '../../sesion/cliente.ts'
 import { mensajeGeneral } from '../../sesion/consultas.ts'
 import { usePuedeUsar } from '../../sesion/permisos.ts'
+import { PuntosDeRevision } from './PuntosDeRevision.tsx'
 
 type Casillero = Awaited<ReturnType<typeof api.hojas.listar>>['datos'][number]
 
@@ -72,6 +73,7 @@ export function PantallaHojaRecepcion() {
 
   return (
     <Shell titulo="Hoja de recepción" requiere={accesoDeRuta(contrato.hojas.listar)}>
+      <h2 className="font-display text-ui font-semibold">Dibujos del vehículo</h2>
       <p className="max-w-3xl text-dato text-texto-suave">
         El dibujo sobre el que se marcan los rayones y los golpes cuando entra un vehículo, uno por
         tipo de carrocería. Queda impreso en la orden que firma el cliente. Podés usar los que trae
@@ -101,6 +103,8 @@ export function PantallaHojaRecepcion() {
           ))}
         </ul>
       )}
+
+      <PuntosDeRevision />
     </Shell>
   )
 }

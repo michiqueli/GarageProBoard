@@ -14,6 +14,7 @@ import { DiagramaDanios, describirDanio, ElegirCarroceria } from './DiagramaDani
 import { InventarioRecepcion } from './InventarioRecepcion.tsx'
 import { COMBUSTIBLES, imprimirOrden, nombreOrden } from './ordenes.ts'
 import { ElegirCombustible, Texto } from './PantallaRecepcion.tsx'
+import { type PuntoRevisado, RevisionRecepcion } from './RevisionRecepcion.tsx'
 import { type OrdenAbierta, useRecepcion } from './useRecepcion.ts'
 
 const PASOS = [
@@ -22,7 +23,8 @@ const PASOS = [
   { id: 'pedido', titulo: 'Qué pide' },
   { id: 'estado', titulo: 'Cómo está' },
   { id: 'inventario', titulo: 'Qué trae' },
-  { id: 'revisar', titulo: 'Revisar' },
+  { id: 'revision', titulo: 'Revisión' },
+  { id: 'revisar', titulo: 'Repasar' },
 ] as const
 type Paso = (typeof PASOS)[number]['id']
 
@@ -164,7 +166,7 @@ export function PantallaRecepcionTablet() {
   return (
     <Marco>
       <nav aria-label="Pasos de la recepción">
-        <ol className="grid grid-cols-3 gap-1.5 sm:grid-cols-6">
+        <ol className="grid grid-cols-4 gap-1.5 sm:grid-cols-7">
           {PASOS.map((p, i) => {
             const actual = p.id === paso
             const hecho = i < indice
@@ -329,7 +331,23 @@ export function PantallaRecepcionTablet() {
           </>
         )}
 
-        {paso === 'revisar' && <Revisar datos={d} ir={ir} />}
+        {paso === 'revision' && (
+          <>
+            <Titulo>¿Qué le falta?</Titulo>
+            <p className="text-dato text-texto-suave">
+              Un color por punto. Lo que quede en ámbar o en rojo se le puede presupuestar desde la
+              orden.
+            </p>
+            <RevisionRecepcion
+              puntos={r.puntosRevision}
+              onChange={r.contestar}
+              tactil
+              enRecepcion
+            />
+          </>
+        )}
+
+        {paso === 'revisar' && <Revisar datos={d} puntos={r.puntosRevision} ir={ir} />}
       </section>
 
       <div className="flex items-center gap-2">
@@ -392,11 +410,21 @@ function Falta({ children }: { children: ReactNode }) {
 /** Todo lo cargado, con el paso donde se cambia: se repasa con el cliente antes de abrir. */
 function Revisar({
   datos: d,
+  puntos,
   ir,
 }: {
   datos: ReturnType<typeof useRecepcion>['datos']
+  puntos: PuntoRevisado[]
   ir: (p: Paso) => void
 }) {
+  const contar = (estado: string) => puntos.filter((p) => p.estado === estado).length
+  const semaforo = [
+    contar('rojo') && `${contar('rojo')} ${contar('rojo') === 1 ? 'urgente' : 'urgentes'}`,
+    contar('ambar') && `${contar('ambar')} para reparar`,
+    contar('verde') && `${contar('verde')} bien`,
+  ]
+    .filter(Boolean)
+    .join(' · ')
   const faltan = ELEMENTOS_INVENTARIO.filter((e) => d.inventario[e] === 'falta')
   const sinRevisar = ELEMENTOS_INVENTARIO.filter((e) => !d.inventario[e]).length
   const combustible = COMBUSTIBLES.find((c) => c.valor === d.combustible)?.texto
@@ -453,11 +481,12 @@ function Revisar({
           : 'Todo lo revisado está',
     },
     { paso: 'inventario', nombre: 'Observaciones', valor: d.observaciones.trim() },
+    { paso: 'revision', nombre: 'Revisión', valor: semaforo || 'Sin revisar' },
   ]
 
   return (
     <>
-      <Titulo>Revisalo con el cliente</Titulo>
+      <Titulo>Repasalo con el cliente</Titulo>
       <dl className="grid gap-2">
         {filas.map((f) => (
           <div
