@@ -3,6 +3,7 @@ dist/
 build/
 .turbo/
 coverage/
+test-results/
 
 # entorno: nunca versionar credenciales ni certificados de clientes
 .env

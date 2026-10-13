@@ -228,7 +228,7 @@ export class ServicioOrdenes {
         .from(orden)
         .innerJoin(vehiculo, eq(vehiculo.id, orden.vehiculoId))
         .where(donde)
-        .orderBy(desc(orden.creadoEn))
+        .orderBy(desc(orden.creadoEn), desc(orden.numero))
         .limit(filtro.porPagina)
         .offset((filtro.pagina - 1) * filtro.porPagina)
 

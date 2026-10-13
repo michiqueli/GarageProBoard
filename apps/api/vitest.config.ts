@@ -7,6 +7,9 @@ export default defineConfig({
     hookTimeout: 240_000,
     pool: 'forks',
     fileParallelism: false,
+    // La suite falla a veces entera y pasa sola, y el error se perdía con la terminal.
+    // Cada corrida deja el detalle en test-results/: si falla, ahí está qué dijo.
+    reporters: ['default', ['json', { outputFile: 'test-results/ultima-corrida.json' }]],
   },
   // No hay configuración de decoradores acá a propósito: Vitest 5 transpila con oxc y
   // no emite `emitDecoratorMetadata`. En vez de perseguir al transpilador, el código

@@ -336,6 +336,10 @@ export class ServicioAuth {
     })
   }
 
+  /**
+   * Ordenadas: la primera es la que se abre si el usuario no eligió una, y sin orden la
+   * decidía el plan de Postgres, que puede cambiar de un día para otro.
+   */
   private async sucursalesDe(tx: Db, usuarioId: string) {
     return tx
       .select({
@@ -348,6 +352,7 @@ export class ServicioAuth {
       .innerJoin(sucursal, eq(sucursal.id, usuarioSucursal.sucursalId))
       .innerJoin(empresa, eq(empresa.id, sucursal.empresaId))
       .where(and(eq(usuarioSucursal.usuarioId, usuarioId), eq(sucursal.activa, true)))
+      .orderBy(asc(sucursal.nombre), asc(sucursal.id))
   }
 
   private async armarPayload(

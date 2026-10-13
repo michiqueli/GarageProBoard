@@ -120,7 +120,12 @@ export async function sembrarConcesionaria(db: Db, s: Semilla) {
 
   const modulos = s.modulos ?? MODULOS
   if (modulos.length) {
-    await db.insert(tenantModulo).values(modulos.map((modulo) => ({ tenantId, modulo })))
+    // Vigentes desde ayer y no desde `now()`: con el reloj del contenedor apenas atrasado
+    // respecto del primer pedido, un módulo recién sembrado todavía no habría empezado.
+    const ayer = new Date(Date.now() - 24 * 60 * 60 * 1000)
+    await db
+      .insert(tenantModulo)
+      .values(modulos.map((modulo) => ({ tenantId, modulo, vigenteDesde: ayer })))
   }
 
   const [e] = await db

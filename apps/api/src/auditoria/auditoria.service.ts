@@ -543,7 +543,7 @@ export class ServicioAuditoria {
           left join usuario autor on autor.id = a.usuario_id
           left join usuario objetivo on a.tabla = 'usuario' and objetivo.id = a.registro_id
           left join dispositivo d on a.tabla = 'dispositivo' and d.id = a.registro_id
-         order by a.creado_en desc
+         order by a.creado_en desc, a.id
          limit ${entrada.porPagina} offset ${(entrada.pagina - 1) * entrada.porPagina}
       `)
 

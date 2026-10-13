@@ -406,7 +406,7 @@ export class ServicioRepuestos {
       .where(
         and(eq(movimientoStock.repuestoId, id), eq(movimientoStock.sucursalId, sesion.sucursalId)),
       )
-      .orderBy(desc(movimientoStock.creadoEn))
+      .orderBy(desc(movimientoStock.creadoEn), desc(movimientoStock.id))
       .limit(MOVIMIENTOS_EN_FICHA)
 
     return {
