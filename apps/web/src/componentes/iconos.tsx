@@ -22,6 +22,15 @@ export function IconoEditar() {
   )
 }
 
+export function IconoCamara() {
+  return (
+    <svg {...trazo} aria-hidden="true">
+      <path d="M2 5.5h2.5L6 3.5h4l1.5 2H14v7H2z" />
+      <circle cx="8" cy="9" r="2.25" />
+    </svg>
+  )
+}
+
 export function IconoAgregar() {
   return (
     <svg {...trazo} aria-hidden="true">

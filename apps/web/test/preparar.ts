@@ -44,6 +44,13 @@ window.matchMedia = vi.fn((consulta: string) => {
  */
 window.scrollTo = (() => {}) as typeof window.scrollTo
 
+/**
+ * Ni `URL.createObjectURL`, que usan las miniaturas de las fotos. Un test que quiera ver qué
+ * se pidió lo reemplaza por un `vi.fn()` propio.
+ */
+URL.createObjectURL ??= () => 'blob:prueba'
+URL.revokeObjectURL ??= () => {}
+
 /** Simula un ancho de pantalla para probar la forma de teléfono de un listado. */
 export function conAncho(px: number): void {
   anchoActual = px

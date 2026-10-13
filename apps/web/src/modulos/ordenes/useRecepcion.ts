@@ -12,6 +12,7 @@ import { api } from '../../sesion/cliente.ts'
 import { mensajeGeneral } from '../../sesion/consultas.ts'
 import { usePuedeUsar } from '../../sesion/permisos.ts'
 import type { Danio } from './DiagramaDanios.tsx'
+import { type FotoNueva, subirFotos } from './FotosVehiculo.tsx'
 import type { Inventario } from './InventarioRecepcion.tsx'
 import { type Combustible, nombreOrden } from './ordenes.ts'
 import type { Cambio, PuntoRevisado } from './RevisionRecepcion.tsx'
@@ -56,6 +57,8 @@ export interface DatosRecepcion {
   firma: Blob | null
   /** Quién firma. Mientras nadie lo escriba, es quien trae el auto. */
   firmaAclaracion: string | null
+  /** Las fotos del auto al recibirlo. Optativas: se suben con la orden. */
+  fotos: FotoNueva[]
 }
 
 const VACIA: DatosRecepcion = {
@@ -79,6 +82,7 @@ const VACIA: DatosRecepcion = {
   pendienteIds: [],
   firma: null,
   firmaAclaracion: null,
+  fotos: [],
 }
 
 export type OrdenAbierta = Awaited<ReturnType<typeof api.ordenes.abrir>>
@@ -242,23 +246,40 @@ export function useRecepcion(alAbrir: (orden: OrdenAbierta, firmada: boolean) =>
         visitaId: datos.visita?.id ?? null,
         pendienteIds: datos.pendienteIds,
       })
-      if (!datos.firma) return { orden, firmada: false }
-      // La orden ya está abierta: si la firma no se guarda, no se deshace por eso. Se avisa,
-      // y el cliente firma la copia impresa como siempre.
-      try {
-        await api.ordenes.firmar({
-          id: orden.id,
-          momento: 'ingreso',
-          aclaracion,
-          imagen: new File([datos.firma], 'firma.png', { type: 'image/png' }),
-        })
-        return { orden, firmada: true }
-      } catch {
-        notificar.error(
-          `${nombreOrden(orden.numero)} se abrió, pero la firma no se guardó. Imprimila para que el cliente firme la copia.`,
-        )
-        return { orden, firmada: false }
+      // La orden ya está abierta: si la firma o una foto no se guardan, no se deshace por eso.
+      // Se avisa, y el cliente firma la copia impresa como siempre.
+      let firmada = false
+      if (datos.firma) {
+        try {
+          await api.ordenes.firmar({
+            id: orden.id,
+            momento: 'ingreso',
+            aclaracion,
+            imagen: new File([datos.firma], 'firma.png', { type: 'image/png' }),
+          })
+          firmada = true
+        } catch {
+          notificar.error(
+            `${nombreOrden(orden.numero)} se abrió, pero la firma no se guardó. Imprimila para que el cliente firme la copia.`,
+          )
+        }
       }
+      const fallaron = await subirFotos(
+        (f) =>
+          api.ordenes.subirFoto({
+            id: orden.id,
+            momento: 'ingreso',
+            nota: f.nota.trim() || null,
+            imagen: new File([f.imagen], 'foto.jpg', { type: f.imagen.type || 'image/jpeg' }),
+          }),
+        datos.fotos,
+      )
+      if (fallaron) {
+        notificar.error(
+          `${nombreOrden(orden.numero)} se abrió, pero ${fallaron === 1 ? 'una foto no se guardó' : `${fallaron} fotos no se guardaron`}. Se pueden sacar de nuevo desde la orden.`,
+        )
+      }
+      return { orden, firmada }
     },
     onSuccess: async ({ orden: o, firmada }) => {
       await Promise.all([

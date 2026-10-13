@@ -19,6 +19,7 @@ import { ColaTablet } from '../recepcion/ColaTablet.tsx'
 import { AltaVehiculo } from '../vehiculos/AltaVehiculo.tsx'
 import { pareceDominio } from '../vehiculos/datos-vehiculo.tsx'
 import { DiagramaDanios, describirDanio, ElegirCarroceria } from './DiagramaDanios.tsx'
+import { FotosVehiculo } from './FotosVehiculo.tsx'
 import { InventarioRecepcion } from './InventarioRecepcion.tsx'
 import { COMBUSTIBLES, imprimirOrden, nombreOrden } from './ordenes.ts'
 import { ElegirCombustible, Texto } from './PantallaRecepcion.tsx'
@@ -31,6 +32,8 @@ const PASOS = [
   { id: 'personas', titulo: 'Quién' },
   { id: 'pedido', titulo: 'Qué pide' },
   { id: 'estado', titulo: 'Cómo está' },
+  // Con la vuelta al auto recién dada: las marcas del dibujo y sus fotos van juntas.
+  { id: 'fotos', titulo: 'Fotos' },
   { id: 'inventario', titulo: 'Qué trae' },
   { id: 'revision', titulo: 'Revisión' },
   { id: 'revisar', titulo: 'Repasar' },
@@ -246,7 +249,7 @@ export function PantallaRecepcionTablet() {
         </div>
       )}
       <nav aria-label="Pasos de la recepción">
-        <ol className="grid grid-cols-4 gap-1.5 sm:grid-cols-8">
+        <ol className="grid grid-cols-3 gap-1.5 sm:grid-cols-5 lg:grid-cols-9">
           {PASOS.map((p, i) => {
             const actual = p.id === paso
             const hecho = i < indice
@@ -411,6 +414,16 @@ export function PantallaRecepcionTablet() {
               onChange={(v) => poner('danios', v)}
               tactil
             />
+          </>
+        )}
+
+        {paso === 'fotos' && (
+          <>
+            <Titulo>¿Le sacás fotos?</Titulo>
+            <p className="text-dato text-texto-suave">
+              Lo marcado en el dibujo, de cerca. Son optativas: si no hace falta, seguí de largo.
+            </p>
+            <FotosVehiculo fotos={d.fotos} onChange={(v) => poner('fotos', v)} tactil />
           </>
         )}
 
@@ -596,6 +609,13 @@ function Revisar({
       valor: d.danios.length
         ? d.danios.map((x) => `${DANIOS[x.tipo].letra} ${describirDanio(x)}`).join(' · ')
         : 'Sin marcas',
+    },
+    {
+      paso: 'fotos',
+      nombre: 'Fotos',
+      valor: d.fotos.length
+        ? `${d.fotos.length} ${d.fotos.length === 1 ? 'foto' : 'fotos'}`
+        : 'Sin fotos',
     },
     {
       paso: 'inventario',

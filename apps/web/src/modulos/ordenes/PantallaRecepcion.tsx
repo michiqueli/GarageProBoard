@@ -12,6 +12,7 @@ import { Shell } from '../../componentes/Shell.tsx'
 import { AltaVehiculo } from '../vehiculos/AltaVehiculo.tsx'
 import { pareceDominio } from '../vehiculos/datos-vehiculo.tsx'
 import { DiagramaDanios, ElegirCarroceria } from './DiagramaDanios.tsx'
+import { FotosVehiculo } from './FotosVehiculo.tsx'
 import { InventarioRecepcion } from './InventarioRecepcion.tsx'
 import { COMBUSTIBLES, imprimirOrden, nombreOrden } from './ordenes.ts'
 import { PendientesDelVehiculo } from './PendientesDelVehiculo.tsx'
@@ -180,6 +181,10 @@ export function PantallaRecepcion() {
               ayuda="Lo que no entra en el dibujo: testigos prendidos, olor a quemado, objetos adentro"
             />
           </div>
+        </Bloque>
+
+        <Bloque titulo="Fotos" ayuda="Se suben con la orden">
+          <FotosVehiculo fotos={d.fotos} onChange={(v) => poner('fotos', v)} />
         </Bloque>
 
         <Bloque

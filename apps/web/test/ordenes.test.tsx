@@ -24,6 +24,7 @@ const ordenes = {
   pendientes: vi.fn(),
   descartarPendiente: vi.fn(),
   firmar: vi.fn(),
+  subirFoto: vi.fn(),
 }
 const listarVehiculos = vi.fn()
 const listarHojas = vi.fn()
@@ -341,6 +342,46 @@ describe('la recepción', () => {
     )
   })
 
+  it('las fotos van con la orden recién abierta, con lo que muestra cada una', async () => {
+    listarVehiculos.mockResolvedValue({
+      datos: [
+        {
+          id: ORDEN.vehiculo.id,
+          chasis: ORDEN.vehiculo.chasis,
+          dominio: 'AB123CD',
+          anio: 2022,
+          color: null,
+          marca: 'Volkswagen',
+          modelo: 'Amarok',
+          carroceria: null,
+          titular: TITULAR,
+        },
+      ],
+      total: 1,
+    })
+    ordenes.abrir.mockResolvedValue({ ...FICHA, estado: 'recibida' })
+    await montarApp('/ordenes/nueva')
+
+    await userEvent.type(await screen.findByLabelText('Vehículo'), 'ab123')
+    await screen.findByRole('list', { name: 'Vehículos que coinciden con ab123' })
+    await userEvent.keyboard('{Enter}')
+    await userEvent.type(screen.getByLabelText('Qué pide el cliente'), 'Ruido al frenar')
+
+    await userEvent.upload(
+      screen.getByLabelText('Fotos del vehículo'),
+      new File(['foto'], 'puerta.jpg', { type: 'image/jpeg' }),
+    )
+    expect(await screen.findByAltText('Foto 1')).toBeDefined()
+    await userEvent.type(screen.getByLabelText('Qué muestra la foto 1'), 'Rayón en la puerta')
+    await userEvent.keyboard('{F2}')
+
+    await waitFor(() =>
+      expect(ordenes.subirFoto).toHaveBeenCalledWith(
+        expect.objectContaining({ id: FICHA.id, momento: 'ingreso', nota: 'Rayón en la puerta' }),
+      ),
+    )
+  })
+
   it('sin auto ni pedido no abre, y dice qué falta', async () => {
     await montarApp('/ordenes/nueva')
     await screen.findByLabelText('Vehículo')
@@ -534,6 +575,11 @@ describe('la recepción en tablet', () => {
 
     await screen.findByText('¿Cómo está el vehículo?')
     await userEvent.click(screen.getByRole('application'))
+    await userEvent.click(screen.getByRole('button', { name: 'Siguiente' }))
+
+    // Las fotos son optativas: se sigue de largo.
+    await screen.findByText('¿Le sacás fotos?')
+    expect(screen.getByRole('button', { name: /Sacar una foto/ })).toBeDefined()
     await userEvent.click(screen.getByRole('button', { name: 'Siguiente' }))
 
     await screen.findByText('¿Qué vino con el auto?')
