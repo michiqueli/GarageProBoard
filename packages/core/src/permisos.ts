@@ -226,6 +226,12 @@ export function puedeSobre(
  * configure algo termina con todos pudiendo todo para siempre.
  */
 export interface RolPredefinido {
+  /**
+   * Cómo lo reconoce el sistema en cada concesionaria. El nombre no sirve: lo pueden
+   * cambiar. Con la clave, lo que el sistema le agrega o le quita al rol en una versión
+   * nueva llega también a las concesionarias que ya lo tenían.
+   */
+  clave: string
   nombre: string
   descripcion: string
   habilidades: ReglaPermiso[]
@@ -233,11 +239,13 @@ export interface RolPredefinido {
 
 export const ROLES_PREDEFINIDOS: RolPredefinido[] = [
   {
+    clave: 'gerente',
     nombre: 'Gerente',
     descripcion: 'Acceso total a la concesionaria.',
     habilidades: [{ action: 'administrar', subject: 'all' }],
   },
   {
+    clave: 'asesor',
     nombre: 'Asesor de servicios',
     descripcion: 'Recibe vehículos, abre y cierra órdenes, atiende al cliente.',
     habilidades: [
@@ -251,6 +259,7 @@ export const ROLES_PREDEFINIDOS: RolPredefinido[] = [
     ],
   },
   {
+    clave: 'mecanico',
     nombre: 'Mecánico',
     descripcion: 'Ve su trabajo asignado y ficha tiempos.',
     habilidades: [
@@ -267,6 +276,7 @@ export const ROLES_PREDEFINIDOS: RolPredefinido[] = [
     ],
   },
   {
+    clave: 'cajero',
     nombre: 'Cajero',
     descripcion: 'Factura y cobra.',
     habilidades: [
@@ -280,6 +290,7 @@ export const ROLES_PREDEFINIDOS: RolPredefinido[] = [
     ],
   },
   {
+    clave: 'repuestero',
     nombre: 'Repuestero',
     descripcion: 'Mostrador y depósito de repuestos.',
     habilidades: [
@@ -290,6 +301,7 @@ export const ROLES_PREDEFINIDOS: RolPredefinido[] = [
     ],
   },
   {
+    clave: 'administrativo',
     nombre: 'Administrativo',
     descripcion: 'Cuenta corriente, comprobantes y proveedores.',
     habilidades: [
@@ -300,6 +312,7 @@ export const ROLES_PREDEFINIDOS: RolPredefinido[] = [
     ],
   },
   {
+    clave: 'recepcionista',
     nombre: 'Recepcionista',
     descripcion:
       'Atiende la puerta y el teléfono: agenda los turnos, anota a quien llega, lo deriva a ' +
@@ -312,6 +325,7 @@ export const ROLES_PREDEFINIDOS: RolPredefinido[] = [
     ],
   },
   {
+    clave: 'vendedor',
     nombre: 'Vendedor',
     descripcion: 'Atiende a quien le derivan desde la puerta: venta 0km, plan de ahorro y usados.',
     habilidades: [
@@ -320,6 +334,7 @@ export const ROLES_PREDEFINIDOS: RolPredefinido[] = [
     ],
   },
   {
+    clave: 'administrador-sistema',
     nombre: 'Administrador de sistema',
     descripcion:
       'Da de alta usuarios, les asigna cualquier rol y los modifica. No cambia sus propios ' +

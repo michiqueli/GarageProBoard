@@ -41,4 +41,18 @@ export class ControladorRoles {
       this.servicio.editar(id, datos, pedido.ip).catch((e) => traducir(e, errors)),
     )
   }
+
+  @Operacion(c.aplicarNovedad)
+  aplicarNovedad(@Req() pedido: FastifyRequest) {
+    return implement(c.aplicarNovedad).handler(({ input, errors }) =>
+      this.servicio.aplicarNovedad(input.id, pedido.ip).catch((e) => traducir(e, errors)),
+    )
+  }
+
+  @Operacion(c.descartarNovedad)
+  descartarNovedad(@Req() pedido: FastifyRequest) {
+    return implement(c.descartarNovedad).handler(({ input, errors }) =>
+      this.servicio.descartarNovedad(input.id, pedido.ip).catch((e) => traducir(e, errors)),
+    )
+  }
 }

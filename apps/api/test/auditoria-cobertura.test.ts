@@ -108,6 +108,8 @@ const AUDITAN: readonly string[] = [
   'repuestos.transferir',
   'roles.crear',
   'roles.editar',
+  'roles.aplicarNovedad',
+  'roles.descartarNovedad',
   'usuarios.crear',
   'usuarios.editar',
   'usuarios.nuevaPassword',

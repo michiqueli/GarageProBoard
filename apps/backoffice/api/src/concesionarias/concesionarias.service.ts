@@ -7,9 +7,19 @@ import {
   ETIQUETA_MODULO,
   MODULOS,
   type Modulo,
-  ROLES_PREDEFINIDOS,
 } from '@gpb/core'
-import { and, asc, condicionVigente, conTenant, type Db, desc, enOrden, eq, sql } from '@gpb/db'
+import {
+  and,
+  asc,
+  condicionVigente,
+  conTenant,
+  type Db,
+  desc,
+  enOrden,
+  eq,
+  rolesPredefinidosPara,
+  sql,
+} from '@gpb/db'
 import {
   auditoriaBackoffice,
   condicionIva,
@@ -192,14 +202,7 @@ export class ServicioConcesionarias {
         // con el organigrama de base armado, y lo edita ella.
         const roles = await tx
           .insert(rol)
-          .values(
-            ROLES_PREDEFINIDOS.map((r) => ({
-              tenantId: id,
-              nombre: r.nombre,
-              descripcion: r.descripcion,
-              habilidades: r.habilidades,
-            })),
-          )
+          .values(rolesPredefinidosPara(id))
           .returning({ id: rol.id, nombre: rol.nombre })
         const gerente = roles.find((r) => r.nombre === 'Gerente')
         if (!gerente) throw new Error('Falta el rol Gerente en los roles predefinidos.')

@@ -25,6 +25,11 @@ export const rolSalida = z.object({
    * da la API al intentarlo, para que la pantalla no ofrezca lo que después se rechaza.
    */
   noEditable: z.string().nullable(),
+  /**
+   * Lo que el sistema cambió en este rol predefinido y la concesionaria todavía no decidió,
+   * o `null`. Sólo queda pendiente en los que editaron: los demás se actualizan solos.
+   */
+  novedad: z.object({ agrega: z.array(z.string()), quita: z.array(z.string()) }).nullable(),
 })
 
 const datosRol = z.object({
@@ -47,6 +52,22 @@ const PERMISO_NO_OTORGABLE = {
 
 const NOMBRE_DUPLICADO = {
   NOMBRE_DUPLICADO: { status: 409, message: 'Ya hay un rol con ese nombre' },
+} as const
+
+const NO_ENCONTRADO = {
+  NO_ENCONTRADO: { status: 404, message: 'Ese rol no existe' },
+} as const
+
+const NO_EDITABLE = {
+  NO_EDITABLE: {
+    status: 403,
+    message: 'Ese rol no se puede modificar',
+    data: z.object({ motivo: z.string() }),
+  },
+} as const
+
+const SIN_NOVEDAD = {
+  SIN_NOVEDAD: { status: 409, message: 'Ese rol ya está en la versión del sistema' },
 } as const
 
 export const contratoRoles = {
@@ -96,12 +117,38 @@ export const contratoRoles = {
     .errors({
       ...PERMISO_NO_OTORGABLE,
       ...NOMBRE_DUPLICADO,
-      NO_ENCONTRADO: { status: 404, message: 'Ese rol no existe' },
-      NO_EDITABLE: {
-        status: 403,
-        message: 'Ese rol no se puede modificar',
-        data: z.object({ motivo: z.string() }),
-      },
+      ...NO_ENCONTRADO,
+      ...NO_EDITABLE,
     })
+    .output(rolSalida),
+
+  aplicarNovedad: conPermiso('nucleo', 'administrar', 'Usuario')
+    .route({
+      method: 'POST',
+      path: '/roles/{id}/novedad',
+      tags: [TAG],
+      operationId: 'aplicarNovedadRol',
+      summary: 'Aplicar a un rol predefinido la versión nueva del sistema',
+      description:
+        'Le agrega y le quita sólo lo que cambió el sistema: lo que la concesionaria le había ' +
+        'cambiado por su cuenta queda como estaba. Valen las reglas de modificar un rol.',
+    })
+    .input(z.object({ id: z.uuid() }))
+    .errors({ ...PERMISO_NO_OTORGABLE, ...NO_ENCONTRADO, ...NO_EDITABLE, ...SIN_NOVEDAD })
+    .output(rolSalida),
+
+  descartarNovedad: conPermiso('nucleo', 'administrar', 'Usuario')
+    .route({
+      method: 'DELETE',
+      path: '/roles/{id}/novedad',
+      tags: [TAG],
+      operationId: 'descartarNovedadRol',
+      summary: 'Dejar un rol predefinido como está, sin la versión nueva del sistema',
+      description:
+        'El rol no cambia y la novedad deja de mostrarse. Si el sistema lo vuelve a cambiar, ' +
+        'se ofrece sólo lo nuevo.',
+    })
+    .input(z.object({ id: z.uuid() }))
+    .errors({ ...NO_ENCONTRADO, ...NO_EDITABLE, ...SIN_NOVEDAD })
     .output(rolSalida),
 }

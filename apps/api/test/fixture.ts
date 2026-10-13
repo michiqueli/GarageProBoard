@@ -1,13 +1,6 @@
 import { randomBytes } from 'node:crypto'
-import {
-  atajosParaSembrar,
-  cuitValido,
-  MODULOS,
-  type Modulo,
-  type ReglaPermiso,
-  ROLES_PREDEFINIDOS,
-} from '@gpb/core'
-import { type Db, eq, sembrarCatalogos } from '@gpb/db'
+import { atajosParaSembrar, cuitValido, MODULOS, type Modulo, type ReglaPermiso } from '@gpb/core'
+import { type Db, eq, rolesPredefinidosPara, sembrarCatalogos } from '@gpb/db'
 import { levantarPostgres, type PostgresDePrueba } from '@gpb/db/pruebas'
 import {
   empleado,
@@ -143,13 +136,14 @@ export async function sembrarConcesionaria(db: Db, s: Semilla) {
 
   const roles = await db
     .insert(rol)
-    .values(
-      [...ROLES_PREDEFINIDOS, ...(s.rolesPropios ?? [])].map((r) => ({
+    .values([
+      ...rolesPredefinidosPara(t.id),
+      ...(s.rolesPropios ?? []).map((r) => ({
         tenantId: t.id,
         nombre: r.nombre,
         habilidades: r.habilidades,
       })),
-    )
+    ])
     .returning()
 
   async function crearUsuario(email: string, nombreRol: string) {

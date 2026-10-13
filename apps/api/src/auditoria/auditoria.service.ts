@@ -180,6 +180,7 @@ function describirRol(accion: string, antes: Foto, despues: Foto): string {
   const lista = (frases: string[]) =>
     frases.length <= 1 ? (frases[0] ?? '') : `${frases.slice(0, -1).join(', ')} y ${frases.at(-1)}`
   return juntar([
+    ...(despues?.texto ? [String(despues.texto)] : []),
     ...(antes?.nombre !== despues?.nombre
       ? [`nombre: «${String(antes?.nombre)}» → «${String(despues?.nombre)}»`]
       : []),

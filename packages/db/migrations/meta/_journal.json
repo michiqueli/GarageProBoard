@@ -218,6 +218,13 @@
       "when": 1791584284819,
       "tag": "0030_estacion_llamador",
       "breakpoints": true
+    },
+    {
+      "idx": 31,
+      "version": "7",
+      "when": 1791893140451,
+      "tag": "0031_roles_predefinidos",
+      "breakpoints": true
     }
   ]
 }

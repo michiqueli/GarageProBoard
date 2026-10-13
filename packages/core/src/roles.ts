@@ -151,3 +151,111 @@ export function diferenciaDePermisos(
       .map((p) => describirPermiso(p.accion, p.sujeto)),
   }
 }
+
+/**
+ * Un rol partido en piezas que se pueden comparar: cada casilla de la grilla y cada regla
+ * especial, con una clave. Dos roles con las mismas piezas permiten lo mismo aunque sus
+ * reglas estén escritas en otro orden o agrupadas de otra forma, que es lo que pasa en
+ * cuanto alguien guarda un rol desde la pantalla sin tocar nada.
+ */
+interface Pieza {
+  permiso?: Permiso
+  especial?: ReglaPermiso
+}
+
+const PIEZA_TODO = 'todo'
+
+function piezas(reglas: readonly ReglaPermiso[]): Map<string, Pieza> {
+  const { todo, permisos, especiales } = separarReglas(reglas)
+  const salida = new Map<string, Pieza>()
+  if (todo) salida.set(PIEZA_TODO, {})
+  for (const permiso of permisos) salida.set(`p:${permiso.accion}:${permiso.sujeto}`, { permiso })
+  for (const especial of especiales) salida.set(`e:${estable(especial)}`, { especial })
+  return salida
+}
+
+/** JSON con las claves ordenadas y sin las que valen `undefined`. */
+function estable(valor: unknown): string {
+  if (Array.isArray(valor)) return `[${valor.map(estable).join(',')}]`
+  if (valor && typeof valor === 'object') {
+    const pares = Object.entries(valor)
+      .filter(([, v]) => v !== undefined)
+      .sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))
+    return `{${pares.map(([k, v]) => `${JSON.stringify(k)}:${estable(v)}`).join(',')}}`
+  }
+  return JSON.stringify(valor)
+}
+
+function describirPieza(clave: string, pieza: Pieza): string {
+  if (clave === PIEZA_TODO) return 'todo el sistema'
+  if (pieza.permiso) return describirPermiso(pieza.permiso.accion, pieza.permiso.sujeto)
+  return describirEspecial(pieza.especial ?? { action: 'ver', subject: 'all' })
+}
+
+/** Si dos juegos de reglas permiten exactamente lo mismo. */
+export function mismasReglas(a: readonly ReglaPermiso[], b: readonly ReglaPermiso[]): boolean {
+  const pa = piezas(a)
+  const pb = piezas(b)
+  return pa.size === pb.size && [...pa.keys()].every((k) => pb.has(k))
+}
+
+/** Lo que cambió el sistema en un rol predefinido, en palabras. */
+export interface NovedadDeRol {
+  agrega: string[]
+  quita: string[]
+}
+
+/**
+ * Qué cambió entre la versión de un rol predefinido que la concesionaria conoce y la que
+ * trae el sistema ahora, o `null` si son la misma.
+ */
+export function novedadDeRol(
+  conocida: readonly ReglaPermiso[],
+  nueva: readonly ReglaPermiso[],
+): NovedadDeRol | null {
+  const antes = piezas(conocida)
+  const despues = piezas(nueva)
+  const agrega = [...despues].filter(([k]) => !antes.has(k)).map(([k, p]) => describirPieza(k, p))
+  const quita = [...antes].filter(([k]) => !despues.has(k)).map(([k, p]) => describirPieza(k, p))
+  return agrega.length || quita.length ? { agrega, quita } : null
+}
+
+/**
+ * Aplica a un rol lo que el sistema cambió entre dos versiones de su predefinido, **y nada
+ * más**: lo que la concesionaria le agregó o le sacó por su cuenta queda como estaba. Si
+ * el sistema agrega algo que el rol ya tenía, o quita algo que ya no tenía, no pasa nada.
+ */
+export function aplicarNovedad(
+  reglas: readonly ReglaPermiso[],
+  conocida: readonly ReglaPermiso[],
+  nueva: readonly ReglaPermiso[],
+): ReglaPermiso[] {
+  const antes = piezas(conocida)
+  const despues = piezas(nueva)
+  const resultado = piezas(reglas)
+  for (const clave of antes.keys()) if (!despues.has(clave)) resultado.delete(clave)
+  for (const [clave, pieza] of despues) if (!antes.has(clave)) resultado.set(clave, pieza)
+
+  const permisos = [...resultado.values()].flatMap((p) => (p.permiso ? [p.permiso] : []))
+  const especiales = [...resultado.values()].flatMap((p) => (p.especial ? [p.especial] : []))
+  const todo: ReglaPermiso[] = resultado.has(PIEZA_TODO)
+    ? [{ action: 'administrar', subject: 'all' }]
+    : []
+  return [...todo, ...armarReglas(permisos, especiales)]
+}
+
+/** «ahora podés ver clientes y dar de alta clientes; ya no podés anular comprobantes». */
+export function cambiosEnPalabras(agregados: readonly string[], quitados: readonly string[]) {
+  return [
+    agregados.length ? `ahora podés ${enumerar(agregados)}` : '',
+    quitados.length ? `ya no podés ${enumerar(quitados)}` : '',
+  ]
+    .filter(Boolean)
+    .join('; ')
+}
+
+function enumerar(frases: readonly string[]): string {
+  return frases.length <= 1
+    ? (frases[0] ?? '')
+    : `${frases.slice(0, -1).join(', ')} y ${frases.at(-1)}`
+}
