@@ -82,6 +82,9 @@ describe('sin factura', () => {
   it('terminada y sin factura no se entrega, y el asesor no lo puede autorizar', async () => {
     ordenId = await terminada(autos[0] as string)
 
+    const antes = await pedir(asesor, 'GET', `/ordenes/${ordenId}/egreso/pdf`)
+    expect(antes.statusCode).toBe(409)
+
     const sinMotivo = await pedir(asesor, 'POST', `/ordenes/${ordenId}/entregar`, {})
     expect(sinMotivo.statusCode).toBe(409)
     expect(sinMotivo.json().data.motivo).toMatch(/Falta facturarla/)
@@ -155,6 +158,11 @@ describe('facturada', () => {
       sinFactura: null,
     })
     expect(r.json().noSeHizo).toEqual([])
+
+    // El comprobante de la entrega sale una vez entregado.
+    const pdf = await pedir(asesor, 'GET', `/ordenes/${id}/egreso/pdf`)
+    expect(pdf.statusCode, pdf.body).toBe(200)
+    expect(pdf.rawPayload.subarray(0, 5).toString()).toBe('%PDF-')
 
     expect((await pedir(asesor, 'GET', '/ordenes?estado=para_entregar')).json().datos).toEqual([])
   })

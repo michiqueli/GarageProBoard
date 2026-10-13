@@ -881,3 +881,300 @@ export async function generarPresupuestoPdf(p: DatosPresupuestoImpreso): Promise
   await fin
   return new Uint8Array(Buffer.concat(partes))
 }
+
+/**
+ * El comprobante de la entrega: el auto vuelve al cliente. Ver `docs/tecnicos/egreso.md`.
+ *
+ * Lo que se hizo, con el código de barras de cada caja para compararlo con las que se lleva; lo
+ * que no se hizo, «le informamos y no lo autorizó»; cómo sale contra cómo entró; y la firma, que
+ * se dibujó en la pantalla.
+ */
+export interface DatosEgresoImpreso {
+  concesionaria: string
+  sucursal: { nombre: string; domicilio: string | null; telefono: string | null }
+  numero: number
+  /** AAAA-MM-DDTHH:mm, en la hora de Argentina. */
+  ingreso: string
+  entrega: string
+  vehiculo: { dominio: string | null; marcaModelo: string | null; chasis: string }
+  titular: string | null
+  entregadaPor: string | null
+  hecho: Array<{
+    tipo: 'trabajo' | 'repuesto'
+    descripcion: string
+    cantidad: string
+    total: string
+    codigosBarras: string[]
+  }>
+  total: string
+  /** El comprobante con el que se facturó, o por qué se entregó sin factura. */
+  cobro: { factura: string } | { sinFactura: string; autorizadoPor: string } | null
+  noSeHizo: Array<{ descripcion: string; semaforo: 'ambar' | 'rojo' | null }>
+  entrada: {
+    kilometraje: number | null
+    combustible: string | null
+    inventario: Partial<Record<ElementoInventario, ControlInventario>>
+  }
+  salida: {
+    kilometraje: number | null
+    combustible: string | null
+    inventario: Partial<Record<ElementoInventario, ControlInventario>>
+  }
+  daniosNuevos: Array<{ tipo: TipoDanio; nota: string | null }>
+  firma: { imagen: Uint8Array; aclaracion: string } | null
+}
+
+const FILA_EGRESO = mm(4.5)
+
+export async function generarEgresoPdf(e: DatosEgresoImpreso): Promise<Uint8Array> {
+  const doc = new PDFDocument({
+    size: 'A4',
+    margin: 0,
+    autoFirstPage: false,
+    info: {
+      Title: `Entrega de la orden ${e.numero}`,
+      Author: e.concesionaria,
+      Creator: 'GarageProBoard',
+    },
+  })
+  const partes: Buffer[] = []
+  doc.on('data', (b: Buffer) => partes.push(b))
+  const fin = new Promise<void>((resolver) => doc.on('end', () => resolver()))
+  const numero = String(e.numero).padStart(6, '0')
+  const encabezado = `Entrega · OT ${numero} · ${patente(e.vehiculo.dominio)}`
+
+  doc.addPage()
+  let y = mm(12)
+  doc
+    .font(NEGRITA)
+    .fontSize(12)
+    .text(e.concesionaria, IZQ, y, { width: UTIL * 0.6 })
+  const donde = [
+    e.sucursal.nombre,
+    e.sucursal.domicilio,
+    e.sucursal.telefono && `Tel. ${e.sucursal.telefono}`,
+  ]
+  doc
+    .font(NORMAL)
+    .fontSize(8)
+    .text(donde.filter(Boolean).join(' · '), IZQ, y + mm(5.5), { width: UTIL * 0.6 })
+  doc.font(NORMAL).fontSize(9).text('ENTREGA DEL VEHÍCULO', IZQ, y, { width: UTIL, align: 'right' })
+  doc
+    .font(NEGRITA)
+    .fontSize(20)
+    .text(`OT ${numero}`, IZQ, y + mm(4), { width: UTIL, align: 'right' })
+  doc
+    .font(NORMAL)
+    .fontSize(8)
+    .text(`Recibido ${fecha(e.ingreso)} · entregado ${fecha(e.entrega)}`, IZQ, y + mm(12), {
+      width: UTIL,
+      align: 'right',
+    })
+  y += mm(22)
+
+  const col = UTIL / 4
+  caja(doc, y, mm(26), 'Vehículo')
+  doc
+    .font(NEGRITA)
+    .fontSize(16)
+    .text(patente(e.vehiculo.dominio), IZQ + mm(3), y + mm(6), {
+      width: col * 1.3,
+      lineBreak: false,
+    })
+  etiquetaValor(
+    doc,
+    IZQ + col * 1.4,
+    y + mm(6),
+    'Marca y modelo',
+    e.vehiculo.marcaModelo ?? '',
+    col * 1.3,
+  )
+  etiquetaValor(doc, IZQ + col * 2.8, y + mm(6), 'Chasis', e.vehiculo.chasis, col * 1.15)
+  etiquetaValor(doc, IZQ + mm(3), y + mm(15), 'Titular', e.titular ?? '', col * 1.3)
+  etiquetaValor(doc, IZQ + col * 1.4, y + mm(15), 'Lo entregó', e.entregadaPor ?? '', col * 1.3)
+  y += mm(30)
+
+  // ── Lo que se hizo ─────────────────────────────────────────────────────────
+  const lineas = e.hecho.reduce((a, i) => a + (i.codigosBarras.length ? 2 : 1), 0)
+  const altoHecho = mm(9) + lineas * mm(5)
+  y = lugar(doc, y, altoHecho + mm(12), encabezado)
+  caja(doc, y, altoHecho, 'Lo que se hizo')
+  let yy = y + mm(7)
+  for (const i of e.hecho) {
+    doc.font(NORMAL).fontSize(8).fillColor('#555')
+    doc.text(i.tipo === 'trabajo' ? 'Trabajo' : 'Repuesto', IZQ + mm(3), yy, {
+      width: mm(15),
+      lineBreak: false,
+    })
+    doc.fillColor('#000').fontSize(9.5)
+    doc.text(i.descripcion, IZQ + mm(19), yy, {
+      width: UTIL - mm(19) - mm(50),
+      lineBreak: false,
+      ellipsis: true,
+      height: doc.currentLineHeight(),
+    })
+    doc.text(`× ${formatearImporte(i.cantidad).replace(/,00$/, '')}`, DER - mm(50), yy, {
+      width: mm(16),
+      align: 'right',
+      lineBreak: false,
+    })
+    doc.text(`$ ${formatearImporte(i.total)}`, DER - mm(31), yy, {
+      width: mm(28),
+      align: 'right',
+      lineBreak: false,
+    })
+    yy += mm(5)
+    if (i.codigosBarras.length) {
+      const cajas = `${i.codigosBarras.length === 1 ? 'Caja' : 'Cajas'}: ${i.codigosBarras.join(' · ')}`
+      doc
+        .font('Courier')
+        .fontSize(8)
+        .fillColor('#333')
+        .text(cajas, IZQ + mm(19), yy, {
+          width: UTIL - mm(22),
+          lineBreak: false,
+          ellipsis: true,
+          height: doc.currentLineHeight(),
+        })
+      doc.fillColor('#000')
+      yy += mm(5)
+    }
+  }
+  y += altoHecho + mm(2)
+  doc
+    .font(NEGRITA)
+    .fontSize(12)
+    .text(`Total: $ ${formatearImporte(e.total)}`, IZQ, y, { width: UTIL - mm(3), align: 'right' })
+  const cobro = !e.cobro
+    ? ''
+    : 'factura' in e.cobro
+      ? `Facturado con ${e.cobro.factura}.`
+      : `Entregado sin factura: ${e.cobro.sinFactura}. Lo autorizó ${e.cobro.autorizadoPor}.`
+  if (cobro) {
+    doc
+      .font(NORMAL)
+      .fontSize(8)
+      .text(cobro, IZQ, y + mm(6), { width: UTIL - mm(3), align: 'right' })
+  }
+  y += mm(13)
+
+  // ── Lo que no se hizo ──────────────────────────────────────────────────────
+  if (e.noSeHizo.length) {
+    const alto = mm(13) + e.noSeHizo.length * mm(5)
+    y = lugar(doc, y, alto + mm(3), encabezado)
+    caja(doc, y, alto, 'Le informamos y no lo autorizó')
+    let yn = y + mm(8)
+    for (const p of e.noSeHizo) {
+      if (p.semaforo) semaforo(doc, p.semaforo, IZQ + mm(5), yn + mm(1.6))
+      doc
+        .font(NORMAL)
+        .fontSize(9.5)
+        .text(p.descripcion, IZQ + mm(9), yn, {
+          width: UTIL - mm(12),
+          lineBreak: false,
+          ellipsis: true,
+          height: doc.currentLineHeight(),
+        })
+      yn += mm(5)
+    }
+    y += alto + mm(3)
+  }
+
+  // ── Cómo sale ──────────────────────────────────────────────────────────────
+  const elementos = ELEMENTOS_INVENTARIO.filter(
+    (el) => e.entrada.inventario[el] || e.salida.inventario[el],
+  )
+  const altoDanios = e.daniosNuevos.length ? mm(6) + e.daniosNuevos.length * FILA_EGRESO : 0
+  const altoSale = mm(22) + elementos.length * FILA_EGRESO + altoDanios
+  y = lugar(doc, y, altoSale + mm(3), encabezado)
+  caja(doc, y, altoSale, 'Cómo sale, contra cómo entró')
+  const c1 = IZQ + mm(3)
+  const c2 = IZQ + UTIL * 0.45
+  const c3 = IZQ + UTIL * 0.7
+  let ys = y + mm(7)
+  doc.font(NEGRITA).fontSize(7).fillColor('#555')
+  doc.text('ENTRÓ', c2, ys, { width: mm(30), lineBreak: false })
+  doc.text('SALE', c3, ys, { width: mm(30), lineBreak: false })
+  doc.fillColor('#000')
+  ys += FILA_EGRESO
+  const fila = (nombre: string, entro: string, sale: string) => {
+    doc
+      .font(NORMAL)
+      .fontSize(9)
+      .text(nombre, c1, ys, { width: c2 - c1 - mm(2), lineBreak: false })
+    doc.text(entro, c2, ys, { width: c3 - c2 - mm(2), lineBreak: false })
+    doc.font(NEGRITA).text(sale, c3, ys, { width: DER - c3 - mm(3), lineBreak: false })
+    ys += FILA_EGRESO
+  }
+  const km = (n: number | null) => (n === null ? '—' : `${n.toLocaleString('es-AR')} km`)
+  const nafta = (c: string | null) => COMBUSTIBLE[c ?? ''] ?? '—'
+  const control = (c: ControlInventario | undefined) =>
+    c === 'esta' ? 'Está' : c === 'falta' ? 'Falta' : '—'
+  fila('Kilómetros', km(e.entrada.kilometraje), km(e.salida.kilometraje))
+  fila('Combustible', nafta(e.entrada.combustible), nafta(e.salida.combustible))
+  for (const el of elementos) {
+    fila(INVENTARIO[el], control(e.entrada.inventario[el]), control(e.salida.inventario[el]))
+  }
+  if (e.daniosNuevos.length) {
+    ys += mm(1.5)
+    doc
+      .font(NEGRITA)
+      .fontSize(9)
+      .text('Daños que no estaban al recibirlo:', c1, ys, { width: UTIL - mm(6) })
+    ys += FILA_EGRESO
+    for (const d of e.daniosNuevos) {
+      doc
+        .font(NORMAL)
+        .fontSize(9)
+        .text(`${DANIOS[d.tipo].nombre}${d.nota ? `: ${d.nota}` : ''}`, c1 + mm(3), ys, {
+          width: UTIL - mm(9),
+          lineBreak: false,
+          ellipsis: true,
+          height: doc.currentLineHeight(),
+        })
+      ys += FILA_EGRESO
+    }
+  }
+  y += altoSale + mm(4)
+
+  // ── La firma ───────────────────────────────────────────────────────────────
+  y = lugar(doc, y, mm(46), encabezado)
+  doc
+    .font(NORMAL)
+    .fontSize(7.5)
+    .fillColor('#444')
+    .text(
+      'Recibo el vehículo en las condiciones descriptas, con los trabajos y repuestos detallados. ' +
+        'Se me informó lo que no autoricé.',
+      IZQ,
+      y,
+      { width: UTIL },
+    )
+    .fillColor('#000')
+  const yFirma = y + mm(8)
+  if (e.firma) {
+    doc.image(Buffer.from(e.firma.imagen), IZQ, yFirma, { fit: [mm(75), mm(24)] })
+  }
+  doc
+    .lineWidth(0.6)
+    .moveTo(IZQ, yFirma + mm(26))
+    .lineTo(IZQ + mm(75), yFirma + mm(26))
+    .stroke()
+  const aclaracion = e.firma
+    ? `Firma de ${e.firma.aclaracion}`
+    : 'Firma y aclaración de quien retira'
+  doc
+    .font(NORMAL)
+    .fontSize(8)
+    .text(aclaracion, IZQ, yFirma + mm(28), { width: mm(75), align: 'center' })
+  doc.text(fecha(e.entrega), DER - mm(45), yFirma + mm(22), { width: mm(45), align: 'center' })
+  doc
+    .moveTo(DER - mm(45), yFirma + mm(26))
+    .lineTo(DER, yFirma + mm(26))
+    .stroke()
+  doc.text('Fecha', DER - mm(45), yFirma + mm(28), { width: mm(45), align: 'center' })
+
+  doc.end()
+  await fin
+  return new Uint8Array(Buffer.concat(partes))
+}

@@ -809,4 +809,16 @@ export const contratoOrdenes = {
       },
     })
     .output(z.file()),
+
+  pdfEgreso: conPermiso('servicios', 'ver', 'Orden')
+    .route({
+      method: 'GET',
+      path: '/ordenes/{id}/egreso/pdf',
+      tags: [TAG],
+      operationId: 'pdfEgresoOrden',
+      summary: 'El comprobante de la entrega, con lo hecho, lo no hecho y la firma',
+    })
+    .input(conId)
+    .errors({ ...NO_ENCONTRADA, ...ESTADO_INVALIDO })
+    .output(z.file()),
 }
