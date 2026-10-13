@@ -1,7 +1,12 @@
 import { dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { migrate } from 'drizzle-orm/node-postgres/migrator'
-import { crearDb, crearPool, sincronizarRolesPredefinidos } from '../src/index.ts'
+import {
+  crearDb,
+  crearPool,
+  sembrarHojasPorOmision,
+  sincronizarRolesPredefinidos,
+} from '../src/index.ts'
 import { ddlAislamiento, ddlAuditoria, ROL_APP } from '../src/rls/index.ts'
 
 const aqui = dirname(fileURLToPath(import.meta.url))
@@ -36,6 +41,9 @@ try {
   for (const linea of roles.omitidos) {
     console.log(`  ! ${linea}: no se creó, ya tiene un rol propio con ese nombre`)
   }
+
+  const hojas = await sembrarHojasPorOmision(db)
+  if (hojas) console.log(`› Dibujos de la hoja que trae el sistema, donde faltaban: ${hojas}`)
 
   console.log('✓ Base al día.')
 } catch (error) {

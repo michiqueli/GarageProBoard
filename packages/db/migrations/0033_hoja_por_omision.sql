@@ -1,0 +1,1 @@
+ALTER TABLE "hoja_imagen" ADD COLUMN "por_omision" boolean DEFAULT false NOT NULL;

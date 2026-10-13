@@ -30,7 +30,22 @@ vi.mock('../src/sesion/cliente.ts', () => ({
 const TIPOS = ['sedan', 'hatchback', 'suv', 'pickup'] as const
 
 /** Los cuatro dibujos, todos con el del sistema: así arranca un taller nuevo. */
-const vacias = () => ({ datos: TIPOS.map((tipo) => ({ tipo, propia: null })) })
+const vacias = () => ({
+  datos: TIPOS.map((tipo, i) => ({
+    tipo,
+    propia: {
+      id: `0000000${i}-0000-4000-8000-000000000000`,
+      tipo,
+      formato: 'image/png' as const,
+      ancho: 380,
+      alto: 343,
+      bytes: 64725,
+      creadoEn: '2026-10-13T12:00:00.000Z',
+      creadoPor: null,
+      porOmision: true,
+    },
+  })),
+})
 
 const propia = {
   id: '77777777-7777-4777-8777-777777777777',
@@ -41,6 +56,7 @@ const propia = {
   bytes: 46080,
   creadoEn: '2026-09-29T12:00:00.000Z',
   creadoPor: null,
+  porOmision: false,
 }
 
 /** Dos puntos de motor y uno de la sección que se completa en el taller. */
@@ -75,7 +91,7 @@ describe('la hoja de recepción', () => {
     for (const tipo of ['Sedán', 'Hatchback', 'SUV', 'Pickup']) {
       expect(within(dibujos).getByRole('heading', { name: tipo })).toBeDefined()
     }
-    expect(within(dibujos).getAllByText('Del sistema')).toHaveLength(4)
+    expect(within(dibujos).getAllByText('El de VW, que trae el sistema')).toHaveLength(4)
   })
 
   it('subir un dibujo lo manda con su tipo, y refresca la lista', async () => {

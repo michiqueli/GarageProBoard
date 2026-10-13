@@ -1,5 +1,14 @@
 import { sql } from 'drizzle-orm'
-import { check, integer, pgTable, text, timestamp, uniqueIndex, uuid } from 'drizzle-orm/pg-core'
+import {
+  boolean,
+  check,
+  integer,
+  pgTable,
+  text,
+  timestamp,
+  uniqueIndex,
+  uuid,
+} from 'drizzle-orm/pg-core'
 import { creadoEn, pk, tenantId } from './_comunes.ts'
 import { usuario } from './acceso.ts'
 import { tenant } from './tenant.ts'
@@ -38,6 +47,11 @@ export const hojaImagen = pgTable(
     creadoPor: uuid().references(() => usuario.id),
     /** `null` es la que se usa hoy. Las otras quedan porque hay órdenes que las apuntan. */
     reemplazadaEn: timestamp({ withTimezone: true }),
+    /**
+     * La del juego que trae el sistema. Sus bytes no están en el almacén de la concesionaria
+     * sino en el repositorio (`apps/api/assets/hojas/`), y `ruta` es la de ese archivo.
+     */
+    porOmision: boolean().notNull().default(false),
   },
   (t) => [
     // Una sola vigente por tipo. Las reemplazadas no entran, así que pueden ser muchas.

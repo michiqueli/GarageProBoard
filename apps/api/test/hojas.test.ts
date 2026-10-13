@@ -146,9 +146,18 @@ describe('la hoja de recepción', () => {
 
     expect((await pedir(gerente, 'DELETE', '/hojas/pickup')).statusCode).toBe(200)
     const despues = (await pedir(gerente, 'GET', '/hojas')).json().datos
-    expect(despues.find((d: { tipo: string }) => d.tipo === 'pickup').propia).toBeNull()
+    const delSistema = despues.find((d: { tipo: string }) => d.tipo === 'pickup').propia
+    expect(delSistema).toMatchObject({ porOmision: true, creadoPor: null, ancho: 377 })
     // Y el archivo sigue estando: las órdenes que se recibieron con él lo muestran.
     expect((await pedir(gerente, 'GET', `/hojas/imagenes/${segunda.id}`)).statusCode).toBe(200)
+
+    // El de VW sale del repositorio, no del almacén de la concesionaria.
+    const imagen = await pedir(gerente, 'GET', `/hojas/imagenes/${delSistema.id}`)
+    expect(imagen.statusCode).toBe(200)
+    expect(imagen.rawPayload.length).toBe(70018)
+
+    // Y no se quita: no hay a dónde volver.
+    expect((await pedir(gerente, 'DELETE', '/hojas/pickup')).statusCode).toBe(404)
   })
 
   /**

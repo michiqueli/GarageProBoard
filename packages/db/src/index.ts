@@ -79,5 +79,6 @@ export async function conTenant<T>(
   })
 }
 export * from './semillas/catalogos.ts'
+export * from './semillas/hojas.ts'
 export * from './semillas/roles.ts'
 export * from './semillas/sembrar.ts'

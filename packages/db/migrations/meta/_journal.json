@@ -232,6 +232,13 @@
       "when": 1791895089542,
       "tag": "0032_tablet_de_recepcion",
       "breakpoints": true
+    },
+    {
+      "idx": 33,
+      "version": "7",
+      "when": 1791900044315,
+      "tag": "0033_hoja_por_omision",
+      "breakpoints": true
     }
   ]
 }

@@ -22,6 +22,8 @@ export const imagenDeHoja = z.object({
   creadoEn: z.string(),
   /** Quién la subió. La del juego por omisión no la subió nadie. */
   creadoPor: z.string().nullable(),
+  /** La que trae el sistema: los dibujos de la hoja de VW. No se quita; se reemplaza subiendo otra. */
+  porOmision: z.boolean(),
 })
 
 /**

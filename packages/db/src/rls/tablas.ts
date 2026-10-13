@@ -130,6 +130,8 @@ export const PERMISOS_BACKOFFICE: Readonly<Record<string, readonly string[]>> = 
   usuario_sucursal: ['select', 'insert'],
   usuario_config: ['select', 'insert'],
   usuario_atajo: ['select', 'insert'],
+  // Los dibujos de la hoja que trae el sistema, al dar de alta la concesionaria.
+  hoja_imagen: ['insert'],
   operador: ['select', 'update'],
   sesion_operador: ['select', 'insert', 'update'],
   auditoria_backoffice: ['select', 'insert'],

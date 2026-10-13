@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto'
+import { readFile } from 'node:fs/promises'
 import {
   type FormatoHoja,
   MAXIMO_BYTES_HOJA,
@@ -8,11 +9,17 @@ import {
   TIPOS_HOJA,
   type TipoHoja,
 } from '@gpb/core'
-import { and, desc, eq, isNull } from '@gpb/db'
+import { and, desc, eq, hojaPorOmisionPara, isNull } from '@gpb/db'
 import { hojaImagen } from '@gpb/db/schema'
 import { Inject, Injectable } from '@nestjs/common'
 import { AlmacenNoConfigurado, ArchivosDelTenant } from '../comun/almacen.ts'
 import { DatosDelTenant } from '../comun/datos.ts'
+
+/**
+ * Los dibujos que trae el sistema, en el repositorio. La ruta es relativa a este módulo, y vale
+ * igual desde `src` que desde `dist`: los dos están a la misma altura de `assets`.
+ */
+const CARPETA_POR_OMISION = new URL('../../assets/hojas/', import.meta.url)
 
 type Codigo =
   | 'NO_ENCONTRADA'
@@ -135,6 +142,16 @@ export class ServicioHojas {
     })
     if (!fila) throw new ErrorHojas('NO_ENCONTRADA')
 
+    if (fila.porOmision) {
+      return {
+        contenido: new Uint8Array(await readFile(new URL(`${fila.tipo}.png`, CARPETA_POR_OMISION))),
+        formato: fila.formato,
+        nombre: `${fila.tipo}.png`,
+        ancho: fila.ancho,
+        alto: fila.alto,
+      }
+    }
+
     const objeto = await this.archivos.leer(fila.ruta).catch((error: unknown) => {
       if (error instanceof AlmacenNoConfigurado) throw new ErrorHojas('SIN_ALMACEN')
       throw error
@@ -154,16 +171,24 @@ export class ServicioHojas {
 
   /**
    * Vuelve al dibujo que trae el sistema. No borra: marca. El archivo tampoco se borra, porque
-   * las órdenes recibidas con él lo siguen mostrando.
+   * las órdenes recibidas con él lo siguen mostrando. Quitar el que trae el sistema no tiene
+   * a dónde volver, y no se puede.
    */
   quitar(tipo: TipoHoja) {
-    return this.datos.transaccion(async (tx) => {
+    return this.datos.transaccion(async (tx, sesion) => {
       const marcadas = await tx
         .update(hojaImagen)
         .set({ reemplazadaEn: new Date() })
-        .where(and(eq(hojaImagen.tipo, tipo), isNull(hojaImagen.reemplazadaEn)))
+        .where(
+          and(
+            eq(hojaImagen.tipo, tipo),
+            isNull(hojaImagen.reemplazadaEn),
+            eq(hojaImagen.porOmision, false),
+          ),
+        )
         .returning({ id: hojaImagen.id })
       if (!marcadas.length) throw new ErrorHojas('NO_ENCONTRADA')
+      await tx.insert(hojaImagen).values(hojaPorOmisionPara(sesion.tenantId, tipo))
       return { hecho: true as const }
     })
   }
@@ -179,5 +204,6 @@ function salida(f: typeof hojaImagen.$inferSelect) {
     bytes: f.bytes,
     creadoEn: f.creadoEn.toISOString(),
     creadoPor: f.creadoPor,
+    porOmision: f.porOmision,
   }
 }
