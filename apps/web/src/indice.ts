@@ -37,6 +37,8 @@ const ESTATICAS: EntradaIndice[] = [
     donde: 'Principal → Repuestos',
     claves: [
       'repuestos',
+      'codigo de barras',
+      'ean',
       'stock',
       'deposito',
       'piezas',
@@ -87,6 +89,8 @@ const ESTATICAS: EntradaIndice[] = [
     donde: 'Repuestos → Pedidos',
     claves: [
       'pedido',
+      'escanear cajas',
+      'codigo de barras',
       'mostrador',
       'venta de repuestos',
       'chasis',

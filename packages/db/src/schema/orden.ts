@@ -230,6 +230,11 @@ export const ordenItem = pgTable(
      */
     autorizacion: text(),
     presupuestoId: uuid().references((): AnyPgColumn => ordenPresupuesto.id),
+    /**
+     * Los códigos de barras de las cajas que se le dieron a este auto, tal como se escanearon en
+     * el depósito. El cliente los compara con las cajas que se lleva. Vacío si se cargó a mano.
+     */
+    codigosBarras: text().array().notNull().default(sql`'{}'::text[]`),
     creadoEn: creadoEn(),
   },
   (t) => [

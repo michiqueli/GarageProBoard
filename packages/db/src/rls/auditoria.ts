@@ -79,6 +79,10 @@ export const TABLAS_AUDITADAS: readonly TablaAuditada[] = [
   },
   { tabla: 'repuesto' },
   {
+    tabla: 'repuesto_codigo_barras',
+    nota: 'Qué código se le asoció a qué pieza y quién: si una caja no coincide con la orden, se mira acá.',
+  },
+  {
     tabla: 'repuesto_stock',
     cuandoActualiza:
       'old.ubicacion is distinct from new.ubicacion or old.minimo is distinct from new.minimo',

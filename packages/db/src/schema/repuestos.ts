@@ -70,6 +70,32 @@ export const repuesto = pgTable(
 )
 
 /**
+ * Los códigos de barras de una pieza, uno o varios: la misma pastilla de dos marcas es el mismo
+ * repuesto con dos códigos. Casi siempre es el EAN de la caja, que es el del **producto** y no el
+ * de esa caja en particular. Ver `docs/tecnicos/egreso.md`.
+ *
+ * Únicos por concesionaria: un código que apunta a dos piezas no sirve para buscar.
+ */
+export const repuestoCodigoBarras = pgTable(
+  'repuesto_codigo_barras',
+  {
+    id: pk(),
+    tenantId: tenantId().references(() => tenant.id),
+    repuestoId: uuid()
+      .notNull()
+      .references(() => repuesto.id),
+    codigo: text().notNull(),
+    creadoEn: creadoEn(),
+    creadoPor: uuid().references(() => usuario.id),
+  },
+  (t) => [
+    unique('repuesto_codigo_barras_uq').on(t.tenantId, t.codigo),
+    index('repuesto_codigo_barras_repuesto_idx').on(t.repuestoId),
+    check('repuesto_codigo_barras_formato', sql`${t.codigo} ~ '^[A-Z0-9./-]{4,64}$'`),
+  ],
+)
+
+/**
  * Cuántas hay de cada pieza en cada sucursal, y dónde están.
  *
  * La cantidad **puede quedar negativa**: si el depósito está mal contado y el mecánico
@@ -239,6 +265,11 @@ export const pedidoRepuestosItem = pgTable(
     cantidad: cantidad('cantidad').notNull().default('1'),
     precioUnitario: dinero('precio_unitario').notNull().default('0'),
     codigoAlicuota: smallint().notNull().default(5),
+    /**
+     * Los códigos de barras de las cajas que se escanearon al prepararlo. Pasan a la orden al
+     * entregar: son los que el cliente compara con las cajas que se lleva.
+     */
+    codigosBarras: text().array().notNull().default(sql`'{}'::text[]`),
     creadoEn: creadoEn(),
   },
   (t) => [

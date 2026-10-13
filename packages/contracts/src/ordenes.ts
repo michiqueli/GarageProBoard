@@ -160,6 +160,11 @@ export const itemOrden = z.object({
    */
   autorizacion: z.enum(AUTORIZACIONES).nullable(),
   presupuestoId: z.uuid().nullable(),
+  /**
+   * Los códigos de barras de las cajas que se le dieron a este auto, escaneados en el depósito.
+   * El cliente los compara con las cajas que se lleva.
+   */
+  codigosBarras: z.array(z.string()),
 })
 
 export const presupuestoOrden = z.object({

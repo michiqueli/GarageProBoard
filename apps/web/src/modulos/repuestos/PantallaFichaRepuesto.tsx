@@ -124,6 +124,11 @@ export function PantallaFichaRepuesto() {
                 <Dato nombre="Marca">{r.marca}</Dato>
                 <Dato nombre="Rubro">{r.rubro}</Dato>
                 <Dato nombre="Aplicación">{r.aplicacion}</Dato>
+                <Dato nombre="Códigos de barras">
+                  {r.codigosBarras.length ? (
+                    <span className="font-mono">{r.codigosBarras.join(' · ')}</span>
+                  ) : null}
+                </Dato>
                 <Dato nombre="Precio final">
                   <span className="tabular font-mono">$ {formatearImporte(r.precioVenta)}</span>{' '}
                   <span className="text-etiqueta text-texto-tenue">

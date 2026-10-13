@@ -60,6 +60,8 @@ interface Item {
   cantidad: string
   precioUnitario: string
   codigoAlicuota: (typeof ALICUOTAS)[number]['valor']
+  /** Los de las cajas que se escanearon en el depósito. Se muestran; no se editan acá. */
+  codigosBarras: string[]
 }
 
 let proxima = 1
@@ -74,6 +76,7 @@ const itemNuevo = (tipo: Item['tipo']): Item => ({
   cantidad: '1',
   precioUnitario: '',
   codigoAlicuota: 5,
+  codigosBarras: [],
 })
 
 /** «1.234,50» o «1234.50» → «1234.50». */
@@ -775,6 +778,7 @@ function Items({
       cantidad: sinCeros(i.cantidad),
       precioUnitario: sinCeros(i.precioUnitario),
       codigoAlicuota: i.codigoAlicuota as Item['codigoAlicuota'],
+      codigosBarras: i.codigosBarras,
     }))
   const [items, setItems] = useState<Item[]>(desdeOrden)
   const [cambios, setCambios] = useState(false)
@@ -919,6 +923,12 @@ function Items({
                       </span>
                     )}
                     {i.descripcion}
+                    {i.codigosBarras.length > 0 && (
+                      <span className="block font-mono text-etiqueta text-texto-suave">
+                        {i.codigosBarras.length === 1 ? 'Caja' : 'Cajas'}:{' '}
+                        {i.codigosBarras.join(' · ')}
+                      </span>
+                    )}
                   </span>
                   <Autorizacion estado={i.autorizacion} />
                   <span className="font-mono text-texto-suave">× {i.cantidad}</span>

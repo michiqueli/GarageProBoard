@@ -125,6 +125,10 @@ const AUDITAN: readonly string[] = [
  * auditoría de cambios?» se contesta acá y no releyendo código.
  */
 const NO_AUDITAN: Readonly<Record<string, string>> = {
+  'pedidosRepuestos.escanear':
+    'Suma el código al renglón del pedido, que no se audita: se audita al entregarlo, y la pieza nueva que agrega se ve en el pedido.',
+  'pedidosRepuestos.asociarCodigo':
+    'El trigger de repuesto_codigo_barras guarda qué código se le asoció a qué pieza y quién.',
   'auth.iniciar':
     'Los ingresos salen de la tabla `sesion`, que es más completa: trae la computadora y la IP.',
   'auth.refrescar': 'Es la misma persona en la misma silla, cada quince minutos.',

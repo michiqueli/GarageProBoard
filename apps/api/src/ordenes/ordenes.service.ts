@@ -555,6 +555,8 @@ export class ServicioOrdenes {
             id: previo?.id ?? null,
             autorizacion: (previo?.autorizacion ?? null) as Autorizacion | null,
             presupuestoId: previo?.presupuestoId ?? null,
+            // Los códigos de las cajas vienen del depósito: la orden no los edita, los conserva.
+            codigosBarras: (previo?.codigosBarras ?? []) as string[],
           }
         })
         await tx.delete(ordenItem).where(eq(ordenItem.ordenId, id))
@@ -1237,7 +1239,11 @@ export class ServicioOrdenes {
     sesion: Sesion,
     ordenId: string,
     items: Array<
-      ItemEntrada & { autorizacion?: Autorizacion | null; presupuestoId?: string | null }
+      ItemEntrada & {
+        autorizacion?: Autorizacion | null
+        presupuestoId?: string | null
+        codigosBarras?: string[]
+      }
     >,
   ) {
     const ids = items.map((i) => i.repuestoId).filter((x): x is string => Boolean(x))
@@ -1258,6 +1264,7 @@ export class ServicioOrdenes {
         cantidad: i.cantidad,
         precioUnitario: i.precioUnitario,
         codigoAlicuota: i.codigoAlicuota,
+        codigosBarras: i.codigosBarras ?? [],
       })),
     )
   }
@@ -1367,6 +1374,7 @@ export class ServicioOrdenes {
         precioUnitario: i.precioUnitario,
         codigoAlicuota: i.codigoAlicuota,
         total: totalItem(i).toFixed(2),
+        codigosBarras: i.codigosBarras,
         autorizacion: i.autorizacion as Autorizacion | null,
         presupuestoId: i.presupuestoId,
       })),

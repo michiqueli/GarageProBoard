@@ -342,6 +342,9 @@ compra en vez de un inventario.
 - ⬜ **Rotación y stock muerto**: clasificar el stock por movimiento, para dejar de tener
       plata inmovilizada en el estante
 - ⬜ Reservas y **pedido a fábrica desde el mínimo**
+- ✅ **Códigos de barras**: los de la caja de cada pieza, en el catálogo; se escanean al preparar
+      el pedido para una orden, y el de cada caja queda en la orden, para que el cliente lo
+      compare con las cajas que se lleva. Desde el 13/10/2026, en [el egreso](../tecnicos/egreso.md)
 - ⬜ Reemplazos y códigos alternativos
 - ⬜ Importar la lista de precios de la terminal
 - ⬜ Valorización múltiple del stock e inventarios

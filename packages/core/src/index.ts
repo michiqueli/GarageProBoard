@@ -1,5 +1,6 @@
 export * from './atajos.ts'
 export * from './carroceria.ts'
+export * from './codigo-barras.ts'
 export * from './cuit.ts'
 export * from './dinero.ts'
 export * from './hoja.ts'

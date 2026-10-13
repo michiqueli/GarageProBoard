@@ -10,6 +10,8 @@ import {
   ordenItem,
   pedidoRepuestos,
   pedidoRepuestosItem,
+  repuesto,
+  repuestoCodigoBarras,
   tipoComprobante,
   usuario,
   vehiculo,
@@ -20,7 +22,7 @@ import type { Sesion } from '../comun/contexto.ts'
 import { DatosDelTenant } from '../comun/datos.ts'
 import { EN_TALLER } from '../ordenes/ordenes.service.ts'
 import { ErrorRepuestos } from './errores.ts'
-import { cantidadLinda } from './repuestos.service.ts'
+import { asociarCodigoBarras, cantidadLinda } from './repuestos.service.ts'
 import { moverStock, repuestosExisten, seis, siguienteNumero, stockEn } from './stock.ts'
 
 export type EstadoPedido = 'abierto' | 'en_caja' | 'facturado' | 'entregado' | 'anulado'
@@ -32,6 +34,7 @@ export interface ItemPedidoEntrada {
   cantidad: string
   precioUnitario: string
   codigoAlicuota: number
+  codigosBarras?: string[] | undefined
 }
 
 type Pedido = typeof pedidoRepuestos.$inferSelect
@@ -273,6 +276,7 @@ export class ServicioPedidosRepuestos {
             cantidad: i.cantidad,
             precioUnitario: i.precioUnitario,
             codigoAlicuota: i.codigoAlicuota,
+            codigosBarras: i.codigosBarras,
           })),
         )
         for (const i of items) {
@@ -304,6 +308,79 @@ export class ServicioPedidosRepuestos {
         )
       },
     )
+  }
+
+  /**
+   * Una caja escaneada al preparar el pedido. La pieza se busca por su código de barras: si ya
+   * está en el pedido, el código queda en ese renglón; si no, se agrega con su precio. El stock no
+   * se mueve acá: se mueve al entregar, como siempre.
+   */
+  escanear(id: string, codigo: string) {
+    return this.datos.transaccion(async (tx, sesion) => {
+      await this.abiertoParaEscanear(tx, sesion, id)
+      const [pieza] = await tx
+        .select({
+          id: repuesto.id,
+          codigo: repuesto.codigo,
+          descripcion: repuesto.descripcion,
+          precioVenta: repuesto.precioVenta,
+          codigoAlicuota: repuesto.codigoAlicuota,
+        })
+        .from(repuestoCodigoBarras)
+        .innerJoin(repuesto, eq(repuesto.id, repuestoCodigoBarras.repuestoId))
+        .where(eq(repuestoCodigoBarras.codigo, codigo))
+      if (!pieza) throw new ErrorRepuestos('CODIGO_DESCONOCIDO', { codigo })
+
+      const items = await this.items(tx, id)
+      const renglon = items.find((i) => i.repuestoId === pieza.id)
+      if (renglon) {
+        await tx
+          .update(pedidoRepuestosItem)
+          .set({ codigosBarras: [...new Set([...renglon.codigosBarras, codigo])] })
+          .where(eq(pedidoRepuestosItem.id, renglon.id))
+      } else {
+        await tx.insert(pedidoRepuestosItem).values({
+          tenantId: sesion.tenantId,
+          pedidoId: id,
+          orden: items.reduce((a, i) => Math.max(a, i.orden), 0) + 1,
+          repuestoId: pieza.id,
+          codigo: pieza.codigo,
+          descripcion: pieza.descripcion,
+          cantidad: '1',
+          precioUnitario: pieza.precioVenta,
+          codigoAlicuota: pieza.codigoAlicuota,
+          codigosBarras: [codigo],
+        })
+      }
+      return {
+        pedido: await this.detalle(tx, sesion, id),
+        repuesto: pieza.descripcion,
+        agregado: !renglon,
+      }
+    })
+  }
+
+  /**
+   * Un código que el catálogo no conocía, asociado a la pieza de un renglón: queda en el catálogo
+   * para la próxima caja y en el renglón como escaneado.
+   */
+  asociarCodigo(id: string, itemId: string, codigo: string) {
+    return this.datos.transaccion(async (tx, sesion) => {
+      await this.abiertoParaEscanear(tx, sesion, id)
+      const [renglon] = await tx
+        .select()
+        .from(pedidoRepuestosItem)
+        .where(and(eq(pedidoRepuestosItem.id, itemId), eq(pedidoRepuestosItem.pedidoId, id)))
+      if (!renglon) throw new ErrorRepuestos('NO_ENCONTRADO')
+      if (!renglon.repuestoId) throw new ErrorRepuestos('SIN_REPUESTO')
+
+      await asociarCodigoBarras(tx, sesion, renglon.repuestoId, codigo)
+      await tx
+        .update(pedidoRepuestosItem)
+        .set({ codigosBarras: [...new Set([...renglon.codigosBarras, codigo])] })
+        .where(eq(pedidoRepuestosItem.id, renglon.id))
+      return this.detalle(tx, sesion, id)
+    })
   }
 
   aCaja(id: string, ip?: string) {
@@ -425,6 +502,22 @@ export class ServicioPedidosRepuestos {
     }
   }
 
+  /** Se escanea mientras se prepara: abierto, y de esta sucursal. */
+  private async abiertoParaEscanear(tx: Db, sesion: Sesion, id: string) {
+    const [p] = await tx
+      .select()
+      .from(pedidoRepuestos)
+      .where(eq(pedidoRepuestos.id, id))
+      .for('update')
+    if (!p || p.sucursalId !== sesion.sucursalId) throw new ErrorRepuestos('NO_ENCONTRADO')
+    if (p.estado !== 'abierto') {
+      throw new ErrorRepuestos('ESTADO_INVALIDO', {
+        motivo: 'Las cajas se escanean mientras se prepara el pedido, antes de entregarlo.',
+      })
+    }
+    return p
+  }
+
   private items(tx: Db, id: string) {
     return tx
       .select()
@@ -446,6 +539,7 @@ export class ServicioPedidosRepuestos {
         cantidad: i.cantidad,
         precioUnitario: i.precioUnitario,
         codigoAlicuota: i.codigoAlicuota,
+        codigosBarras: i.codigosBarras ?? [],
       })),
     )
   }
@@ -518,6 +612,7 @@ export class ServicioPedidosRepuestos {
         codigoAlicuota: i.codigoAlicuota,
         total: totalItem(i).toFixed(2),
         stock: i.repuestoId ? cantidadLinda(stock.get(i.repuestoId) ?? '0') : null,
+        codigosBarras: i.codigosBarras,
       })),
       factura: factura ?? null,
     }

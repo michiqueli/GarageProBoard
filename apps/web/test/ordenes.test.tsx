@@ -122,6 +122,7 @@ const FICHA = {
       total: '1140200.00',
       autorizacion: null,
       presupuestoId: null,
+      codigosBarras: [],
     },
   ],
 }

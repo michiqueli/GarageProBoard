@@ -51,6 +51,8 @@ interface Item {
   codigoAlicuota: (typeof ALICUOTAS)[number]['valor']
   /** Lo que hay en la sucursal, si es del catálogo. */
   stock: string | null
+  /** Los de las cajas escaneadas. No se editan acá: se escanean. */
+  codigosBarras: string[]
 }
 
 let proxima = 1
@@ -263,6 +265,7 @@ const renglonVacio = (): Item => ({
   precioUnitario: '',
   codigoAlicuota: 5,
   stock: null,
+  codigosBarras: [],
 })
 
 /** Los renglones del pedido. Uno vacío si no tiene y se puede editar: se pega el código y listo. */
@@ -277,6 +280,7 @@ function desdePedido(p: Pedido, editable = false): Item[] {
     precioUnitario: sinCeros(i.precioUnitario),
     codigoAlicuota: i.codigoAlicuota as Item['codigoAlicuota'],
     stock: i.stock,
+    codigosBarras: i.codigosBarras,
   }))
 }
 
@@ -349,6 +353,7 @@ function Items({
           cantidad: aDecimal(i.cantidad),
           precioUnitario: aDecimal(i.precioUnitario),
           codigoAlicuota: i.codigoAlicuota,
+          codigosBarras: i.codigosBarras,
         })),
       }),
     onSuccess: async (nuevo) => {
@@ -372,6 +377,8 @@ function Items({
       precioUnitario: sinCeros(r.precioVenta),
       codigoAlicuota: r.codigoAlicuota as Item['codigoAlicuota'],
       stock: r.stock,
+      // Las cajas escaneadas eran de la pieza anterior.
+      codigosBarras: [],
     })
 
   function agregar() {
@@ -454,6 +461,8 @@ function Items({
         </div>
       )}
 
+      {editable && <EscanearCajas pedido={p} pendiente={cambios} guardado={guardado} />}
+
       {items.length === 0 && (
         <p className="px-3 py-4 text-dato text-texto-suave">
           Todavía no tiene repuestos.
@@ -488,7 +497,10 @@ function Items({
               return (
                 <li key={i.clave} className="flex flex-wrap items-baseline gap-x-3 text-dato">
                   <span className="w-28 font-mono text-etiqueta">{i.codigo || '—'}</span>
-                  <span className="flex-1">{i.descripcion}</span>
+                  <span className="flex-1">
+                    {i.descripcion}
+                    <Cajas codigos={i.codigosBarras} />
+                  </span>
                   <span className="font-mono text-texto-suave">× {i.cantidad}</span>
                   <span className="tabular w-32 text-right font-mono">
                     {subtotal ? `$ ${formatearImporte(subtotal)}` : '—'}
@@ -550,6 +562,11 @@ function Items({
                 >
                   Quitar
                 </Boton>
+                {i.codigosBarras.length > 0 && (
+                  <span className="md:col-span-7">
+                    <Cajas codigos={i.codigosBarras} />
+                  </span>
+                )}
               </li>
             )
           })}
@@ -597,4 +614,124 @@ function Items({
 /** El foco va al renglón vacío con el que arranca un pedido nuevo. */
 function items0(p: Pedido, editable: boolean) {
   return !p.items.length && editable ? proxima - 1 : null
+}
+
+/** Los códigos de las cajas de un renglón: son los que el cliente compara con lo que se lleva. */
+function Cajas({ codigos }: { codigos: string[] }) {
+  if (!codigos.length) return null
+  return (
+    <span className="block font-mono text-etiqueta text-texto-suave">
+      {codigos.length === 1 ? 'Caja' : 'Cajas'}: {codigos.join(' · ')}
+    </span>
+  )
+}
+
+/**
+ * Escanear las cajas al preparar el pedido. El lector tipea el código y manda Enter: la pieza se
+ * busca por su código de barras y el código queda en su renglón, o la pieza se agrega. Un código
+ * que el catálogo no conoce se asocia a la pieza de un renglón, y la próxima caja ya se reconoce.
+ */
+function EscanearCajas({
+  pedido: p,
+  pendiente,
+  guardado,
+}: {
+  pedido: Pedido
+  pendiente: boolean
+  guardado: (p: Pedido) => Promise<void>
+}) {
+  const [codigo, setCodigo] = useState('')
+  const [desconocido, setDesconocido] = useState<string | null>(null)
+  const campo = useRef<HTMLInputElement>(null)
+
+  const escanear = useMutation({
+    mutationFn: (leido: string) => api.pedidosRepuestos.escanear({ id: p.id, codigo: leido }),
+    onSuccess: async (r) => {
+      setCodigo('')
+      await guardado(r.pedido)
+      campo.current?.focus()
+    },
+    onError: (error, leido) => {
+      if (error instanceof ORPCError && error.code === 'CODIGO_DESCONOCIDO') {
+        setCodigo('')
+        setDesconocido(leido)
+      }
+    },
+    meta: {
+      exito: (r) => {
+        const { repuesto, agregado } = r as { repuesto: string; agregado: boolean }
+        return agregado ? `${repuesto}: se agregó al pedido` : `${repuesto}: caja anotada`
+      },
+      error: (error) =>
+        error instanceof ORPCError && error.code === 'CODIGO_DESCONOCIDO'
+          ? null
+          : mensajeGeneral(error),
+    },
+  })
+
+  const asociar = useMutation({
+    mutationFn: (itemId: string) =>
+      api.pedidosRepuestos.asociarCodigo({ id: p.id, itemId, codigo: desconocido as string }),
+    onSuccess: async (nuevo) => {
+      setDesconocido(null)
+      await guardado(nuevo)
+      campo.current?.focus()
+    },
+    meta: { exito: 'Código anotado en el catálogo y en el pedido', error: mensajeGeneral },
+  })
+
+  const delCatalogo = p.items.filter((i) => i.repuestoId)
+
+  return (
+    <div className="grid gap-2 border-b border-borde-suave px-3 py-2.5">
+      <form
+        className="grid max-w-md gap-1"
+        onSubmit={(e) => {
+          e.preventDefault()
+          if (codigo.trim() && !escanear.isPending) escanear.mutate(codigo)
+        }}
+      >
+        <Campo
+          ref={campo}
+          etiqueta="Escaneá una caja"
+          value={codigo}
+          disabled={pendiente}
+          onChange={(e) => setCodigo(e.target.value)}
+          ayuda={
+            pendiente
+              ? 'Guardá los cambios antes de escanear'
+              : 'El código de barras queda en el renglón y pasa a la orden'
+          }
+        />
+      </form>
+      {desconocido && (
+        <fieldset
+          aria-label="Código desconocido"
+          className="grid gap-2 rounded-base border border-atencion px-3 py-2"
+        >
+          <p className="text-dato">
+            El código <b className="font-mono">{desconocido}</b> no está en el catálogo.{' '}
+            {delCatalogo.length
+              ? '¿De cuál de estas piezas es la caja?'
+              : 'Cargá la pieza en el pedido desde el catálogo y escaneá de nuevo.'}
+          </p>
+          <span className="flex flex-wrap gap-2">
+            {delCatalogo.map((i) => (
+              <Boton
+                key={i.id}
+                tamano="chico"
+                deshabilitado={asociar.isPending}
+                onClick={() => asociar.mutate(i.id)}
+              >
+                {i.descripcion}
+              </Boton>
+            ))}
+            <Boton tamano="chico" variante="sutil" onClick={() => setDesconocido(null)}>
+              No es de ninguna
+            </Boton>
+          </span>
+        </fieldset>
+      )}
+    </div>
+  )
 }
