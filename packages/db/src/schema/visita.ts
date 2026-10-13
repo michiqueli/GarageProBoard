@@ -162,16 +162,19 @@ export const visita = pgTable(
     // workspace al generar.
     check(
       'visita_motivo_valido',
-      sql`${t.motivo} in ('servicio', 'venta', 'plan_ahorro', 'usados', 'repuestos', 'administracion', 'otro')`,
+      sql`${t.motivo} in ('servicio', 'retiro', 'venta', 'plan_ahorro', 'usados', 'repuestos', 'administracion', 'otro')`,
     ),
     check('visita_origen_valido', sql`${t.origen} in ('recepcion', 'totem')`),
     check(
       'visita_resultado_valido',
-      sql`${t.resultado} is null or ${t.resultado} in ('atendida', 'se_fue', 'orden')`,
+      sql`${t.resultado} is null or ${t.resultado} in ('atendida', 'se_fue', 'orden', 'entrega')`,
     ),
     // Cerrada es con resultado, y abierta sin: así no hay visitas que no se sabe cómo terminaron.
     check('visita_cierre_con_resultado', sql`(${t.cerradaEn} is null) = (${t.resultado} is null)`),
-    check('visita_orden_con_resultado', sql`${t.ordenId} is null or ${t.resultado} = 'orden'`),
+    check(
+      'visita_orden_con_resultado',
+      sql`${t.ordenId} is null or ${t.resultado} in ('orden', 'entrega')`,
+    ),
   ],
 )
 

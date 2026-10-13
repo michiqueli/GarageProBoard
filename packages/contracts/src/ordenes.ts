@@ -763,11 +763,20 @@ export const contratoOrdenes = {
               .max(300, 'Es largo: hasta 300 letras'),
           })
           .nullish(),
+        /**
+         * La visita de quien vino a buscarlo, si se anotó en la puerta o en el tótem. Entregar
+         * la cierra con la orden. Sin visita se entrega igual: muchos no pasan por la puerta.
+         */
+        visitaId: z.uuid().nullish(),
       }),
     )
     .errors({
       ...NO_ENCONTRADA,
       ...ESTADO_INVALIDO,
+      VISITA_INVALIDA: {
+        status: 409,
+        message: 'Esa visita ya terminó o la está atendiendo otra persona',
+      },
       SIN_AUTORIZACION: {
         status: 403,
         message:

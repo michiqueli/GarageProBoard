@@ -61,6 +61,7 @@ beforeAll(async () => {
     vehiculos: [
       { chasis: '8AJFB8CD5N7778889', dominio: 'AD333EF' },
       { chasis: '8AJFB8CD5N7778890', dominio: 'AD333EG' },
+      { chasis: '8AJFB8CD5N7778891', dominio: 'AD333EH' },
     ],
   })
   const filas = await api.pg.dbDuenio
@@ -165,5 +166,48 @@ describe('facturada', () => {
     expect(pdf.rawPayload.subarray(0, 5).toString()).toBe('%PDF-')
 
     expect((await pedir(asesor, 'GET', '/ordenes?estado=para_entregar')).json().datos).toEqual([])
+  })
+})
+
+describe('el que viene a buscarlo', () => {
+  /** Una orden facturada, lista para llevársela. */
+  async function facturada() {
+    const id = await terminada(autos[2] as string)
+    await api.pg.dbDuenio.update(orden).set({ estado: 'facturada' }).where(eq(orden.id, id))
+    return id
+  }
+
+  async function anotarRetiro(nombre: string) {
+    const r = await pedir(gerente, 'POST', '/recepcion/visitas', { motivo: 'retiro', nombre })
+    expect(r.statusCode, r.body).toBe(201)
+    return r.json() as { id: string; numero: string }
+  }
+
+  it('se anota con la S, y entregarle el auto cierra su visita con la orden', async () => {
+    const v = await anotarRetiro('Viene a buscarlo')
+    expect(v.numero).toMatch(/^S-/)
+    await pedir(asesor, 'POST', `/recepcion/visitas/${v.id}/atender`)
+    const id = await facturada()
+
+    const r = await pedir(asesor, 'POST', `/ordenes/${id}/entregar`, { visitaId: v.id })
+    expect(r.statusCode, r.body).toBe(200)
+
+    const visitas = (await pedir(gerente, 'GET', '/recepcion/visitas')).json().datos
+    expect(visitas.find((x: { id: string }) => x.id === v.id)).toMatchObject({
+      resultado: 'entrega',
+      ordenId: id,
+    })
+  })
+
+  it('si la visita la tiene otro, no se entrega: nada queda a medias', async () => {
+    const v = await anotarRetiro('Disputado')
+    await pedir(gerente, 'POST', `/recepcion/visitas/${v.id}/atender`)
+    const id = await facturada()
+
+    const r = await pedir(asesor, 'POST', `/ordenes/${id}/entregar`, { visitaId: v.id })
+    expect(r.statusCode).toBe(409)
+    expect(r.json().code).toBe('VISITA_INVALIDA')
+    const [o] = await api.pg.dbDuenio.select().from(orden).where(eq(orden.id, id))
+    expect(o?.estado).toBe('facturada')
   })
 })

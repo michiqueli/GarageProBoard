@@ -1,4 +1,4 @@
-import { ESTADOS_TURNO, MAXIMO_NOTA_VISITA, MOTIVOS_VISITA } from '@gpb/core'
+import { ESTADOS_TURNO, MAXIMO_NOTA_VISITA, MOTIVOS_VISITA, RESULTADOS_VISITA } from '@gpb/core'
 import { z } from 'zod'
 import { conEstacion, conPermiso } from './acceso.ts'
 import { PUESTOS_ORDENADOS } from './personal.ts'
@@ -26,7 +26,7 @@ export const visita = z.object({
   llegoEn: z.iso.datetime(),
   atendidaEn: z.iso.datetime().nullable(),
   cerradaEn: z.iso.datetime().nullable(),
-  resultado: z.enum(['atendida', 'se_fue', 'orden']).nullable(),
+  resultado: z.enum(RESULTADOS_VISITA).nullable(),
   ordenId: z.uuid().nullable(),
   nota: z.string().nullable(),
   /**

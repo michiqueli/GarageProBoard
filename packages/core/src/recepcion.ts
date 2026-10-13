@@ -9,6 +9,7 @@
 /** A qué vino, en el orden en que se ofrece. */
 export const MOTIVOS_VISITA = [
   'servicio',
+  'retiro',
   'venta',
   'plan_ahorro',
   'usados',
@@ -20,6 +21,7 @@ export type MotivoVisita = (typeof MOTIVOS_VISITA)[number]
 
 export const MOTIVOS_VISITA_NOMBRE: Record<MotivoVisita, string> = {
   servicio: 'Servicio',
+  retiro: 'Retirar el auto',
   venta: 'Venta 0km',
   plan_ahorro: 'Plan de ahorro',
   usados: 'Usados',
@@ -35,6 +37,8 @@ export const MOTIVOS_VISITA_NOMBRE: Record<MotivoVisita, string> = {
  */
 export const LETRA_VISITA: Record<MotivoVisita, string> = {
   servicio: 'S',
+  // El que viene a buscar el auto va al mismo mostrador que el que lo trae.
+  retiro: 'S',
   venta: 'V',
   plan_ahorro: 'V',
   usados: 'V',
@@ -52,6 +56,7 @@ export const LETRA_VISITA: Record<MotivoVisita, string> = {
  */
 export const PUESTOS_POR_MOTIVO: Record<MotivoVisita, readonly string[]> = {
   servicio: ['asesor'],
+  retiro: ['asesor'],
   venta: ['vendedor'],
   plan_ahorro: ['vendedor'],
   usados: ['vendedor'],
@@ -72,7 +77,11 @@ export function numeroVisita(letra: string, numero: number): string {
   return `${letra}-${String(numero).padStart(3, '0')}`
 }
 
-export const RESULTADOS_VISITA = ['atendida', 'se_fue', 'orden'] as const
+/**
+ * Cómo terminó. `orden` es que se le abrió una al recibir el auto; `entrega`, que vino a
+ * buscarlo y se lo llevó. Las dos dicen qué orden.
+ */
+export const RESULTADOS_VISITA = ['atendida', 'se_fue', 'orden', 'entrega'] as const
 export type ResultadoVisita = (typeof RESULTADOS_VISITA)[number]
 
 /**

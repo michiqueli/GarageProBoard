@@ -89,6 +89,52 @@ export interface EntradaEgreso {
   inventario?: InventarioRecepcion | undefined
   danios?: DanioEntrada[] | undefined
   sinFactura?: { motivo: string } | null | undefined
+  /** La visita de quien vino a buscarlo, si se anotó: entregar la cierra. */
+  visitaId?: string | null | undefined
+}
+
+/**
+ * Traba la visita de la puerta antes de atarle una orden: si otra persona la agarró mientras
+ * tanto, o ya terminó, no se ata. Una que nadie agarró, sí: se la atendió desde el escritorio.
+ */
+async function trabarVisita(
+  tx: Db,
+  sesion: Sesion,
+  id: string,
+): Promise<'libre' | 'no_existe' | 'invalida'> {
+  const [v] = await tx
+    .select({ cerradaEn: visita.cerradaEn, atendidaPor: visita.atendidaPor })
+    .from(visita)
+    .where(eq(visita.id, id))
+    .for('update')
+  if (!v) return 'no_existe'
+  if (v.cerradaEn || (v.atendidaPor && v.atendidaPor !== sesion.usuarioId)) return 'invalida'
+  return 'libre'
+}
+
+/** La cierra con su orden: `orden` al recibir el auto, `entrega` al llevárselo. */
+async function cerrarVisita(
+  tx: Db,
+  sesion: Sesion,
+  id: string,
+  resultado: 'orden' | 'entrega',
+  ordenId: string,
+) {
+  const ahora = new Date()
+  const [cerrada] = await tx
+    .update(visita)
+    .set({
+      resultado,
+      ordenId,
+      cerradaEn: ahora,
+      // Si nadie la había agarrado —se atendió desde el escritorio—, la atendió quien la cierra.
+      atendidaPor: sql`coalesce(${visita.atendidaPor}, ${sesion.usuarioId}::uuid)`,
+      atendidaEn: sql`coalesce(${visita.atendidaEn}, now())`,
+      actualizadoEn: ahora,
+    })
+    .where(eq(visita.id, id))
+    .returning({ turnoId: visita.turnoId })
+  return cerrada
 }
 
 export class ErrorOrdenes extends Error {
@@ -277,15 +323,9 @@ export class ServicioOrdenes {
       // La visita se traba antes que nada: si otra tablet la agarró mientras ésta recibía el
       // auto, no se abre una orden que después no se puede atar a nadie.
       if (entrada.visitaId) {
-        const [v] = await tx
-          .select({ cerradaEn: visita.cerradaEn, atendidaPor: visita.atendidaPor })
-          .from(visita)
-          .where(eq(visita.id, entrada.visitaId))
-          .for('update')
-        if (!v) throw new ErrorOrdenes('NO_ENCONTRADO')
-        if (v.cerradaEn || (v.atendidaPor && v.atendidaPor !== sesion.usuarioId)) {
-          throw new ErrorOrdenes('VISITA_INVALIDA')
-        }
+        const traba = await trabarVisita(tx, sesion, entrada.visitaId)
+        if (traba === 'no_existe') throw new ErrorOrdenes('NO_ENCONTRADO')
+        if (traba === 'invalida') throw new ErrorOrdenes('VISITA_INVALIDA')
       }
 
       const [auto] = await tx
@@ -419,19 +459,7 @@ export class ServicioOrdenes {
 
       if (entrada.visitaId) {
         const ahora = new Date()
-        const [cerrada] = await tx
-          .update(visita)
-          .set({
-            resultado: 'orden',
-            ordenId: creada.id,
-            cerradaEn: ahora,
-            // Si nadie la había agarrado —se recibió desde el escritorio—, la atendió quien abre.
-            atendidaPor: sql`coalesce(${visita.atendidaPor}, ${sesion.usuarioId}::uuid)`,
-            atendidaEn: sql`coalesce(${visita.atendidaEn}, now())`,
-            actualizadoEn: ahora,
-          })
-          .where(eq(visita.id, entrada.visitaId))
-          .returning({ turnoId: visita.turnoId })
+        const cerrada = await cerrarVisita(tx, sesion, entrada.visitaId, 'orden', creada.id)
         // El turno que se agendó con la patente sola queda con el auto que se recibió: si se
         // dio de alta recién, la agenda ya lo muestra con su marca y su modelo.
         if (cerrada?.turnoId) {
@@ -753,6 +781,11 @@ export class ServicioOrdenes {
         ) {
           throw new ErrorOrdenes('KILOMETRAJE_MENOR')
         }
+        // Antes de tocar nada: una visita que tiene otro no se cierra, y la entrega no queda a
+        // medias por eso.
+        if (entrada.visitaId && (await trabarVisita(tx, sesion, entrada.visitaId)) !== 'libre') {
+          throw new ErrorOrdenes('VISITA_INVALIDA')
+        }
 
         // Lo que no se hizo queda con el vehículo: la próxima recepción lo ofrece de nuevo.
         const items = await tx.select().from(ordenItem).where(eq(ordenItem.ordenId, id))
@@ -795,6 +828,9 @@ export class ServicioOrdenes {
               ),
             )
         }
+
+        // El que vino a buscarlo y se anotó en la puerta: su visita termina con la entrega.
+        if (entrada.visitaId) await cerrarVisita(tx, sesion, entrada.visitaId, 'entrega', id)
 
         const nuevos = entrada.danios?.length ?? 0
         await this.auditar(
