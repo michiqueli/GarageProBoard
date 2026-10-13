@@ -267,6 +267,13 @@
       "when": 1791902838911,
       "tag": "0037_vehiculo_pendiente",
       "breakpoints": true
+    },
+    {
+      "idx": 38,
+      "version": "7",
+      "when": 1791903511569,
+      "tag": "0038_egreso",
+      "breakpoints": true
     }
   ]
 }

@@ -112,7 +112,7 @@ export class ControladorOrdenes {
   @Operacion(c.entregar)
   entregar(@Req() pedido: FastifyRequest) {
     return implement(c.entregar).handler(({ input, errors }) =>
-      this.servicio.entregar(input.id, pedido.ip).catch((e) => traducir(e, errors)),
+      this.servicio.entregar(input.id, input, pedido.ip).catch((e) => traducir(e, errors)),
     )
   }
 

@@ -31,6 +31,12 @@ export const ACCIONES_PERMISO = [
    */
   'configurar',
   'administrar',
+  /**
+   * Decidir una excepción que otro no puede: entregar una orden sin factura. Lo controla el
+   * motivo que se escribe y la auditoría, no un bloqueo: hay garantías que se facturan después
+   * y clientes de confianza.
+   */
+  'autorizar',
 ] as const
 
 export type AccionPermiso = (typeof ACCIONES_PERMISO)[number]
@@ -71,6 +77,7 @@ const VERBOS: Record<AccionPermiso, string> = {
   facturar: 'facturar',
   configurar: 'configurar',
   administrar: 'administrar',
+  autorizar: 'autorizar',
 }
 
 const SUSTANTIVOS: Record<Sujeto, string> = {

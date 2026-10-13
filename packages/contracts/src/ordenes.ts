@@ -231,6 +231,28 @@ export const ordenDetalle = ordenResumen.extend({
   observaciones: z.string().nullable(),
   danios: z.array(danioRecepcion),
   inventario: inventarioRecepcion,
+  /**
+   * Lo que se le recomendó y no se hizo: lo rechazado y lo ámbar o rojo de la revisión que no
+   * llegó a la orden. Es lo que el egreso le dice al cliente, y lo que queda pendiente al entregar.
+   */
+  noSeHizo: z.array(
+    z.object({
+      origen: z.enum(['presupuesto', 'revision']),
+      descripcion: z.string(),
+      semaforo: z.enum(['ambar', 'rojo']).nullable(),
+    }),
+  ),
+  /** Cómo salió el auto, una vez entregado. */
+  egreso: z
+    .object({
+      entregadaPor: z.string().nullable(),
+      kilometraje: z.number().int().nullable(),
+      combustible: z.enum(NIVELES_COMBUSTIBLE).nullable(),
+      inventario: inventarioRecepcion,
+      danios: z.array(danioRecepcion),
+      sinFactura: z.object({ motivo: z.string(), autorizadoPor: z.string() }).nullable(),
+    })
+    .nullable(),
   /** Los puntos de la revisión, por sección y en el orden del taller. */
   revision: z.array(respuestaRevision),
   /** Qué carrocería se dibujó: decide cuál de los dibujos del sistema usar si no hay propio. */
@@ -324,7 +346,10 @@ export const contratoOrdenes = {
     .input(
       paginado.extend({
         buscar: z.string().trim().max(60).optional(),
-        estado: z.enum([...ESTADOS_ORDEN, 'en_taller', 'todas']).default('en_taller'),
+        /** `para_entregar`: terminadas o facturadas, la cola del egreso. */
+        estado: z
+          .enum([...ESTADOS_ORDEN, 'en_taller', 'para_entregar', 'todas'])
+          .default('en_taller'),
       }),
     )
     .output(z.object({ datos: z.array(ordenResumen), total: z.number().int() })),
@@ -713,10 +738,46 @@ export const contratoOrdenes = {
       path: '/ordenes/{id}/entregar',
       tags: [TAG],
       operationId: 'entregarOrden',
-      summary: 'Entregar el vehículo al cliente',
+      summary: 'Entregar el vehículo al cliente: el egreso',
+      description:
+        'Con cómo sale —km, combustible, lo que vino con él tildado y los daños nuevos— contra ' +
+        'cómo entró. Se entrega facturada, o sin factura si quien entrega puede autorizarlo y ' +
+        'dice por qué. Lo que no se hizo queda como pendiente del vehículo.',
     })
-    .input(conId)
-    .errors({ ...NO_ENCONTRADA, ...ESTADO_INVALIDO })
+    .input(
+      conId.extend({
+        kilometraje: z.number().int().min(0).nullish(),
+        combustible: z.enum(NIVELES_COMBUSTIBLE).nullish(),
+        inventario: inventarioRecepcion.default({}),
+        danios: z
+          .array(danioEntrada)
+          .max(40, 'Son muchas marcas: agrupalas con un detalle')
+          .default([]),
+        /** Entregarla sin factura: hace falta poder autorizar órdenes, y decir por qué. */
+        sinFactura: z
+          .object({
+            motivo: z
+              .string()
+              .trim()
+              .min(5, 'Decí por qué se entrega sin factura')
+              .max(300, 'Es largo: hasta 300 letras'),
+          })
+          .nullish(),
+      }),
+    )
+    .errors({
+      ...NO_ENCONTRADA,
+      ...ESTADO_INVALIDO,
+      SIN_AUTORIZACION: {
+        status: 403,
+        message:
+          'Entregarla sin factura lo autoriza alguien que pueda autorizar órdenes. Facturala en caja, o pedíselo.',
+      },
+      KILOMETRAJE_MENOR: {
+        status: 422,
+        message: 'Los kilómetros de salida no pueden ser menos que los de entrada',
+      },
+    })
     .output(ordenDetalle),
 
   anular: conPermiso('servicios', 'anular', 'Orden')

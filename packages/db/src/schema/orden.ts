@@ -176,6 +176,22 @@ export const orden = pgTable(
 
     terminadaEn: timestamp({ withTimezone: true }),
     entregadaEn: timestamp({ withTimezone: true }),
+
+    // ── El egreso: cómo sale el auto, contra cómo entró. Ver `docs/tecnicos/egreso.md`. ──
+    entregadaPor: uuid().references(() => usuario.id),
+    kilometrajeSalida: integer(),
+    combustibleSalida: text(),
+    /** Lo que vino con el auto, tildado al devolverlo: `esta` o `falta`. */
+    inventarioSalida: jsonb().$type<InventarioRecepcion>().notNull().default(sql`'{}'::jsonb`),
+    /** Daños que no estaban al recibirlo, marcados sobre el mismo dibujo. */
+    daniosEgreso: jsonb().$type<DanioRecepcion[]>().notNull().default(sql`'[]'::jsonb`),
+    /**
+     * Se entregó sin factura: quién lo autorizó y por qué. Una garantía que se factura después,
+     * un cliente de confianza. Vacío si se entregó facturada, que es lo normal.
+     */
+    sinFacturaAutorizadoPor: uuid().references(() => usuario.id),
+    sinFacturaMotivo: text(),
+
     creadoEn: creadoEn(),
     actualizadoEn: actualizadoEn(),
   },
@@ -193,6 +209,18 @@ export const orden = pgTable(
       sql`${t.combustible} is null or ${t.combustible} in ('vacio', 'cuarto', 'medio', 'tres_cuartos', 'lleno')`,
     ),
     check('orden_kilometraje_positivo', sql`${t.kilometraje} is null or ${t.kilometraje} >= 0`),
+    check(
+      'orden_combustible_salida_valido',
+      sql`${t.combustibleSalida} is null or ${t.combustibleSalida} in ('vacio', 'cuarto', 'medio', 'tres_cuartos', 'lleno')`,
+    ),
+    check(
+      'orden_kilometraje_salida_positivo',
+      sql`${t.kilometrajeSalida} is null or ${t.kilometrajeSalida} >= 0`,
+    ),
+    check(
+      'orden_sin_factura_con_motivo',
+      sql`(${t.sinFacturaAutorizadoPor} is null) = (${t.sinFacturaMotivo} is null)`,
+    ),
     check('orden_danios_lista', sql`jsonb_typeof(${t.danios}) = 'array'`),
     check('orden_hoja_tipo_valido', sql`${t.hojaTipo} in ('sedan', 'hatchback', 'suv', 'pickup')`),
     check('orden_inventario_objeto', sql`jsonb_typeof(${t.inventario}) = 'object'`),

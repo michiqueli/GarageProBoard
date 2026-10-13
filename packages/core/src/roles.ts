@@ -15,7 +15,7 @@ import {
 export const ACCIONES_POR_SUJETO: Readonly<
   Record<Exclude<Sujeto, 'all'>, readonly AccionPermiso[]>
 > = {
-  Orden: ['ver', 'crear', 'editar', 'anular', 'configurar'],
+  Orden: ['ver', 'crear', 'editar', 'anular', 'autorizar', 'configurar'],
   Vehiculo: ['ver', 'crear', 'editar'],
   Cliente: ['ver', 'crear', 'editar'],
   Proveedor: ['ver', 'crear', 'editar'],

@@ -403,6 +403,9 @@ function Formulario({
                       onChange={() => alternar({ accion, sujeto })}
                     />
                     {nombreAccion(accion)}
+                    {accion === 'autorizar' && sujeto === 'Orden' && (
+                      <span className="text-etiqueta text-texto-tenue">(entregar sin factura)</span>
+                    )}
                     {accion === 'administrar' && (
                       <span className="text-etiqueta text-texto-tenue">(todo sobre usuarios)</span>
                     )}

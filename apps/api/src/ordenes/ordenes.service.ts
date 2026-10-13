@@ -79,6 +79,17 @@ type Codigo =
   | 'VISITA_INVALIDA'
   | 'CORREO_NO_CONFIGURADO'
   | 'CORREO_NO_ENVIADO'
+  | 'SIN_AUTORIZACION'
+  | 'KILOMETRAJE_MENOR'
+
+/** Cómo sale el auto. Todo es opcional: un taller que no lo anota igual entrega. */
+export interface EntradaEgreso {
+  kilometraje?: number | null | undefined
+  combustible?: string | null | undefined
+  inventario?: InventarioRecepcion | undefined
+  danios?: DanioEntrada[] | undefined
+  sinFactura?: { motivo: string } | null | undefined
+}
 
 export class ErrorOrdenes extends Error {
   constructor(
@@ -197,7 +208,7 @@ export class ServicioOrdenes {
     pagina: number
     porPagina: number
     buscar?: string | undefined
-    estado: EstadoOrden | 'en_taller' | 'todas'
+    estado: EstadoOrden | 'en_taller' | 'para_entregar' | 'todas'
   }) {
     return this.datos.transaccion(async (tx, sesion) => {
       const texto = filtro.buscar?.trim()
@@ -208,7 +219,9 @@ export class ServicioOrdenes {
           ? undefined
           : filtro.estado === 'en_taller'
             ? inArray(orden.estado, [...EN_TALLER, 'terminada', 'facturada'])
-            : eq(orden.estado, filtro.estado),
+            : filtro.estado === 'para_entregar'
+              ? inArray(orden.estado, ['terminada', 'facturada'])
+              : eq(orden.estado, filtro.estado),
         texto
           ? or(
               sql`${orden.numero}::text = ${texto.replace(/^0+/, '')}`,
@@ -709,12 +722,38 @@ export class ServicioOrdenes {
     )
   }
 
-  entregar(id: string, ip?: string) {
+  /**
+   * El egreso: el auto vuelve al cliente. Se anota cómo sale contra cómo entró, y lo que no se
+   * hizo queda con el vehículo. Ver `docs/tecnicos/egreso.md`.
+   *
+   * Se entrega facturada. Terminada y sin factura, sólo si quien entrega puede autorizar
+   * órdenes y dice por qué: una garantía que se factura después, un cliente de confianza.
+   */
+  entregar(id: string, entrada: EntradaEgreso = {}, ip?: string) {
+    const { habilidades } = contextoDelPedido()
     return this.conOrdenEn(
       id,
-      ['facturada'],
-      'Se entrega una orden facturada.',
+      ['terminada', 'facturada'],
+      'Se entrega una orden terminada: facturada, o con la autorización para entregarla sin factura.',
       async (tx, sesion, o) => {
+        const sinFactura = o.estado === 'terminada' ? (entrada.sinFactura ?? null) : null
+        if (o.estado === 'terminada') {
+          if (!sinFactura) {
+            throw new ErrorOrdenes('ESTADO_INVALIDO', {
+              motivo:
+                'Falta facturarla en caja. Si se entrega sin factura, tiene que autorizarlo alguien.',
+            })
+          }
+          if (!habilidades.can('autorizar', 'Orden')) throw new ErrorOrdenes('SIN_AUTORIZACION')
+        }
+        if (
+          entrada.kilometraje != null &&
+          o.kilometraje != null &&
+          entrada.kilometraje < o.kilometraje
+        ) {
+          throw new ErrorOrdenes('KILOMETRAJE_MENOR')
+        }
+
         // Lo que no se hizo queda con el vehículo: la próxima recepción lo ofrece de nuevo.
         const items = await tx.select().from(ordenItem).where(eq(ordenItem.ordenId, id))
         const noSeHizo = loQueNoSeHizo(o.revision, items)
@@ -730,14 +769,51 @@ export class ServicioOrdenes {
         }
         await tx
           .update(orden)
-          .set({ estado: 'entregada', entregadaEn: new Date(), actualizadoEn: new Date() })
+          .set({
+            estado: 'entregada',
+            entregadaEn: new Date(),
+            entregadaPor: sesion.usuarioId,
+            kilometrajeSalida: entrada.kilometraje ?? null,
+            combustibleSalida: entrada.combustible ?? null,
+            inventarioSalida: entrada.inventario ?? {},
+            daniosEgreso: marcas(entrada.danios ?? []),
+            sinFacturaAutorizadoPor: sinFactura ? sesion.usuarioId : null,
+            sinFacturaMotivo: sinFactura?.motivo ?? null,
+            actualizadoEn: new Date(),
+          })
           .where(eq(orden.id, id))
+
+        // Los kilómetros de salida son el dato más fresco del auto.
+        if (entrada.kilometraje != null) {
+          await tx
+            .update(vehiculo)
+            .set({ kilometraje: entrada.kilometraje, actualizadoEn: new Date() })
+            .where(
+              and(
+                eq(vehiculo.id, o.vehiculoId),
+                sql`coalesce(${vehiculo.kilometraje}, 0) < ${entrada.kilometraje}`,
+              ),
+            )
+        }
+
+        const nuevos = entrada.danios?.length ?? 0
         await this.auditar(
           tx,
           sesion,
           id,
           'modificacion',
-          { numero: o.numero, estado: 'entregada', antes: o.estado },
+          {
+            numero: o.numero,
+            estado: 'entregada',
+            antes: o.estado,
+            texto: [
+              'Lo entregó',
+              sinFactura ? `sin factura: ${sinFactura.motivo}` : null,
+              nuevos ? `con ${nuevos === 1 ? 'un daño nuevo' : `${nuevos} daños nuevos`}` : null,
+            ]
+              .filter(Boolean)
+              .join(', '),
+          },
           ip,
         )
       },
@@ -1411,6 +1487,8 @@ export class ServicioOrdenes {
       observaciones: o.observaciones,
       danios: o.danios,
       inventario: o.inventario,
+      noSeHizo: loQueNoSeHizo(o.revision, items),
+      egreso: o.entregadaEn ? await egresoDe(tx, o) : null,
       revision: await this.revisionDe(
         tx,
         o,
@@ -1632,4 +1710,35 @@ export function loQueNoSeHizo(
       semaforo: r.estado as 'ambar' | 'rojo',
     }))
   return [...rechazados, ...sinPasar]
+}
+
+type Combustible = 'vacio' | 'cuarto' | 'medio' | 'tres_cuartos' | 'lleno'
+
+/** Cómo salió el auto, con los nombres de quien lo entregó y de quien autorizó sin factura. */
+async function egresoDe(tx: Db, o: typeof orden.$inferSelect) {
+  const ids = [o.entregadaPor, o.sinFacturaAutorizadoPor].filter((x): x is string => Boolean(x))
+  const personas = new Map(
+    ids.length
+      ? (
+          await tx
+            .select({ id: usuario.id, nombre: usuario.nombre, apellido: usuario.apellido })
+            .from(usuario)
+            .where(inArray(usuario.id, ids))
+        ).map((u) => [u.id, `${u.nombre} ${u.apellido}`])
+      : [],
+  )
+  return {
+    entregadaPor: (o.entregadaPor && personas.get(o.entregadaPor)) || null,
+    kilometraje: o.kilometrajeSalida,
+    combustible: o.combustibleSalida as Combustible | null,
+    inventario: o.inventarioSalida,
+    danios: o.daniosEgreso,
+    sinFactura:
+      o.sinFacturaMotivo && o.sinFacturaAutorizadoPor
+        ? {
+            motivo: o.sinFacturaMotivo,
+            autorizadoPor: personas.get(o.sinFacturaAutorizadoPor) ?? 'Alguien',
+          }
+        : null,
+  }
 }
