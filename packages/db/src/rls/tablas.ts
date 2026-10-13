@@ -18,6 +18,7 @@ export const TABLAS_CON_TENANT = [
   'orden_item',
   'orden_secuencia',
   'orden_presupuesto',
+  'orden_firma',
   'repuesto',
   'repuesto_stock',
   'repuesto_codigo_barras',

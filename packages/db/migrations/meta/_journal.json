@@ -253,6 +253,13 @@
       "when": 1791901221842,
       "tag": "0035_codigos_de_barras",
       "breakpoints": true
+    },
+    {
+      "idx": 36,
+      "version": "7",
+      "when": 1791902265394,
+      "tag": "0036_orden_firma",
+      "breakpoints": true
     }
   ]
 }

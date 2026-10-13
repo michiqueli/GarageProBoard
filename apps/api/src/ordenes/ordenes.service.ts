@@ -63,6 +63,7 @@ import { CORREO } from '../comun/simbolos.ts'
 import { cerrarSesionesDeLaOrden } from '../fichaje/tablero.ts'
 import { moverDiferencia, porRepuesto, repuestosExisten } from '../repuestos/stock.ts'
 import { enOrdenDeHoja, puntosDelTaller } from '../revision/revision.service.ts'
+import { firmasDe } from './firmas.service.ts'
 
 type Codigo =
   | 'NO_ENCONTRADA'
@@ -1363,6 +1364,7 @@ export class ServicioOrdenes {
       hojaTipo: o.hojaTipo as TipoHoja,
       hojaImagenId: o.hojaImagenId,
       terminadaEn: o.terminadaEn?.toISOString() ?? null,
+      firmas: await firmasDe(tx, o.id),
       entregadaEn: o.entregadaEn?.toISOString() ?? null,
       items: items.map((i) => ({
         id: i.id,

@@ -3,7 +3,9 @@ import {
   CONTROLES_INVENTARIO,
   ELEMENTOS_INVENTARIO,
   ESTADOS_REVISION,
+  MAXIMO_BYTES_FIRMA,
   MAXIMO_NOTA_PUNTO,
+  MOMENTOS_FIRMA,
   SECCIONES_REVISION,
   TIPOS_DANIO,
   TIPOS_HOJA,
@@ -202,7 +204,11 @@ export const sesionDeTrabajo = z.object({
   cerradaPor: z.enum(['mecanico', 'auto', 'jefe']).nullable(),
 })
 
+const firmaOrden = z.object({ aclaracion: z.string(), firmadoEn: z.iso.datetime() }).nullable()
+
 export const ordenDetalle = ordenResumen.extend({
+  /** La firma del cliente al recibir el auto y al devolverlo, si se firmó en la pantalla. */
+  firmas: z.object({ ingreso: firmaOrden, egreso: firmaOrden }),
   traeNombre: z.string().nullable(),
   traeTelefono: z.string().nullable(),
   autorizaNombre: z.string().nullable(),
@@ -593,6 +599,60 @@ export const contratoOrdenes = {
     .input(conId)
     .errors({ ...NO_ENCONTRADA, ...ESTADO_INVALIDO })
     .output(ordenDetalle),
+
+  firmar: conPermiso('servicios', 'editar', 'Orden')
+    .route({
+      method: 'POST',
+      path: '/ordenes/{id}/firmas/{momento}',
+      tags: [TAG],
+      operationId: 'firmarOrden',
+      summary: 'La firma del cliente en la pantalla, al recibir o al devolver el auto',
+      successStatus: 201,
+      description:
+        'Un PNG con el trazo, y la aclaración. Volver a firmar no borra la anterior: la marca ' +
+        'como reemplazada.',
+    })
+    .input(
+      conId.extend({
+        momento: z.enum(MOMENTOS_FIRMA),
+        aclaracion: z
+          .string()
+          .trim()
+          .min(3, 'Escribí el nombre de quien firma')
+          .max(120, 'Es largo: hasta 120 letras'),
+        imagen: z.file(),
+      }),
+    )
+    .errors({
+      ...NO_ENCONTRADA,
+      ESTADO_INVALIDO_FIRMA: {
+        status: 409,
+        message: 'En este estado de la orden no se firma eso',
+        data: z.object({ motivo: z.string() }),
+      },
+      FORMATO_INVALIDO: { status: 422, message: 'La firma tiene que llegar como un PNG' },
+      DEMASIADO_GRANDE: {
+        status: 413,
+        message: `La firma no puede pasar de ${MAXIMO_BYTES_FIRMA / 1024} KB`,
+      },
+      SIN_ALMACEN: {
+        status: 503,
+        message: 'El servidor no tiene configurado dónde guardar los archivos. Avisale a soporte',
+      },
+    })
+    .output(z.object({ ingreso: firmaOrden, egreso: firmaOrden })),
+
+  firma: conPermiso('servicios', 'ver', 'Orden')
+    .route({
+      method: 'GET',
+      path: '/ordenes/{id}/firmas/{momento}',
+      tags: [TAG],
+      operationId: 'firmaDeOrden',
+      summary: 'La imagen de la firma vigente',
+    })
+    .input(conId.extend({ momento: z.enum(MOMENTOS_FIRMA) }))
+    .errors({ ...NO_ENCONTRADA })
+    .output(z.file()),
 
   entregar: conPermiso('servicios', 'editar', 'Orden')
     .route({

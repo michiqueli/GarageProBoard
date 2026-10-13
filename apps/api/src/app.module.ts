@@ -20,6 +20,8 @@ import { ControladorFichaje } from './fichaje/fichaje.controller.ts'
 import { ServicioFichaje } from './fichaje/fichaje.service.ts'
 import { ControladorHojas } from './hojas/hojas.controller.ts'
 import { ServicioHojas } from './hojas/hojas.service.ts'
+import { ControladorFirmas } from './ordenes/firmas.controller.ts'
+import { ServicioFirmas } from './ordenes/firmas.service.ts'
 import { ControladorOrdenes } from './ordenes/ordenes.controller.ts'
 import { ServicioOrdenes } from './ordenes/ordenes.service.ts'
 import { ControladorOrganizacion } from './organizacion/organizacion.controller.ts'
@@ -91,6 +93,7 @@ import { ServicioVehiculos } from './vehiculos/vehiculos.service.ts'
     ControladorConfiguracion,
     ControladorComprobantes,
     ControladorOrdenes,
+    ControladorFirmas,
     ControladorRepuestos,
     ControladorPedidosRepuestos,
     ControladorCompras,
@@ -116,6 +119,7 @@ import { ServicioVehiculos } from './vehiculos/vehiculos.service.ts'
     ServicioConfiguracion,
     ServicioComprobantes,
     ServicioOrdenes,
+    ServicioFirmas,
     ServicioRepuestos,
     ServicioPedidosRepuestos,
     ServicioCompras,

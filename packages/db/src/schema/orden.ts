@@ -21,6 +21,7 @@ import {
   text,
   timestamp,
   unique,
+  uniqueIndex,
   uuid,
 } from 'drizzle-orm/pg-core'
 import { actualizadoEn, creadoEn, pk, tenantId } from './_comunes.ts'
@@ -313,4 +314,40 @@ export const ordenSecuencia = pgTable(
     ultimo: bigint({ mode: 'number' }).notNull().default(0),
   },
   (t) => [primaryKey({ columns: [t.sucursalId] })],
+)
+
+/**
+ * La firma del cliente, dibujada con el dedo en la pantalla: al recibir el auto y al devolverlo.
+ * Ver `docs/tecnicos/egreso.md`.
+ *
+ * Como los dibujos de la hoja, **los bytes están en el almacén** y esta fila manda: se escribe
+ * después de subir la imagen. Volver a firmar no borra la anterior, la marca: lo firmado se
+ * conserva aunque se haya firmado de nuevo.
+ */
+export const ordenFirma = pgTable(
+  'orden_firma',
+  {
+    id: pk(),
+    tenantId: tenantId().references(() => tenant.id),
+    ordenId: uuid()
+      .notNull()
+      .references(() => orden.id),
+    /** `ingreso` al recibir el auto, `egreso` al devolverlo. */
+    momento: text().notNull(),
+    /** Quién firmó, con su nombre: la aclaración de la hoja de papel. */
+    aclaracion: text().notNull(),
+    ruta: text().notNull(),
+    ancho: integer().notNull(),
+    alto: integer().notNull(),
+    bytes: integer().notNull(),
+    creadoEn: creadoEn(),
+    creadoPor: uuid().references(() => usuario.id),
+    reemplazadaEn: timestamp({ withTimezone: true }),
+  },
+  (t) => [
+    uniqueIndex('orden_firma_vigente_uq')
+      .on(t.ordenId, t.momento)
+      .where(sql`reemplazada_en is null`),
+    check('orden_firma_momento_valido', sql`${t.momento} in ('ingreso', 'egreso')`),
+  ],
 )

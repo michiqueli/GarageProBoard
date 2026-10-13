@@ -70,6 +70,10 @@ export const TABLAS_AUDITADAS: readonly TablaAuditada[] = [
       'cuándo: una fila borrada acá deja órdenes firmadas apuntando a un dibujo que no está.',
   },
   { tabla: 'orden' },
+  {
+    tabla: 'orden_firma',
+    nota: 'Quién firmó, cuándo, y quién la puso a firmar: si alguien dice que no firmó, se mira acá.',
+  },
   { tabla: 'orden_presupuesto' },
   {
     tabla: 'revision_punto',

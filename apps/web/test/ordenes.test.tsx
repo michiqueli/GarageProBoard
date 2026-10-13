@@ -109,6 +109,7 @@ const FICHA = {
   revision: [] as Array<Record<string, unknown>>,
   terminadaEn: null,
   entregadaEn: null,
+  firmas: { ingreso: null, egreso: null },
   factura: null,
   items: [
     {
