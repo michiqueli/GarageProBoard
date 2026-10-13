@@ -1,7 +1,7 @@
 import { contrato } from '@gpb/contracts'
 import { nivelEspera } from '@gpb/core'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Link } from '@tanstack/react-router'
+import { Link, useNavigate } from '@tanstack/react-router'
 import { Boton } from '../../componentes/Boton.tsx'
 import { IconoImprimir } from '../../componentes/iconos.tsx'
 import { Patente } from '../../componentes/Patente.tsx'
@@ -10,6 +10,7 @@ import { api } from '../../sesion/cliente.ts'
 import { mensajeGeneral } from '../../sesion/consultas.ts'
 import { usePuedeUsar } from '../../sesion/permisos.ts'
 import { imprimirOrden, nombreOrden } from '../ordenes/ordenes.ts'
+import { useRetiros } from '../ordenes/retiros.tsx'
 import { diaDe } from './turnos.ts'
 import { errorAlAtender, minutos, REFRESCO, useAhora, type Visita } from './visitas.ts'
 
@@ -57,6 +58,18 @@ export function ColaTablet({
   const deServicio = (visitas.data?.datos ?? []).filter(
     (v) => v.motivo === 'servicio' && !v.cerradaEn,
   )
+  // Los que vienen a buscar el auto: tocarlo lo agarra y lleva a elegir cuál se lleva.
+  const { retiros, esMia } = useRetiros()
+  const navegar = useNavigate()
+  const retirar = useMutation({
+    mutationFn: async (v: Visita) => (esMia(v) ? v : api.recepcion.atender({ id: v.id })),
+    onSuccess: (v) => {
+      void cache.invalidateQueries({ queryKey: ['visitas', tenantId] })
+      void navegar({ to: '/entregas', search: { visita: v.id } })
+    },
+    onError: () => cache.invalidateQueries({ queryKey: ['visitas', tenantId] }),
+    meta: { error: errorAlAtender },
+  })
   const mias = deServicio.filter((v) => v.atendidaPor?.id === yo)
   const esperando = deServicio.filter((v) => !v.atendidaEn)
   const deOtros = deServicio.filter((v) => v.atendidaPor && v.atendidaPor.id !== yo)
@@ -112,6 +125,20 @@ export function ColaTablet({
               ahora={ahora}
               onClick={() => !atender.isPending && atender.mutate(v)}
               accion="Recibir"
+            />
+          ))}
+        </Lista>
+      )}
+
+      {retiros.length > 0 && (
+        <Lista titulo="Vienen a retirar">
+          {retiros.map((v) => (
+            <Tarjeta
+              key={v.id}
+              v={v}
+              ahora={ahora}
+              onClick={() => !retirar.isPending && retirar.mutate(v)}
+              accion={esMia(v) ? 'Seguir' : 'Entregar'}
             />
           ))}
         </Lista>

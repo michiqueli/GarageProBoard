@@ -58,13 +58,13 @@ turno (agendado) ──llegó──▶ visita ◀── tótem / recepcionista
 | `numero` | El número del día —`S-014`, `V-003`— con la letra del motivo. Es lo que se llama por pantalla y lo que el cliente tiene en la mano |
 | `llego_en` | Cuando se anotó. Desde acá se mide la espera |
 | `origen` | `totem` o `recepcion` |
-| `motivo` | `servicio`, `venta`, `plan_ahorro`, `usados`, `repuestos`, `administracion`, `otro` |
+| `motivo` | `servicio`, `retiro` (viene a buscar el auto, con la S), `venta`, `plan_ahorro`, `usados`, `repuestos`, `administracion`, `otro` |
 | `entidad_id` | La persona, si existe. Puede no existir: el que viene a preguntar no tiene por qué darnos el documento |
 | `nombre`, `telefono` | Lo que dijo. Se copian aunque haya `entidad_id`, por lo mismo que la orden copia quién trae el auto: es lo que se anotó ese día |
 | `turno_id` | Si venía con turno |
 | `derivada_a` | El **empleado** que lo tiene que atender. Empleado y no usuario: un vendedor puede no tener usuario, y el nombre tiene que quedar igual |
 | `atendida_por`, `atendida_en` | Quién la agarró y cuándo. En servicio lo pone la tablet al tocar; en el resto, el derivado o la recepcionista |
-| `cerrada_en`, `resultado` | `atendida`, `se_fue` o `orden` (con `orden_id`) |
+| `cerrada_en`, `resultado` | `atendida`, `se_fue`, `orden` (se le abrió una al recibir el auto) o `entrega` (se lo llevó); las dos últimas con `orden_id` |
 | `nota` | Una línea: «pregunta por el Taos, financiado» |
 
 **Los estados salen de las fechas**, no de una columna aparte: esperando es sin

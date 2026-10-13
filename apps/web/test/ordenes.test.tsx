@@ -1074,6 +1074,32 @@ describe('la cola de la tablet', () => {
     expect(within(otro).getByText('Lo tiene Diego Sosa')).toBeDefined()
   })
 
+  it('el que viene a retirar va aparte, y tocarlo lleva a entregarle el auto', async () => {
+    const retiro = {
+      ...ESPERA,
+      id: '66666666-6666-4666-8666-666666666666',
+      numero: 'S-007',
+      motivo: 'retiro' as const,
+      nombre: 'Ana Gómez',
+    }
+    recepcion.hoy.mockResolvedValue({ datos: [retiro] })
+    recepcion.atender.mockResolvedValue({
+      ...retiro,
+      atendidaEn: new Date().toISOString(),
+      atendidaPor: { id: 'u1', nombre: 'Martín Gutiérrez' },
+    })
+    ordenes.listar.mockResolvedValue({ datos: [], total: 0 })
+    const router = await montarApp('/recepcion')
+
+    const retiran = await screen.findByRole('region', { name: 'Vienen a retirar' })
+    expect(screen.queryByRole('region', { name: 'Esperando' })).toBeNull()
+    await userEvent.click(within(retiran).getByRole('button', { name: /S-007/ }))
+
+    expect(recepcion.atender).toHaveBeenCalledWith({ id: retiro.id })
+    await waitFor(() => expect(router.state.location.pathname).toBe('/entregas'))
+    expect(router.state.location.search).toEqual({ visita: retiro.id })
+  })
+
   it('tocar uno lo agarra y arranca con quién lo trae ya puesto; la orden cierra la visita', async () => {
     recepcion.hoy.mockResolvedValue({ datos: [ESPERA] })
     recepcion.atender.mockResolvedValue({

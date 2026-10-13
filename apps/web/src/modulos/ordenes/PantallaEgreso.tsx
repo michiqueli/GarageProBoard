@@ -26,6 +26,7 @@ import { type Danio, DiagramaDanios, describirDanio } from './DiagramaDanios.tsx
 import { type Combustible, imprimirEgreso, nombreOrden } from './ordenes.ts'
 import { ElegirCombustible } from './PantallaRecepcion.tsx'
 import { Semaforo } from './RevisionRecepcion.tsx'
+import { quienRetira, useRetiros } from './retiros.tsx'
 
 const ruta = getRouteApi('/con-sesion/entregas/$id')
 
@@ -41,9 +42,12 @@ type Orden = Awaited<ReturnType<typeof api.ordenes.ficha>>
  */
 export function PantallaEgreso() {
   const { id } = ruta.useParams()
+  const { visita: visitaId } = ruta.useSearch()
   const navegar = useNavigate()
   const tenantId = usarSesion((e) => e.datos?.tenant.id)
-  useVolver(() => void navegar({ to: '/entregas' }))
+  // Volver lleva la visita de vuelta: quien vino a retirar sigue esperando su auto.
+  const deVuelta = visitaId ? { visita: visitaId } : {}
+  useVolver(() => void navegar({ to: '/entregas', search: deVuelta }))
 
   const consulta = useQuery({
     queryKey: ['ordenes', tenantId, 'ficha', id],
@@ -56,7 +60,7 @@ export function PantallaEgreso() {
       titulo={o ? `Entregar la ${nombreOrden(o.numero)}` : 'Entregar'}
       requiere={accesoDeRuta(contrato.ordenes.entregar)}
     >
-      <Link to="/entregas" className={`w-fit ${clasesBoton('normal', 'chico')}`}>
+      <Link to="/entregas" search={deVuelta} className={`w-fit ${clasesBoton('normal', 'chico')}`}>
         <IconoVolver />
         Para entregar
       </Link>
@@ -66,14 +70,21 @@ export function PantallaEgreso() {
           {mensajeGeneral(consulta.error)}
         </p>
       )}
-      {o && (o.estado === 'entregada' ? <Entregada orden={o} /> : <Egreso key={o.id} orden={o} />)}
+      {o &&
+        (o.estado === 'entregada' ? (
+          <Entregada orden={o} />
+        ) : (
+          <Egreso key={o.id} orden={o} visitaId={visitaId} />
+        ))}
     </Shell>
   )
 }
 
-function Egreso({ orden: o }: { orden: Orden }) {
+function Egreso({ orden: o, visitaId }: { orden: Orden; visitaId?: string | undefined }) {
   const cache = useQueryClient()
   const tenantId = usarSesion((e) => e.datos?.tenant.id)
+  /** Quien vino a buscarlo, si se tomó su visita de la puerta: entregar la cierra. */
+  const { visita } = useRetiros(visitaId)
   const puedeAutorizar = usePuede({ modulo: 'servicios', accion: 'autorizar', sujeto: 'Orden' })
 
   const [kilometraje, setKilometraje] = useState(o.kilometraje ? String(o.kilometraje) : '')
@@ -115,19 +126,26 @@ function Egreso({ orden: o }: { orden: Orden }) {
         inventario,
         danios: conDanio ? danios.map(({ tipo, x, y, nota }) => ({ tipo, x, y, nota })) : [],
         sinFactura: sinFacturar ? { motivo: motivo.trim() } : null,
+        visitaId: visita?.id ?? null,
       })
     },
     onSuccess: async (nueva) => {
       cache.setQueryData(['ordenes', tenantId, 'ficha', o.id], nueva)
       await cache.invalidateQueries({ queryKey: ['ordenes', tenantId] })
       await cache.invalidateQueries({ queryKey: ['tablero', tenantId], exact: false })
+      // Su visita terminó con la entrega: deja de estar en la puerta.
+      if (visita) await cache.invalidateQueries({ queryKey: ['visitas', tenantId] })
     },
     meta: {
       exito: `${nombreOrden(o.numero)} entregada`,
-      error: (error) =>
-        error instanceof ORPCError && (error.data as { motivo?: string } | undefined)?.motivo
+      error: (error) => {
+        if (error instanceof ORPCError && error.code === 'VISITA_INVALIDA') {
+          return 'La visita de quien vino a buscarlo ya terminó o la tiene otra persona. Volvé a Para entregar y entregalo sin ella.'
+        }
+        return error instanceof ORPCError && (error.data as { motivo?: string } | undefined)?.motivo
           ? String((error.data as { motivo: string }).motivo)
-          : mensajeGeneral(error),
+          : mensajeGeneral(error)
+      },
     },
   })
 
@@ -156,6 +174,12 @@ function Egreso({ orden: o }: { orden: Orden }) {
 
   return (
     <>
+      {visita && (
+        <p className="rounded-base border border-marca bg-marca-suave px-3 py-2 text-dato">
+          Se lo lleva <span className="font-mono font-semibold">{quienRetira(visita)}</span>.
+          Entregarlo cierra su visita de la puerta.
+        </p>
+      )}
       <Seccion titulo="El vehículo">
         <div className="flex flex-wrap items-center gap-3 px-3 py-2.5 text-dato">
           <Patente dominio={o.vehiculo.dominio} />

@@ -17,10 +17,16 @@ const ordenes = {
   pdfEgreso: vi.fn(),
 }
 const renovar = vi.fn()
+const recepcion = { hoy: vi.fn(), atender: vi.fn(), soltar: vi.fn() }
 
 vi.mock('../src/sesion/cliente.ts', () => ({
   api: {
     auth: { iniciar: vi.fn(), cerrar: vi.fn().mockResolvedValue({}), cambiarSucursal: vi.fn() },
+    recepcion: {
+      hoy: () => recepcion.hoy(),
+      atender: (x: unknown) => recepcion.atender(x),
+      soltar: (x: unknown) => recepcion.soltar(x),
+    },
     ordenes: Object.fromEntries(
       Object.keys(ordenes).map((n) => [
         n,
@@ -97,7 +103,10 @@ const ORDEN = {
 }
 
 beforeEach(() => {
-  for (const f of [...Object.values(ordenes), renovar]) f.mockReset()
+  for (const f of [...Object.values(ordenes), ...Object.values(recepcion), renovar]) {
+    f.mockReset()
+  }
+  recepcion.hoy.mockResolvedValue({ datos: [] })
   usarSesion.getState().limpiar()
   renovar.mockImplementation(async () => {
     usarSesion.getState().establecer(SESION)
@@ -119,6 +128,71 @@ describe('para entregar', () => {
 
     await userEvent.keyboard('{ArrowDown}{Enter}')
     await waitFor(() => expect(router.state.location.pathname).toBe(`/entregas/${ORDEN.id}`))
+  })
+})
+
+/** Alguien que se anotó en la puerta para buscar su auto. */
+const RETIRO = {
+  id: '66666666-6666-4666-8666-666666666666',
+  numero: 'S-007',
+  motivo: 'retiro' as const,
+  origen: 'totem' as const,
+  entidadId: null,
+  nombre: 'Juan Pérez',
+  telefono: null,
+  derivadaA: null,
+  atendidaPor: null,
+  llegoEn: new Date().toISOString(),
+  atendidaEn: null,
+  cerradaEn: null,
+  resultado: null,
+  ordenId: null,
+  nota: null,
+  turno: null,
+}
+
+describe('el que viene a retirar', () => {
+  it('se ve arriba; atenderlo lo agarra, y la visita viaja con el auto que se elige', async () => {
+    recepcion.hoy.mockResolvedValue({ datos: [RETIRO] })
+    const tomada = {
+      ...RETIRO,
+      atendidaEn: new Date().toISOString(),
+      atendidaPor: { id: 'u1', nombre: 'Martín Gutiérrez' },
+    }
+    recepcion.atender.mockImplementation(async () => {
+      recepcion.hoy.mockResolvedValue({ datos: [tomada] })
+      return tomada
+    })
+    const router = await montarApp('/entregas')
+
+    const retiran = await screen.findByRole('region', { name: 'Vienen a retirar' })
+    await userEvent.click(within(retiran).getByRole('button', { name: 'Atender' }))
+    expect(recepcion.atender).toHaveBeenCalledWith({ id: RETIRO.id })
+    expect(await screen.findByText(/Elegí su auto/)).toBeDefined()
+
+    await userEvent.keyboard('{ArrowDown}{Enter}')
+    await waitFor(() => expect(router.state.location.pathname).toBe(`/entregas/${ORDEN.id}`))
+    expect(router.state.location.search).toEqual({ visita: RETIRO.id })
+  })
+
+  it('entregar cierra su visita', async () => {
+    recepcion.hoy.mockResolvedValue({
+      datos: [{ ...RETIRO, atendidaPor: { id: 'u1', nombre: 'Martín Gutiérrez' } }],
+    })
+    ordenes.firmar.mockResolvedValue({ ingreso: null, egreso: null })
+    ordenes.entregar.mockResolvedValue({ ...ORDEN, estado: 'entregada' })
+    await montarApp(`/entregas/${ORDEN.id}?visita=${RETIRO.id}`)
+
+    expect(await screen.findByText('S-007 · Juan Pérez')).toBeDefined()
+    await userEvent.click(screen.getByRole('button', { name: 'Firmar de prueba' }))
+    await userEvent.keyboard('{F4}')
+    await confirmarDialogo('Entregar')
+
+    await waitFor(() =>
+      expect(ordenes.entregar).toHaveBeenCalledWith(
+        expect.objectContaining({ id: ORDEN.id, visitaId: RETIRO.id }),
+      ),
+    )
   })
 })
 

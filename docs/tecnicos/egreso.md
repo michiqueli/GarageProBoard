@@ -156,8 +156,16 @@ comprobante en PDF y las pantallas.
   no se guarda, la orden queda abierta igual y se avisa. Firmada, la copia del cliente sale con
   la firma sobre la línea. Una firma que no se puede leer no impide imprimir: queda la línea en
   blanco.
+- **El que viene a buscar el auto tiene su motivo, «Retirar el auto»**, con la S de servicio: lo
+  atiende el mismo mostrador. En el taller se retira con hora y en la puerta preguntan por qué
+  auto viene, así que **la visita es optativa**: muchos no pasan por el tótem para retirar, y se
+  entrega igual. Si se anotó, la cola de la tablet y Entregas lo muestran en «Vienen a
+  retirar»; tomarlo lo agarra, la visita viaja con el auto que se elige, y entregarlo la cierra
+  con un resultado nuevo, `entrega`, que guarda la orden como `orden` al recibirlo. Trabarla y
+  cerrarla es la misma pieza que usa abrir: si la tiene otro, no se entrega.
 
 ### Lo que queda
 
 - Las fotos del vehículo, al recibirlo y al entregarlo.
-- Cerrar la visita de la puerta al entregar, cuando el cliente vino a buscar el auto y se anotó.
+- La hora de retiro: hoy la entrega estimada es un día; el taller da una hora, y la puerta podría
+  saber a quién espera.

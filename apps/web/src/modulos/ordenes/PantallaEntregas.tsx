@@ -1,7 +1,8 @@
 import { accesoDeRuta, contrato } from '@gpb/contracts'
 import { formatearImporte } from '@gpb/core'
-import { useQuery } from '@tanstack/react-query'
-import { Link, useNavigate } from '@tanstack/react-router'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { getRouteApi, Link, useNavigate } from '@tanstack/react-router'
+import { Boton } from '../../componentes/Boton.tsx'
 import { EstadoOT } from '../../componentes/EstadoOT.tsx'
 import { clicEnFila, FILA_CLICABLE } from '../../componentes/filas.ts'
 import { Patente } from '../../componentes/Patente.tsx'
@@ -12,7 +13,11 @@ import { api } from '../../sesion/cliente.ts'
 import { mensajeGeneral } from '../../sesion/consultas.ts'
 import { usePuedeUsar } from '../../sesion/permisos.ts'
 import { useFilasConTeclado } from '../../teclado/index.ts'
+import { errorAlAtender, type Visita } from '../recepcion/visitas.ts'
 import { nombreOrden } from './ordenes.ts'
+import { quienRetira, useRetiros } from './retiros.tsx'
+
+const ruta = getRouteApi('/con-sesion/entregas')
 
 /** Cada cuánto se vuelve a mirar: una orden que se factura en caja aparece acá sola. */
 const REFRESCO = 30_000
@@ -29,6 +34,28 @@ export function PantallaEntregas() {
   const tenantId = usarSesion((e) => e.datos?.tenant.id)
   const puedeVer = usePuedeUsar(contrato.ordenes.listar)
   const esEscritorio = useMedia(ES_ESCRITORIO)
+  const { visita: visitaId } = ruta.useSearch()
+  const r = useRetiros(visitaId)
+  const cache = useQueryClient()
+  /** La visita viaja con el auto que se elija: entregarlo la cierra. */
+  const conVisita = r.visita ? { visita: r.visita.id } : {}
+
+  const tomar = useMutation({
+    mutationFn: async (v: Visita) => (r.esMia(v) ? v : api.recepcion.atender({ id: v.id })),
+    onSuccess: (v) => {
+      void cache.invalidateQueries({ queryKey: ['visitas', tenantId] })
+      void navegar({ to: '/entregas', search: { visita: v.id } })
+    },
+    onError: () => cache.invalidateQueries({ queryKey: ['visitas', tenantId] }),
+    meta: { error: errorAlAtender },
+  })
+  /** Devolverla a la puerta: vuelve a esperar, y la lista se queda sin visita. */
+  const soltar = useMutation({
+    mutationFn: (id: string) => api.recepcion.soltar({ id }),
+    onSettled: () => cache.invalidateQueries({ queryKey: ['visitas', tenantId] }),
+    onSuccess: () => void navegar({ to: '/entregas', search: {} }),
+    meta: { exito: 'Volvió a la cola', error: mensajeGeneral },
+  })
 
   const consulta = useQuery({
     queryKey: ['ordenes', tenantId, 'para_entregar'],
@@ -37,11 +64,58 @@ export function PantallaEntregas() {
     refetchInterval: REFRESCO,
   })
   const datos = consulta.data?.datos ?? []
-  const abrir = (id: string) => void navegar({ to: '/entregas/$id', params: { id } })
+  const abrir = (id: string) =>
+    void navegar({ to: '/entregas/$id', params: { id }, search: conVisita })
   const { propsFila } = useFilasConTeclado(datos, (o) => abrir(o.id))
 
   return (
     <Shell titulo="Para entregar" requiere={accesoDeRuta(contrato.ordenes.listar)}>
+      {r.visita ? (
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-2 rounded-base border border-marca bg-marca-suave px-3 py-2">
+          <span className="text-dato">
+            Viene a retirar <span className="font-mono font-semibold">{quienRetira(r.visita)}</span>
+            . Elegí su auto.
+          </span>
+          <span className="ml-auto">
+            <Boton
+              tamano="chico"
+              deshabilitado={soltar.isPending}
+              onClick={() => r.visita && soltar.mutate(r.visita.id)}
+            >
+              Devolver a la cola
+            </Boton>
+          </span>
+        </div>
+      ) : (
+        r.retiros.length > 0 && (
+          <section
+            aria-label="Vienen a retirar"
+            className="overflow-hidden rounded-base border border-borde bg-superficie"
+          >
+            <header className="border-b border-borde px-3 py-2">
+              <h2 className="font-display text-dato font-semibold">Vienen a retirar</h2>
+            </header>
+            <ul className="divide-y divide-borde-suave">
+              {r.retiros.map((v) => (
+                <li key={v.id} className="flex flex-wrap items-center gap-x-3 gap-y-1 px-3 py-1.5">
+                  <span className="font-mono font-semibold">{v.numero}</span>
+                  <span className="text-dato">{v.nombre ?? 'Sin nombre'}</span>
+                  {v.nota && <span className="text-etiqueta text-texto-suave">{v.nota}</span>}
+                  <span className="ml-auto">
+                    <Boton
+                      tamano="chico"
+                      deshabilitado={tomar.isPending}
+                      onClick={() => tomar.mutate(v)}
+                    >
+                      {r.esMia(v) ? 'Seguir' : 'Atender'}
+                    </Boton>
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </section>
+        )
+      )}
       <section className="overflow-hidden rounded-base border border-borde bg-superficie">
         <header className="flex items-center gap-2.5 border-b border-borde px-3 py-2">
           <h2 className="font-display text-dato font-semibold">
@@ -96,6 +170,7 @@ export function PantallaEntregas() {
                     <Link
                       to="/entregas/$id"
                       params={{ id: o.id }}
+                      search={conVisita}
                       className="text-marca hover:underline focus-visible:underline"
                     >
                       {nombreOrden(o.numero)}
@@ -141,6 +216,7 @@ export function PantallaEntregas() {
                   <Link
                     to="/entregas/$id"
                     params={{ id: o.id }}
+                    search={conVisita}
                     className="font-mono text-dato text-marca"
                   >
                     {nombreOrden(o.numero)}

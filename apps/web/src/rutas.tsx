@@ -80,6 +80,10 @@ const conVolver = z.object({
   volver: z.string().refine(esRutaPropia).optional().catch(undefined),
 })
 
+const conVisita = z.object({
+  visita: z.uuid().optional().catch(undefined),
+})
+
 /** Dónde estaba parado, para devolverlo ahí. La raíz no se anota: es el destino igual. */
 function volverDesde(location: ParsedLocation): { volver?: string } {
   return location.href === '/' ? {} : { volver: location.href }
@@ -194,6 +198,8 @@ const rutaAgenda = createRoute({
 const rutaEntregas = createRoute({
   getParentRoute: () => conSesion,
   path: 'entregas',
+  // La visita de quien vino a buscar el auto, si se tomó de la puerta: viaja hasta la entrega.
+  validateSearch: conVisita,
   staticData: { pantalla: 'entregas' },
   component: lazyRouteComponent(
     () => import('./modulos/ordenes/PantallaEntregas.tsx'),
@@ -204,6 +210,7 @@ const rutaEntregas = createRoute({
 const rutaEgreso = createRoute({
   getParentRoute: () => conSesion,
   path: 'entregas/$id',
+  validateSearch: conVisita,
   staticData: { pantalla: 'entregas' },
   component: lazyRouteComponent(
     () => import('./modulos/ordenes/PantallaEgreso.tsx'),
