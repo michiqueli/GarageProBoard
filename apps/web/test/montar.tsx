@@ -33,6 +33,19 @@ export async function montarApp(ruta: string) {
   const { crearRouter } = await import('../src/rutas.tsx')
   const router = crearRouter({ history: createMemoryHistory({ initialEntries: [ruta] }) })
 
+  // Las pantallas se descargan al abrirse. Precargadas acá, lo que tarda en importarse la del
+  // primer test de cada archivo —con la suite entera en paralelo, varios segundos— no se le
+  // descuenta a la espera de `findBy`, que es para la pantalla y no para el import.
+  await Promise.all(
+    router.matchRoutes(router.state.location).map((m) => {
+      const rutas = router.routesById as Record<string, { options: { component?: unknown } }>
+      const componente = rutas[m.routeId]?.options.component as
+        | { preload?: () => Promise<void> }
+        | undefined
+      return componente?.preload?.()
+    }),
+  )
+
   // Sin reintentos: un error tiene que verse ya, no después de que el test espere.
   // La misma caché que la aplicación, con los avisos enchufados.
   const consultas = crearConsultas()
