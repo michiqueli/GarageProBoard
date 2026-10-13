@@ -65,6 +65,7 @@ import { cerrarSesionesDeLaOrden } from '../fichaje/tablero.ts'
 import { moverDiferencia, porRepuesto, repuestosExisten } from '../repuestos/stock.ts'
 import { enOrdenDeHoja, puntosDelTaller } from '../revision/revision.service.ts'
 import { firmasDe } from './firmas.service.ts'
+import { fotosDe } from './fotos.service.ts'
 
 type Codigo =
   | 'NO_ENCONTRADA'
@@ -1534,6 +1535,7 @@ export class ServicioOrdenes {
       hojaImagenId: o.hojaImagenId,
       terminadaEn: o.terminadaEn?.toISOString() ?? null,
       firmas: await firmasDe(tx, o.id),
+      fotos: await fotosDe(tx, o.id),
       entregadaEn: o.entregadaEn?.toISOString() ?? null,
       items: items.map((i) => ({
         id: i.id,

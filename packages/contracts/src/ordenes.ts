@@ -4,8 +4,12 @@ import {
   ELEMENTOS_INVENTARIO,
   ESTADOS_REVISION,
   MAXIMO_BYTES_FIRMA,
+  MAXIMO_BYTES_FOTO,
+  MAXIMO_FOTOS,
+  MAXIMO_NOTA_FOTO,
   MAXIMO_NOTA_PUNTO,
   MOMENTOS_FIRMA,
+  MOMENTOS_FOTO,
   SECCIONES_REVISION,
   TIPOS_DANIO,
   TIPOS_HOJA,
@@ -217,7 +221,17 @@ export const pendienteVehiculo = z.object({
 
 const firmaOrden = z.object({ aclaracion: z.string(), firmadoEn: z.iso.datetime() }).nullable()
 
+export const fotoOrden = z.object({
+  id: z.uuid(),
+  momento: z.enum(MOMENTOS_FOTO),
+  nota: z.string().nullable(),
+  sacadaEn: z.iso.datetime(),
+  sacadaPor: z.string().nullable(),
+})
+
 export const ordenDetalle = ordenResumen.extend({
+  /** Las fotos del auto al recibirlo y al devolverlo, en el orden en que se sacaron. */
+  fotos: z.array(fotoOrden),
   /** La firma del cliente al recibir el auto y al devolverlo, si se firmó en la pantalla. */
   firmas: z.object({ ingreso: firmaOrden, egreso: firmaOrden }),
   traeNombre: z.string().nullable(),
@@ -731,6 +745,86 @@ export const contratoOrdenes = {
     .input(conId.extend({ momento: z.enum(MOMENTOS_FIRMA) }))
     .errors({ ...NO_ENCONTRADA })
     .output(z.file()),
+
+  subirFoto: conPermiso('servicios', 'editar', 'Orden')
+    .route({
+      method: 'POST',
+      path: '/ordenes/{id}/fotos',
+      tags: [TAG],
+      operationId: 'subirFotoDeOrden',
+      summary: 'Una foto del vehículo, al recibirlo o al devolverlo',
+      successStatus: 201,
+      description:
+        'Un JPEG o PNG, ya achicado por quien la saca. Se suben al recibir el auto con la orden ' +
+        'abierta, y al devolverlo con la orden terminada.',
+    })
+    .input(
+      conId.extend({
+        momento: z.enum(MOMENTOS_FOTO),
+        nota: z
+          .string()
+          .trim()
+          .max(MAXIMO_NOTA_FOTO, `Es largo: hasta ${MAXIMO_NOTA_FOTO} letras`)
+          .nullish(),
+        imagen: z.file(),
+      }),
+    )
+    .errors({
+      ...NO_ENCONTRADA,
+      ESTADO_INVALIDO_FOTO: {
+        status: 409,
+        message: 'En este estado de la orden no se suben fotos de ese momento',
+        data: z.object({ motivo: z.string() }),
+      },
+      FORMATO_INVALIDO: { status: 422, message: 'La foto tiene que ser un JPEG o un PNG' },
+      DEMASIADO_GRANDE: {
+        status: 413,
+        message: `La foto no puede pasar de ${MAXIMO_BYTES_FOTO / 1024 / 1024} MB`,
+      },
+      DEMASIADAS_FOTOS: {
+        status: 409,
+        message: `Son ${MAXIMO_FOTOS} fotos por momento: quitá alguna para sumar otra`,
+      },
+      SIN_ALMACEN: {
+        status: 503,
+        message: 'El servidor no tiene configurado dónde guardar los archivos. Avisale a soporte',
+      },
+    })
+    .output(fotoOrden),
+
+  foto: conPermiso('servicios', 'ver', 'Orden')
+    .route({
+      method: 'GET',
+      path: '/ordenes/{id}/fotos/{fotoId}',
+      tags: [TAG],
+      operationId: 'fotoDeOrden',
+      summary: 'La imagen de una foto del vehículo',
+    })
+    .input(conId.extend({ fotoId: z.uuid() }))
+    .errors({ ...NO_ENCONTRADA })
+    .output(z.file()),
+
+  quitarFoto: conPermiso('servicios', 'editar', 'Orden')
+    .route({
+      method: 'DELETE',
+      path: '/ordenes/{id}/fotos/{fotoId}',
+      tags: [TAG],
+      operationId: 'quitarFotoDeOrden',
+      summary: 'Dar de baja una foto del vehículo',
+      description:
+        'No borra nada: la marca como dada de baja, con quién, y deja de mostrarse. Una orden ' +
+        'entregada o anulada ya no se toca.',
+    })
+    .input(conId.extend({ fotoId: z.uuid() }))
+    .errors({
+      ...NO_ENCONTRADA,
+      ESTADO_INVALIDO_FOTO: {
+        status: 409,
+        message: 'Las fotos de una orden cerrada ya no se tocan',
+        data: z.object({ motivo: z.string() }),
+      },
+    })
+    .output(z.object({ hecho: z.literal(true) })),
 
   entregar: conPermiso('servicios', 'editar', 'Orden')
     .route({

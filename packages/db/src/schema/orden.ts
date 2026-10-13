@@ -381,6 +381,42 @@ export const ordenFirma = pgTable(
 )
 
 /**
+ * Las fotos del vehículo, al recibirlo y al devolverlo. Optativas: el dibujo de la hoja sigue
+ * siendo lo que se firma, y la foto es la prueba de que el rayón ya estaba.
+ *
+ * Como la firma, **los bytes están en el almacén** y la fila manda. Darla de baja no borra
+ * nada: la marca, y deja de mostrarse.
+ */
+export const ordenFoto = pgTable(
+  'orden_foto',
+  {
+    id: pk(),
+    tenantId: tenantId().references(() => tenant.id),
+    ordenId: uuid()
+      .notNull()
+      .references(() => orden.id),
+    /** `ingreso` al recibir el auto, `egreso` al devolverlo. */
+    momento: text().notNull(),
+    /** Una línea: «rayón en la puerta trasera». */
+    nota: text(),
+    ruta: text().notNull(),
+    tipo: text().notNull(),
+    ancho: integer().notNull(),
+    alto: integer().notNull(),
+    bytes: integer().notNull(),
+    creadoEn: creadoEn(),
+    creadoPor: uuid().references(() => usuario.id),
+    borradaEn: timestamp({ withTimezone: true }),
+    borradaPor: uuid().references(() => usuario.id),
+  },
+  (t) => [
+    index('orden_foto_orden_idx').on(t.ordenId),
+    check('orden_foto_momento_valido', sql`${t.momento} in ('ingreso', 'egreso')`),
+    check('orden_foto_tipo_valido', sql`${t.tipo} in ('image/jpeg', 'image/png')`),
+  ],
+)
+
+/**
  * Lo que se le recomendó a un vehículo y el cliente no autorizó: lo rechazado del presupuesto,
  * y lo que quedó en ámbar o en rojo en la revisión sin pasar a la orden. Ver
  * `docs/tecnicos/egreso.md`.

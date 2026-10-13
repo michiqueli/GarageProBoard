@@ -22,6 +22,8 @@ import { ControladorHojas } from './hojas/hojas.controller.ts'
 import { ServicioHojas } from './hojas/hojas.service.ts'
 import { ControladorFirmas } from './ordenes/firmas.controller.ts'
 import { ServicioFirmas } from './ordenes/firmas.service.ts'
+import { ControladorFotos } from './ordenes/fotos.controller.ts'
+import { ServicioFotos } from './ordenes/fotos.service.ts'
 import { ControladorOrdenes } from './ordenes/ordenes.controller.ts'
 import { ServicioOrdenes } from './ordenes/ordenes.service.ts'
 import { ControladorPendientes } from './ordenes/pendientes.controller.ts'
@@ -96,6 +98,7 @@ import { ServicioVehiculos } from './vehiculos/vehiculos.service.ts'
     ControladorComprobantes,
     ControladorOrdenes,
     ControladorFirmas,
+    ControladorFotos,
     ControladorPendientes,
     ControladorRepuestos,
     ControladorPedidosRepuestos,
@@ -123,6 +126,7 @@ import { ServicioVehiculos } from './vehiculos/vehiculos.service.ts'
     ServicioComprobantes,
     ServicioOrdenes,
     ServicioFirmas,
+    ServicioFotos,
     ServicioPendientes,
     ServicioRepuestos,
     ServicioPedidosRepuestos,

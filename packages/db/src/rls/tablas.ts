@@ -19,6 +19,7 @@ export const TABLAS_CON_TENANT = [
   'orden_secuencia',
   'orden_presupuesto',
   'orden_firma',
+  'orden_foto',
   'vehiculo_pendiente',
   'repuesto',
   'repuesto_stock',
