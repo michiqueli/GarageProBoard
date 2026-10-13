@@ -6,6 +6,7 @@ import { confirmar } from '../../componentes/avisos.ts'
 import { Boton } from '../../componentes/Boton.tsx'
 import { Campo } from '../../componentes/Campo.tsx'
 import { IconoEditar } from '../../componentes/iconos.tsx'
+import { Selector } from '../../componentes/Selector.tsx'
 import { Shell } from '../../componentes/Shell.tsx'
 import { ES_ESCRITORIO, useMedia } from '../../ganchos/useMedia.ts'
 import { usarSesion } from '../../sesion/almacen.ts'
@@ -136,6 +137,11 @@ export function PantallaUsuarios() {
                       {u.apellido}, {u.nombre}
                     </span>
                     <span className="ml-2 text-etiqueta text-texto-tenue">{u.email}</span>
+                    {u.empleado && (
+                      <span className="ml-2 font-mono text-etiqueta text-texto-tenue">
+                        Legajo {u.empleado.legajo}
+                      </span>
+                    )}
                   </td>
                   <td className="h-fila border-b border-borde-suave px-3 text-texto-suave">
                     {u.roles.map((r) => r.nombre).join(', ') || <SinRol />}
@@ -174,7 +180,10 @@ export function PantallaUsuarios() {
                     <Estado activo={u.activo} />
                   </span>
                 </div>
-                <span className="text-etiqueta text-texto-tenue">{u.email}</span>
+                <span className="text-etiqueta text-texto-tenue">
+                  {u.email}
+                  {u.empleado && ` · Legajo ${u.empleado.legajo}`}
+                </span>
                 <span className="text-etiqueta text-texto-suave">
                   {u.roles.map((r) => r.nombre).join(', ') || 'Sin rol'} ·{' '}
                   {u.sucursales.map((s) => s.nombre).join(', ')}
@@ -243,6 +252,7 @@ function Formulario({
   const [nombre, setNombre] = useState(existente?.nombre ?? '')
   const [apellido, setApellido] = useState(existente?.apellido ?? '')
   const [activo, setActivo] = useState(existente?.activo ?? true)
+  const [empleadoId, setEmpleadoId] = useState<string | null>(existente?.empleado?.id ?? null)
   const [roles, setRoles] = useState<Set<string>>(new Set(existente?.roles.map((r) => r.id)))
   const [sucursales, setSucursales] = useState<Set<string>>(
     new Set(existente?.sucursales.map((s) => s.id)),
@@ -273,6 +283,7 @@ function Formulario({
         apellido,
         rolIds: [...roles],
         sucursalIds: [...sucursales],
+        empleadoId,
       }
       if (existente) {
         await api.usuarios.editar({ ...datos, id: existente.id, activo })
@@ -342,6 +353,17 @@ function Formulario({
     }
   }
 
+  /** Al dar de alta a alguien del personal, el nombre ya está en su legajo. */
+  function elegirLegajo(id: string | null) {
+    setEmpleadoId(id)
+    const elegido = opciones.data?.empleados.find((e) => e.id === id)
+    if (!existente && elegido && !nombre && !apellido) {
+      const [suApellido = '', suNombre = ''] = elegido.nombre.split(', ')
+      setApellido(suApellido)
+      setNombre(suNombre)
+    }
+  }
+
   function alternar(conjunto: Set<string>, id: string, marcado: boolean) {
     const nuevo = new Set(conjunto)
     if (marcado) nuevo.add(id)
@@ -387,6 +409,24 @@ function Formulario({
           onChange={(e) => setApellido(e.target.value)}
         />
       </div>
+
+      {opciones.data && (
+        <div className="grid gap-1 md:w-1/3">
+          <Selector
+            etiqueta="Legajo"
+            valor={empleadoId}
+            vacio="Sin legajo"
+            onChange={elegirLegajo}
+            opciones={opciones.data.empleados
+              // Un legajo va con una sola cuenta: los de otro no se ofrecen.
+              .filter((e) => e.usuarioId === null || e.usuarioId === existente?.id)
+              .map((e) => ({ valor: e.id, texto: `${e.legajo} · ${e.nombre}` }))}
+          />
+          <span className="text-etiqueta text-texto-tenue">
+            Con su credencial entra en la tablet de recepción
+          </span>
+        </div>
+      )}
 
       {opciones.isPending && <Esqueleto />}
       {opciones.data && (

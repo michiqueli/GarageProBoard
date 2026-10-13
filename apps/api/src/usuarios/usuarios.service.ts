@@ -3,7 +3,9 @@ import { atajosParaSembrar, faltaParaAsignar, type Habilidades, type ReglaPermis
 import { and, asc, type Db, eq, inArray, isNull } from '@gpb/db'
 import {
   aviso,
+  empleado,
   empresa,
+  entidadComercial,
   rol,
   sucursal,
   sesion as tablaSesion,
@@ -27,7 +29,8 @@ export class ErrorUsuarios extends Error {
       | 'USUARIO_CON_MAS_PERMISOS'
       | 'ROL_NO_OTORGABLE'
       | 'REFERENCIA_INVALIDA'
-      | 'EMAIL_DUPLICADO',
+      | 'EMAIL_DUPLICADO'
+      | 'LEGAJO_CON_CUENTA',
     readonly datos?: { rol: string; leFalta: string[] },
   ) {
     super(codigo)
@@ -39,6 +42,7 @@ interface DatosUsuario {
   apellido: string
   rolIds: string[]
   sucursalIds: string[]
+  empleadoId: string | null
 }
 
 /** «16/9/26, 10:32», en la hora de la concesionaria y no en la del servidor. */
@@ -51,6 +55,23 @@ const FECHA_AVISO = new Intl.DateTimeFormat('es-AR', {
 /** Doce bytes al azar: dieciséis caracteres que nadie va a adivinar ni recordar. */
 function generarPassword(): string {
   return randomBytes(12).toString('base64url')
+}
+
+/** Qué índice único saltó, o `null` si el error es otro. */
+function indiceDuplicado(error: unknown): string | null {
+  let actual = error as { cause?: unknown; code?: string; constraint?: string } | undefined
+  while (actual) {
+    if (actual.code === '23505') return actual.constraint ?? ''
+    actual = actual.cause as typeof actual
+  }
+  return null
+}
+
+/** Los dos índices únicos que puede pisar un alta o una modificación. */
+function traducirDuplicado(error: unknown): never {
+  if (esEmailDuplicado(error)) throw new ErrorUsuarios('EMAIL_DUPLICADO')
+  if (indiceDuplicado(error) === 'usuario_empleado_uq') throw new ErrorUsuarios('LEGAJO_CON_CUENTA')
+  throw error
 }
 
 function esEmailDuplicado(error: unknown): boolean {
@@ -102,6 +123,18 @@ export class ServicioUsuarios {
         .innerJoin(empresa, eq(empresa.id, sucursal.empresaId))
         .where(eq(sucursal.activa, true))
         .orderBy(asc(sucursal.nombre))
+      const empleados = await tx
+        .select({
+          id: empleado.id,
+          legajo: empleado.legajo,
+          nombre: entidadComercial.razonSocial,
+          usuarioId: usuario.id,
+        })
+        .from(empleado)
+        .innerJoin(entidadComercial, eq(entidadComercial.id, empleado.id))
+        .leftJoin(usuario, eq(usuario.empleadoId, empleado.id))
+        .where(eq(empleado.activo, true))
+        .orderBy(asc(entidadComercial.razonSocial))
 
       return {
         roles: roles.map((r) => ({
@@ -111,6 +144,7 @@ export class ServicioUsuarios {
           leFalta: faltaParaAsignar(habilidades, r.habilidades as ReglaPermiso[]),
         })),
         sucursales,
+        empleados,
       }
     })
   }
@@ -131,12 +165,10 @@ export class ServicioUsuarios {
           hashPassword,
           nombre: entrada.nombre,
           apellido: entrada.apellido,
+          empleadoId: entrada.empleadoId,
         })
         .returning()
-        .catch((error: unknown) => {
-          if (esEmailDuplicado(error)) throw new ErrorUsuarios('EMAIL_DUPLICADO')
-          throw error
-        })
+        .catch(traducirDuplicado)
       if (!creado) throw new Error('No se pudo crear el usuario.')
 
       await this.asignar(tx, sesion, creado.id, entrada)
@@ -179,6 +211,7 @@ export class ServicioUsuarios {
         if (
           !igual(antes.rolIds, entrada.rolIds) ||
           !igual(antes.sucursalIds, entrada.sucursalIds) ||
+          actual.empleadoId !== entrada.empleadoId ||
           actual.activo !== entrada.activo
         ) {
           throw new ErrorUsuarios('ES_USTED')
@@ -193,11 +226,13 @@ export class ServicioUsuarios {
         .set({
           nombre: entrada.nombre,
           apellido: entrada.apellido,
+          empleadoId: entrada.empleadoId,
           activo: entrada.activo,
           actualizadoEn: new Date(),
         })
         .where(eq(usuario.id, id))
         .returning()
+        .catch(traducirDuplicado)
       if (!modificado) throw new ErrorUsuarios('NO_ENCONTRADO')
 
       if (id !== sesion.usuarioId) {
@@ -226,6 +261,13 @@ export class ServicioUsuarios {
             sesion,
             id,
             (autor, fecha) => `${autor} te cambió las sucursales a las que entrás el ${fecha}.`,
+          )
+        }
+        if (actual.empleadoId !== entrada.empleadoId) {
+          await this.avisar(tx, sesion, id, (autor, fecha) =>
+            entrada.empleadoId
+              ? `${autor} vinculó tu cuenta con tu legajo el ${fecha}: con tu credencial entrás en la tablet de recepción.`
+              : `${autor} desvinculó tu cuenta de tu legajo el ${fecha}: tu credencial ya no te abre la sesión.`,
           )
         }
       }
@@ -298,10 +340,18 @@ export class ServicioUsuarios {
       .from(sucursal)
       .where(and(inArray(sucursal.id, entrada.sucursalIds), eq(sucursal.activa, true)))
 
+    const legajo = entrada.empleadoId
+      ? await tx
+          .select({ id: empleado.id })
+          .from(empleado)
+          .where(and(eq(empleado.id, entrada.empleadoId), eq(empleado.activo, true)))
+      : []
+
     // RLS ya deja afuera los de otra concesionaria: si no aparecen, no existen para ésta.
     if (
       roles.length !== new Set(entrada.rolIds).size ||
-      sucursales.length !== new Set(entrada.sucursalIds).size
+      sucursales.length !== new Set(entrada.sucursalIds).size ||
+      (entrada.empleadoId !== null && legajo.length === 0)
     ) {
       throw new ErrorUsuarios('REFERENCIA_INVALIDA')
     }
@@ -406,7 +456,13 @@ export class ServicioUsuarios {
 
   /** Lo que queda en la auditoría. Nunca el hash de la contraseña. */
   private foto(
-    u: { email: string; nombre: string; apellido: string; activo: boolean },
+    u: {
+      email: string
+      nombre: string
+      apellido: string
+      activo: boolean
+      empleadoId: string | null
+    },
     asignado: { rolIds: string[]; sucursalIds: string[] },
   ) {
     return {
@@ -414,6 +470,7 @@ export class ServicioUsuarios {
       nombre: u.nombre,
       apellido: u.apellido,
       activo: u.activo,
+      empleadoId: u.empleadoId,
       rolIds: asignado.rolIds,
       sucursalIds: asignado.sucursalIds,
     }
@@ -447,6 +504,7 @@ export class ServicioUsuarios {
       nombre: string
       apellido: string
       activo: boolean
+      empleadoId: string | null
       ultimoAcceso: Date | null
     }>,
     sesion: Sesion,
@@ -474,6 +532,19 @@ export class ServicioUsuarios {
       .where(inArray(usuarioSucursal.usuarioId, ids))
       .orderBy(asc(sucursal.nombre))
 
+    const empleadoIds = usuarios.flatMap((u) => (u.empleadoId ? [u.empleadoId] : []))
+    const legajos = empleadoIds.length
+      ? await tx
+          .select({
+            id: empleado.id,
+            legajo: empleado.legajo,
+            nombre: entidadComercial.razonSocial,
+          })
+          .from(empleado)
+          .innerJoin(entidadComercial, eq(entidadComercial.id, empleado.id))
+          .where(inArray(empleado.id, empleadoIds))
+      : []
+
     return usuarios.map((u) => {
       const suyos = roles.filter((r) => r.usuarioId === u.id)
       const reglas = suyos.flatMap((r) => r.habilidades as ReglaPermiso[])
@@ -488,6 +559,7 @@ export class ServicioUsuarios {
         sucursales: sucursales
           .filter((s) => s.usuarioId === u.id)
           .map((s) => ({ id: s.id, nombre: s.nombre })),
+        empleado: legajos.find((l) => l.id === u.empleadoId) ?? null,
         editable: u.id !== sesion.usuarioId && faltaParaAsignar(habilidades, reglas).length === 0,
       }
     })

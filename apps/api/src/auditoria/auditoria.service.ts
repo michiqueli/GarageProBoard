@@ -404,6 +404,16 @@ export function describirCambio(
   if (antes?.activo !== despues?.activo) {
     partes.push(despues?.activo ? 'lo volvió a habilitar' : 'lo dio de baja')
   }
+  // Las fotos de antes del 13/10/2026 no traen el legajo: no es que lo hayan cambiado.
+  if (antes && despues && 'empleadoId' in antes && antes.empleadoId !== despues.empleadoId) {
+    partes.push(
+      !despues.empleadoId
+        ? 'lo desvinculó de su legajo'
+        : antes.empleadoId
+          ? 'le cambió el legajo'
+          : 'lo vinculó con su legajo',
+    )
+  }
   partes.push(...diferencia(antes?.rolIds, despues?.rolIds, nombres.roles, 'el rol', 'los roles'))
   partes.push(
     ...diferencia(

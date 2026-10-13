@@ -1,6 +1,12 @@
 import type { NestFastifyApplication } from '@nestjs/platform-fastify'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
-import { type ApiDePrueba, CLAVE, levantarApi, sembrarConcesionaria } from './fixture.ts'
+import {
+  type ApiDePrueba,
+  CLAVE,
+  levantarApi,
+  sembrarConcesionaria,
+  sembrarEmpleado,
+} from './fixture.ts'
 
 /**
  * Usuarios, por el camino completo. Lo que importa acá no es el alta en sí sino las
@@ -81,6 +87,7 @@ function nuevo(email: string, roles: string[]) {
     apellido: 'Usuario',
     rolIds: roles.map(rolId),
     sucursalIds: [centralId()],
+    empleadoId: null,
   }
 }
 
@@ -128,6 +135,7 @@ describe('el gerente administra usuarios', () => {
       apellido: 'Usuario',
       rolIds: [rolId('Mecánico')],
       sucursalIds: [centralId()],
+      empleadoId: null,
       activo: false,
     })
     expect(r.statusCode).toBe(200)
@@ -180,6 +188,7 @@ describe('el administrador de sistema puede todo, menos tocarse a sí mismo', ()
       apellido: 'Sistemas',
       rolIds: [rolId('Administrador de sistema'), rolId('Gerente')],
       sucursalIds: [centralId()],
+      empleadoId: null,
       activo: true,
     })
     expect(r.statusCode).toBe(403)
@@ -234,6 +243,7 @@ describe('quien sólo da de alta usuarios no toca a quien tiene más', () => {
       apellido: 'Pérez',
       rolIds: actual.roles.map((x: { id: string }) => x.id),
       sucursalIds: actual.sucursales.map((x: { id: string }) => x.id),
+      empleadoId: actual.empleado?.id ?? null,
       activo: true,
     })
     expect(r.statusCode).toBe(200)
@@ -258,6 +268,7 @@ describe('quien sólo da de alta usuarios no toca a quien tiene más', () => {
       apellido: 'Asesor',
       rolIds: [],
       sucursalIds: [centralId()],
+      empleadoId: null,
       activo: false,
     })
     expect(r.json().code).toBe('USUARIO_CON_MAS_PERMISOS')
@@ -289,5 +300,108 @@ describe('sin permiso', () => {
     const r = await pedir(access, 'GET', '/usuarios')
     expect(r.statusCode).toBe(403)
     expect(r.json().code).toBe('SIN_PERMISO')
+  })
+})
+
+describe('la cuenta y el legajo', () => {
+  let legajoId: string
+  let otroLegajoId: string
+  let claveLucia: string
+
+  beforeAll(async () => {
+    const tenantId = semilla.tenant.id
+    legajoId = await sembrarEmpleado(api.pg.dbDuenio, {
+      tenantId,
+      legajo: '501',
+      nombre: 'Lucía',
+      apellido: 'Recepción',
+      puesto: 'administrativo',
+    })
+    otroLegajoId = await sembrarEmpleado(api.pg.dbDuenio, {
+      tenantId,
+      legajo: '502',
+      nombre: 'Tomás',
+      apellido: 'Asesor',
+      puesto: 'administrativo',
+    })
+  })
+
+  it('las opciones traen el personal, sin datos de sueldo', async () => {
+    const { access } = await entrar('sistemas@usuarios.test')
+    const { empleados } = (await pedir(access, 'GET', '/usuarios/opciones')).json()
+    expect(empleados).toContainEqual({
+      id: legajoId,
+      legajo: '501',
+      nombre: 'Recepción, Lucía',
+      usuarioId: null,
+    })
+  })
+
+  it('una cuenta nueva sale vinculada con su legajo, y el legajo va con una sola', async () => {
+    const { access } = await entrar('sistemas@usuarios.test')
+    const r = await pedir(access, 'POST', '/usuarios', {
+      ...nuevo('lucia@usuarios.test', ['Recepcionista']),
+      empleadoId: legajoId,
+    })
+    expect(r.statusCode).toBe(201)
+    claveLucia = r.json().passwordInicial
+    expect(r.json().usuario.empleado).toEqual({
+      id: legajoId,
+      legajo: '501',
+      nombre: 'Recepción, Lucía',
+    })
+
+    const otra = await pedir(access, 'POST', '/usuarios', {
+      ...nuevo('lucia2@usuarios.test', []),
+      empleadoId: legajoId,
+    })
+    expect(otra.statusCode).toBe(409)
+    expect(otra.json().code).toBe('LEGAJO_CON_CUENTA')
+  })
+
+  it('cambiarle el legajo a otro le avisa', async () => {
+    const { access } = await entrar('sistemas@usuarios.test')
+    const id = await idDe(access, 'lucia@usuarios.test')
+    const r = await pedir(access, 'PUT', `/usuarios/${id}`, {
+      nombre: 'Nuevo',
+      apellido: 'Usuario',
+      rolIds: [rolId('Recepcionista')],
+      sucursalIds: [centralId()],
+      empleadoId: otroLegajoId,
+      activo: true,
+    })
+    expect(r.statusCode).toBe(200)
+    expect(r.json().empleado.legajo).toBe('502')
+
+    const avisos = (await entrar('lucia@usuarios.test', claveLucia)) as unknown as {
+      avisos: Array<{ texto: string }>
+    }
+    expect(avisos.avisos.map((a) => a.texto).join()).toMatch(/vinculó tu cuenta con tu legajo/)
+  })
+
+  it('un legajo que no es de esta concesionaria, o dado de baja, no se vincula', async () => {
+    const { access } = await entrar('sistemas@usuarios.test')
+    const r = await pedir(access, 'POST', '/usuarios', {
+      ...nuevo('fantasma@usuarios.test', []),
+      empleadoId: '00000000-0000-4000-8000-000000000000',
+    })
+    expect(r.statusCode).toBe(422)
+  })
+
+  it('nadie se vincula a sí mismo con un legajo', async () => {
+    const { access } = await entrar('sistemas@usuarios.test')
+    const yo = await idDe(access, 'sistemas@usuarios.test')
+    const actual = (await pedir(access, 'GET', '/usuarios'))
+      .json()
+      .datos.find((u: { id: string }) => u.id === yo)
+    const r = await pedir(access, 'PUT', `/usuarios/${yo}`, {
+      nombre: actual.nombre,
+      apellido: actual.apellido,
+      rolIds: actual.roles.map((x: { id: string }) => x.id),
+      sucursalIds: actual.sucursales.map((x: { id: string }) => x.id),
+      empleadoId: legajoId,
+      activo: true,
+    })
+    expect(r.json().code).toBe('ES_USTED')
   })
 })

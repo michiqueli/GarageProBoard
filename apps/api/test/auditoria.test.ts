@@ -138,6 +138,7 @@ describe('los cambios, contados en palabras', () => {
       apellido: 'Asesora',
       rolIds: [idDe('Cajero'), idDe('Mecánico')],
       sucursalIds: asesor.sucursales.map((s: { id: string }) => s.id),
+      empleadoId: null,
       activo: false,
     })
 
