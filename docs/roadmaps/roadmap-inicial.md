@@ -413,11 +413,12 @@ una sección más de la web, con la persona identificada por su credencial y el 
 puesto por el dispositivo. Por qué no una app ahora y por qué no un usuario compartido, en
 [la recepción en tablet](../tecnicos/recepcion-en-tablet.md).
 
-- 🔨 **Peritaje digital** en recepción. Hecho: los daños marcados sobre el dibujo del vehículo
-      y el inventario de lo que vino con él, los dos impresos en la orden. El dibujo lo carga
-      cada concesionaria, y la orden se queda con la imagen exacta con la que se firmó —ver
-      [la hoja de recepción](../tecnicos/hoja-de-recepcion.md)—, con los dibujos de VW por omisión
-      desde el 13/10/2026. Faltan las **fotos del vehículo** y la **firma del cliente en pantalla**
+- ✅ **Peritaje digital** en recepción: los daños marcados sobre el dibujo del vehículo y el
+      inventario de lo que vino con él, los dos impresos en la orden. El dibujo lo carga cada
+      concesionaria, y la orden se queda con la imagen exacta con la que se firmó —ver
+      [la hoja de recepción](../tecnicos/hoja-de-recepcion.md)—, con los dibujos de VW por omisión.
+      Desde el 13/10/2026, con la **firma del cliente en pantalla** y las **fotos del vehículo**,
+      las dos optativas, al recibirlo y al entregarlo
 - ✅ **La revisión de la hoja**: los puntos de VW con semáforo —veintinueve con los
       neumáticos—, que cada taller apaga, ordena y completa con los suyos. Se contesta en la
       recepción y se completa en la orden después de la prueba de ruta, firmado punto por punto;
