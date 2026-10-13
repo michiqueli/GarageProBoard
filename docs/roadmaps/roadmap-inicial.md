@@ -421,6 +421,9 @@ puesto por el dispositivo. Por qué no una app ahora y por qué no un usuario co
       de transporte antes de aceptar la unidad
 - 🔨 Ingreso y egreso de vehículos en tablet, viendo los turnos del día: el ingreso está, con la
       cola de la puerta y los turnos que llegan; falta el egreso
+- ✅ **La tablet como estación de recepción**: se registra en Estaciones, arranca pidiendo la
+      credencial, abre la sesión de la cuenta vinculada con ese legajo en la sucursal de la
+      tablet, y se cierra sola a los quince minutos sin tocarla. Desde el 13/10/2026
 - ⬜ **Cola offline**: el fondo del taller no tiene wifi, y una app que necesita señal para
       fichar no se usa
 

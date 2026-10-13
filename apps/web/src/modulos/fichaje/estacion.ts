@@ -85,3 +85,11 @@ const enlace = new OpenAPILink(contrato, {
 })
 
 export const apiEstacion: ClienteApi = createORPCClient(enlace)
+
+/**
+ * Si este aparato es una tablet de recepción. Ahí no hay login con correo: la sesión se abre
+ * con la credencial, así que cuando se termina se vuelve a «Pasá tu credencial» y no al login.
+ */
+export function esTabletDeRecepcion(): boolean {
+  return tokenDeLaEstacion() !== null && estacionRecordada()?.tipo === 'recepcion'
+}

@@ -225,6 +225,13 @@
       "when": 1791893140451,
       "tag": "0031_roles_predefinidos",
       "breakpoints": true
+    },
+    {
+      "idx": 32,
+      "version": "7",
+      "when": 1791895089542,
+      "tag": "0032_tablet_de_recepcion",
+      "breakpoints": true
     }
   ]
 }

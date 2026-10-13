@@ -1,6 +1,7 @@
 import { ORPCError } from '@orpc/client'
 import type { ReactNode } from 'react'
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { EntradaTablet } from './EntradaTablet.tsx'
 import {
   apiEstacion,
   estacionRecordada,
@@ -265,7 +266,9 @@ export function PantallaFichaje() {
   useEffect(() => {
     function alPresionar(e: KeyboardEvent) {
       // El tótem tiene su propio teclado: lo que se tipea ahí es un documento, no un escaneo.
-      if (tipo.current === 'totem' || tipo.current === 'llamador') return
+      if (tipo.current === 'totem' || tipo.current === 'llamador' || tipo.current === 'recepcion') {
+        return
+      }
       const ahora = Date.now()
 
       // Buffer viejo o desbordado: basura de un escaneo fallido, o algo apoyado sobre el
@@ -309,6 +312,7 @@ export function PantallaFichaje() {
   if (estacion.tipo === 'tablero') return <TableroDelPiso estacion={estacion} />
   if (estacion.tipo === 'totem') return <Totem estacion={estacion} />
   if (estacion.tipo === 'llamador') return <Llamador estacion={estacion} />
+  if (estacion.tipo === 'recepcion') return <EntradaTablet estacion={estacion} />
   if (estado.fase === 'respuesta') return <Resultado r={estado.r} />
 
   const esperando = estado.fase === 'esperando'

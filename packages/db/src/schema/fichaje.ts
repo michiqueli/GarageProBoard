@@ -32,7 +32,14 @@ import { tenant } from './tenant.ts'
  * Modelarlo mal hace que todos los números de productividad salgan basura.
  */
 
-export const TIPOS_ESTACION = ['taller', 'reloj', 'tablero', 'totem', 'llamador'] as const
+export const TIPOS_ESTACION = [
+  'taller',
+  'reloj',
+  'tablero',
+  'totem',
+  'llamador',
+  'recepcion',
+] as const
 export const RESULTADOS_ESCANEO = ['ok', 'rechazado', 'error'] as const
 export const CIERRES_SESION = ['mecanico', 'auto', 'jefe'] as const
 
@@ -78,7 +85,7 @@ export const estacionFichaje = pgTable(
     index('estacion_sucursal_idx').on(t.tenantId, t.sucursalId),
     check(
       'estacion_tipo_valido',
-      sql`${t.tipo} in ('taller', 'reloj', 'tablero', 'totem', 'llamador')`,
+      sql`${t.tipo} in ('taller', 'reloj', 'tablero', 'totem', 'llamador', 'recepcion')`,
     ),
   ],
 )

@@ -13,6 +13,7 @@ import { usarSesion } from '../../sesion/almacen.ts'
 import { api } from '../../sesion/cliente.ts'
 import { mensajeGeneral } from '../../sesion/consultas.ts'
 import { usePuedeUsar, useVeredicto } from '../../sesion/permisos.ts'
+import { salir } from '../../sesion/salir.ts'
 import { ColaTablet } from '../recepcion/ColaTablet.tsx'
 import { AltaVehiculo } from '../vehiculos/AltaVehiculo.tsx'
 import { pareceDominio } from '../vehiculos/datos-vehiculo.tsx'
@@ -50,9 +51,9 @@ type Paso = (typeof PASOS)[number]['id']
  * **Arranca en la cola** —quién espera para el taller, ver `docs/tecnicos/recepcion-y-turnos.md`—
  * si quien la usa puede ver la puerta. Si no, directo al primer paso, como antes.
  *
- * Lo que falta de lo decidido en ese documento, y queda para cuando haya piloto: que la tablet
- * se registre como dispositivo y arranque sola acá, entrar con la credencial QR, cerrar la
- * sesión por inactividad, las fotos y la firma en pantalla.
+ * Registrada como estación de recepción, la tablet arranca acá: se entra con la credencial
+ * —`EntradaTablet`— y la sesión se cierra sola a los quince minutos sin tocarla. Lo que falta
+ * de lo decidido en ese documento son las fotos y la firma en pantalla.
  */
 export function PantallaRecepcionTablet() {
   const veredicto = useVeredicto(accesoDeRuta(contrato.ordenes.abrir))
@@ -472,6 +473,7 @@ function Marco({ children }: { children: ReactNode }) {
         >
           Vista de escritorio
         </Link>
+        <Boton onClick={() => void salir()}>Salir</Boton>
       </header>
       <main className="mx-auto grid max-w-4xl gap-4 px-4 py-4">{children}</main>
     </div>

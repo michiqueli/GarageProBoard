@@ -218,6 +218,17 @@ export class ServicioFichaje {
     ordenId: string | null
     respuesta: Respuesta
   }> {
+    // Fichan el taller y el reloj. El tótem, el llamador, el tablero y la tablet de recepción
+    // tienen su token en un aparato a la vista de todos: con él no se le marca la jornada a nadie.
+    if (estacion.tipo !== 'taller' && estacion.tipo !== 'reloj') {
+      return {
+        tipo: null,
+        empleadoId: null,
+        ordenId: null,
+        respuesta: RECHAZO('Esta pantalla no ficha', 'Fichá en el reloj o en la PC del taller.'),
+      }
+    }
+
     const crudo = entrada.codigo.trim()
     const qr = verificarQr(crudo)
 

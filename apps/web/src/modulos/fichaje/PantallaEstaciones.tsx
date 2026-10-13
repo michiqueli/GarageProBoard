@@ -1,4 +1,4 @@
-import { accesoDeRuta, contrato } from '@gpb/contracts'
+import { accesoDeRuta, contrato, type TipoEstacion } from '@gpb/contracts'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { type FormEvent, useEffect, useRef, useState } from 'react'
 import { confirmar } from '../../componentes/avisos.ts'
@@ -19,12 +19,13 @@ type Registro = Awaited<ReturnType<typeof api.fichaje.registrarEstacion>>
 const FECHA = new Intl.DateTimeFormat('es-AR', { dateStyle: 'short', timeStyle: 'short' })
 
 /** Cómo se lee cada tipo en la tabla, en dos palabras. */
-const QUE_ES: Record<'taller' | 'reloj' | 'tablero' | 'totem' | 'llamador', string> = {
+const QUE_ES: Record<TipoEstacion, string> = {
   taller: 'Credencial y orden',
   reloj: 'Entrada y salida',
   tablero: 'Muestra el tablero',
   totem: 'El cliente se anota',
   llamador: 'Llama los números',
+  recepcion: 'Se entra con la credencial',
 }
 
 const TIPOS = [
@@ -33,9 +34,12 @@ const TIPOS = [
   { valor: 'tablero' as const, texto: 'Tablero: el televisor del piso' },
   { valor: 'totem' as const, texto: 'Tótem: la puerta, para que el cliente se anote' },
   { valor: 'llamador' as const, texto: 'Llamador: el televisor de la sala de espera' },
+  { valor: 'recepcion' as const, texto: 'Recepción: la tablet del asesor' },
 ]
 
 const QUE_HACE: Record<(typeof TIPOS)[number]['valor'], string> = {
+  recepcion:
+    'No ficha nada. Es la tablet con la que se recibe el auto: arranca pidiendo la credencial, y con ella abre la sesión de quien la pasó, en esta sucursal y con la recepción a la vista. Si nadie la toca durante quince minutos, se cierra sola. Quien entra tiene que tener su cuenta vinculada con su legajo en Usuarios.',
   taller:
     'Dos escaneos: la credencial del mecánico y después la orden. Si esa orden estaba abierta para él, se cierra.',
   reloj: 'Un escaneo: la credencial marca entrada, y la siguiente vez, salida.',
@@ -282,7 +286,7 @@ function Formulario({ alTerminar }: { alTerminar: (registro?: Registro) => void 
   const primerCampo = useRef<HTMLInputElement>(null)
 
   const [nombre, setNombre] = useState('')
-  const [tipo, setTipo] = useState<'taller' | 'reloj' | 'tablero' | 'totem' | 'llamador'>('taller')
+  const [tipo, setTipo] = useState<TipoEstacion>('taller')
   const [sucursalId, setSucursalId] = useState<string | null>(null)
 
   useEffect(() => {

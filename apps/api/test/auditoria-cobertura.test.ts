@@ -128,6 +128,8 @@ const NO_AUDITAN: Readonly<Record<string, string>> = {
   'auth.iniciar':
     'Los ingresos salen de la tabla `sesion`, que es más completa: trae la computadora y la IP.',
   'auth.refrescar': 'Es la misma persona en la misma silla, cada quince minutos.',
+  'auth.entrarConCredencial':
+    'Como el ingreso con contraseña: queda en `sesion`, con la tablet en la que se abrió.',
   'auth.cerrar': 'Salir no cambia ningún dato de la concesionaria.',
   'auth.cambiarSucursal': 'Queda en la familia de sesiones, junto con el ingreso.',
   'auth.leerAvisos': 'Marcar como leído un aviso propio no es un cambio que nadie audite.',
