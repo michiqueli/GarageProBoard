@@ -45,6 +45,7 @@ const YO = {
   ultimoAcceso: '2026-09-16T12:00:00.000Z',
   roles: [{ id: 'r-gerente', nombre: 'Gerente' }],
   sucursales: [CENTRAL],
+  empleado: null,
   editable: false,
 }
 
@@ -90,6 +91,7 @@ beforeEach(() => {
       { id: 'r-mecanico', nombre: 'Mecánico', descripcion: null, leFalta: [] },
     ],
     sucursales: [{ ...CENTRAL, razonSocial: 'Litoral SAS' }],
+    empleados: [],
   })
 })
 
@@ -149,6 +151,7 @@ describe('el alta', () => {
       apellido: 'Paz',
       rolIds: ['r-mecanico'],
       sucursalIds: ['s1'],
+      empleadoId: null,
     })
     expect(await screen.findByText('clave-inicial')).toBeDefined()
     expect(screen.queryByRole('form')).toBeNull()
@@ -216,6 +219,7 @@ describe('modificar', () => {
       apellido: 'Sosa',
       rolIds: ['r-mecanico'],
       sucursalIds: ['s1'],
+      empleadoId: null,
       activo: false,
     })
   })

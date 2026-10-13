@@ -13,6 +13,7 @@ import { pareceDominio } from '../vehiculos/datos-vehiculo.tsx'
 import { DiagramaDanios, ElegirCarroceria } from './DiagramaDanios.tsx'
 import { InventarioRecepcion } from './InventarioRecepcion.tsx'
 import { COMBUSTIBLES, imprimirOrden, nombreOrden } from './ordenes.ts'
+import { PendientesDelVehiculo } from './PendientesDelVehiculo.tsx'
 import { RevisionRecepcion } from './RevisionRecepcion.tsx'
 import { useRecepcion } from './useRecepcion.ts'
 
@@ -87,6 +88,11 @@ export function PantallaRecepcion() {
             </div>
             <SelectorCliente etiqueta="Paga" valor={d.paga} onChange={(v) => poner('paga', v)} />
           </div>
+          <PendientesDelVehiculo
+            pendientes={r.pendientes}
+            elegidos={d.pendienteIds}
+            alternar={r.alternarPendiente}
+          />
 
           <div className="grid gap-3 md:grid-cols-4">
             <Campo

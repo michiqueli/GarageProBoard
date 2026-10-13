@@ -281,6 +281,8 @@ export function FormularioRepuesto({
   )
   const [proveedor, setProveedor] = useState<ProveedorElegido | null>(repuesto?.proveedor ?? null)
   const [observaciones, setObservaciones] = useState(repuesto?.observaciones ?? '')
+  // Separados por coma: el lector escribe uno, se pone una coma y se escanea el siguiente.
+  const [codigosBarras, setCodigosBarras] = useState((repuesto?.codigosBarras ?? []).join(', '))
   const [activo, setActivo] = useState(repuesto?.activo ?? true)
   const [stockInicial, setStockInicial] = useState('')
   const [ubicacion, setUbicacion] = useState('')
@@ -303,6 +305,10 @@ export function FormularioRepuesto({
         codigoAlicuota,
         proveedorId: proveedor?.id ?? null,
         observaciones,
+        codigosBarras: codigosBarras
+          .split(/[,;]+/)
+          .map((c) => c.trim())
+          .filter(Boolean),
       }
       return repuesto
         ? api.repuestos.editar({ ...datos, id: repuesto.id, activo })
@@ -324,6 +330,19 @@ export function FormularioRepuesto({
           const d = error.data as { id: string; descripcion: string }
           return {
             texto: `Ya hay un repuesto con ese código: ${d.descripcion}.`,
+            accion: {
+              texto: 'Abrir su ficha',
+              alHacer: () => {
+                alTerminar()
+                void navegar({ to: '/repuestos/$id', params: { id: d.id } })
+              },
+            },
+          }
+        }
+        if (error instanceof ORPCError && error.code === 'CODIGO_BARRAS_DUPLICADO') {
+          const d = error.data as { codigo: string; id: string; descripcion: string }
+          return {
+            texto: `El código de barras ${d.codigo} ya es de otro repuesto: ${d.descripcion}.`,
             accion: {
               texto: 'Abrir su ficha',
               alHacer: () => {
@@ -422,6 +441,18 @@ export function FormularioRepuesto({
           etiqueta="Proveedor habitual"
           valor={proveedor}
           onChange={setProveedor}
+        />
+        <Campo
+          etiqueta="Códigos de barras"
+          value={codigosBarras}
+          onChange={(e) => setCodigosBarras(e.target.value)}
+          onKeyDown={(e) => {
+            // El lector termina cada código con Enter: acá separa, no guarda.
+            if (e.key !== 'Enter') return
+            e.preventDefault()
+            setCodigosBarras((v) => (v.trim() && !v.trim().endsWith(',') ? `${v.trim()}, ` : v))
+          }}
+          ayuda="Los de la caja: escaneá uno tras otro, o separalos con coma"
         />
         {!repuesto && (
           <>

@@ -13,6 +13,7 @@ import { usarSesion } from '../../sesion/almacen.ts'
 import { api } from '../../sesion/cliente.ts'
 import { mensajeGeneral } from '../../sesion/consultas.ts'
 import { usePuedeUsar, useVeredicto } from '../../sesion/permisos.ts'
+import { salir } from '../../sesion/salir.ts'
 import { ColaTablet } from '../recepcion/ColaTablet.tsx'
 import { AltaVehiculo } from '../vehiculos/AltaVehiculo.tsx'
 import { pareceDominio } from '../vehiculos/datos-vehiculo.tsx'
@@ -20,6 +21,7 @@ import { DiagramaDanios, describirDanio, ElegirCarroceria } from './DiagramaDani
 import { InventarioRecepcion } from './InventarioRecepcion.tsx'
 import { COMBUSTIBLES, imprimirOrden, nombreOrden } from './ordenes.ts'
 import { ElegirCombustible, Texto } from './PantallaRecepcion.tsx'
+import { PendientesDelVehiculo } from './PendientesDelVehiculo.tsx'
 import { type PuntoRevisado, RevisionRecepcion } from './RevisionRecepcion.tsx'
 import { type OrdenAbierta, useRecepcion } from './useRecepcion.ts'
 
@@ -50,9 +52,9 @@ type Paso = (typeof PASOS)[number]['id']
  * **Arranca en la cola** —quién espera para el taller, ver `docs/tecnicos/recepcion-y-turnos.md`—
  * si quien la usa puede ver la puerta. Si no, directo al primer paso, como antes.
  *
- * Lo que falta de lo decidido en ese documento, y queda para cuando haya piloto: que la tablet
- * se registre como dispositivo y arranque sola acá, entrar con la credencial QR, cerrar la
- * sesión por inactividad, las fotos y la firma en pantalla.
+ * Registrada como estación de recepción, la tablet arranca acá: se entra con la credencial
+ * —`EntradaTablet`— y la sesión se cierra sola a los quince minutos sin tocarla. Lo que falta
+ * de lo decidido en ese documento son las fotos y la firma en pantalla.
  */
 export function PantallaRecepcionTablet() {
   const veredicto = useVeredicto(accesoDeRuta(contrato.ordenes.abrir))
@@ -305,6 +307,11 @@ export function PantallaRecepcionTablet() {
               )}
             </div>
             <SelectorCliente etiqueta="Paga" valor={d.paga} onChange={(v) => poner('paga', v)} />
+            <PendientesDelVehiculo
+              pendientes={r.pendientes}
+              elegidos={d.pendienteIds}
+              alternar={r.alternarPendiente}
+            />
           </>
         )}
 
@@ -472,6 +479,13 @@ function Marco({ children }: { children: ReactNode }) {
         >
           Vista de escritorio
         </Link>
+        <Link
+          to="/entregas"
+          className="inline-flex h-campo items-center rounded-base border border-borde px-3 text-etiqueta text-texto-suave"
+        >
+          Entregar un auto
+        </Link>
+        <Boton onClick={() => void salir()}>Salir</Boton>
       </header>
       <main className="mx-auto grid max-w-4xl gap-4 px-4 py-4">{children}</main>
     </div>

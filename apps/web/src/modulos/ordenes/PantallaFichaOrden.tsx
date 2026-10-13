@@ -60,6 +60,8 @@ interface Item {
   cantidad: string
   precioUnitario: string
   codigoAlicuota: (typeof ALICUOTAS)[number]['valor']
+  /** Los de las cajas que se escanearon en el depósito. Se muestran; no se editan acá. */
+  codigosBarras: string[]
 }
 
 let proxima = 1
@@ -74,6 +76,7 @@ const itemNuevo = (tipo: Item['tipo']): Item => ({
   cantidad: '1',
   precioUnitario: '',
   codigoAlicuota: 5,
+  codigosBarras: [],
 })
 
 /** «1.234,50» o «1234.50» → «1234.50». */
@@ -330,6 +333,7 @@ export function PantallaFichaOrden() {
           <Items orden={o} editable={puedeEditar && enTaller} guardada={actualizar} />
           <Presupuestos orden={o} editable={puedeEditar && enTaller} guardada={actualizar} />
           <PedidosDeLaOrden orden={o} />
+          {(o.firmas.ingreso || o.firmas.egreso) && <Firmas orden={o} />}
           <Tiempos orden={o} />
         </>
       )}
@@ -775,6 +779,7 @@ function Items({
       cantidad: sinCeros(i.cantidad),
       precioUnitario: sinCeros(i.precioUnitario),
       codigoAlicuota: i.codigoAlicuota as Item['codigoAlicuota'],
+      codigosBarras: i.codigosBarras,
     }))
   const [items, setItems] = useState<Item[]>(desdeOrden)
   const [cambios, setCambios] = useState(false)
@@ -919,6 +924,12 @@ function Items({
                       </span>
                     )}
                     {i.descripcion}
+                    {i.codigosBarras.length > 0 && (
+                      <span className="block font-mono text-etiqueta text-texto-suave">
+                        {i.codigosBarras.length === 1 ? 'Caja' : 'Cajas'}:{' '}
+                        {i.codigosBarras.join(' · ')}
+                      </span>
+                    )}
                   </span>
                   <Autorizacion estado={i.autorizacion} />
                   <span className="font-mono text-texto-suave">× {i.cantidad}</span>
@@ -1577,4 +1588,64 @@ const RELOJ = new Intl.DateTimeFormat('es-AR', {
 function enHorasYMinutos(minutos: number): string {
   if (minutos < 60) return `${minutos} min`
   return `${Math.floor(minutos / 60)} h ${String(minutos % 60).padStart(2, '0')} min`
+}
+
+/** Las firmas del cliente en la pantalla: al recibir el auto y al devolverlo. */
+function Firmas({ orden: o }: { orden: Orden }) {
+  return (
+    <Seccion titulo="Firmas">
+      <div className="grid gap-3 px-3 py-2.5 md:grid-cols-2">
+        {(['ingreso', 'egreso'] as const).map((momento) => {
+          const firma = o.firmas[momento]
+          if (!firma) return null
+          return (
+            <figure key={momento} className="grid gap-1">
+              <ImagenFirma ordenId={o.id} momento={momento} firmadoEn={firma.firmadoEn} />
+              <figcaption className="text-etiqueta text-texto-suave">
+                {momento === 'ingreso' ? 'Al recibirlo' : 'Al entregarlo'}: {firma.aclaracion},{' '}
+                {FECHA_FIRMA.format(new Date(firma.firmadoEn))}
+              </figcaption>
+            </figure>
+          )
+        })}
+      </div>
+    </Seccion>
+  )
+}
+
+const FECHA_FIRMA = new Intl.DateTimeFormat('es-AR', { dateStyle: 'short', timeStyle: 'short' })
+
+/**
+ * La imagen, traída por el cliente: un `<img>` no manda el token de la sesión. `firmadoEn` va en
+ * la clave porque al firmar de nuevo la imagen cambia y el id de la orden no.
+ */
+function ImagenFirma({
+  ordenId,
+  momento,
+  firmadoEn,
+}: {
+  ordenId: string
+  momento: 'ingreso' | 'egreso'
+  firmadoEn: string
+}) {
+  const imagen = useQuery({
+    queryKey: ['firma', ordenId, momento, firmadoEn],
+    queryFn: async () =>
+      URL.createObjectURL((await api.ordenes.firma({ id: ordenId, momento })) as Blob),
+    staleTime: Number.POSITIVE_INFINITY,
+  })
+  useEffect(() => {
+    const url = imagen.data
+    return () => {
+      if (url) URL.revokeObjectURL(url)
+    }
+  }, [imagen.data])
+  if (!imagen.data) return <div className="h-24 animate-pulse rounded-base bg-superficie-2" />
+  return (
+    <img
+      src={imagen.data}
+      alt={`Firma ${momento === 'ingreso' ? 'de la recepción' : 'de la entrega'}`}
+      className="h-24 w-fit rounded-base border border-borde bg-papel object-contain"
+    />
+  )
 }

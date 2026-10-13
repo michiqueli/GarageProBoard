@@ -105,6 +105,22 @@ export class ControladorPedidosRepuestos {
     )
   }
 
+  @Operacion(p.escanear)
+  escanear() {
+    return implement(p.escanear).handler(({ input, errors }) =>
+      this.servicio.escanear(input.id, input.codigo).catch((e) => traducir(e, errors)),
+    )
+  }
+
+  @Operacion(p.asociarCodigo)
+  asociarCodigo() {
+    return implement(p.asociarCodigo).handler(({ input, errors }) =>
+      this.servicio
+        .asociarCodigo(input.id, input.itemId, input.codigo)
+        .catch((e) => traducir(e, errors)),
+    )
+  }
+
   @Operacion(p.aCaja)
   aCaja(@Req() pedido: FastifyRequest) {
     return implement(p.aCaja).handler(({ input, errors }) =>

@@ -9,6 +9,7 @@ import {
 import { ORPCError } from '@orpc/client'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { type FormEvent, useEffect, useRef, useState } from 'react'
+import { confirmar } from '../../componentes/avisos.ts'
 import { Boton } from '../../componentes/Boton.tsx'
 import { Campo } from '../../componentes/Campo.tsx'
 import { IconoClonar, IconoEditar } from '../../componentes/iconos.tsx'
@@ -148,6 +149,14 @@ export function PantallaRoles() {
                 <ResumenPermisos permisos={r.permisos} especiales={r.especiales} />
               )}
 
+              {r.novedad && (
+                <NovedadDelSistema
+                  rol={r}
+                  novedad={r.novedad}
+                  puedeDecidir={!r.noEditable && !edicion}
+                />
+              )}
+
               {r.noEditable && puedeCrear && (
                 <p className="text-etiqueta text-texto-tenue">{r.noEditable}</p>
               )}
@@ -156,6 +165,103 @@ export function PantallaRoles() {
         ))}
       </ul>
     </Shell>
+  )
+}
+
+/**
+ * Lo que el sistema le cambió a un rol predefinido que esta concesionaria había editado.
+ * No se aplica solo porque quien lo editó sabía algo que el sistema no sabe: se ofrece, y
+ * aplicarlo suma y saca sólo eso, sin deshacer lo que ellos habían cambiado.
+ */
+function NovedadDelSistema({
+  rol,
+  novedad,
+  puedeDecidir,
+}: {
+  rol: Rol
+  novedad: NonNullable<Rol['novedad']>
+  puedeDecidir: boolean
+}) {
+  const cache = useQueryClient()
+  const tenantId = usarSesion((e) => e.datos?.tenant.id)
+  const alTerminar = () => cache.invalidateQueries({ queryKey: ['roles', tenantId] })
+
+  const aplicar = useMutation({
+    mutationFn: () => api.roles.aplicarNovedad({ id: rol.id }),
+    onSuccess: alTerminar,
+    meta: { exito: () => `${rol.nombre} quedó en la versión nueva`, error: mensajeDe },
+  })
+  const dejar = useMutation({
+    mutationFn: () => api.roles.descartarNovedad({ id: rol.id }),
+    onSuccess: alTerminar,
+    meta: { exito: () => `${rol.nombre} quedó como estaba`, error: mensajeDe },
+  })
+  const ocupado = aplicar.isPending || dejar.isPending
+
+  async function preguntarYAplicar() {
+    const titulares =
+      rol.usuarios === 0
+        ? 'No lo tiene nadie todavía.'
+        : rol.usuarios === 1
+          ? 'Lo tiene 1 usuario: le vale desde su próximo paso, y le llega un aviso.'
+          : `Lo tienen ${rol.usuarios} usuarios: les vale desde su próximo paso, y a cada uno le llega un aviso.`
+    const si = await confirmar({
+      titulo: `¿Aplicar la versión nueva a ${rol.nombre}?`,
+      texto: `Se suma y se saca sólo lo que cambió el sistema; lo que ustedes le habían cambiado queda. ${titulares}`,
+      confirmar: 'Aplicar',
+    })
+    if (si) aplicar.mutate()
+  }
+
+  async function preguntarYDejar() {
+    const si = await confirmar({
+      titulo: `¿Dejar ${rol.nombre} como está?`,
+      texto:
+        'El rol no cambia y esta versión deja de ofrecerse. Lo que haga falta se lo podés agregar a mano con Modificar.',
+      confirmar: 'Dejarlo como está',
+      peligro: true,
+    })
+    if (si) dejar.mutate()
+  }
+
+  return (
+    <div className="grid gap-1.5 rounded-base border border-atencion p-2 text-etiqueta">
+      <p className="flex flex-wrap items-baseline gap-2">
+        <span className="rounded-full bg-atencion px-2 font-semibold text-fondo">
+          Versión nueva
+        </span>
+        <span className="text-texto-suave">
+          El sistema cambió este rol. Como ustedes lo habían modificado, no se aplicó solo.
+        </span>
+      </p>
+      {novedad.agrega.length > 0 && (
+        <p>
+          <span className="text-texto-tenue">Agrega: </span>
+          {novedad.agrega.join(', ')}
+        </p>
+      )}
+      {novedad.quita.length > 0 && (
+        <p>
+          <span className="text-texto-tenue">Saca: </span>
+          {novedad.quita.join(', ')}
+        </p>
+      )}
+      {puedeDecidir && (
+        <span className="flex flex-wrap gap-2">
+          <Boton
+            tamano="chico"
+            variante="principal"
+            deshabilitado={ocupado}
+            onClick={preguntarYAplicar}
+          >
+            Aplicar
+          </Boton>
+          <Boton tamano="chico" deshabilitado={ocupado} onClick={preguntarYDejar}>
+            Dejarlo como está
+          </Boton>
+        </span>
+      )}
+    </div>
   )
 }
 
@@ -297,6 +403,9 @@ function Formulario({
                       onChange={() => alternar({ accion, sujeto })}
                     />
                     {nombreAccion(accion)}
+                    {accion === 'autorizar' && sujeto === 'Orden' && (
+                      <span className="text-etiqueta text-texto-tenue">(entregar sin factura)</span>
+                    )}
                     {accion === 'administrar' && (
                       <span className="text-etiqueta text-texto-tenue">(todo sobre usuarios)</span>
                     )}

@@ -129,7 +129,11 @@ function Casilla({
       <div className="flex flex-wrap items-baseline justify-between gap-x-3">
         <h2 className="font-display text-dato font-semibold">{TIPOS_HOJA_NOMBRE[c.tipo]}</h2>
         <span className="text-etiqueta text-texto-tenue">
-          {c.propia ? `${c.propia.ancho}×${c.propia.alto} · ${KB(c.propia.bytes)}` : 'Del sistema'}
+          {!c.propia
+            ? 'Sin dibujo'
+            : c.propia.porOmision
+              ? 'El de VW, que trae el sistema'
+              : `${c.propia.ancho}×${c.propia.alto} · ${KB(c.propia.bytes)}`}
         </span>
       </div>
       <Vistazo imagen={c.propia} tipo={c.tipo} />
@@ -150,9 +154,9 @@ function Casilla({
             }}
           />
           <Boton tamano="chico" deshabilitado={ocupado} onClick={() => archivo.current?.click()}>
-            {c.propia ? 'Cambiar' : 'Subir el mío'}
+            {c.propia && !c.propia.porOmision ? 'Cambiar' : 'Subir el mío'}
           </Boton>
-          {c.propia && (
+          {c.propia && !c.propia.porOmision && (
             <Boton
               tamano="chico"
               icono={<IconoBorrar />}

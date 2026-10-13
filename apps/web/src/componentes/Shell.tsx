@@ -7,6 +7,7 @@ import { PRINCIPALES, SECUNDARIAS, type Seccion, visibles } from '../navegacion.
 import { usarSesion } from '../sesion/almacen.ts'
 import { api } from '../sesion/cliente.ts'
 import { useAutorizacion, useVeredicto } from '../sesion/permisos.ts'
+import { salir } from '../sesion/salir.ts'
 import { useAtajo, useTeclado } from '../teclado/index.ts'
 import { BarraEstado } from './BarraEstado.tsx'
 import { BuscadorGlobal } from './BuscadorGlobal.tsx'
@@ -56,18 +57,6 @@ export function Shell({
   useEffect(() => {
     if (esEscritorio) setMenuAbierto(false)
   }, [esEscritorio])
-
-  /**
-   * Cerrar sesión de verdad: se le avisa al servidor para que anule la familia entera
-   * de tokens. Limpiar sólo el estado local dejaría la sesión viva treinta días del
-   * lado del servidor, que es exactamente lo que alguien que dice «salir» no quiere.
-   *
-   * No navega: al quedar sin sesión, las rutas mandan al inicio de sesión por su cuenta.
-   */
-  async function salir() {
-    await api.auth.cerrar({}).catch(() => undefined)
-    usarSesion.getState().limpiar()
-  }
 
   /**
    * Vuelve a la pantalla de elección sin cerrar la sesión. Con una sola sucursal la

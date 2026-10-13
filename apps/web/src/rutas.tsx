@@ -20,13 +20,16 @@ import { Notificaciones } from './componentes/Notificaciones.tsx'
 import { Shell } from './componentes/Shell.tsx'
 import { useCacheDeSesion } from './ganchos/useCacheDeSesion.ts'
 import { useDensidad } from './ganchos/useDensidad.ts'
+import { useInactividad } from './ganchos/useInactividad.ts'
 import { useTema } from './ganchos/useTema.ts'
 import { PantallaLogin } from './modulos/auth/PantallaLogin.tsx'
 import { PantallaSucursal } from './modulos/auth/PantallaSucursal.tsx'
+import { esTabletDeRecepcion } from './modulos/fichaje/estacion.ts'
 import { primeraPantalla } from './navegacion.tsx'
 import { usarSesion } from './sesion/almacen.ts'
 import { renovar } from './sesion/cliente.ts'
 import { autorizacionActual } from './sesion/permisos.ts'
+import { salir } from './sesion/salir.ts'
 import { ProveedorTeclado } from './teclado/index.ts'
 
 // Cada pantalla se descarga recién cuando se abre (`lazyRouteComponent`): quien sólo usa el
@@ -121,6 +124,8 @@ const conSesion = createRoute({
   id: 'con-sesion',
   beforeLoad: ({ location }) => {
     const { datos, eligiendoSucursal } = usarSesion.getState()
+    // En la tablet de recepción no hay correo y contraseña: se entra con la credencial.
+    if (!datos && esTabletDeRecepcion()) throw redirect({ to: '/fichaje', replace: true })
     if (!datos) throw redirect({ to: '/entrar', search: volverDesde(location), replace: true })
     if (eligiendoSucursal) {
       throw redirect({ to: '/sucursal', search: volverDesde(location), replace: true })
@@ -142,6 +147,8 @@ const rutaInicio = createRoute({
   getParentRoute: () => conSesion,
   path: '/',
   beforeLoad: () => {
+    // La tablet de recepción arranca en la recepción, sea quien sea el que entró.
+    if (esTabletDeRecepcion()) throw redirect({ to: '/recepcion', replace: true })
     const destino = primeraPantalla(autorizacionActual())
     if (destino) throw redirect({ to: destino, replace: true })
   },
@@ -181,6 +188,36 @@ const rutaAgenda = createRoute({
   component: lazyRouteComponent(
     () => import('./modulos/recepcion/PantallaAgenda.tsx'),
     'PantallaAgenda',
+  ),
+})
+
+const rutaEntregas = createRoute({
+  getParentRoute: () => conSesion,
+  path: 'entregas',
+  staticData: { pantalla: 'entregas' },
+  component: lazyRouteComponent(
+    () => import('./modulos/ordenes/PantallaEntregas.tsx'),
+    'PantallaEntregas',
+  ),
+})
+
+const rutaEgreso = createRoute({
+  getParentRoute: () => conSesion,
+  path: 'entregas/$id',
+  staticData: { pantalla: 'entregas' },
+  component: lazyRouteComponent(
+    () => import('./modulos/ordenes/PantallaEgreso.tsx'),
+    'PantallaEgreso',
+  ),
+})
+
+const rutaCupoAgenda = createRoute({
+  getParentRoute: () => conSesion,
+  path: 'agenda/cupo',
+  staticData: { pantalla: 'recepcion' },
+  component: lazyRouteComponent(
+    () => import('./modulos/recepcion/PantallaCupoAgenda.tsx'),
+    'PantallaCupoAgenda',
   ),
 })
 
@@ -499,6 +536,9 @@ const arbol = raiz.addChildren([
     rutaRecepcionTablet,
     rutaPuerta,
     rutaAgenda,
+    rutaCupoAgenda,
+    rutaEntregas,
+    rutaEgreso,
     rutaEsperas,
     rutaFichaOrden,
     rutaVehiculos,
@@ -565,7 +605,10 @@ function Raiz() {
   const densidadDeRuta = useMatches({
     select: (ms) => ms.find((m) => m.staticData?.densidad)?.staticData.densidad,
   })
-  useDensidad(densidadDeRuta ?? datos?.config.densidad)
+  // En la tablet de recepción todo va al dedo, no sólo la recepción: también la entrega.
+  useDensidad(
+    densidadDeRuta ?? (datos && esTabletDeRecepcion() ? 'tactil' : datos?.config.densidad),
+  )
 
   // Al cambiar de usuario se tira la caché: en la PC compartida del mostrador, el
   // cambio de turno no puede dejar a la vista los datos del turno anterior.
@@ -580,7 +623,10 @@ function Raiz() {
         // no haya carrera entre las dos.
         if (anterior.datos && !actual.datos) {
           limpiarAvisos()
-          void router.navigate({ to: '/entrar', replace: true })
+          void router.navigate({
+            to: esTabletDeRecepcion() ? '/fichaje' : '/entrar',
+            replace: true,
+          })
           return
         }
 
@@ -597,13 +643,35 @@ function Raiz() {
     [router],
   )
 
+  // En la tablet de recepción la sesión se cierra sola a los quince minutos sin tocarla.
+  const restan = useInactividad(
+    Boolean(datos) && esTabletDeRecepcion(),
+    MINUTOS_TABLET,
+    salirPorInactividad,
+  )
+
   return (
     <>
       <Outlet />
+      {restan !== null && (
+        <p
+          role="status"
+          className="fixed inset-x-0 bottom-0 z-50 border-t border-atencion bg-superficie px-4 py-4 text-center text-ui font-semibold text-atencion"
+        >
+          Se cierra en {restan} s porque nadie la usa. Tocá la pantalla para seguir.
+        </p>
+      )}
       <Notificaciones />
       <DialogoConfirmacion />
     </>
   )
+}
+
+/** Lo que la tablet de recepción espera sin que nadie la toque antes de cerrar la sesión. */
+const MINUTOS_TABLET = 15
+
+function salirPorInactividad() {
+  void salir()
 }
 
 /** El proveedor del teclado, con la pantalla que declara la ruta más profunda. */

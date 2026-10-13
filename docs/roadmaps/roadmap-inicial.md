@@ -202,7 +202,8 @@ verdad. Qué se trae y qué cambia ahora que el DMS es nuestro, en
 [control de tiempos de taller](../tecnicos/taller-control-de-tiempos.md).
 
 - ✅ **Turnos y agenda**: se agenda por teléfono con la patente, un nombre y qué le pasa; la
-      semana con cuántos tiene cada día, sin cupos que impidan. El turno que llega entra a la
+      semana con cuántos tiene cada día, y el cupo por franja que elige cada taller, que pregunta
+      por el sobreturno en vez de impedir. El turno que llega entra a la
       cola de las tablets con su auto y su pedido, y el que nadie marcó pasa solo a «no vino».
       Desde el 09/10/2026, en [la recepción](../tecnicos/recepcion-y-turnos.md)
 - ✅ Apertura de OT con los cuatro roles: titular, quien trae, quien autoriza y quien paga
@@ -242,6 +243,9 @@ verdad. Qué se trae y qué cambia ahora que el DMS es nuestro, en
       televisor colgado en el piso, que se autentica con el token de una estación de tipo
       `tablero` y no se toca. Con los **dos relojes** —mano de obra y tiempo en taller— y el
       tiempo muerto, que es la diferencia
+- ✅ **Los pendientes del vehículo**: lo que el cliente no autorizó —del presupuesto o de la
+      revisión— queda con el auto al entregarlo, y la recepción siguiente lo ofrece para sumarlo a la
+      orden nueva o descartarlo con motivo. Desde el 13/10/2026, en [el egreso](../tecnicos/egreso.md)
 - ✅ Flujo de recepción **sin tocar el mouse**: patente, Enter, Tab, F2
 
 **Criterio de terminado:** una orden entra, se trabaja, se factura y se cobra.
@@ -341,6 +345,9 @@ compra en vez de un inventario.
 - ⬜ **Rotación y stock muerto**: clasificar el stock por movimiento, para dejar de tener
       plata inmovilizada en el estante
 - ⬜ Reservas y **pedido a fábrica desde el mínimo**
+- ✅ **Códigos de barras**: los de la caja de cada pieza, en el catálogo; se escanean al preparar
+      el pedido para una orden, y el de cada caja queda en la orden, para que el cliente lo
+      compare con las cajas que se lleva. Desde el 13/10/2026, en [el egreso](../tecnicos/egreso.md)
 - ⬜ Reemplazos y códigos alternativos
 - ⬜ Importar la lista de precios de la terminal
 - ⬜ Valorización múltiple del stock e inventarios
@@ -409,8 +416,8 @@ puesto por el dispositivo. Por qué no una app ahora y por qué no un usuario co
 - 🔨 **Peritaje digital** en recepción. Hecho: los daños marcados sobre el dibujo del vehículo
       y el inventario de lo que vino con él, los dos impresos en la orden. El dibujo lo carga
       cada concesionaria, y la orden se queda con la imagen exacta con la que se firmó —ver
-      [la hoja de recepción](../tecnicos/hoja-de-recepcion.md)—. Falta el juego de dibujos por
-      omisión, las **fotos del vehículo** y la **firma del cliente en pantalla**
+      [la hoja de recepción](../tecnicos/hoja-de-recepcion.md)—, con los dibujos de VW por omisión
+      desde el 13/10/2026. Faltan las **fotos del vehículo** y la **firma del cliente en pantalla**
 - ✅ **La revisión de la hoja**: los puntos de VW con semáforo —veintinueve con los
       neumáticos—, que cada taller apaga, ordena y completa con los suyos. Se contesta en la
       recepción y se completa en la orden después de la prueba de ruta, firmado punto por punto;
@@ -419,8 +426,12 @@ puesto por el dispositivo. Por qué no una app ahora y por qué no un usuario co
 - ⬜ Fichaje del piso de taller y escaneo de chasis por código de barras
 - ⬜ **Recepción de 0km**: leer el chasis del código de barras y fotodocumentar las averías
       de transporte antes de aceptar la unidad
-- 🔨 Ingreso y egreso de vehículos en tablet, viendo los turnos del día: el ingreso está, con la
-      cola de la puerta y los turnos que llegan; falta el egreso
+- ✅ Ingreso y egreso de vehículos en tablet, viendo los turnos del día: el ingreso con la cola de
+      la puerta y los turnos que llegan, y el egreso —desde el 13/10/2026— con lo hecho y sus cajas,
+      lo no hecho, cómo sale, el cobro y la firma en pantalla. Ver [el egreso](../tecnicos/egreso.md)
+- ✅ **La tablet como estación de recepción**: se registra en Estaciones, arranca pidiendo la
+      credencial, abre la sesión de la cuenta vinculada con ese legajo en la sucursal de la
+      tablet, y se cierra sola a los quince minutos sin tocarla. Desde el 13/10/2026
 - ⬜ **Cola offline**: el fondo del taller no tiene wifi, y una app que necesita señal para
       fichar no se usa
 

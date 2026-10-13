@@ -1,9 +1,12 @@
-import { ROLES_PREDEFINIDOS } from '@gpb/core'
+import { ROLES_PREDEFINIDOS, TIPOS_QR } from '@gpb/core'
 import { and, asc, conTenant, type Db, eq, inArray, isNull, modulosVigentes, sql } from '@gpb/db'
 import {
   aviso,
+  credencial,
   dispositivo,
+  empleado,
   empresa,
+  estacionFichaje,
   sesion,
   sucursal,
   tenant,
@@ -16,7 +19,9 @@ import { Inject, Injectable } from '@nestjs/common'
 import { JwtService } from '@nestjs/jwt'
 import argon2 from 'argon2'
 import type { Sesion } from '../comun/contexto.ts'
+import { verificarQr } from '../comun/qr.ts'
 import { DB } from '../comun/simbolos.ts'
+import type { Estacion } from '../fichaje/estacion.ts'
 import { reglasDelUsuario } from './permisos.ts'
 import { type ClaimsAcceso, generarRefresco, hashearRefresco, partirRefresco } from './tokens.ts'
 
@@ -30,13 +35,24 @@ import { type ClaimsAcceso, generarRefresco, hashearRefresco, partirRefresco } f
 const HASH_SENUELO =
   '$argon2id$v=19$m=65536,t=3,p=4$c2VudWVsb3NlbnVlbG8$3vT4qkP0mYcJXK2mQ8jVxRZ0nB1yD5wLfA6uH9eKmTs'
 
+/**
+ * Cuánto dura sin renovarse la sesión de una tablet de recepción. La pantalla la cierra a los
+ * quince minutos sin que nadie la toque; esto es el respaldo para cuando la pantalla no puede
+ * —se colgó, la apagaron—: el token de acceso dura otros quince, así que a la media hora
+ * larga no queda nada que sirva.
+ */
+const MINUTOS_TABLET = 30
+
 export class ErrorAuth extends Error {
   constructor(
     readonly codigo:
       | 'CREDENCIALES_INVALIDAS'
       | 'SIN_ACCESO'
       | 'REFRESCO_INVALIDO'
-      | 'USUARIO_INACTIVO',
+      | 'USUARIO_INACTIVO'
+      | 'NO_ES_TABLET'
+      | 'CREDENCIAL_INVALIDA'
+      | 'SIN_CUENTA',
   ) {
     super(codigo)
   }
@@ -85,6 +101,64 @@ export class ServicioAuth {
     })
   }
 
+  /**
+   * Entrar con la credencial, en la tablet de recepción.
+   *
+   * Lo que se autentica primero es la tablet —el pedido llega con su token—, y después la
+   * credencial: así una credencial perdida no abre nada fuera de las tablets registradas
+   * de su concesionaria, y se revoca desde Personal. Abre la sesión de la cuenta vinculada
+   * con ese legajo, en la sucursal de la tablet y en ninguna otra.
+   */
+  async entrarConCredencial(
+    estacion: Estacion,
+    entrada: {
+      codigo: string
+      agente?: string | undefined
+      ip?: string | undefined
+      dispositivoId?: string | undefined
+      registrarDispositivo?: boolean | undefined
+    },
+  ) {
+    if (estacion.tipo !== 'recepcion') throw new ErrorAuth('NO_ES_TABLET')
+
+    const qr = verificarQr(entrada.codigo)
+    if (!qr.valido || qr.tipo !== TIPOS_QR.credencial) throw new ErrorAuth('CREDENCIAL_INVALIDA')
+
+    return conTenant(this.db, estacion.tenantId, async (tx) => {
+      const [persona] = await tx
+        .select({ empleadoId: empleado.id, usuarioId: usuario.id, activo: usuario.activo })
+        .from(credencial)
+        .innerJoin(empleado, eq(empleado.id, credencial.empleadoId))
+        .leftJoin(usuario, eq(usuario.empleadoId, empleado.id))
+        .where(
+          and(
+            eq(credencial.codigo, qr.codigo),
+            isNull(credencial.revocadaEn),
+            eq(empleado.activo, true),
+          ),
+        )
+        .limit(1)
+      if (!persona) throw new ErrorAuth('CREDENCIAL_INVALIDA')
+      if (!persona.usuarioId || !persona.activo) throw new ErrorAuth('SIN_CUENTA')
+
+      return this.abrirSesion(
+        {
+          tenantId: estacion.tenantId,
+          usuarioId: persona.usuarioId,
+          sucursalPedida: estacion.sucursalId,
+          pendiente: false,
+          familia: crypto.randomUUID(),
+          agente: entrada.agente,
+          ip: entrada.ip,
+          dispositivoId: entrada.dispositivoId,
+          registrarDispositivo: entrada.registrarDispositivo ?? false,
+          estacionId: estacion.id,
+        },
+        tx,
+      )
+    })
+  }
+
   async refrescar(token: string, sucursalPedida?: string) {
     const partido = partirRefresco(token)
     if (!partido) throw new ErrorAuth('REFRESCO_INVALIDO')
@@ -108,6 +182,18 @@ export class ServicioAuth {
 
       if (actual.expiraEn.getTime() < Date.now()) return { tipo: 'invalido' } as const
 
+      // La de la tablet: se queda en la sucursal de la tablet, y se corta si la revocaron.
+      if (actual.estacionId) {
+        if (sucursalPedida && sucursalPedida !== actual.sucursalId) {
+          return { tipo: 'invalido' } as const
+        }
+        const [tablet] = await tx
+          .select({ id: estacionFichaje.id })
+          .from(estacionFichaje)
+          .where(and(eq(estacionFichaje.id, actual.estacionId), eq(estacionFichaje.activa, true)))
+        if (!tablet) return { tipo: 'invalido' } as const
+      }
+
       await tx
         .update(sesion)
         .set({ anuladaEn: new Date(), motivoAnulacion: 'rotada' })
@@ -126,6 +212,7 @@ export class ServicioAuth {
           // La renovación es la misma computadora que el ingreso: la hereda, no la busca.
           dispositivoId: actual.dispositivoId ?? undefined,
           registrarDispositivo: false,
+          estacionId: actual.estacionId ?? undefined,
         },
         tx,
       )
@@ -215,6 +302,8 @@ export class ServicioAuth {
       ip?: string | undefined
       dispositivoId?: string | undefined
       registrarDispositivo: boolean
+      /** La tablet de recepción, si entró con la credencial: la sesión vence a los minutos. */
+      estacionId?: string | undefined
     },
     txExistente?: Db,
   ) {
@@ -255,7 +344,11 @@ export class ServicioAuth {
           familia: datos.familia,
           sucursalId: elegida.id,
           sucursalPendiente,
-          expiraEn: new Date(Date.now() + diasRefresco * 24 * 60 * 60 * 1000),
+          expiraEn: new Date(
+            Date.now() +
+              (datos.estacionId ? MINUTOS_TABLET * 60 * 1000 : diasRefresco * 24 * 60 * 60 * 1000),
+          ),
+          estacionId: datos.estacionId ?? null,
           agente: datos.agente ?? null,
           ip: datos.ip ?? null,
           dispositivoId,

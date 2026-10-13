@@ -13,6 +13,11 @@ export const usuarioListado = z.object({
   roles: z.array(z.object({ id: z.uuid(), nombre: z.string() })),
   sucursales: z.array(z.object({ id: z.uuid(), nombre: z.string() })),
   /**
+   * El legajo de esta persona. Con él, su credencial le abre la sesión en la tablet de
+   * recepción, y las órdenes que tiene asignadas son las suyas.
+   */
+  empleado: z.object({ id: z.uuid(), legajo: z.string(), nombre: z.string() }).nullable(),
+  /**
    * Si quien pide puede modificar a este usuario. No puede si es él mismo, o si el otro
    * tiene algún permiso que él no tiene: tocar a alguien con más permisos —cambiarle la
    * contraseña, sacarle el rol— es una forma de quedarse con lo suyo.
@@ -35,6 +40,19 @@ export const opcionesUsuario = z.object({
     }),
   ),
   sucursales: z.array(z.object({ id: z.uuid(), nombre: z.string(), razonSocial: z.string() })),
+  /**
+   * El personal activo, para vincular la cuenta con su legajo. Sólo el nombre y el legajo:
+   * quien da de alta usuarios no tiene por qué ver sueldos. `usuarioId` dice de quién es la
+   * cuenta que ya lo tiene, porque un legajo va con una sola.
+   */
+  empleados: z.array(
+    z.object({
+      id: z.uuid(),
+      legajo: z.string(),
+      nombre: z.string(),
+      usuarioId: z.uuid().nullable(),
+    }),
+  ),
 })
 
 const datosUsuario = z.object({
@@ -42,6 +60,7 @@ const datosUsuario = z.object({
   apellido: z.string().trim().min(1, 'Falta el apellido'),
   rolIds: z.array(z.uuid()),
   sucursalIds: z.array(z.uuid()).min(1, 'Elegí al menos una sucursal'),
+  empleadoId: z.uuid().nullable(),
 })
 
 /** La contraseña recién generada. Se muestra una sola vez y no se guarda más que su hash. */
@@ -58,7 +77,11 @@ const ROL_NO_OTORGABLE = {
 const REFERENCIA_INVALIDA = {
   REFERENCIA_INVALIDA: {
     status: 422,
-    message: 'Algún rol o sucursal elegido no existe en la concesionaria',
+    message: 'Algún rol, sucursal o legajo elegido no existe en la concesionaria',
+  },
+  LEGAJO_CON_CUENTA: {
+    status: 409,
+    message: 'Ese legajo ya está vinculado con otra cuenta',
   },
 } as const
 
@@ -68,8 +91,8 @@ const NO_ALCANZABLE = {
   ES_USTED: {
     status: 403,
     message:
-      'No podés cambiar tus propios roles, sucursales ni tu estado. Pedíselo a otra persona ' +
-      'que administre usuarios.',
+      'No podés cambiar tus propios roles, sucursales, legajo ni tu estado. Pedíselo a otra ' +
+      'persona que administre usuarios.',
   },
   USUARIO_CON_MAS_PERMISOS: {
     status: 403,

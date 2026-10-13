@@ -89,9 +89,9 @@ describe('el menú', () => {
     await montarApp('/vehiculos')
 
     await screen.findByRole('heading', { name: 'Vehículos', level: 1 })
-    // Entregas no tiene pantalla: está, pero no es un enlace.
-    expect(screen.getByText('Entregas')).toBeDefined()
-    expect(screen.queryByRole('link', { name: 'Entregas' })).toBeNull()
+    // El tablero de inicio no tiene pantalla todavía: está, pero no es un enlace.
+    expect(screen.getByText('Tablero')).toBeDefined()
+    expect(screen.queryByRole('link', { name: 'Tablero' })).toBeNull()
   })
 })
 

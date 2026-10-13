@@ -1,3 +1,6 @@
+import { type ReglaPermiso, ROLES_PREDEFINIDOS } from '@gpb/core'
+import { eq } from '@gpb/db'
+import { rol as tablaRol } from '@gpb/db/schema'
 import type { NestFastifyApplication } from '@nestjs/platform-fastify'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import { type ApiDePrueba, CLAVE, levantarApi, sembrarConcesionaria } from './fixture.ts'
@@ -19,6 +22,7 @@ interface Rol {
   especiales: string[]
   usuarios: number
   noEditable: string | null
+  novedad: { agrega: string[]; quita: string[] } | null
 }
 
 beforeAll(async () => {
@@ -48,7 +52,12 @@ async function entrar(email: string) {
   return r.json() as { access: string; avisos: Array<{ texto: string }> }
 }
 
-function pedir(access: string, method: 'GET' | 'POST' | 'PUT', url: string, payload?: object) {
+function pedir(
+  access: string,
+  method: 'GET' | 'POST' | 'PUT' | 'DELETE',
+  url: string,
+  payload?: object,
+) {
   return app.inject({
     method,
     url: `/api${url}`,
@@ -215,5 +224,76 @@ describe('crear y clonar', () => {
       permisos: [],
     })
     expect(r.statusCode).toBe(403)
+  })
+})
+
+describe('la versión nueva de un rol predefinido', () => {
+  // Una versión anterior del sistema, sin la recepción. Al cajero y al repuestero de esta
+  // concesionaria, además, alguien les dio «ver vehículos»: por eso la sincronización no
+  // los actualizó solos y la pantalla les ofrece la versión nueva.
+  const sinRecepcion = (reglas: ReglaPermiso[]) =>
+    reglas.flatMap((r): ReglaPermiso[] => {
+      const sujetos = (Array.isArray(r.subject) ? r.subject : [r.subject]).filter(
+        (s) => s !== 'Visita' && s !== 'Turno',
+      )
+      return sujetos.length ? [{ ...r, subject: sujetos }] : []
+    })
+
+  beforeAll(async () => {
+    for (const clave of ['cajero', 'repuestero']) {
+      const predefinido = ROLES_PREDEFINIDOS.find((p) => p.clave === clave)
+      if (!predefinido) throw new Error(`sin ${clave}`)
+      const viejo = sinRecepcion(predefinido.habilidades)
+      await api.pg.dbDuenio
+        .update(tablaRol)
+        .set({
+          habilidades: [...viejo, { action: 'ver', subject: 'Vehiculo' }],
+          versionSistema: viejo,
+        })
+        .where(eq(tablaRol.predefinido, clave))
+    }
+  })
+
+  it('el listado dice qué cambió el sistema, y sólo en los que la tienen', async () => {
+    const { access } = await entrar('sistemas@roles.test')
+    expect((await rol(access, 'Cajero')).novedad).toEqual({
+      agrega: ['ver las visitas de la recepción', 'modificar las visitas de la recepción'],
+      quita: [],
+    })
+    expect((await rol(access, 'Mecánico')).novedad).toBeNull()
+  })
+
+  it('aplicarla suma lo del sistema y conserva lo que la concesionaria había cambiado', async () => {
+    const { access } = await entrar('sistemas@roles.test')
+    const cajero = await rol(access, 'Cajero')
+
+    const r = await pedir(access, 'POST', `/roles/${cajero.id}/novedad`)
+    expect(r.statusCode).toBe(200)
+    const aplicado = r.json() as Rol
+    expect(aplicado.novedad).toBeNull()
+    expect(aplicado.permisos).toContainEqual({ accion: 'editar', sujeto: 'Visita' })
+    expect(aplicado.permisos).toContainEqual({ accion: 'ver', sujeto: 'Vehiculo' })
+    expect(aplicado.especiales).toEqual(cajero.especiales)
+
+    const otraVez = await pedir(access, 'POST', `/roles/${cajero.id}/novedad`)
+    expect(otraVez.statusCode).toBe(409)
+  })
+
+  it('dejarlo como está no le cambia nada, y la novedad deja de ofrecerse', async () => {
+    const { access } = await entrar('sistemas@roles.test')
+    const repuestero = await rol(access, 'Repuestero')
+
+    const r = await pedir(access, 'DELETE', `/roles/${repuestero.id}/novedad`)
+    expect(r.statusCode).toBe(200)
+    const dejado = r.json() as Rol
+    expect(dejado.novedad).toBeNull()
+    expect(dejado.permisos).toEqual(repuestero.permisos)
+  })
+
+  it('quien no administra usuarios no decide', async () => {
+    const { access } = await entrar('mecanico@roles.test')
+    const { access: sistemas } = await entrar('sistemas@roles.test')
+    const cajero = await rol(sistemas, 'Cajero')
+    expect((await pedir(access, 'POST', `/roles/${cajero.id}/novedad`)).statusCode).toBe(403)
   })
 })

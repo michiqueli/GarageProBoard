@@ -75,9 +75,25 @@ export const rol = pgTable(
     descripcion: text(),
     /** Reglas CASL: [{ action, subject, conditions?, fields? }]. */
     habilidades: jsonb().notNull().default(sql`'[]'::jsonb`),
+    /**
+     * La clave del rol predefinido del que salió (`RolPredefinido.clave`), o `null` si lo
+     * creó la concesionaria. No cambia aunque lo renombren.
+     */
+    predefinido: text(),
+    /**
+     * Las reglas del predefinido que este rol ya conoce: las que se sembraron, las de la
+     * última versión que se le aplicó, o la que la concesionaria decidió no aplicar. Si
+     * `habilidades` permite lo mismo, nadie lo tocó, y una versión nueva se aplica sola.
+     */
+    versionSistema: jsonb(),
     creadoEn: creadoEn(),
   },
-  (t) => [unique('rol_nombre_uq').on(t.tenantId, t.nombre)],
+  (t) => [
+    unique('rol_nombre_uq').on(t.tenantId, t.nombre),
+    uniqueIndex('rol_predefinido_uq')
+      .on(t.tenantId, t.predefinido)
+      .where(sql`${t.predefinido} is not null`),
+  ],
 )
 
 export const usuarioRol = pgTable(

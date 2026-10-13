@@ -1,4 +1,5 @@
 import { contrato } from '@gpb/contracts'
+import { ORPCError } from '@orpc/client'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { type FormEvent, useEffect, useRef, useState } from 'react'
 import { confirmar } from '../../componentes/avisos.ts'
@@ -52,9 +53,10 @@ export function FormTurno({
   const invalidar = () => cache.invalidateQueries({ queryKey: ['turnos', tenantId] })
 
   const guardar = useMutation({
-    mutationFn: () => {
+    mutationFn: (sobreturno: boolean) => {
       const datos = {
         fechaHora: instante(fecha, hora),
+        sobreturno,
         vehiculoId,
         dominio: vehiculoId ? null : dominio,
         nombre,
@@ -68,13 +70,27 @@ export function FormTurno({
       await invalidar()
       alTerminar()
     },
+    // La franja llena no es un error para avisar: es una pregunta.
+    onError: (error) => {
+      const llena = franjaLlena(error)
+      if (llena) void ofrecerSobreturno(llena)
+    },
     meta: {
       exito: turno
         ? 'El turno quedó cambiado'
         : `Turno agendado para el ${fecha.split('-').reverse().join('/')} a las ${hora}`,
-      error: mensajeGeneral,
+      error: (error: unknown) => (franjaLlena(error) ? null : mensajeGeneral(error)),
     },
   })
+
+  async function ofrecerSobreturno(llena: NonNullable<ReturnType<typeof franjaLlena>>) {
+    const si = await confirmar({
+      titulo: `La franja de ${llena.desde} a ${llena.hasta} está llena`,
+      texto: `Tiene ${llena.ocupados} ${llena.ocupados === 1 ? 'turno' : 'turnos'} y el cupo es de ${llena.cupo}. Si lo agendás igual, queda marcado como sobreturno.`,
+      confirmar: 'Agendar como sobreturno',
+    })
+    if (si) guardar.mutate(true)
+  }
 
   const cancelar = useMutation({
     mutationFn: (id: string) => api.turnos.cancelar({ id }),
@@ -99,7 +115,7 @@ export function FormTurno({
 
   function enviar(evento?: FormEvent) {
     evento?.preventDefault()
-    if (!guardar.isPending) guardar.mutate()
+    if (!guardar.isPending) guardar.mutate(false)
   }
 
   return (
@@ -189,4 +205,11 @@ export function FormTurno({
       </div>
     </form>
   )
+}
+
+/** Los datos de la franja llena, si el error es ése. */
+function franjaLlena(error: unknown) {
+  return error instanceof ORPCError && error.code === 'FRANJA_LLENA'
+    ? (error.data as { desde: string; hasta: string; cupo: number; ocupados: number })
+    : null
 }

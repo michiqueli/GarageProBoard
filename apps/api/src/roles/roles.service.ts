@@ -1,12 +1,16 @@
 import {
   administraUsuarios,
+  aplicarNovedad,
   armarReglas,
+  cambiosEnPalabras,
   describirEspecial,
   diferenciaDePermisos,
   faltaParaAsignar,
   type Habilidades,
+  novedadDeRol,
   type Permiso,
   type ReglaPermiso,
+  ROLES_PREDEFINIDOS,
   separarReglas,
 } from '@gpb/core'
 import { asc, count, type Db, eq, inArray } from '@gpb/db'
@@ -18,7 +22,12 @@ import { DatosDelTenant } from '../comun/datos.ts'
 
 export class ErrorRoles extends Error {
   constructor(
-    readonly codigo: 'NO_ENCONTRADO' | 'NOMBRE_DUPLICADO' | 'PERMISO_NO_OTORGABLE' | 'NO_EDITABLE',
+    readonly codigo:
+      | 'NO_ENCONTRADO'
+      | 'NOMBRE_DUPLICADO'
+      | 'PERMISO_NO_OTORGABLE'
+      | 'NO_EDITABLE'
+      | 'SIN_NOVEDAD',
     readonly datos?: unknown,
   ) {
     super(codigo)
@@ -47,10 +56,22 @@ function indiceDuplicado(error: unknown): string | null {
   return null
 }
 
-function enumerar(frases: string[]): string {
-  return frases.length <= 1
-    ? (frases[0] ?? '')
-    : `${frases.slice(0, -1).join(', ')} y ${frases.at(-1)}`
+/**
+ * La versión del predefinido que el rol conoce y la que trae el sistema ahora, o `null` si
+ * el rol lo creó la concesionaria.
+ */
+function versionesDe(r: typeof rol.$inferSelect) {
+  const predefinido = ROLES_PREDEFINIDOS.find((p) => p.clave === r.predefinido)
+  if (!predefinido) return null
+  return {
+    conocida: (r.versionSistema ?? r.habilidades) as ReglaPermiso[],
+    nueva: predefinido.habilidades,
+  }
+}
+
+function novedadDe(r: typeof rol.$inferSelect) {
+  const versiones = versionesDe(r)
+  return versiones ? novedadDeRol(versiones.conocida, versiones.nueva) : null
 }
 
 /**
@@ -172,7 +193,112 @@ export class ServicioRoles {
     })
   }
 
+  /**
+   * Le aplica a un rol predefinido lo que el sistema le cambió, conservando lo que la
+   * concesionaria le había cambiado por su cuenta. Valen las reglas de modificar un rol: un
+   * permiso que llega del sistema no se lo da quien no lo tiene.
+   */
+  aplicarNovedad(id: string, ip?: string) {
+    return this.datos.transaccion(async (tx, sesion) => {
+      const { habilidades } = contextoDelPedido()
+      const { antes, conocida, nueva } = await this.conNovedad(tx, sesion, habilidades, id)
+
+      const reglasAntes = antes.habilidades as ReglaPermiso[]
+      const reglas = aplicarNovedad(reglasAntes, conocida, nueva)
+      this.verificarOtorgables(habilidades, reglas)
+
+      const [modificado] = await tx
+        .update(rol)
+        .set({ habilidades: reglas, versionSistema: nueva })
+        .where(eq(rol.id, id))
+        .returning()
+      if (!modificado) throw new ErrorRoles('NO_ENCONTRADO')
+
+      const { agregados, quitados } = diferenciaDePermisos(
+        separarReglas(reglasAntes).permisos,
+        separarReglas(reglas).permisos,
+      )
+      if (agregados.length || quitados.length) {
+        await this.avisarATitulares(tx, sesion, id, modificado.nombre, agregados, quitados)
+      }
+
+      await this.auditar(
+        tx,
+        sesion,
+        id,
+        'modificacion',
+        this.foto(antes.nombre, antes.descripcion, reglasAntes),
+        {
+          ...this.foto(modificado.nombre, modificado.descripcion, reglas),
+          texto: 'le aplicó la versión nueva del sistema',
+        },
+        ip,
+      )
+
+      const [salida] = await this.completar(tx, [modificado], sesion, habilidades)
+      if (!salida) throw new ErrorRoles('NO_ENCONTRADO')
+      return salida
+    })
+  }
+
+  /**
+   * Deja el rol como está. La versión nueva queda como conocida: deja de ofrecerse, y si el
+   * sistema vuelve a cambiar el rol, se ofrece sólo lo que cambie desde ahora.
+   */
+  descartarNovedad(id: string, ip?: string) {
+    return this.datos.transaccion(async (tx, sesion) => {
+      const { habilidades } = contextoDelPedido()
+      const { antes, nueva } = await this.conNovedad(tx, sesion, habilidades, id)
+
+      const [modificado] = await tx
+        .update(rol)
+        .set({ versionSistema: nueva })
+        .where(eq(rol.id, id))
+        .returning()
+      if (!modificado) throw new ErrorRoles('NO_ENCONTRADO')
+
+      const reglas = antes.habilidades as ReglaPermiso[]
+      await this.auditar(
+        tx,
+        sesion,
+        id,
+        'modificacion',
+        this.foto(antes.nombre, antes.descripcion, reglas),
+        {
+          ...this.foto(antes.nombre, antes.descripcion, reglas),
+          texto: 'lo dejó como estaba, sin la versión nueva del sistema',
+        },
+        ip,
+      )
+
+      const [salida] = await this.completar(tx, [modificado], sesion, habilidades)
+      if (!salida) throw new ErrorRoles('NO_ENCONTRADO')
+      return salida
+    })
+  }
+
   // ── piezas ──────────────────────────────────────────────────────────────────
+
+  /** El rol, bloqueado, con la versión que conoce y la del sistema; o el error que toca. */
+  private async conNovedad(tx: Db, sesion: Sesion, habilidades: Habilidades, id: string) {
+    const [antes] = await tx.select().from(rol).where(eq(rol.id, id)).for('update')
+    if (!antes) throw new ErrorRoles('NO_ENCONTRADO')
+
+    const motivo = await this.motivoNoEditable(
+      tx,
+      sesion,
+      habilidades,
+      antes.id,
+      antes.habilidades as ReglaPermiso[],
+    )
+    if (motivo) throw new ErrorRoles('NO_EDITABLE', { motivo })
+
+    const versiones = versionesDe(antes)
+    if (!versiones || !novedadDeRol(versiones.conocida, versiones.nueva)) {
+      throw new ErrorRoles('SIN_NOVEDAD')
+    }
+    return { antes, ...versiones }
+  }
 
   /**
    * Por qué quien pide no puede modificar este rol, o `null`. Se usa para listar y para
@@ -245,6 +371,7 @@ export class ServicioRoles {
           especiales: especiales.map(describirEspecial),
           usuarios: cantidades.find((c) => c.rolId === r.id)?.cantidad ?? 0,
           noEditable: await this.motivoNoEditable(tx, sesion, habilidades, r.id, reglas, propios),
+          novedad: todo ? null : novedadDe(r),
         }
       }),
     )
@@ -269,11 +396,7 @@ export class ServicioRoles {
       .from(usuario)
       .where(eq(usuario.id, sesion.usuarioId))
     const quien = autor ? `${autor.nombre} ${autor.apellido}` : 'Alguien'
-    const cambios = [
-      agregados.length ? `ahora podés ${enumerar(agregados)}` : '',
-      quitados.length ? `ya no podés ${enumerar(quitados)}` : '',
-    ].filter(Boolean)
-    const texto = `${quien} cambió el rol ${nombre} el ${FECHA_AVISO.format(new Date())}: ${cambios.join('; ')}.`
+    const texto = `${quien} cambió el rol ${nombre} el ${FECHA_AVISO.format(new Date())}: ${cambiosEnPalabras(agregados, quitados)}.`
 
     await tx
       .insert(aviso)

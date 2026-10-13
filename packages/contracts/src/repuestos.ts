@@ -1,9 +1,19 @@
+import { esCodigoBarras, normalizarCodigoBarras } from '@gpb/core'
 import { z } from 'zod'
 import { conPermiso } from './acceso.ts'
 import { CODIGOS_ALICUOTA } from './comprobantes.ts'
 import { chasis, importe, paginado } from './comunes.ts'
 
 const TAG = 'Repuestos'
+
+/** Un código de barras, como lo manda el lector o como se tipea mirando la caja. */
+export const codigoBarras = z
+  .string()
+  .transform(normalizarCodigoBarras)
+  .refine(
+    esCodigoBarras,
+    'El código de barras son de 4 a 64 letras y números, como está en la caja',
+  )
 const TAG_PEDIDOS = 'Pedidos de repuestos'
 const TAG_COMPRAS = 'Compras de repuestos'
 
@@ -97,6 +107,8 @@ export const repuestoDetalle = repuestoResumen.extend({
   ),
   /** Los últimos de la sucursal activa, los más nuevos primero. */
   movimientos: z.array(movimientoStock),
+  /** Los de las cajas de esta pieza. Casi siempre el EAN, igual en todas las cajas. */
+  codigosBarras: z.array(z.string()),
 })
 
 const datosRepuesto = z.object({
@@ -110,6 +122,8 @@ const datosRepuesto = z.object({
   codigoAlicuota: alicuota.default(5),
   proveedorId: z.uuid().nullish(),
   observaciones: opcional,
+  /** Sin la lista, no se tocan: un cliente que no los conoce no los borra. */
+  codigosBarras: z.array(codigoBarras).max(20, 'Hasta 20 códigos por pieza').optional(),
 })
 
 const NO_ENCONTRADO = {
@@ -120,6 +134,13 @@ const CODIGO_DUPLICADO = {
     status: 409,
     message: 'Ya hay un repuesto con ese código',
     data: z.object({ id: z.uuid(), descripcion: z.string() }),
+  },
+} as const
+const CODIGO_BARRAS_DUPLICADO = {
+  CODIGO_BARRAS_DUPLICADO: {
+    status: 409,
+    message: 'Ese código de barras ya es de otro repuesto',
+    data: z.object({ codigo: z.string(), id: z.uuid(), descripcion: z.string() }),
   },
 } as const
 const PROVEEDOR_INVALIDO = {
@@ -179,7 +200,7 @@ export const contratoRepuestos = {
         minimo: importe.refine((v) => Number(v) >= 0, 'El mínimo no puede ser negativo').nullish(),
       }),
     )
-    .errors({ ...CODIGO_DUPLICADO, ...PROVEEDOR_INVALIDO })
+    .errors({ ...CODIGO_DUPLICADO, ...PROVEEDOR_INVALIDO, ...CODIGO_BARRAS_DUPLICADO })
     .output(repuestoDetalle),
 
   editar: conPermiso('repuestos', 'editar', 'Repuesto')
@@ -192,7 +213,12 @@ export const contratoRepuestos = {
       description: 'No se borra: tiene movimientos. Desactivado no se ofrece al cargar pedidos.',
     })
     .input(datosRepuesto.extend({ id: z.uuid(), activo: z.boolean() }))
-    .errors({ ...NO_ENCONTRADO, ...CODIGO_DUPLICADO, ...PROVEEDOR_INVALIDO })
+    .errors({
+      ...NO_ENCONTRADO,
+      ...CODIGO_DUPLICADO,
+      ...PROVEEDOR_INVALIDO,
+      ...CODIGO_BARRAS_DUPLICADO,
+    })
     .output(repuestoDetalle),
 
   ubicar: conPermiso('repuestos', 'editar', 'Repuesto')
@@ -275,6 +301,8 @@ export const itemPedido = z.object({
   total: z.string(),
   /** Lo que hay en la sucursal, si es del catálogo. */
   stock: z.string().nullable(),
+  /** Los de las cajas que se escanearon al prepararlo. Pasan a la orden al entregar. */
+  codigosBarras: z.array(z.string()),
 })
 
 export const pedidoResumen = z.object({
@@ -322,6 +350,8 @@ export const itemPedidoEntrada = z.object({
   cantidad: cantidadPositiva,
   precioUnitario: precio,
   codigoAlicuota: alicuota.default(5),
+  /** Se devuelven tal cual al guardar el pedido: si no, editarlo borraría lo escaneado. */
+  codigosBarras: z.array(codigoBarras).max(50).default([]),
 })
 
 const NO_ENCONTRADO_PEDIDO = {
@@ -454,6 +484,53 @@ export const contratoPedidosRepuestos = {
       ORDEN_CERRADA: {
         status: 409,
         message: 'La orden ya no está en el taller: reabrila para sumarle repuestos',
+      },
+    })
+    .output(pedidoDetalle),
+
+  escanear: conPermiso('repuestos', 'editar', 'Repuesto')
+    .route({
+      method: 'POST',
+      path: '/repuestos/pedidos/{id}/escanear',
+      tags: [TAG_PEDIDOS],
+      operationId: 'escanearCajaPedido',
+      summary: 'Escanear una caja al preparar el pedido',
+      description:
+        'El código se busca en el catálogo. Si la pieza ya está en el pedido, el código queda en ' +
+        'ese renglón; si no, la pieza se agrega. Un código que no está en el catálogo se asocia ' +
+        'a un renglón con la ruta de al lado.',
+    })
+    .input(conId.extend({ codigo: codigoBarras }))
+    .errors({
+      ...NO_ENCONTRADO_PEDIDO,
+      ...ESTADO_INVALIDO,
+      CODIGO_DESCONOCIDO: {
+        status: 404,
+        message: 'Ese código de barras no es de ningún repuesto del catálogo',
+        data: z.object({ codigo: z.string() }),
+      },
+    })
+    .output(z.object({ pedido: pedidoDetalle, repuesto: z.string(), agregado: z.boolean() })),
+
+  asociarCodigo: conPermiso('repuestos', 'editar', 'Repuesto')
+    .route({
+      method: 'POST',
+      path: '/repuestos/pedidos/{id}/items/{itemId}/codigo',
+      tags: [TAG_PEDIDOS],
+      operationId: 'asociarCodigoBarrasPedido',
+      summary: 'Asociar un código de barras nuevo a la pieza de un renglón',
+      description:
+        'Queda en el catálogo para la próxima vez, y en el renglón como escaneado. Es como se ' +
+        'llena el catálogo de códigos sin cargarlo a mano.',
+    })
+    .input(conId.extend({ itemId: z.uuid(), codigo: codigoBarras }))
+    .errors({
+      ...NO_ENCONTRADO_PEDIDO,
+      ...ESTADO_INVALIDO,
+      ...CODIGO_BARRAS_DUPLICADO,
+      SIN_REPUESTO: {
+        status: 422,
+        message: 'Ese renglón no es del catálogo: cambialo por la pieza y escaneá de nuevo',
       },
     })
     .output(pedidoDetalle),

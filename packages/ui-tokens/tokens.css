@@ -78,6 +78,11 @@
   --color-patente-vieja: #050607;
   --color-patente-vieja-tinta: #f1f1ec;
 
+  /* La hoja donde firma el cliente: blanca con tinta oscura en los dos temas, porque la firma
+     sale impresa en el comprobante tal como se dibujó. */
+  --color-papel: #ffffff;
+  --color-papel-tinta: #111111;
+
   /* ── Lo que flota: notificaciones y diálogos ─────────────────────────────
      La única sombra del sistema. Todo lo demás se separa con un borde; lo que flota
      sobre la pantalla necesita despegarse, o se confunde con el contenido de abajo. */

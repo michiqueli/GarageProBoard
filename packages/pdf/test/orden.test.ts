@@ -1,6 +1,11 @@
 import { PUNTOS_REVISION_INICIALES } from '@gpb/core'
 import { describe, expect, it } from 'vitest'
-import { type DatosOrdenImpresa, generarOrdenPdf } from '../src/orden.ts'
+import {
+  type DatosEgresoImpreso,
+  type DatosOrdenImpresa,
+  generarEgresoPdf,
+  generarOrdenPdf,
+} from '../src/orden.ts'
 
 const paginas = (pdf: Uint8Array) =>
   (
@@ -67,5 +72,73 @@ describe('la orden impresa', () => {
       total: '1000.00',
     }))
     expect(paginas(await generarOrdenPdf({ ...ORDEN, revision: revisada, items }))).toBe(4)
+  })
+})
+
+/** Un PNG de 1×1 de verdad: pdfkit lee la imagen entera, no sólo la cabecera. */
+const PNG_MINIMO = Uint8Array.from(
+  Buffer.from(
+    'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==',
+    'base64',
+  ),
+)
+
+const EGRESO: DatosEgresoImpreso = {
+  concesionaria: 'Automotores Litoral',
+  sucursal: { nombre: 'Casa Central', domicilio: null, telefono: null },
+  numero: 1234,
+  ingreso: '2026-09-16T09:42',
+  entrega: '2026-09-18T17:10',
+  vehiculo: { dominio: 'AE123BC', marcaModelo: 'Toyota Hilux', chasis: '8AJFB8CD5N1234567' },
+  titular: 'Transportes del Sur SRL',
+  entregadaPor: 'Martín Gutiérrez',
+  hecho: [
+    {
+      tipo: 'trabajo',
+      descripcion: 'Service',
+      cantidad: '1',
+      total: '180000.00',
+      codigosBarras: [],
+    },
+    {
+      tipo: 'repuesto',
+      descripcion: 'Pastillas de freno delanteras',
+      cantidad: '1',
+      total: '45000.00',
+      codigosBarras: ['7790001234567'],
+    },
+  ],
+  total: '225000.00',
+  cobro: { factura: 'Factura B 0001-00000042' },
+  noSeHizo: [{ descripcion: 'Neumáticos traseros', semaforo: 'ambar' }],
+  entrada: { kilometraje: 48210, combustible: 'medio', inventario: { auxilio: 'esta' } },
+  salida: { kilometraje: 48222, combustible: 'cuarto', inventario: { auxilio: 'esta' } },
+  daniosNuevos: [],
+  firma: { imagen: PNG_MINIMO, aclaracion: 'Juan Pérez' },
+}
+
+describe('la entrega impresa', () => {
+  it('entra en una hoja, con la firma de la pantalla', async () => {
+    const pdf = await generarEgresoPdf(EGRESO)
+    expect(Buffer.from(pdf).subarray(0, 5).toString()).toBe('%PDF-')
+    expect(paginas(pdf)).toBe(1)
+  })
+
+  it('con muchos renglones sigue en otra hoja, sin firma y sin factura', async () => {
+    const hecho = Array.from({ length: 40 }, (_, i) => ({
+      tipo: 'repuesto' as const,
+      descripcion: `Repuesto ${i + 1}`,
+      cantidad: '1',
+      total: '1000.00',
+      codigosBarras: [`77900012345${String(i).padStart(2, '0')}`],
+    }))
+    const pdf = await generarEgresoPdf({
+      ...EGRESO,
+      hecho,
+      firma: null,
+      cobro: { sinFactura: 'Garantía', autorizadoPor: 'Martín Gutiérrez' },
+      daniosNuevos: [{ tipo: 'rayon', nota: 'Puerta trasera' }],
+    })
+    expect(paginas(pdf)).toBeGreaterThan(1)
   })
 })

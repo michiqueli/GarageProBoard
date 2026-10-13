@@ -1,9 +1,16 @@
-import { atajosParaSembrar, MODULOS, type Modulo, ROLES_PREDEFINIDOS } from '@gpb/core'
+import { atajosParaSembrar, MODULOS, type Modulo } from '@gpb/core'
 import argon2 from 'argon2'
 import { and, eq } from 'drizzle-orm'
-import { crearDb, crearPool, type Db } from '../src/index.ts'
+import {
+  crearDb,
+  crearPool,
+  type Db,
+  hojasPorOmisionPara,
+  rolesPredefinidosPara,
+} from '../src/index.ts'
 import {
   empresa,
+  hojaImagen,
   puntoVenta,
   rol,
   sucursal,
@@ -236,17 +243,8 @@ async function sembrarConcesionaria(db: Db, ej: Concesionaria): Promise<void> {
     }
   }
 
-  const roles = await db
-    .insert(rol)
-    .values(
-      ROLES_PREDEFINIDOS.map((r) => ({
-        tenantId: t.id,
-        nombre: r.nombre,
-        descripcion: r.descripcion,
-        habilidades: r.habilidades,
-      })),
-    )
-    .returning()
+  const roles = await db.insert(rol).values(rolesPredefinidosPara(t.id)).returning()
+  await db.insert(hojaImagen).values(hojasPorOmisionPara(t.id))
 
   await db.insert(vehiculo).values(ej.vehiculos.map((v) => ({ tenantId: t.id, ...v })))
 

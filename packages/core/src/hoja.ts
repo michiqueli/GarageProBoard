@@ -19,6 +19,30 @@ import type { Carroceria } from './carroceria.ts'
 export const TIPOS_HOJA = ['sedan', 'hatchback', 'suv', 'pickup'] as const
 export type TipoHoja = (typeof TIPOS_HOJA)[number]
 
+/**
+ * El juego que trae el sistema: los dibujos de la hoja de VW. Los archivos están en
+ * `apps/api/assets/hojas/`; acá van sus medidas, que son las que se guardan en la fila. Si se
+ * cambia un archivo, se cambian sus medidas acá, y la sincronización no toca las órdenes que
+ * ya apuntan a la fila vieja.
+ *
+ * Son capturas de unos 380px, y se cambian cuando haga falta (decidido el 13/10/2026).
+ */
+export const HOJAS_POR_OMISION: Record<
+  TipoHoja,
+  { ruta: string; formato: 'image/png'; ancho: number; alto: number; bytes: number }
+> = {
+  sedan: { ruta: 'omision/sedan.png', formato: 'image/png', ancho: 381, alto: 343, bytes: 64725 },
+  hatchback: {
+    ruta: 'omision/hatchback.png',
+    formato: 'image/png',
+    ancho: 379,
+    alto: 339,
+    bytes: 60968,
+  },
+  suv: { ruta: 'omision/suv.png', formato: 'image/png', ancho: 378, alto: 345, bytes: 77385 },
+  pickup: { ruta: 'omision/pickup.png', formato: 'image/png', ancho: 377, alto: 346, bytes: 70018 },
+}
+
 export const TIPOS_HOJA_NOMBRE: Record<TipoHoja, string> = {
   sedan: 'Sedán',
   hatchback: 'Hatchback',

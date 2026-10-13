@@ -2,6 +2,7 @@ import { sql } from 'drizzle-orm'
 import { boolean, index, pgTable, text, timestamp, uuid } from 'drizzle-orm/pg-core'
 import { creadoEn, pk, tenantId } from './_comunes.ts'
 import { usuario } from './acceso.ts'
+import { estacionFichaje } from './fichaje.ts'
 import { sucursal } from './organizacion.ts'
 import { tenant } from './tenant.ts'
 
@@ -65,6 +66,12 @@ export const sesion = pgTable(
 
     /** Desde qué computadora. Sin cookie —una app, una integración— queda vacío. */
     dispositivoId: uuid().references(() => dispositivo.id),
+    /**
+     * La tablet de recepción en la que se abrió, si entró con la credencial. Es la que hace
+     * que la sesión venza a los minutos sin uso y que se corte si revocan la tablet: una
+     * tablet en un mostrador no se cierra sola de otra forma.
+     */
+    estacionId: uuid().references(() => estacionFichaje.id),
 
     /** La sucursal elegida al entrar. Viaja en el token para acotar los permisos. */
     sucursalId: uuid().references(() => sucursal.id),

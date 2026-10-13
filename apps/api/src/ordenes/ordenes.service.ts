@@ -50,6 +50,7 @@ import {
   turno,
   usuario,
   vehiculo,
+  vehiculoPendiente,
   visita,
 } from '@gpb/db/schema'
 import { generarPresupuestoPdf } from '@gpb/pdf'
@@ -63,6 +64,7 @@ import { CORREO } from '../comun/simbolos.ts'
 import { cerrarSesionesDeLaOrden } from '../fichaje/tablero.ts'
 import { moverDiferencia, porRepuesto, repuestosExisten } from '../repuestos/stock.ts'
 import { enOrdenDeHoja, puntosDelTaller } from '../revision/revision.service.ts'
+import { firmasDe } from './firmas.service.ts'
 
 type Codigo =
   | 'NO_ENCONTRADA'
@@ -77,6 +79,17 @@ type Codigo =
   | 'VISITA_INVALIDA'
   | 'CORREO_NO_CONFIGURADO'
   | 'CORREO_NO_ENVIADO'
+  | 'SIN_AUTORIZACION'
+  | 'KILOMETRAJE_MENOR'
+
+/** Cómo sale el auto. Todo es opcional: un taller que no lo anota igual entrega. */
+export interface EntradaEgreso {
+  kilometraje?: number | null | undefined
+  combustible?: string | null | undefined
+  inventario?: InventarioRecepcion | undefined
+  danios?: DanioEntrada[] | undefined
+  sinFactura?: { motivo: string } | null | undefined
+}
 
 export class ErrorOrdenes extends Error {
   constructor(
@@ -195,7 +208,7 @@ export class ServicioOrdenes {
     pagina: number
     porPagina: number
     buscar?: string | undefined
-    estado: EstadoOrden | 'en_taller' | 'todas'
+    estado: EstadoOrden | 'en_taller' | 'para_entregar' | 'todas'
   }) {
     return this.datos.transaccion(async (tx, sesion) => {
       const texto = filtro.buscar?.trim()
@@ -206,7 +219,9 @@ export class ServicioOrdenes {
           ? undefined
           : filtro.estado === 'en_taller'
             ? inArray(orden.estado, [...EN_TALLER, 'terminada', 'facturada'])
-            : eq(orden.estado, filtro.estado),
+            : filtro.estado === 'para_entregar'
+              ? inArray(orden.estado, ['terminada', 'facturada'])
+              : eq(orden.estado, filtro.estado),
         texto
           ? or(
               sql`${orden.numero}::text = ${texto.replace(/^0+/, '')}`,
@@ -254,6 +269,7 @@ export class ServicioOrdenes {
       items: ItemEntrada[]
       revision?: RespuestaEntrada[] | undefined
       visitaId?: string | null | undefined
+      pendienteIds?: string[] | undefined
     },
     ip?: string,
   ) {
@@ -300,6 +316,34 @@ export class ServicioOrdenes {
         .select({ id: titularidad.clienteId })
         .from(titularidad)
         .where(and(eq(titularidad.vehiculoId, auto.id), isNull(titularidad.hasta)))
+      // Lo que quedó pendiente de la vez anterior y se suma a ésta: va como trabajo sin precio,
+      // como lo que sale de la revisión, para presupuestarlo con el circuito de siempre.
+      const idsPendientes = [...new Set(entrada.pendienteIds ?? [])]
+      const pendientes = idsPendientes.length
+        ? await tx
+            .select()
+            .from(vehiculoPendiente)
+            .where(
+              and(
+                inArray(vehiculoPendiente.id, idsPendientes),
+                eq(vehiculoPendiente.vehiculoId, auto.id),
+                isNull(vehiculoPendiente.resueltoEn),
+              ),
+            )
+            .for('update')
+        : []
+      if (pendientes.length !== idsPendientes.length) throw new ErrorOrdenes('NO_ENCONTRADO')
+      const items: ItemEntrada[] = [
+        ...entrada.items,
+        ...pendientes.map((p) => ({
+          tipo: 'trabajo' as const,
+          descripcion: p.descripcion,
+          cantidad: '1',
+          precioUnitario: '0',
+          codigoAlicuota: 5,
+        })),
+      ]
+
       const pagaId = entrada.pagaId ?? titular?.id ?? null
       await this.verificarReferencias(tx, pagaId)
       const { revision } = await this.contestar(tx, sesion, {}, entrada.revision ?? [])
@@ -344,13 +388,25 @@ export class ServicioOrdenes {
         .returning({ id: orden.id })
       if (!creada) throw new Error('No se pudo abrir la orden.')
 
-      if (entrada.items.length) {
-        await this.guardarItems(tx, sesion, creada.id, entrada.items)
-        await moverDiferencia(tx, sesion, new Map(), porRepuesto(entrada.items), {
+      if (items.length) {
+        await this.guardarItems(tx, sesion, creada.id, items)
+        await moverDiferencia(tx, sesion, new Map(), porRepuesto(items), {
           sucursalId: sesion.sucursalId,
           tipo: 'orden',
           ordenId: creada.id,
         })
+      }
+
+      if (pendientes.length) {
+        await tx
+          .update(vehiculoPendiente)
+          .set({
+            resueltoEn: new Date(),
+            resolucion: 'en_orden',
+            resueltoOrdenId: creada.id,
+            resueltoPor: sesion.usuarioId,
+          })
+          .where(inArray(vehiculoPendiente.id, idsPendientes))
       }
 
       // Los kilómetros de la recepción son el dato más fresco del auto.
@@ -555,6 +611,8 @@ export class ServicioOrdenes {
             id: previo?.id ?? null,
             autorizacion: (previo?.autorizacion ?? null) as Autorizacion | null,
             presupuestoId: previo?.presupuestoId ?? null,
+            // Los códigos de las cajas vienen del depósito: la orden no los edita, los conserva.
+            codigosBarras: (previo?.codigosBarras ?? []) as string[],
           }
         })
         await tx.delete(ordenItem).where(eq(ordenItem.ordenId, id))
@@ -664,22 +722,98 @@ export class ServicioOrdenes {
     )
   }
 
-  entregar(id: string, ip?: string) {
+  /**
+   * El egreso: el auto vuelve al cliente. Se anota cómo sale contra cómo entró, y lo que no se
+   * hizo queda con el vehículo. Ver `docs/tecnicos/egreso.md`.
+   *
+   * Se entrega facturada. Terminada y sin factura, sólo si quien entrega puede autorizar
+   * órdenes y dice por qué: una garantía que se factura después, un cliente de confianza.
+   */
+  entregar(id: string, entrada: EntradaEgreso = {}, ip?: string) {
+    const { habilidades } = contextoDelPedido()
     return this.conOrdenEn(
       id,
-      ['facturada'],
-      'Se entrega una orden facturada.',
+      ['terminada', 'facturada'],
+      'Se entrega una orden terminada: facturada, o con la autorización para entregarla sin factura.',
       async (tx, sesion, o) => {
+        const sinFactura = o.estado === 'terminada' ? (entrada.sinFactura ?? null) : null
+        if (o.estado === 'terminada') {
+          if (!sinFactura) {
+            throw new ErrorOrdenes('ESTADO_INVALIDO', {
+              motivo:
+                'Falta facturarla en caja. Si se entrega sin factura, tiene que autorizarlo alguien.',
+            })
+          }
+          if (!habilidades.can('autorizar', 'Orden')) throw new ErrorOrdenes('SIN_AUTORIZACION')
+        }
+        if (
+          entrada.kilometraje != null &&
+          o.kilometraje != null &&
+          entrada.kilometraje < o.kilometraje
+        ) {
+          throw new ErrorOrdenes('KILOMETRAJE_MENOR')
+        }
+
+        // Lo que no se hizo queda con el vehículo: la próxima recepción lo ofrece de nuevo.
+        const items = await tx.select().from(ordenItem).where(eq(ordenItem.ordenId, id))
+        const noSeHizo = loQueNoSeHizo(o.revision, items)
+        if (noSeHizo.length) {
+          await tx.insert(vehiculoPendiente).values(
+            noSeHizo.map((p) => ({
+              tenantId: sesion.tenantId,
+              vehiculoId: o.vehiculoId,
+              ordenId: id,
+              ...p,
+            })),
+          )
+        }
         await tx
           .update(orden)
-          .set({ estado: 'entregada', entregadaEn: new Date(), actualizadoEn: new Date() })
+          .set({
+            estado: 'entregada',
+            entregadaEn: new Date(),
+            entregadaPor: sesion.usuarioId,
+            kilometrajeSalida: entrada.kilometraje ?? null,
+            combustibleSalida: entrada.combustible ?? null,
+            inventarioSalida: entrada.inventario ?? {},
+            daniosEgreso: marcas(entrada.danios ?? []),
+            sinFacturaAutorizadoPor: sinFactura ? sesion.usuarioId : null,
+            sinFacturaMotivo: sinFactura?.motivo ?? null,
+            actualizadoEn: new Date(),
+          })
           .where(eq(orden.id, id))
+
+        // Los kilómetros de salida son el dato más fresco del auto.
+        if (entrada.kilometraje != null) {
+          await tx
+            .update(vehiculo)
+            .set({ kilometraje: entrada.kilometraje, actualizadoEn: new Date() })
+            .where(
+              and(
+                eq(vehiculo.id, o.vehiculoId),
+                sql`coalesce(${vehiculo.kilometraje}, 0) < ${entrada.kilometraje}`,
+              ),
+            )
+        }
+
+        const nuevos = entrada.danios?.length ?? 0
         await this.auditar(
           tx,
           sesion,
           id,
           'modificacion',
-          { numero: o.numero, estado: 'entregada', antes: o.estado },
+          {
+            numero: o.numero,
+            estado: 'entregada',
+            antes: o.estado,
+            texto: [
+              'Lo entregó',
+              sinFactura ? `sin factura: ${sinFactura.motivo}` : null,
+              nuevos ? `con ${nuevos === 1 ? 'un daño nuevo' : `${nuevos} daños nuevos`}` : null,
+            ]
+              .filter(Boolean)
+              .join(', '),
+          },
           ip,
         )
       },
@@ -1237,7 +1371,11 @@ export class ServicioOrdenes {
     sesion: Sesion,
     ordenId: string,
     items: Array<
-      ItemEntrada & { autorizacion?: Autorizacion | null; presupuestoId?: string | null }
+      ItemEntrada & {
+        autorizacion?: Autorizacion | null
+        presupuestoId?: string | null
+        codigosBarras?: string[]
+      }
     >,
   ) {
     const ids = items.map((i) => i.repuestoId).filter((x): x is string => Boolean(x))
@@ -1258,6 +1396,7 @@ export class ServicioOrdenes {
         cantidad: i.cantidad,
         precioUnitario: i.precioUnitario,
         codigoAlicuota: i.codigoAlicuota,
+        codigosBarras: i.codigosBarras ?? [],
       })),
     )
   }
@@ -1348,6 +1487,8 @@ export class ServicioOrdenes {
       observaciones: o.observaciones,
       danios: o.danios,
       inventario: o.inventario,
+      noSeHizo: loQueNoSeHizo(o.revision, items),
+      egreso: o.entregadaEn ? await egresoDe(tx, o) : null,
       revision: await this.revisionDe(
         tx,
         o,
@@ -1356,6 +1497,7 @@ export class ServicioOrdenes {
       hojaTipo: o.hojaTipo as TipoHoja,
       hojaImagenId: o.hojaImagenId,
       terminadaEn: o.terminadaEn?.toISOString() ?? null,
+      firmas: await firmasDe(tx, o.id),
       entregadaEn: o.entregadaEn?.toISOString() ?? null,
       items: items.map((i) => ({
         id: i.id,
@@ -1367,6 +1509,7 @@ export class ServicioOrdenes {
         precioUnitario: i.precioUnitario,
         codigoAlicuota: i.codigoAlicuota,
         total: totalItem(i).toFixed(2),
+        codigosBarras: i.codigosBarras,
         autorizacion: i.autorizacion as Autorizacion | null,
         presupuestoId: i.presupuestoId,
       })),
@@ -1529,4 +1672,73 @@ export function horaArgentina(fecha: Date) {
   }).formatToParts(fecha)
   const v = (t: string) => partes.find((x) => x.type === t)?.value ?? ''
   return `${v('year')}-${v('month')}-${v('day')}T${v('hour')}:${v('minute')}`
+}
+
+/**
+ * Lo que se le recomendó al auto y no se hizo, como queda anotado al entregarlo: los renglones
+ * que el cliente rechazó —con su color, si salieron de la revisión— y lo que quedó en ámbar o en
+ * rojo en la revisión sin llegar a la orden.
+ */
+export function loQueNoSeHizo(
+  revision: RevisionOrden,
+  items: Array<{ id: string; descripcion: string; autorizacion: string | null }>,
+): Array<{
+  origen: 'presupuesto' | 'revision'
+  descripcion: string
+  semaforo: 'ambar' | 'rojo' | null
+}> {
+  const colorDe = new Map(
+    Object.values(revision).flatMap((r) =>
+      r.itemId && ESTADOS_CON_TRABAJO.includes(r.estado)
+        ? [[r.itemId, r.estado as 'ambar' | 'rojo'] as const]
+        : [],
+    ),
+  )
+  const vivos = new Set(items.map((i) => i.id))
+  const rechazados = items
+    .filter((i) => i.autorizacion === 'rechazado')
+    .map((i) => ({
+      origen: 'presupuesto' as const,
+      descripcion: i.descripcion,
+      semaforo: colorDe.get(i.id) ?? null,
+    }))
+  const sinPasar = Object.values(revision)
+    .filter((r) => ESTADOS_CON_TRABAJO.includes(r.estado) && !(r.itemId && vivos.has(r.itemId)))
+    .map((r) => ({
+      origen: 'revision' as const,
+      descripcion: trabajoDePunto(r.nombre, r.nota),
+      semaforo: r.estado as 'ambar' | 'rojo',
+    }))
+  return [...rechazados, ...sinPasar]
+}
+
+type Combustible = 'vacio' | 'cuarto' | 'medio' | 'tres_cuartos' | 'lleno'
+
+/** Cómo salió el auto, con los nombres de quien lo entregó y de quien autorizó sin factura. */
+async function egresoDe(tx: Db, o: typeof orden.$inferSelect) {
+  const ids = [o.entregadaPor, o.sinFacturaAutorizadoPor].filter((x): x is string => Boolean(x))
+  const personas = new Map(
+    ids.length
+      ? (
+          await tx
+            .select({ id: usuario.id, nombre: usuario.nombre, apellido: usuario.apellido })
+            .from(usuario)
+            .where(inArray(usuario.id, ids))
+        ).map((u) => [u.id, `${u.nombre} ${u.apellido}`])
+      : [],
+  )
+  return {
+    entregadaPor: (o.entregadaPor && personas.get(o.entregadaPor)) || null,
+    kilometraje: o.kilometrajeSalida,
+    combustible: o.combustibleSalida as Combustible | null,
+    inventario: o.inventarioSalida,
+    danios: o.daniosEgreso,
+    sinFactura:
+      o.sinFacturaMotivo && o.sinFacturaAutorizadoPor
+        ? {
+            motivo: o.sinFacturaMotivo,
+            autorizadoPor: personas.get(o.sinFacturaAutorizadoPor) ?? 'Alguien',
+          }
+        : null,
+  }
 }

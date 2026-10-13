@@ -21,6 +21,7 @@ import {
   text,
   timestamp,
   unique,
+  uniqueIndex,
   uuid,
 } from 'drizzle-orm/pg-core'
 import { actualizadoEn, creadoEn, pk, tenantId } from './_comunes.ts'
@@ -175,6 +176,22 @@ export const orden = pgTable(
 
     terminadaEn: timestamp({ withTimezone: true }),
     entregadaEn: timestamp({ withTimezone: true }),
+
+    // ── El egreso: cómo sale el auto, contra cómo entró. Ver `docs/tecnicos/egreso.md`. ──
+    entregadaPor: uuid().references(() => usuario.id),
+    kilometrajeSalida: integer(),
+    combustibleSalida: text(),
+    /** Lo que vino con el auto, tildado al devolverlo: `esta` o `falta`. */
+    inventarioSalida: jsonb().$type<InventarioRecepcion>().notNull().default(sql`'{}'::jsonb`),
+    /** Daños que no estaban al recibirlo, marcados sobre el mismo dibujo. */
+    daniosEgreso: jsonb().$type<DanioRecepcion[]>().notNull().default(sql`'[]'::jsonb`),
+    /**
+     * Se entregó sin factura: quién lo autorizó y por qué. Una garantía que se factura después,
+     * un cliente de confianza. Vacío si se entregó facturada, que es lo normal.
+     */
+    sinFacturaAutorizadoPor: uuid().references(() => usuario.id),
+    sinFacturaMotivo: text(),
+
     creadoEn: creadoEn(),
     actualizadoEn: actualizadoEn(),
   },
@@ -192,6 +209,18 @@ export const orden = pgTable(
       sql`${t.combustible} is null or ${t.combustible} in ('vacio', 'cuarto', 'medio', 'tres_cuartos', 'lleno')`,
     ),
     check('orden_kilometraje_positivo', sql`${t.kilometraje} is null or ${t.kilometraje} >= 0`),
+    check(
+      'orden_combustible_salida_valido',
+      sql`${t.combustibleSalida} is null or ${t.combustibleSalida} in ('vacio', 'cuarto', 'medio', 'tres_cuartos', 'lleno')`,
+    ),
+    check(
+      'orden_kilometraje_salida_positivo',
+      sql`${t.kilometrajeSalida} is null or ${t.kilometrajeSalida} >= 0`,
+    ),
+    check(
+      'orden_sin_factura_con_motivo',
+      sql`(${t.sinFacturaAutorizadoPor} is null) = (${t.sinFacturaMotivo} is null)`,
+    ),
     check('orden_danios_lista', sql`jsonb_typeof(${t.danios}) = 'array'`),
     check('orden_hoja_tipo_valido', sql`${t.hojaTipo} in ('sedan', 'hatchback', 'suv', 'pickup')`),
     check('orden_inventario_objeto', sql`jsonb_typeof(${t.inventario}) = 'object'`),
@@ -230,6 +259,11 @@ export const ordenItem = pgTable(
      */
     autorizacion: text(),
     presupuestoId: uuid().references((): AnyPgColumn => ordenPresupuesto.id),
+    /**
+     * Los códigos de barras de las cajas que se le dieron a este auto, tal como se escanearon en
+     * el depósito. El cliente los compara con las cajas que se lleva. Vacío si se cargó a mano.
+     */
+    codigosBarras: text().array().notNull().default(sql`'{}'::text[]`),
     creadoEn: creadoEn(),
   },
   (t) => [
@@ -308,4 +342,91 @@ export const ordenSecuencia = pgTable(
     ultimo: bigint({ mode: 'number' }).notNull().default(0),
   },
   (t) => [primaryKey({ columns: [t.sucursalId] })],
+)
+
+/**
+ * La firma del cliente, dibujada con el dedo en la pantalla: al recibir el auto y al devolverlo.
+ * Ver `docs/tecnicos/egreso.md`.
+ *
+ * Como los dibujos de la hoja, **los bytes están en el almacén** y esta fila manda: se escribe
+ * después de subir la imagen. Volver a firmar no borra la anterior, la marca: lo firmado se
+ * conserva aunque se haya firmado de nuevo.
+ */
+export const ordenFirma = pgTable(
+  'orden_firma',
+  {
+    id: pk(),
+    tenantId: tenantId().references(() => tenant.id),
+    ordenId: uuid()
+      .notNull()
+      .references(() => orden.id),
+    /** `ingreso` al recibir el auto, `egreso` al devolverlo. */
+    momento: text().notNull(),
+    /** Quién firmó, con su nombre: la aclaración de la hoja de papel. */
+    aclaracion: text().notNull(),
+    ruta: text().notNull(),
+    ancho: integer().notNull(),
+    alto: integer().notNull(),
+    bytes: integer().notNull(),
+    creadoEn: creadoEn(),
+    creadoPor: uuid().references(() => usuario.id),
+    reemplazadaEn: timestamp({ withTimezone: true }),
+  },
+  (t) => [
+    uniqueIndex('orden_firma_vigente_uq')
+      .on(t.ordenId, t.momento)
+      .where(sql`reemplazada_en is null`),
+    check('orden_firma_momento_valido', sql`${t.momento} in ('ingreso', 'egreso')`),
+  ],
+)
+
+/**
+ * Lo que se le recomendó a un vehículo y el cliente no autorizó: lo rechazado del presupuesto,
+ * y lo que quedó en ámbar o en rojo en la revisión sin pasar a la orden. Ver
+ * `docs/tecnicos/egreso.md`.
+ *
+ * Se anota al entregar el auto, que es cuando queda dicho que no se hizo. En la recepción
+ * siguiente se ofrece de nuevo: se suma a la orden nueva (`en_orden`) o se descarta con motivo
+ * —lo hizo en otro lado, vendió el auto—. Lo que no se resolvió sigue a la vista.
+ */
+export const vehiculoPendiente = pgTable(
+  'vehiculo_pendiente',
+  {
+    id: pk(),
+    tenantId: tenantId().references(() => tenant.id),
+    vehiculoId: uuid()
+      .notNull()
+      .references(() => vehiculo.id),
+    /** La orden en la que se recomendó y no se autorizó. */
+    ordenId: uuid()
+      .notNull()
+      .references(() => orden.id),
+    origen: text().notNull(),
+    descripcion: text().notNull(),
+    /** El color de la revisión, si salió de ahí. */
+    semaforo: text(),
+    creadoEn: creadoEn(),
+    resueltoEn: timestamp({ withTimezone: true }),
+    resolucion: text(),
+    /** La orden a la que se sumó, si se sumó. */
+    resueltoOrdenId: uuid().references(() => orden.id),
+    motivo: text(),
+    resueltoPor: uuid().references(() => usuario.id),
+  },
+  (t) => [
+    index('vehiculo_pendiente_vehiculo_idx').on(t.vehiculoId).where(sql`resuelto_en is null`),
+    check('vehiculo_pendiente_origen_valido', sql`${t.origen} in ('presupuesto', 'revision')`),
+    check(
+      'vehiculo_pendiente_semaforo_valido',
+      sql`${t.semaforo} is null or ${t.semaforo} in ('ambar', 'rojo')`,
+    ),
+    check(
+      'vehiculo_pendiente_resolucion_valida',
+      sql`(${t.resueltoEn} is null and ${t.resolucion} is null) or (${t.resueltoEn} is not null and ${t.resolucion} in ('en_orden', 'descartado'))`,
+    ),
+    check(
+      'vehiculo_pendiente_descarte_con_motivo',
+      sql`${t.resolucion} is distinct from 'descartado' or ${t.motivo} is not null`,
+    ),
+  ],
 )

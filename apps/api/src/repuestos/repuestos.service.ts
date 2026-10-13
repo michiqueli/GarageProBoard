@@ -1,4 +1,4 @@
-import { plata } from '@gpb/core'
+import { normalizarCodigoBarras, plata } from '@gpb/core'
 import { and, asc, count, type Db, desc, eq, ilike, or, sql } from '@gpb/db'
 import {
   compra,
@@ -8,6 +8,7 @@ import {
   pedidoRepuestos,
   proveedor,
   repuesto,
+  repuestoCodigoBarras,
   repuestoStock,
   sucursal,
   usuario,
@@ -30,6 +31,7 @@ export interface DatosRepuesto {
   codigoAlicuota: number
   proveedorId?: string | null | undefined
   observaciones?: string | null | undefined
+  codigosBarras?: string[] | undefined
 }
 
 /** Cuántos movimientos trae la ficha. El resto es historia que se consulta con otra pantalla. */
@@ -63,6 +65,8 @@ export class ServicioRepuestos {
               ilike(repuesto.descripcion, `%${texto}%`),
               ilike(repuesto.marca, `%${texto}%`),
               ilike(repuesto.aplicacion, `%${texto}%`),
+              // El código de barras, entero: es lo que manda el lector al buscar una caja.
+              sql`exists (select 1 from ${repuestoCodigoBarras} where ${repuestoCodigoBarras.repuestoId} = ${repuesto.id} and ${repuestoCodigoBarras.codigo} = ${normalizarCodigoBarras(texto)})`,
             )
           : undefined,
         filtro.stock === 'con_stock' ? sql`${cantidad} > 0` : undefined,
@@ -141,6 +145,7 @@ export class ServicioRepuestos {
           costoUnitario: datos.costo ?? null,
         })
       }
+      await fijarCodigosBarras(tx, sesion, creado.id, entrada.codigosBarras ?? [])
       await this.auditar(
         tx,
         sesion,
@@ -167,6 +172,9 @@ export class ServicioRepuestos {
         .update(repuesto)
         .set({ ...limpiar(entrada), actualizadoEn: new Date() })
         .where(eq(repuesto.id, id))
+      const codigosCambiaron =
+        entrada.codigosBarras !== undefined &&
+        (await fijarCodigosBarras(tx, sesion, id, entrada.codigosBarras))
 
       const cambios: string[] = []
       if (antes.activo !== entrada.activo)
@@ -179,6 +187,7 @@ export class ServicioRepuestos {
       if (antes.codigo !== entrada.codigo)
         cambios.push(`cambió el código de ${antes.codigo} a ${entrada.codigo}`)
       if (antes.descripcion !== entrada.descripcion) cambios.push('cambió la descripción')
+      if (codigosCambiaron) cambios.push('cambió los códigos de barras')
       await this.auditar(
         tx,
         sesion,
@@ -408,9 +417,15 @@ export class ServicioRepuestos {
       )
       .orderBy(desc(movimientoStock.creadoEn), desc(movimientoStock.id))
       .limit(MOVIMIENTOS_EN_FICHA)
+    const codigos = await tx
+      .select({ codigo: repuestoCodigoBarras.codigo })
+      .from(repuestoCodigoBarras)
+      .where(eq(repuestoCodigoBarras.repuestoId, id))
+      .orderBy(asc(repuestoCodigoBarras.creadoEn))
 
     return {
       ...aResumen(fila),
+      codigosBarras: codigos.map((c) => c.codigo),
       aplicacion: fila.r.aplicacion,
       costo: fila.r.costo === null ? null : plata(fila.r.costo).toFixed(2),
       proveedor: prov ?? null,
@@ -563,4 +578,52 @@ function detalleMovimiento(
         ? `Enviado a ${x.otraSucursal ?? 'otra sucursal'}`
         : `Recibido de ${x.otraSucursal ?? 'otra sucursal'}`
   }
+}
+
+/**
+ * Asocia un código de barras a una pieza. Si ya era de ella, no pasa nada; si es de otra, no se
+ * pisa: un código que apunta a dos piezas no sirve para buscar.
+ */
+export async function asociarCodigoBarras(
+  tx: Db,
+  sesion: Sesion,
+  repuestoId: string,
+  codigo: string,
+) {
+  const [actual] = await tx
+    .select({
+      repuestoId: repuestoCodigoBarras.repuestoId,
+      descripcion: repuesto.descripcion,
+    })
+    .from(repuestoCodigoBarras)
+    .innerJoin(repuesto, eq(repuesto.id, repuestoCodigoBarras.repuestoId))
+    .where(eq(repuestoCodigoBarras.codigo, codigo))
+  if (actual?.repuestoId === repuestoId) return
+  if (actual) {
+    throw new ErrorRepuestos('CODIGO_BARRAS_DUPLICADO', {
+      codigo,
+      id: actual.repuestoId,
+      descripcion: actual.descripcion,
+    })
+  }
+  await tx
+    .insert(repuestoCodigoBarras)
+    .values({ tenantId: sesion.tenantId, repuestoId, codigo, creadoPor: sesion.usuarioId })
+}
+
+/** Deja a la pieza con estos códigos y ninguno más. Devuelve si cambió algo. */
+async function fijarCodigosBarras(tx: Db, sesion: Sesion, repuestoId: string, codigos: string[]) {
+  const quedan = new Set(codigos)
+  const tenia = await tx
+    .select({ id: repuestoCodigoBarras.id, codigo: repuestoCodigoBarras.codigo })
+    .from(repuestoCodigoBarras)
+    .where(eq(repuestoCodigoBarras.repuestoId, repuestoId))
+  const sobran = tenia.filter((c) => !quedan.has(c.codigo))
+  for (const c of sobran) {
+    await tx.delete(repuestoCodigoBarras).where(eq(repuestoCodigoBarras.id, c.id))
+  }
+  const yaTenia = new Set(tenia.map((c) => c.codigo))
+  const nuevos = [...quedan].filter((c) => !yaTenia.has(c))
+  for (const codigo of nuevos) await asociarCodigoBarras(tx, sesion, repuestoId, codigo)
+  return sobran.length > 0 || nuevos.length > 0
 }

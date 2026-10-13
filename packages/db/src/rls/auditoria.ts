@@ -70,6 +70,14 @@ export const TABLAS_AUDITADAS: readonly TablaAuditada[] = [
       'cuándo: una fila borrada acá deja órdenes firmadas apuntando a un dibujo que no está.',
   },
   { tabla: 'orden' },
+  {
+    tabla: 'vehiculo_pendiente',
+    nota: 'Lo que se le recomendó y no autorizó, y quién lo descartó y por qué: es lo que se discute cuando falla lo que se había avisado.',
+  },
+  {
+    tabla: 'orden_firma',
+    nota: 'Quién firmó, cuándo, y quién la puso a firmar: si alguien dice que no firmó, se mira acá.',
+  },
   { tabla: 'orden_presupuesto' },
   {
     tabla: 'revision_punto',
@@ -78,6 +86,10 @@ export const TABLAS_AUDITADAS: readonly TablaAuditada[] = [
       'autos que vengan, y eso tiene que tener nombre y fecha.',
   },
   { tabla: 'repuesto' },
+  {
+    tabla: 'repuesto_codigo_barras',
+    nota: 'Qué código se le asoció a qué pieza y quién: si una caja no coincide con la orden, se mira acá.',
+  },
   {
     tabla: 'repuesto_stock',
     cuandoActualiza:
@@ -128,6 +140,10 @@ export const TABLAS_AUDITADAS: readonly TablaAuditada[] = [
   { tabla: 'usuario_rol' },
   { tabla: 'usuario_sucursal' },
   { tabla: 'dispositivo' },
+  {
+    tabla: 'agenda_cupo',
+    nota: 'Cuántos turnos entran por franja: si un jueves se agendó de más, se ve quién había cambiado el cupo.',
+  },
   {
     tabla: 'turno',
     nota: 'Quién agendó, quién lo movió de día y quién lo canceló: es lo que se discute cuando el cliente dice que tenía turno.',

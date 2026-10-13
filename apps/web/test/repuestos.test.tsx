@@ -1,3 +1,4 @@
+import { ORPCError } from '@orpc/client'
 import { cleanup, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
@@ -13,6 +14,8 @@ const pedidos = {
   editar: vi.fn(),
   aCaja: vi.fn(),
   entregar: vi.fn(),
+  escanear: vi.fn(),
+  asociarCodigo: vi.fn(),
 }
 const ordenes = { listar: vi.fn() }
 const renovar = vi.fn()
@@ -155,6 +158,7 @@ describe('el pedido de mostrador', () => {
           codigoAlicuota: 5,
           total: '18500.00',
           stock: '2',
+          codigosBarras: [],
         },
       ],
       _enviado: x,
@@ -204,6 +208,7 @@ describe('el pedido de mostrador', () => {
           codigoAlicuota: 5,
           total: '37000.00',
           stock: '0',
+          codigosBarras: [],
         },
       ],
     }
@@ -242,5 +247,72 @@ describe('abrir un pedido', () => {
     await waitFor(() =>
       expect(router.state.location.pathname).toBe(`/repuestos/pedidos/${PEDIDO.id}`),
     )
+  })
+})
+
+describe('las cajas del pedido', () => {
+  const CON_PASTILLAS = {
+    ...PEDIDO,
+    items: [
+      {
+        id: '44444444-4444-4444-8444-444444444444',
+        repuestoId: PASTILLAS.id,
+        codigo: PASTILLAS.codigo,
+        descripcion: PASTILLAS.descripcion,
+        cantidad: '1',
+        precioUnitario: '18500.00',
+        codigoAlicuota: 5,
+        total: '18500.00',
+        stock: '3',
+        codigosBarras: [],
+      },
+    ],
+  }
+
+  it('la caja escaneada queda en su renglón', async () => {
+    const conCaja = {
+      ...CON_PASTILLAS,
+      items: [{ ...CON_PASTILLAS.items[0], codigosBarras: ['7790001234567'] }],
+    }
+    pedidos.ficha.mockResolvedValueOnce(CON_PASTILLAS).mockResolvedValue(conCaja)
+    pedidos.escanear.mockResolvedValue({
+      pedido: conCaja,
+      repuesto: PASTILLAS.descripcion,
+      agregado: false,
+    })
+    await montarApp(`/repuestos/pedidos/${PEDIDO.id}`)
+
+    const campo = await screen.findByLabelText('Escaneá una caja')
+    await userEvent.type(campo, '7790001234567{Enter}')
+
+    expect(pedidos.escanear).toHaveBeenCalledWith({ id: PEDIDO.id, codigo: '7790001234567' })
+    expect(await screen.findByText('Caja: 7790001234567')).toBeDefined()
+  })
+
+  it('un código desconocido pregunta de qué pieza es, y lo asocia', async () => {
+    const asociado = {
+      ...CON_PASTILLAS,
+      items: [{ ...CON_PASTILLAS.items[0], codigosBarras: ['4001234567890'] }],
+    }
+    pedidos.ficha.mockResolvedValueOnce(CON_PASTILLAS).mockResolvedValue(asociado)
+    pedidos.escanear.mockRejectedValue(
+      new ORPCError('CODIGO_DESCONOCIDO', {
+        message: 'Ese código de barras no es de ningún repuesto del catálogo',
+        data: { codigo: '4001234567890' },
+      }),
+    )
+    pedidos.asociarCodigo.mockResolvedValue(asociado)
+    await montarApp(`/repuestos/pedidos/${PEDIDO.id}`)
+
+    await userEvent.type(await screen.findByLabelText('Escaneá una caja'), '4001234567890{Enter}')
+    const pregunta = await screen.findByRole('group', { name: 'Código desconocido' })
+    await userEvent.click(within(pregunta).getByRole('button', { name: PASTILLAS.descripcion }))
+
+    expect(pedidos.asociarCodigo).toHaveBeenCalledWith({
+      id: PEDIDO.id,
+      itemId: CON_PASTILLAS.items[0]?.id,
+      codigo: '4001234567890',
+    })
+    expect(await screen.findByText('Caja: 4001234567890')).toBeDefined()
   })
 })

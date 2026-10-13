@@ -3,7 +3,9 @@ import {
   CONTROLES_INVENTARIO,
   ELEMENTOS_INVENTARIO,
   ESTADOS_REVISION,
+  MAXIMO_BYTES_FIRMA,
   MAXIMO_NOTA_PUNTO,
+  MOMENTOS_FIRMA,
   SECCIONES_REVISION,
   TIPOS_DANIO,
   TIPOS_HOJA,
@@ -160,6 +162,11 @@ export const itemOrden = z.object({
    */
   autorizacion: z.enum(AUTORIZACIONES).nullable(),
   presupuestoId: z.uuid().nullable(),
+  /**
+   * Los códigos de barras de las cajas que se le dieron a este auto, escaneados en el depósito.
+   * El cliente los compara con las cajas que se lleva.
+   */
+  codigosBarras: z.array(z.string()),
 })
 
 export const presupuestoOrden = z.object({
@@ -197,7 +204,22 @@ export const sesionDeTrabajo = z.object({
   cerradaPor: z.enum(['mecanico', 'auto', 'jefe']).nullable(),
 })
 
+/** Lo que se le recomendó a un auto y no se hizo. */
+export const pendienteVehiculo = z.object({
+  id: z.uuid(),
+  descripcion: z.string(),
+  origen: z.enum(['presupuesto', 'revision']),
+  semaforo: z.enum(['ambar', 'rojo']).nullable(),
+  /** Cuándo se le dijo: al entregar el auto. */
+  informadoEn: z.iso.datetime(),
+  orden: z.object({ id: z.uuid(), numero: z.number().int() }),
+})
+
+const firmaOrden = z.object({ aclaracion: z.string(), firmadoEn: z.iso.datetime() }).nullable()
+
 export const ordenDetalle = ordenResumen.extend({
+  /** La firma del cliente al recibir el auto y al devolverlo, si se firmó en la pantalla. */
+  firmas: z.object({ ingreso: firmaOrden, egreso: firmaOrden }),
   traeNombre: z.string().nullable(),
   traeTelefono: z.string().nullable(),
   autorizaNombre: z.string().nullable(),
@@ -209,6 +231,28 @@ export const ordenDetalle = ordenResumen.extend({
   observaciones: z.string().nullable(),
   danios: z.array(danioRecepcion),
   inventario: inventarioRecepcion,
+  /**
+   * Lo que se le recomendó y no se hizo: lo rechazado y lo ámbar o rojo de la revisión que no
+   * llegó a la orden. Es lo que el egreso le dice al cliente, y lo que queda pendiente al entregar.
+   */
+  noSeHizo: z.array(
+    z.object({
+      origen: z.enum(['presupuesto', 'revision']),
+      descripcion: z.string(),
+      semaforo: z.enum(['ambar', 'rojo']).nullable(),
+    }),
+  ),
+  /** Cómo salió el auto, una vez entregado. */
+  egreso: z
+    .object({
+      entregadaPor: z.string().nullable(),
+      kilometraje: z.number().int().nullable(),
+      combustible: z.enum(NIVELES_COMBUSTIBLE).nullable(),
+      inventario: inventarioRecepcion,
+      danios: z.array(danioRecepcion),
+      sinFactura: z.object({ motivo: z.string(), autorizadoPor: z.string() }).nullable(),
+    })
+    .nullable(),
   /** Los puntos de la revisión, por sección y en el orden del taller. */
   revision: z.array(respuestaRevision),
   /** Qué carrocería se dibujó: decide cuál de los dibujos del sistema usar si no hay propio. */
@@ -302,7 +346,10 @@ export const contratoOrdenes = {
     .input(
       paginado.extend({
         buscar: z.string().trim().max(60).optional(),
-        estado: z.enum([...ESTADOS_ORDEN, 'en_taller', 'todas']).default('en_taller'),
+        /** `para_entregar`: terminadas o facturadas, la cola del egreso. */
+        estado: z
+          .enum([...ESTADOS_ORDEN, 'en_taller', 'para_entregar', 'todas'])
+          .default('en_taller'),
       }),
     )
     .output(z.object({ datos: z.array(ordenResumen), total: z.number().int() })),
@@ -342,6 +389,11 @@ export const contratoOrdenes = {
          * con la orden: es lo que une cuánto esperó alguien con qué se le hizo.
          */
         visitaId: z.uuid().nullish(),
+        /**
+         * Lo que quedó pendiente de la vez anterior y se suma a esta orden: va como trabajo sin
+         * precio, y el pendiente queda resuelto con ella.
+         */
+        pendienteIds: z.array(z.uuid()).max(50).default([]),
       }),
     )
     .errors({
@@ -589,16 +641,143 @@ export const contratoOrdenes = {
     .errors({ ...NO_ENCONTRADA, ...ESTADO_INVALIDO })
     .output(ordenDetalle),
 
+  pendientes: conPermiso('servicios', 'ver', 'Orden')
+    .route({
+      method: 'GET',
+      path: '/vehiculos/{id}/pendientes',
+      tags: [TAG],
+      operationId: 'pendientesDelVehiculo',
+      summary: 'Lo que se le recomendó al auto y no se hizo, todavía sin resolver',
+      description:
+        'Se anota al entregarlo: lo rechazado del presupuesto y lo ámbar o rojo de la revisión ' +
+        'que no pasó a la orden. Los más nuevos primero.',
+    })
+    .input(conId)
+    .output(z.object({ datos: z.array(pendienteVehiculo) })),
+
+  descartarPendiente: conPermiso('servicios', 'editar', 'Orden')
+    .route({
+      method: 'POST',
+      path: '/vehiculos/pendientes/{id}/descartar',
+      tags: [TAG],
+      operationId: 'descartarPendienteVehiculo',
+      summary: 'Descartar un pendiente: lo hizo en otro lado, vendió el auto',
+      description: 'No se borra: queda con el motivo y con quién lo descartó.',
+    })
+    .input(
+      conId.extend({
+        motivo: z
+          .string()
+          .trim()
+          .min(3, 'Decí por qué se descarta')
+          .max(300, 'Es largo: hasta 300 letras'),
+      }),
+    )
+    .errors({
+      NO_ENCONTRADO: { status: 404, message: 'Ese pendiente no existe o ya se resolvió' },
+    })
+    .output(z.object({ hecho: z.literal(true) })),
+
+  firmar: conPermiso('servicios', 'editar', 'Orden')
+    .route({
+      method: 'POST',
+      path: '/ordenes/{id}/firmas/{momento}',
+      tags: [TAG],
+      operationId: 'firmarOrden',
+      summary: 'La firma del cliente en la pantalla, al recibir o al devolver el auto',
+      successStatus: 201,
+      description:
+        'Un PNG con el trazo, y la aclaración. Volver a firmar no borra la anterior: la marca ' +
+        'como reemplazada.',
+    })
+    .input(
+      conId.extend({
+        momento: z.enum(MOMENTOS_FIRMA),
+        aclaracion: z
+          .string()
+          .trim()
+          .min(3, 'Escribí el nombre de quien firma')
+          .max(120, 'Es largo: hasta 120 letras'),
+        imagen: z.file(),
+      }),
+    )
+    .errors({
+      ...NO_ENCONTRADA,
+      ESTADO_INVALIDO_FIRMA: {
+        status: 409,
+        message: 'En este estado de la orden no se firma eso',
+        data: z.object({ motivo: z.string() }),
+      },
+      FORMATO_INVALIDO: { status: 422, message: 'La firma tiene que llegar como un PNG' },
+      DEMASIADO_GRANDE: {
+        status: 413,
+        message: `La firma no puede pasar de ${MAXIMO_BYTES_FIRMA / 1024} KB`,
+      },
+      SIN_ALMACEN: {
+        status: 503,
+        message: 'El servidor no tiene configurado dónde guardar los archivos. Avisale a soporte',
+      },
+    })
+    .output(z.object({ ingreso: firmaOrden, egreso: firmaOrden })),
+
+  firma: conPermiso('servicios', 'ver', 'Orden')
+    .route({
+      method: 'GET',
+      path: '/ordenes/{id}/firmas/{momento}',
+      tags: [TAG],
+      operationId: 'firmaDeOrden',
+      summary: 'La imagen de la firma vigente',
+    })
+    .input(conId.extend({ momento: z.enum(MOMENTOS_FIRMA) }))
+    .errors({ ...NO_ENCONTRADA })
+    .output(z.file()),
+
   entregar: conPermiso('servicios', 'editar', 'Orden')
     .route({
       method: 'POST',
       path: '/ordenes/{id}/entregar',
       tags: [TAG],
       operationId: 'entregarOrden',
-      summary: 'Entregar el vehículo al cliente',
+      summary: 'Entregar el vehículo al cliente: el egreso',
+      description:
+        'Con cómo sale —km, combustible, lo que vino con él tildado y los daños nuevos— contra ' +
+        'cómo entró. Se entrega facturada, o sin factura si quien entrega puede autorizarlo y ' +
+        'dice por qué. Lo que no se hizo queda como pendiente del vehículo.',
     })
-    .input(conId)
-    .errors({ ...NO_ENCONTRADA, ...ESTADO_INVALIDO })
+    .input(
+      conId.extend({
+        kilometraje: z.number().int().min(0).nullish(),
+        combustible: z.enum(NIVELES_COMBUSTIBLE).nullish(),
+        inventario: inventarioRecepcion.default({}),
+        danios: z
+          .array(danioEntrada)
+          .max(40, 'Son muchas marcas: agrupalas con un detalle')
+          .default([]),
+        /** Entregarla sin factura: hace falta poder autorizar órdenes, y decir por qué. */
+        sinFactura: z
+          .object({
+            motivo: z
+              .string()
+              .trim()
+              .min(5, 'Decí por qué se entrega sin factura')
+              .max(300, 'Es largo: hasta 300 letras'),
+          })
+          .nullish(),
+      }),
+    )
+    .errors({
+      ...NO_ENCONTRADA,
+      ...ESTADO_INVALIDO,
+      SIN_AUTORIZACION: {
+        status: 403,
+        message:
+          'Entregarla sin factura lo autoriza alguien que pueda autorizar órdenes. Facturala en caja, o pedíselo.',
+      },
+      KILOMETRAJE_MENOR: {
+        status: 422,
+        message: 'Los kilómetros de salida no pueden ser menos que los de entrada',
+      },
+    })
     .output(ordenDetalle),
 
   anular: conPermiso('servicios', 'anular', 'Orden')
@@ -629,5 +808,17 @@ export const contratoOrdenes = {
         message: 'El servidor no tiene configurada la firma de los QR. Avisale a soporte',
       },
     })
+    .output(z.file()),
+
+  pdfEgreso: conPermiso('servicios', 'ver', 'Orden')
+    .route({
+      method: 'GET',
+      path: '/ordenes/{id}/egreso/pdf',
+      tags: [TAG],
+      operationId: 'pdfEgresoOrden',
+      summary: 'El comprobante de la entrega, con lo hecho, lo no hecho y la firma',
+    })
+    .input(conId)
+    .errors({ ...NO_ENCONTRADA, ...ESTADO_INVALIDO })
     .output(z.file()),
 }

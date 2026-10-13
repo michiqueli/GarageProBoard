@@ -188,6 +188,39 @@ botones de la pantalla se actualizan cuando la sesión renueva el acceso —venc
 minutos y se renueva en el primer pedido que sigue— o al recargar la página. Hasta entonces
 puede ver algo que ya no puede usar, y la API se lo dice.
 
+## Cuando el sistema cambia un rol predefinido
+
+Los predefinidos se copian a cada concesionaria cuando se da de alta, y desde ahí son
+suyos. Pero el sistema también los cambia: con la recepción, el Asesor de servicios
+necesitó Visita y Turno. Antes del 13/10/2026, ese cambio no llegaba nunca a las
+concesionarias que ya existían. Como no había forma de saber si una concesionaria había
+tocado su rol, tampoco se lo podía pisar sin riesgo.
+
+Ahora cada rol sabe dos cosas: **de qué predefinido salió** (`rol.predefinido`, una clave que
+no cambia aunque lo renombren) y **qué versión del sistema conoce** (`rol.version_sistema`).
+Si sus permisos son los de esa versión, nadie lo tocó. Se comparan como conjuntos: guardarlo
+desde la pantalla sin cambiar nada no cuenta como editarlo.
+
+Después de las migraciones, `pnpm db:migrate` lleva cada concesionaria a la versión del
+sistema:
+
+- **El predefinido que falta se crea.** Si la concesionaria ya tiene un rol propio con ese
+  nombre, ése es suyo y no se pisa: el resumen lo informa.
+- **El que nadie tocó se actualiza solo**, y a quien lo tiene le llega el aviso: «El sistema
+  actualizó el rol Asesor de servicios: ahora podés…».
+- **El que la concesionaria editó no se toca.** Quien lo editó sabía algo que el sistema no
+  sabe. Roles le muestra **«Versión nueva»** con lo que agrega y lo que saca, y dos opciones:
+  - **Aplicar.** Suma y saca sólo lo que cambió el sistema; lo que la concesionaria había
+    cambiado queda como estaba.
+  - **Dejarlo como está.** Se da la versión por conocida, así que, si el sistema vuelve a
+    cambiar el rol, se ofrece sólo lo nuevo.
+
+  Las dos opciones siguen las reglas de modificar un rol: nadie decide sobre uno que tiene,
+  ni se da un permiso que no tiene.
+
+Las bases que ya existían se reconocieron por el nombre, y se tomaron como intactas: todavía
+no hay ninguna concesionaria de verdad.
+
 ## Preguntas abiertas
 
 - **Comparar reglas con condiciones.** «Cubierta por» es fácil con reglas simples

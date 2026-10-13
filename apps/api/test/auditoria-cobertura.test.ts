@@ -108,6 +108,8 @@ const AUDITAN: readonly string[] = [
   'repuestos.transferir',
   'roles.crear',
   'roles.editar',
+  'roles.aplicarNovedad',
+  'roles.descartarNovedad',
   'usuarios.crear',
   'usuarios.editar',
   'usuarios.nuevaPassword',
@@ -123,9 +125,19 @@ const AUDITAN: readonly string[] = [
  * auditoría de cambios?» se contesta acá y no releyendo código.
  */
 const NO_AUDITAN: Readonly<Record<string, string>> = {
+  'pedidosRepuestos.escanear':
+    'Suma el código al renglón del pedido, que no se audita: se audita al entregarlo, y la pieza nueva que agrega se ve en el pedido.',
+  'pedidosRepuestos.asociarCodigo':
+    'El trigger de repuesto_codigo_barras guarda qué código se le asoció a qué pieza y quién.',
+  'ordenes.firmar':
+    'El trigger de orden_firma guarda quién firmó, con qué aclaración y quién la puso a firmar.',
+  'ordenes.descartarPendiente':
+    'El trigger de vehiculo_pendiente guarda quién lo descartó y con qué motivo.',
   'auth.iniciar':
     'Los ingresos salen de la tabla `sesion`, que es más completa: trae la computadora y la IP.',
   'auth.refrescar': 'Es la misma persona en la misma silla, cada quince minutos.',
+  'auth.entrarConCredencial':
+    'Como el ingreso con contraseña: queda en `sesion`, con la tablet en la que se abrió.',
   'auth.cerrar': 'Salir no cambia ningún dato de la concesionaria.',
   'auth.cambiarSucursal': 'Queda en la familia de sesiones, junto con el ingreso.',
   'auth.leerAvisos': 'Marcar como leído un aviso propio no es un cambio que nadie audite.',
@@ -154,6 +166,8 @@ const NO_AUDITAN: Readonly<Record<string, string>> = {
   'turnos.editar':
     'Cambiarlo de día o de pedido son columnas del turno, con su antes y su después en el trigger.',
   'turnos.cancelar': 'Es el estado del turno, que el trigger guarda con quién lo cambió.',
+  'turnos.fijarCupo': 'El trigger de agenda_cupo guarda el cupo con quién lo cambió.',
+  'turnos.quitarCupo': 'El trigger de agenda_cupo guarda la baja con el cupo que había.',
   'turnos.noVino': 'Es el estado del turno, que el trigger guarda con quién lo cambió.',
   'turnos.llego':
     'Cambia el estado del turno, que el trigger cuenta, y anota la visita, que dice quién la anotó.',

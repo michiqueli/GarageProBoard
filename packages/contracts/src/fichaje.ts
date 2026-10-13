@@ -10,6 +10,7 @@ export const TIPOS_ESTACION = {
   tablero: 'Tablero: el televisor del piso',
   totem: 'Tótem: la puerta, para que el cliente se anote solo',
   llamador: 'Llamador: el televisor de la sala de espera',
+  recepcion: 'Recepción: la tablet del asesor, que se abre con la credencial',
 } as const
 
 export type TipoEstacion = keyof typeof TIPOS_ESTACION

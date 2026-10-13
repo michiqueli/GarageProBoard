@@ -1,3 +1,4 @@
+import { ORPCError } from '@orpc/client'
 import { cleanup, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
@@ -103,7 +104,7 @@ describe('la agenda', () => {
     expect(await within(dia).findByText('Rosa Díaz')).toBeDefined()
     expect(within(dia).getByText('Luis Paz')).toBeDefined()
     expect(within(dia).queryByText('Ana López')).toBeNull()
-    expect(within(dia).getByText('11 h: 1 · 15 h: 1')).toBeDefined()
+    expect(within(dia).getByLabelText('Turnos por franja').textContent).toBe('11:00: 1 · 15:00: 1')
   })
 
   it('→ pasa al día siguiente', async () => {
@@ -139,6 +140,7 @@ describe('la agenda', () => {
         telefono: '',
         pedido: 'Aceite',
         asesorId: 'e2',
+        sobreturno: false,
       }),
     )
   })
@@ -180,5 +182,46 @@ describe('los turnos de hoy en la puerta', () => {
     await userEvent.click(within(fila).getByRole('button', { name: 'No vino' }))
     await confirmarDialogo('No vino')
     expect(turnos.noVino).toHaveBeenCalledWith({ id: 't2' })
+  })
+})
+
+describe('el cupo', () => {
+  it('con cupo cuenta por franja y marca la llena', async () => {
+    turnos.listar.mockResolvedValue({
+      datos: [HOY_11, HOY_15, VIERNES],
+      cupo: { minutosFranja: 60, cupo: 1 },
+    })
+    await montarApp('/agenda')
+    const dia = await screen.findByRole('region', { name: 'Turnos del día' })
+    await within(dia).findByText('Rosa Díaz')
+    expect(within(dia).getByLabelText('Turnos por franja').textContent).toBe(
+      '11:00: 1/1, llena · 15:00: 1/1, llena',
+    )
+  })
+
+  it('con la franja llena pregunta, y como sobreturno lo agenda', async () => {
+    turnos.crear
+      .mockRejectedValueOnce(
+        new ORPCError('FRANJA_LLENA', {
+          message: 'Esa franja ya tiene todos los turnos del cupo',
+          data: { desde: '16:00', hasta: '17:00', cupo: 2, ocupados: 2 },
+        }),
+      )
+      .mockResolvedValueOnce({ ...VIERNES, id: 't9', sobreturno: true })
+    await montarApp('/agenda')
+    await screen.findByText('Rosa Díaz')
+
+    await userEvent.click(screen.getByRole('button', { name: /Agendar un turno/ }))
+    const form = screen.getByRole('form', { name: 'Agendar un turno' })
+    await userEvent.type(within(form).getByLabelText('Patente'), 'AE111FF')
+    await userEvent.type(within(form).getByLabelText('A nombre de'), 'Marta Sosa')
+    await userEvent.type(within(form).getByLabelText('Qué le pasa o qué service es'), 'Aceite')
+    await userEvent.click(within(form).getByRole('button', { name: /Agendar/ }))
+
+    const dialogo = await confirmarDialogo('Agendar como sobreturno')
+    expect(dialogo.textContent).toMatch(/16:00 a 17:00 está llena/)
+    await waitFor(() =>
+      expect(turnos.crear).toHaveBeenLastCalledWith(expect.objectContaining({ sobreturno: true })),
+    )
   })
 })

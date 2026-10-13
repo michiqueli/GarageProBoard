@@ -101,3 +101,31 @@ el que el contrato vive en `packages/contracts` y no adentro de la API.
 que lo toca es el cliente: la identidad es del dispositivo y de nadie más. Está en el roadmap
 como cosa aparte y conviene que siga separado — confundirlos es lo que lleva a querer resolver
 los dos con el mismo usuario compartido.
+
+## Lo que salió al construirlo (13/10/2026)
+
+- **La tablet es una estación más, no un `dispositivo`.** La tabla `dispositivo` sirve para
+  la trazabilidad: es la cookie de un navegador, sin token y sin forma de revocarse. Las
+  estaciones ya tenían todo lo que hacía falta: el alta con un link de una sola vez, el token
+  en el aparato, la sucursal y la revocación. Se sumó el tipo «Recepción», y en esa tablet
+  `/fichaje` muestra «Pasá tu credencial» en vez del lector del taller.
+- **Faltaba el vínculo entre la cuenta y el legajo.** `usuario.empleado_id` existía y sólo lo
+  llenaban las semillas. Ahora se elige en Usuarios. Sin ese vínculo, la credencial no tiene
+  a qué cuenta abrir, y la tablet lo dice: «Tu legajo no tiene una cuenta del sistema».
+- **La credencial sola no abre nada fuera de una tablet registrada.** `POST /auth/credencial`
+  pide el token de una estación de recepción, y después verifica la firma del QR, que la
+  credencial esté vigente, que el legajo tenga una cuenta activa y que esa cuenta entre a la
+  sucursal de la tablet. Se decidió no pedir PIN: con el cliente parado adelante, la tablet
+  registrada y la credencial revocable desde Personal alcanzan.
+- **La inactividad se corta en dos lados.** La pantalla cierra la sesión a los quince
+  minutos sin que nadie la toque, y avisa en el último minuto. Del lado del servidor, la
+  sesión de una tablet (`sesion.estacion_id`) vence a la media hora sin renovarse en vez de a
+  los treinta días, y se corta si revocan la tablet: es el respaldo para cuando la pantalla no
+  puede cerrarla.
+- **La cámara es la de adelante**, y lee con el lector que trae el navegador
+  (`BarcodeDetector`). Donde no existe, como en Safari del iPad, usa `jsqr`, que se descarga
+  recién ahí. Un lector de tarjetas por USB o Bluetooth también sirve: tipea el código y
+  manda Enter.
+- **Una estación que no ficha ya no puede fichar.** La API aceptaba escaneos de cualquier
+  estación, también del tótem o del llamador, cuyo token está en un aparato a la vista de
+  todos. Ahora fichan sólo el taller y el reloj.

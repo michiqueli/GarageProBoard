@@ -87,7 +87,12 @@ async function entrar(email: string) {
   return r.json().access as string
 }
 
-function pedir(access: string, method: 'GET' | 'POST' | 'PUT', url: string, payload?: object) {
+function pedir(
+  access: string,
+  method: 'GET' | 'POST' | 'PUT' | 'DELETE',
+  url: string,
+  payload?: object,
+) {
   return app.inject({
     method,
     url: `/api${url}`,
@@ -281,5 +286,80 @@ describe('el auto que no estaba cargado', () => {
     )
     const conAuto = agenda.json().datos.find((x: { id: string }) => x.id === t.id)
     expect(conAuto.vehiculo).toMatchObject({ id: auto.json().id, dominio: 'AH555JJ' })
+  })
+})
+
+describe('el cupo por franja', () => {
+  const EN_DOS_DIAS = (() => {
+    const d = new Date(Date.now() + 2 * 86_400_000)
+    return new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Argentina/Buenos_Aires' }).format(
+      d,
+    )
+  })()
+  const a = (hora: string) => `${EN_DOS_DIAS}T${hora}:00-03:00`
+  const agendar = (fechaHora: string, extra: object = {}) =>
+    pedir(recepcionista, 'POST', '/turnos', {
+      fechaHora,
+      dominio: 'AB123CD',
+      nombre: 'Juan',
+      pedido: 'Service',
+      ...extra,
+    })
+
+  it('lo fija quien configura el taller, no quien atiende el teléfono', async () => {
+    const gerente = await entrar('gerente@agenda.test')
+    const negado = await pedir(recepcionista, 'PUT', '/turnos/cupo', { minutosFranja: 30, cupo: 2 })
+    expect(negado.statusCode).toBe(403)
+
+    const r = await pedir(gerente, 'PUT', '/turnos/cupo', { minutosFranja: 30, cupo: 2 })
+    expect(r.statusCode, r.body).toBe(200)
+    const lista = await pedir(
+      recepcionista,
+      'GET',
+      `/turnos?desde=${EN_DOS_DIAS}&hasta=${EN_DOS_DIAS}`,
+    )
+    expect(lista.json().cupo).toEqual({ minutosFranja: 30, cupo: 2 })
+  })
+
+  it('con la franja llena dice cuál y cuántos tiene, y como sobreturno entra marcado', async () => {
+    expect((await agendar(a('10:00'))).statusCode).toBe(201)
+    expect((await agendar(a('10:15'))).statusCode).toBe(201)
+
+    const lleno = await agendar(a('10:20'))
+    expect(lleno.statusCode).toBe(409)
+    expect(lleno.json()).toMatchObject({
+      code: 'FRANJA_LLENA',
+      data: { desde: '10:00', hasta: '10:30', cupo: 2, ocupados: 2 },
+    })
+
+    // La de al lado está libre.
+    expect((await agendar(a('10:30'))).json().sobreturno).toBe(false)
+
+    const sobre = await agendar(a('10:20'), { sobreturno: true })
+    expect(sobre.statusCode).toBe(201)
+    expect(sobre.json().sobreturno).toBe(true)
+  })
+
+  it('un cancelado deja lugar, y mover un turno no se cuenta a sí mismo', async () => {
+    const t = await agendar(a('11:00'))
+    const otro = await agendar(a('11:10'))
+    expect((await agendar(a('11:20'))).statusCode).toBe(409)
+
+    await pedir(recepcionista, 'POST', `/turnos/${otro.json().id}/cancelar`)
+    expect((await agendar(a('11:20'))).statusCode).toBe(201)
+
+    const movido = await pedir(recepcionista, 'PUT', `/turnos/${t.json().id}`, {
+      fechaHora: a('11:05'),
+      dominio: 'AB123CD',
+      nombre: 'Juan',
+      pedido: 'Service',
+    })
+    expect(movido.statusCode, movido.body).toBe(200)
+  })
+
+  it('sin cupo vuelve a contar sin tope', async () => {
+    const gerente = await entrar('gerente@agenda.test')
+    expect((await pedir(gerente, 'DELETE', '/turnos/cupo')).statusCode).toBe(200)
+    expect((await agendar(a('10:25'))).statusCode).toBe(201)
   })
 })

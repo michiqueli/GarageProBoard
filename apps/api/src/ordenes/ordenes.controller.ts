@@ -1,12 +1,13 @@
 import { contrato } from '@gpb/contracts'
 import { TIPOS_QR } from '@gpb/core'
-import { generarOrdenPdf } from '@gpb/pdf'
+import { generarEgresoPdf, generarOrdenPdf } from '@gpb/pdf'
 import { Controller, Inject, Req } from '@nestjs/common'
 import { implement } from '@orpc/nest'
 import type { FastifyRequest } from 'fastify'
 import { Operacion } from '../comun/operacion.ts'
 import { qrFirmado, SecretoQrFaltante } from '../comun/qr.ts'
 import { ServicioHojas } from '../hojas/hojas.service.ts'
+import { ServicioFirmas } from './firmas.service.ts'
 import { ErrorOrdenes, horaArgentina, ServicioOrdenes } from './ordenes.service.ts'
 
 const c = contrato.ordenes
@@ -33,6 +34,8 @@ export class ControladorOrdenes {
     @Inject(ServicioOrdenes) private readonly servicio: ServicioOrdenes,
     /** La hoja impresa lleva el dibujo con el que se recibió, así que hay que ir a buscarlo. */
     @Inject(ServicioHojas) private readonly hojas: ServicioHojas,
+    /** El comprobante de la entrega lleva la firma que se dibujó en la pantalla. */
+    @Inject(ServicioFirmas) private readonly firmas: ServicioFirmas,
   ) {}
 
   @Operacion(c.listar)
@@ -112,7 +115,7 @@ export class ControladorOrdenes {
   @Operacion(c.entregar)
   entregar(@Req() pedido: FastifyRequest) {
     return implement(c.entregar).handler(({ input, errors }) =>
-      this.servicio.entregar(input.id, pedido.ip).catch((e) => traducir(e, errors)),
+      this.servicio.entregar(input.id, input, pedido.ip).catch((e) => traducir(e, errors)),
     )
   }
 
@@ -217,6 +220,82 @@ export class ControladorOrdenes {
           total: o.total,
         })
         return new File([bytes], `Orden-${String(o.numero).padStart(6, '0')}.pdf`, {
+          type: 'application/pdf',
+        })
+      } catch (error) {
+        return traducir(error, errors)
+      }
+    })
+  }
+
+  @Operacion(c.pdfEgreso)
+  pdfEgreso() {
+    return implement(c.pdfEgreso).handler(async ({ input, errors }) => {
+      try {
+        const { orden: o, extra } = await this.servicio.paraImprimir(input.id)
+        if (!o.egreso || !o.entregadaEn) {
+          throw new ErrorOrdenes('ESTADO_INVALIDO', {
+            motivo: 'El comprobante de la entrega sale una vez entregado el auto.',
+          })
+        }
+        const firma = o.firmas.egreso
+          ? await this.firmas
+              .imagen(o.id, 'egreso')
+              .then((f) => ({ imagen: f.contenido, aclaracion: f.aclaracion }))
+              .catch(() => null)
+          : null
+        const bytes = await generarEgresoPdf({
+          concesionaria: extra.nombreFantasia ?? extra.razonSocial,
+          sucursal: {
+            nombre: extra.sucursal,
+            domicilio: extra.domicilio,
+            telefono: extra.telefono,
+          },
+          numero: o.numero,
+          ingreso: horaArgentina(new Date(o.creadoEn)),
+          entrega: horaArgentina(new Date(o.entregadaEn)),
+          vehiculo: {
+            dominio: o.vehiculo.dominio,
+            marcaModelo: [o.vehiculo.marca, o.vehiculo.modelo].filter(Boolean).join(' ') || null,
+            chasis: o.vehiculo.chasis,
+          },
+          titular: o.titular?.razonSocial ?? null,
+          entregadaPor: o.egreso.entregadaPor,
+          hecho: o.items
+            .filter((i) => i.autorizacion !== 'rechazado')
+            .map((i) => ({
+              tipo: i.tipo,
+              descripcion: i.descripcion,
+              cantidad: i.cantidad,
+              total: i.total,
+              codigosBarras: i.codigosBarras,
+            })),
+          total: o.total,
+          cobro: o.factura
+            ? {
+                factura: `${o.factura.nombre} ${String(o.factura.puntoVenta).padStart(5, '0')}-${String(o.factura.numero).padStart(8, '0')}`,
+              }
+            : o.egreso.sinFactura
+              ? {
+                  sinFactura: o.egreso.sinFactura.motivo,
+                  autorizadoPor: o.egreso.sinFactura.autorizadoPor,
+                }
+              : null,
+          noSeHizo: o.noSeHizo.map(({ descripcion, semaforo }) => ({ descripcion, semaforo })),
+          entrada: {
+            kilometraje: o.kilometraje,
+            combustible: o.combustible,
+            inventario: o.inventario,
+          },
+          salida: {
+            kilometraje: o.egreso.kilometraje,
+            combustible: o.egreso.combustible,
+            inventario: o.egreso.inventario,
+          },
+          daniosNuevos: o.egreso.danios.map(({ tipo, nota }) => ({ tipo, nota })),
+          firma,
+        })
+        return new File([bytes], `Entrega-${String(o.numero).padStart(6, '0')}.pdf`, {
           type: 'application/pdf',
         })
       } catch (error) {

@@ -1,6 +1,6 @@
 import { MODULOS } from '@gpb/core'
 import { z } from 'zod'
-import { conSesion, publico, reglaPermiso } from './acceso.ts'
+import { conEstacion, conSesion, publico, reglaPermiso } from './acceso.ts'
 
 const TAG = 'Sesión'
 
@@ -122,6 +122,46 @@ export const contratoAuth = {
         message: 'El correo o la contraseña no son correctos',
       },
       SIN_ACCESO: { status: 403, message: 'El usuario no tiene ninguna sucursal habilitada' },
+    })
+    .output(sesionSalida),
+
+  entrarConCredencial: conEstacion
+    .route({
+      method: 'POST',
+      path: '/auth/credencial',
+      tags: [TAG],
+      operationId: 'entrarConCredencial',
+      summary: 'Entrar con la credencial, en la tablet de recepción',
+      description:
+        'Sólo desde una estación de recepción, que se autentica con su token. La credencial ' +
+        'abre la sesión de la cuenta vinculada con ese legajo, en la sucursal de la tablet, y ' +
+        'esa sesión vence a los minutos sin uso.',
+    })
+    .input(
+      z.object({
+        /** Lo que leyó la cámara o el lector: `GT1:M:…`. */
+        codigo: z.string().trim().min(1).max(64),
+        entrega: z.enum(['cookie', 'cuerpo']).default('cookie'),
+      }),
+    )
+    .errors({
+      NO_ES_TABLET: {
+        status: 403,
+        message: 'Esta estación no es una tablet de recepción',
+      },
+      CREDENCIAL_INVALIDA: {
+        status: 401,
+        message: 'Esa credencial no sirve: puede estar revocada. Pedí una nueva en Personal.',
+      },
+      SIN_CUENTA: {
+        status: 403,
+        message:
+          'Tu legajo no tiene una cuenta del sistema. Pedile a quien administra usuarios que la vincule.',
+      },
+      SIN_ACCESO: {
+        status: 403,
+        message: 'Tu cuenta no entra a la sucursal de esta tablet',
+      },
     })
     .output(sesionSalida),
 

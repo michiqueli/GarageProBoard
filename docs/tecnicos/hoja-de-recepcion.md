@@ -124,9 +124,15 @@ Un taller que recién entra tiene que poder recibir un auto el primer día. Así
 trae las cuatro: sedán, hatchback, SUV y pickup, genéricas, y el que quiere las suyas las
 reemplaza.
 
-**Tienen que ser dibujos con licencia comercial**, compradas o encargadas. Las de VW y las de
-Renault son de VW y de Renault; que estén impresas en una hoja que circula por los talleres no
-las hace de nadie.
+El 29/09/2026 se pensó que tenían que ser dibujos con licencia comercial, comprados o
+encargados. **El 13/10/2026 Michi decidió que el juego por omisión son los dibujos de la hoja de
+VW**, las capturas que había subido —«después vemos de cambiarlas»—. Están en
+`apps/api/assets/hojas/`, con sus medidas en `HOJAS_POR_OMISION` (`packages/core/src/hoja.ts`).
+
+Cada concesionaria tiene una fila por omisión en `hoja_imagen` (`por_omision`), cuyos bytes salen
+del repositorio y no de su almacén: la siembran el alta de la concesionaria y `db:migrate`, y
+«Quitar» un dibujo propio la vuelve a poner. Así las órdenes apuntan al dibujo por omisión igual
+que a uno subido, y reimprimir una hoja vieja sigue mostrando el dibujo con el que se firmó.
 
 ## Lo que sobrevive de lo anterior
 
@@ -245,8 +251,8 @@ decidir:
 
 ## Cómo se implementa
 
-Por orden, porque cada paso deja el sistema andando. Del 1 al 7 están hechos; del juego por
-omisión falta comprar los dibujos.
+Por orden, porque cada paso deja el sistema andando. Del 1 al 7 están hechos, y el juego por
+omisión está desde el 13/10/2026, con los dibujos de VW.
 
 1. **El modelo de datos del dibujo**: la tabla de hojas con sus versiones y sus imágenes, y las
    marcas que pasan de `{ zona, x, y }` a `{ x, y }` en fracción. Con la migración de las que

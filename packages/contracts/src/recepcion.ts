@@ -237,6 +237,18 @@ export const turno = z.object({
   asesor: persona.nullable(),
   /** La visita en la que se convirtió al llegar. */
   visitaId: z.uuid().nullable(),
+  /** Se agendó con la franja llena, sabiéndolo. */
+  sobreturno: z.boolean(),
+})
+
+/** El cupo de la agenda de la sucursal. Sin cupo, la agenda cuenta y no pone tope. */
+export const cupoAgenda = z.object({
+  minutosFranja: z.union([z.literal(15), z.literal(30), z.literal(60), z.literal(120)]),
+  cupo: z
+    .number()
+    .int()
+    .min(1, 'Al menos un turno por franja')
+    .max(50, 'Hasta 50 turnos por franja'),
 })
 
 const baseTurno = z.object({
@@ -252,6 +264,8 @@ const baseTurno = z.object({
     .min(3, 'Anotá qué le pasa o qué service es')
     .max(500, 'Es largo: hasta 500 letras'),
   asesorId: z.uuid().nullable().optional(),
+  /** Agendarlo aunque la franja esté llena: el que atiende sabe algo que la agenda no. */
+  sobreturno: z.boolean().default(false),
 })
 
 /**
@@ -275,6 +289,19 @@ const datosTurno = baseTurno.superRefine(reglasTurno)
 
 const NO_ENCONTRADO_TURNO = {
   NO_ENCONTRADO: { status: 404, message: 'Ese turno, auto o persona no existe' },
+} as const
+
+const FRANJA_LLENA = {
+  FRANJA_LLENA: {
+    status: 409,
+    message: 'Esa franja ya tiene todos los turnos del cupo',
+    data: z.object({
+      desde: z.string(),
+      hasta: z.string(),
+      cupo: z.number().int(),
+      ocupados: z.number().int(),
+    }),
+  },
 } as const
 
 const TURNO_CERRADO = {
@@ -304,7 +331,13 @@ export const contratoTurnos = {
     .errors({
       RANGO_INVALIDO: { status: 422, message: 'Pedí hasta 42 días, y que el primero sea antes' },
     })
-    .output(z.object({ datos: z.array(turno) })),
+    .output(
+      z.object({
+        datos: z.array(turno),
+        /** El de la sucursal, para dibujar las franjas. `null` si no tiene. */
+        cupo: cupoAgenda.nullable(),
+      }),
+    ),
 
   crear: conPermiso('servicios', 'crear', 'Turno')
     .route({
@@ -316,7 +349,7 @@ export const contratoTurnos = {
       successStatus: 201,
     })
     .input(datosTurno)
-    .errors({ ...NO_ENCONTRADO_TURNO, ...NO_ES_RECEPTOR })
+    .errors({ ...NO_ENCONTRADO_TURNO, ...NO_ES_RECEPTOR, ...FRANJA_LLENA })
     .output(turno),
 
   editar: conPermiso('servicios', 'editar', 'Turno')
@@ -328,7 +361,7 @@ export const contratoTurnos = {
       summary: 'Cambiar un turno agendado: otro día, otra hora, otro pedido',
     })
     .input(baseTurno.extend({ id: z.uuid() }).superRefine(reglasTurno))
-    .errors({ ...NO_ENCONTRADO_TURNO, ...TURNO_CERRADO, ...NO_ES_RECEPTOR })
+    .errors({ ...NO_ENCONTRADO_TURNO, ...TURNO_CERRADO, ...NO_ES_RECEPTOR, ...FRANJA_LLENA })
     .output(turno),
 
   cancelar: conPermiso('servicios', 'editar', 'Turno')
@@ -370,6 +403,31 @@ export const contratoTurnos = {
     .input(z.object({ id: z.uuid() }))
     .errors({ ...NO_ENCONTRADO_TURNO, ...TURNO_CERRADO })
     .output(visita),
+
+  /** Es configurar el taller, como la hoja de recepción o las estaciones. */
+  fijarCupo: conPermiso('servicios', 'configurar', 'Orden')
+    .route({
+      method: 'PUT',
+      path: '/turnos/cupo',
+      tags: [TAG_TURNOS],
+      operationId: 'fijarCupoAgenda',
+      summary: 'Fijar el cupo de la agenda de la sucursal',
+      description:
+        'De cuántos minutos es cada franja y cuántos turnos entran. No impide agendar: con la ' +
+        'franja llena, agendar pide confirmarlo como sobreturno.',
+    })
+    .input(cupoAgenda)
+    .output(cupoAgenda),
+
+  quitarCupo: conPermiso('servicios', 'configurar', 'Orden')
+    .route({
+      method: 'DELETE',
+      path: '/turnos/cupo',
+      tags: [TAG_TURNOS],
+      operationId: 'quitarCupoAgenda',
+      summary: 'Quitar el cupo: la agenda vuelve a contar sin tope',
+    })
+    .output(z.object({ hecho: z.literal(true) })),
 }
 
 const NO_ES_TOTEM = {

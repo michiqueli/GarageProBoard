@@ -180,6 +180,7 @@ function describirRol(accion: string, antes: Foto, despues: Foto): string {
   const lista = (frases: string[]) =>
     frases.length <= 1 ? (frases[0] ?? '') : `${frases.slice(0, -1).join(', ')} y ${frases.at(-1)}`
   return juntar([
+    ...(despues?.texto ? [String(despues.texto)] : []),
     ...(antes?.nombre !== despues?.nombre
       ? [`nombre: «${String(antes?.nombre)}» → «${String(despues?.nombre)}»`]
       : []),
@@ -402,6 +403,16 @@ export function describirCambio(
   const partes: string[] = []
   if (antes?.activo !== despues?.activo) {
     partes.push(despues?.activo ? 'lo volvió a habilitar' : 'lo dio de baja')
+  }
+  // Las fotos de antes del 13/10/2026 no traen el legajo: no es que lo hayan cambiado.
+  if (antes && despues && 'empleadoId' in antes && antes.empleadoId !== despues.empleadoId) {
+    partes.push(
+      !despues.empleadoId
+        ? 'lo desvinculó de su legajo'
+        : antes.empleadoId
+          ? 'le cambió el legajo'
+          : 'lo vinculó con su legajo',
+    )
   }
   partes.push(...diferencia(antes?.rolIds, despues?.rolIds, nombres.roles, 'el rol', 'los roles'))
   partes.push(

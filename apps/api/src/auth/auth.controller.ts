@@ -3,6 +3,7 @@ import { Controller, Inject, Req, Res } from '@nestjs/common'
 import { implement } from '@orpc/nest'
 import type { FastifyReply, FastifyRequest } from 'fastify'
 import { Operacion } from '../comun/operacion.ts'
+import { contextoDeLaEstacion } from '../fichaje/estacion.ts'
 import { ErrorAuth, ServicioAuth, type Sesion } from './auth.service.ts'
 import {
   borrarRefresco,
@@ -58,6 +59,33 @@ export class ControladorAuth {
         if (error instanceof ErrorAuth) {
           if (error.codigo === 'SIN_ACCESO') throw errors.SIN_ACCESO()
           throw errors.CREDENCIALES_INVALIDAS()
+        }
+        throw error
+      }
+    })
+  }
+
+  @Operacion(contrato.auth.entrarConCredencial)
+  entrarConCredencial(
+    @Req() pedido: FastifyRequest,
+    @Res({ passthrough: true }) respuesta: FastifyReply,
+  ) {
+    return implement(contrato.auth.entrarConCredencial).handler(async ({ input, errors }) => {
+      try {
+        const sesion = await this.auth.entrarConCredencial(contextoDeLaEstacion(), {
+          codigo: input.codigo,
+          agente: pedido.headers['user-agent'],
+          ip: pedido.ip,
+          dispositivoId: leerDispositivo(pedido),
+          registrarDispositivo: input.entrega === 'cookie',
+        })
+        return entregar(respuesta, sesion, input.entrega)
+      } catch (error) {
+        if (error instanceof ErrorAuth) {
+          if (error.codigo === 'NO_ES_TABLET') throw errors.NO_ES_TABLET()
+          if (error.codigo === 'SIN_CUENTA') throw errors.SIN_CUENTA()
+          if (error.codigo === 'SIN_ACCESO') throw errors.SIN_ACCESO()
+          throw errors.CREDENCIAL_INVALIDA()
         }
         throw error
       }
