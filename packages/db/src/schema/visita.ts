@@ -1,11 +1,13 @@
 import { sql } from 'drizzle-orm'
 import {
+  boolean,
   check,
   date,
   index,
   integer,
   pgTable,
   primaryKey,
+  smallint,
   text,
   timestamp,
   unique,
@@ -31,6 +33,34 @@ import { vehiculo } from './vehiculo.ts'
  * **Sin cupos**: la agenda cuenta cuántos hay por franja pero no impide. El que atiende el
  * teléfono sabe que el jueves falta un mecánico.
  */
+/**
+ * El cupo de la agenda de una sucursal: de cuántos minutos es cada franja y cuántos turnos entran
+ * en ella. Sin fila, la agenda cuenta y no pone tope. Cada taller elige el suyo.
+ *
+ * No impide agendar: con la franja llena, agendar pregunta si va como sobreturno. El que atiende
+ * el teléfono sabe cosas que la agenda no sabe, y un sistema que no lo deja anotar se reemplaza
+ * por un cuaderno.
+ */
+export const agendaCupo = pgTable(
+  'agenda_cupo',
+  {
+    id: pk(),
+    tenantId: tenantId().references(() => tenant.id),
+    sucursalId: uuid()
+      .notNull()
+      .references(() => sucursal.id),
+    minutosFranja: smallint().notNull(),
+    cupo: smallint().notNull(),
+    actualizadoEn: actualizadoEn(),
+    actualizadoPor: uuid().references(() => usuario.id),
+  },
+  (t) => [
+    unique('agenda_cupo_sucursal_uq').on(t.tenantId, t.sucursalId),
+    check('agenda_cupo_franja_valida', sql`${t.minutosFranja} in (15, 30, 60, 120)`),
+    check('agenda_cupo_cupo_valido', sql`${t.cupo} between 1 and 50`),
+  ],
+)
+
 export const turno = pgTable(
   'turno',
   {
@@ -51,6 +81,11 @@ export const turno = pgTable(
     /** Si pidió a alguien. Es a quien se le deriva cuando llega. */
     asesorId: uuid().references(() => empleado.id),
     estado: text().notNull().default('agendado'),
+    /**
+     * Se agendó con la franja llena, sabiéndolo. Queda a la vista en la agenda: es el que
+     * explica por qué ese jueves a las diez había cuatro autos en la puerta.
+     */
+    sobreturno: boolean().notNull().default(false),
     creadoPor: uuid().references(() => usuario.id),
     creadoEn: creadoEn(),
     actualizadoEn: actualizadoEn(),

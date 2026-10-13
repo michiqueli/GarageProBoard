@@ -172,8 +172,11 @@ Razonados en [contra qué competimos](competencia-dms.md); acá queda cómo se r
 - **Si el turno no dice a nombre de quién**, la visita sale con el titular del auto.
 - **Un turno llega una sola vez**: un índice único sobre el turno de la visita hace que dos
   «llegó» seguidos no anoten dos personas.
-- **El número de cupo por franja que configura el taller todavía no está**: la agenda muestra
-  cuántos hay por hora y nada más. Se suma cuando un piloto diga cuál es el número.
+- **El cupo por franja lo elige cada taller** (13/10/2026), en Agenda → Cupo: el largo de la
+  franja (15, 30, 60 o 120 minutos) y cuántos turnos entran, por sucursal (`agenda_cupo`). La
+  agenda cuenta por franja y marca las llenas; agendar o mover un turno a una llena pregunta si
+  va como sobreturno, y el turno queda marcado (`turno.sobreturno`). La franja se calcula en la
+  hora de Argentina, y los cancelados y los que no vinieron no ocupan lugar.
 - **«Lo que le derivaron» no es una pantalla aparte**: es un número lleno al lado de
   «Recepción» en el menú, en todas las pantallas, y en la puerta lo suyo va primero con «Para
   vos». El vendedor ya entra a la puerta para atender; otra pantalla sería otro lugar donde

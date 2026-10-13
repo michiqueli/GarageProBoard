@@ -9,8 +9,9 @@ const c = contrato.turnos
 
 function traducir(error: unknown, errores: Partial<Record<string, unknown>>): never {
   if (error instanceof ErrorTurnos || error instanceof ErrorRecepcion) {
-    const fabricar = errores[error.codigo] as (() => Error) | undefined
-    if (fabricar) throw fabricar()
+    const fabricar = errores[error.codigo] as ((o?: { data?: unknown }) => Error) | undefined
+    const datos = error instanceof ErrorTurnos ? error.datos : undefined
+    if (fabricar) throw datos ? fabricar({ data: datos }) : fabricar()
   }
   throw error
 }
@@ -59,5 +60,15 @@ export class ControladorTurnos {
     return implement(c.llego).handler(({ input, errors }) =>
       this.servicio.llego(input.id).catch((e) => traducir(e, errors)),
     )
+  }
+
+  @Operacion(c.fijarCupo)
+  fijarCupo() {
+    return implement(c.fijarCupo).handler(({ input }) => this.servicio.fijarCupo(input))
+  }
+
+  @Operacion(c.quitarCupo)
+  quitarCupo() {
+    return implement(c.quitarCupo).handler(() => this.servicio.quitarCupo())
   }
 }

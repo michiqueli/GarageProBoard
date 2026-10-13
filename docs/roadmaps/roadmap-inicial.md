@@ -202,7 +202,8 @@ verdad. Qué se trae y qué cambia ahora que el DMS es nuestro, en
 [control de tiempos de taller](../tecnicos/taller-control-de-tiempos.md).
 
 - ✅ **Turnos y agenda**: se agenda por teléfono con la patente, un nombre y qué le pasa; la
-      semana con cuántos tiene cada día, sin cupos que impidan. El turno que llega entra a la
+      semana con cuántos tiene cada día, y el cupo por franja que elige cada taller, que pregunta
+      por el sobreturno en vez de impedir. El turno que llega entra a la
       cola de las tablets con su auto y su pedido, y el que nadie marcó pasa solo a «no vino».
       Desde el 09/10/2026, en [la recepción](../tecnicos/recepcion-y-turnos.md)
 - ✅ Apertura de OT con los cuatro roles: titular, quien trae, quien autoriza y quien paga

@@ -1,6 +1,7 @@
 import type { EstadoTurno } from '@gpb/core'
 import { and, asc, type Db, eq, inArray, isNull, lt, sql } from '@gpb/db'
 import {
+  agendaCupo,
   empleado,
   entidadComercial,
   marca,
@@ -15,10 +16,13 @@ import type { Sesion } from '../comun/contexto.ts'
 import { DatosDelTenant } from '../comun/datos.ts'
 import { nombreDe, nuevaVisita, una, verificarReceptor } from './recepcion.service.ts'
 
-type Codigo = 'NO_ENCONTRADO' | 'TURNO_CERRADO' | 'RANGO_INVALIDO'
+type Codigo = 'NO_ENCONTRADO' | 'TURNO_CERRADO' | 'RANGO_INVALIDO' | 'FRANJA_LLENA'
 
 export class ErrorTurnos extends Error {
-  constructor(readonly codigo: Codigo) {
+  constructor(
+    readonly codigo: Codigo,
+    readonly datos?: { desde: string; hasta: string; cupo: number; ocupados: number },
+  ) {
     super(codigo)
   }
 }
@@ -34,6 +38,7 @@ export interface EntradaTurno {
   telefono?: string | null | undefined
   pedido: string
   asesorId?: string | null | undefined
+  sobreturno?: boolean | undefined
 }
 
 const ZONA = 'America/Argentina/Buenos_Aires'
@@ -85,19 +90,21 @@ export class ServicioTurnos {
           ),
         )
         .orderBy(asc(turno.fechaHora), asc(turno.creadoEn))
-      return { datos: await completar(tx, filas) }
+      return { datos: await completar(tx, filas), cupo: await cupoDe(tx, sesion.sucursalId) }
     })
   }
 
   crear(entrada: EntradaTurno) {
     return this.datos.transaccion(async (tx, sesion) => {
       await verificar(tx, sesion, entrada)
+      const sobreturno = await enFranjaLlena(tx, sesion, entrada)
       const [creado] = await tx
         .insert(turno)
         .values({
           tenantId: sesion.tenantId,
           sucursalId: sesion.sucursalId,
           ...valores(entrada),
+          sobreturno,
           creadoPor: sesion.usuarioId,
         })
         .returning()
@@ -110,9 +117,10 @@ export class ServicioTurnos {
     return this.datos.transaccion(async (tx, sesion) => {
       await agendado(tx, id)
       await verificar(tx, sesion, entrada)
+      const sobreturno = await enFranjaLlena(tx, sesion, entrada, id)
       const [cambiado] = await tx
         .update(turno)
-        .set({ ...valores(entrada), actualizadoEn: new Date() })
+        .set({ ...valores(entrada), sobreturno, actualizadoEn: new Date() })
         .where(eq(turno.id, id))
         .returning()
       if (!cambiado) throw new ErrorTurnos('NO_ENCONTRADO')
@@ -166,6 +174,38 @@ export class ServicioTurnos {
         .set({ estado: 'llego', actualizadoEn: new Date() })
         .where(eq(turno.id, t.id))
       return una(tx, nueva)
+    })
+  }
+
+  /** El cupo de la sucursal en la que se está. Pisa el que había: es uno por sucursal. */
+  fijarCupo(entrada: { minutosFranja: 15 | 30 | 60 | 120; cupo: number }) {
+    return this.datos.transaccion(async (tx, sesion) => {
+      await tx
+        .insert(agendaCupo)
+        .values({
+          tenantId: sesion.tenantId,
+          sucursalId: sesion.sucursalId,
+          minutosFranja: entrada.minutosFranja,
+          cupo: entrada.cupo,
+          actualizadoPor: sesion.usuarioId,
+        })
+        .onConflictDoUpdate({
+          target: [agendaCupo.tenantId, agendaCupo.sucursalId],
+          set: {
+            minutosFranja: entrada.minutosFranja,
+            cupo: entrada.cupo,
+            actualizadoPor: sesion.usuarioId,
+            actualizadoEn: new Date(),
+          },
+        })
+      return entrada
+    })
+  }
+
+  quitarCupo() {
+    return this.datos.transaccion(async (tx, sesion) => {
+      await tx.delete(agendaCupo).where(eq(agendaCupo.sucursalId, sesion.sucursalId))
+      return { hecho: true as const }
     })
   }
 
@@ -308,5 +348,61 @@ async function completar(tx: Db, filas: Fila[]) {
     dominio: f.dominio,
     asesor: (f.asesorId && deAsesor.get(f.asesorId)) || null,
     visitaId: deVisita.get(f.id) ?? null,
+    sobreturno: f.sobreturno,
   }))
+}
+
+/** El cupo de la agenda de la sucursal, o `null` si no tiene. */
+async function cupoDe(tx: Db, sucursalId: string) {
+  const [c] = await tx
+    .select({ minutosFranja: agendaCupo.minutosFranja, cupo: agendaCupo.cupo })
+    .from(agendaCupo)
+    .where(eq(agendaCupo.sucursalId, sucursalId))
+  return c ? { minutosFranja: c.minutosFranja as 15 | 30 | 60 | 120, cupo: c.cupo } : null
+}
+
+/**
+ * Si el turno cae en una franja llena. Llena y sin pedir sobreturno, es un error que dice cuál
+ * franja y cuántos tiene: el que atiende decide. Llena y pedido, el turno queda marcado.
+ *
+ * La franja se calcula en la hora de Argentina: la de las 10 a las 10:30 es la de las 10 del
+ * taller, no la de las 13 del servidor. `editando` es el turno que se mueve, que no se cuenta a
+ * sí mismo.
+ */
+async function enFranjaLlena(
+  tx: Db,
+  sesion: Sesion,
+  e: EntradaTurno,
+  editando?: string,
+): Promise<boolean> {
+  const cupo = await cupoDe(tx, sesion.sucursalId)
+  if (!cupo) return false
+
+  const franja = sql`date_bin(${`${cupo.minutosFranja} minutes`}::interval, ${new Date(e.fechaHora)}::timestamptz at time zone ${ZONA}, '2000-01-01')`
+  const [fila] = await tx
+    .select({
+      ocupados: sql<number>`count(*)::int`,
+      desde: sql<string>`to_char(${franja}, 'HH24:MI')`,
+      hasta: sql<string>`to_char(${franja} + ${`${cupo.minutosFranja} minutes`}::interval, 'HH24:MI')`,
+    })
+    .from(turno)
+    .where(
+      and(
+        eq(turno.sucursalId, sesion.sucursalId),
+        inArray(turno.estado, ['agendado', 'llego']),
+        editando ? sql`${turno.id} <> ${editando}` : undefined,
+        sql`date_bin(${`${cupo.minutosFranja} minutes`}::interval, ${turno.fechaHora} at time zone ${ZONA}, '2000-01-01') = ${franja}`,
+      ),
+    )
+  const ocupados = fila?.ocupados ?? 0
+  if (ocupados < cupo.cupo) return false
+  if (!e.sobreturno) {
+    throw new ErrorTurnos('FRANJA_LLENA', {
+      desde: fila?.desde ?? '',
+      hasta: fila?.hasta ?? '',
+      cupo: cupo.cupo,
+      ocupados,
+    })
+  }
+  return true
 }

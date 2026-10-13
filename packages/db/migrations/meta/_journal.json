@@ -239,6 +239,13 @@
       "when": 1791900044315,
       "tag": "0033_hoja_por_omision",
       "breakpoints": true
+    },
+    {
+      "idx": 34,
+      "version": "7",
+      "when": 1791900560940,
+      "tag": "0034_agenda_cupo",
+      "breakpoints": true
     }
   ]
 }

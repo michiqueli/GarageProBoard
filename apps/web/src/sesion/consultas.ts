@@ -11,9 +11,11 @@ declare module '@tanstack/react-query' {
       exito?: string | ((datos: unknown) => string)
       /**
        * Cómo se cuenta el error. Por omisión, el mensaje de la API. `false` cuando la
-       * pantalla lo muestra en su lugar: el inicio de sesión, la consulta al padrón.
+       * pantalla lo muestra en su lugar: el inicio de sesión, la consulta al padrón. `null` desde
+       * la función cuando ese error en particular no se avisa porque la pantalla lo convierte en
+       * una pregunta: la franja llena de la agenda.
        */
-      error?: false | ((error: unknown) => MensajeError | string)
+      error?: false | ((error: unknown) => MensajeError | string | null)
     }
   }
 }
@@ -45,6 +47,7 @@ export function crearConsultas(opciones: { reintentos?: number; frescura?: numbe
         const propio = mutacion.meta?.error
         if (propio === false) return
         const mensaje = propio ? propio(error) : mensajeGeneral(error)
+        if (mensaje === null) return
         if (typeof mensaje === 'string') notificar.error(mensaje)
         else notificar.error(mensaje.texto, { detalle: mensaje.detalle, accion: mensaje.accion })
       },

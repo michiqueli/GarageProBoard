@@ -191,6 +191,16 @@ const rutaAgenda = createRoute({
   ),
 })
 
+const rutaCupoAgenda = createRoute({
+  getParentRoute: () => conSesion,
+  path: 'agenda/cupo',
+  staticData: { pantalla: 'recepcion' },
+  component: lazyRouteComponent(
+    () => import('./modulos/recepcion/PantallaCupoAgenda.tsx'),
+    'PantallaCupoAgenda',
+  ),
+})
+
 const rutaOrdenes = createRoute({
   getParentRoute: () => conSesion,
   path: 'ordenes',
@@ -506,6 +516,7 @@ const arbol = raiz.addChildren([
     rutaRecepcionTablet,
     rutaPuerta,
     rutaAgenda,
+    rutaCupoAgenda,
     rutaEsperas,
     rutaFichaOrden,
     rutaVehiculos,

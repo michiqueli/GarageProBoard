@@ -129,6 +129,10 @@ export const TABLAS_AUDITADAS: readonly TablaAuditada[] = [
   { tabla: 'usuario_sucursal' },
   { tabla: 'dispositivo' },
   {
+    tabla: 'agenda_cupo',
+    nota: 'Cuántos turnos entran por franja: si un jueves se agendó de más, se ve quién había cambiado el cupo.',
+  },
+  {
     tabla: 'turno',
     nota: 'Quién agendó, quién lo movió de día y quién lo canceló: es lo que se discute cuando el cliente dice que tenía turno.',
   },

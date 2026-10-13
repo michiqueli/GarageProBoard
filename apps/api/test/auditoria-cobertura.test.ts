@@ -158,6 +158,8 @@ const NO_AUDITAN: Readonly<Record<string, string>> = {
   'turnos.editar':
     'Cambiarlo de día o de pedido son columnas del turno, con su antes y su después en el trigger.',
   'turnos.cancelar': 'Es el estado del turno, que el trigger guarda con quién lo cambió.',
+  'turnos.fijarCupo': 'El trigger de agenda_cupo guarda el cupo con quién lo cambió.',
+  'turnos.quitarCupo': 'El trigger de agenda_cupo guarda la baja con el cupo que había.',
   'turnos.noVino': 'Es el estado del turno, que el trigger guarda con quién lo cambió.',
   'turnos.llego':
     'Cambia el estado del turno, que el trigger cuenta, y anota la visita, que dice quién la anotó.',

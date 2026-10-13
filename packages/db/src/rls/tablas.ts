@@ -27,6 +27,7 @@ export const TABLAS_CON_TENANT = [
   'compra_renglon',
   'repuestos_secuencia',
   'revision_punto',
+  'agenda_cupo',
   'turno',
   'visita',
   'visita_secuencia',

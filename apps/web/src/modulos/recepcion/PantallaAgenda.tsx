@@ -1,7 +1,8 @@
 import { accesoDeRuta, contrato } from '@gpb/contracts'
 import { useQuery } from '@tanstack/react-query'
+import { Link } from '@tanstack/react-router'
 import { useState } from 'react'
-import { Boton } from '../../componentes/Boton.tsx'
+import { Boton, clasesBoton } from '../../componentes/Boton.tsx'
 import { Shell } from '../../componentes/Shell.tsx'
 import { usarSesion } from '../../sesion/almacen.ts'
 import { api } from '../../sesion/cliente.ts'
@@ -38,9 +39,10 @@ const aFecha = (dia: string) => new Date(`${dia}T12:00:00Z`)
  * La agenda del taller: la semana arriba, con cuántos turnos tiene cada día, y el día elegido
  * abajo, por hora. El porqué, en `docs/tecnicos/recepcion-y-turnos.md`.
  *
- * **Sin cupos**: cuenta cuántos hay por hora pero no impide agendar. El que atiende el
- * teléfono sabe que el jueves falta un mecánico; un sistema que no lo deja anotar se
- * reemplaza por un cuaderno.
+ * **El cupo no impide agendar.** Sin cupo, cuenta cuántos hay por hora; con cupo —lo elige cada
+ * taller—, cuenta por franja y marca las llenas, y agendar en una llena pregunta si va como
+ * sobreturno. El que atiende el teléfono sabe que el jueves falta un mecánico; un sistema que no
+ * lo deja anotar se reemplaza por un cuaderno.
  *
  * Con teclado: ← → cambian de día, ↑ ↓ eligen un turno y Enter lo abre, `Ins` agenda uno.
  */
@@ -49,6 +51,7 @@ export function PantallaAgenda() {
   const puedeVer = usePuedeUsar(contrato.turnos.listar)
   const puedeAgendar = usePuedeUsar(contrato.turnos.crear)
   const puedeCambiar = usePuedeUsar(contrato.turnos.editar)
+  const puedeFijarCupo = usePuedeUsar(contrato.turnos.fijarCupo)
   // A quién se le puede pedir sale de la puerta: sin ese permiso, el turno va sin asesor.
   const puedeElegirAsesor = usePuedeUsar(contrato.recepcion.receptores)
   const hoy = diaDe(new Date())
@@ -79,13 +82,10 @@ export function PantallaAgenda() {
   const abrir = (t: Turno) => puedeCambiar && t.estado === 'agendado' && setForm({ turno: t })
   const { propsFila } = useFilasConTeclado(form ? [] : delDia, abrir)
 
-  // Cuántos hay en cada hora del día, para ver de un vistazo dónde se amontonan.
-  const porHora = new Map<string, number>()
-  for (const t of delDia) {
-    if (t.estado === 'cancelado') continue
-    const h = horaDe(t.fechaHora).slice(0, 2)
-    porHora.set(h, (porHora.get(h) ?? 0) + 1)
-  }
+  // Cuántos hay en cada franja del día, para ver de un vistazo dónde se amontonan. Sin cupo,
+  // la franja es la hora.
+  const cupo = turnos.data?.cupo ?? null
+  const franjas = contarFranjas(delDia, cupo?.minutosFranja ?? 60)
 
   return (
     <Shell
@@ -146,6 +146,11 @@ export function PantallaAgenda() {
             Hoy
           </Boton>
         )}
+        {puedeFijarCupo && (
+          <Link to="/agenda/cupo" className={clasesBoton('sutil', 'chico')}>
+            Cupo
+          </Link>
+        )}
       </nav>
 
       <section
@@ -156,8 +161,23 @@ export function PantallaAgenda() {
           <h2 className="font-display text-dato font-semibold first-letter:uppercase">
             {FECHA_LARGA.format(aFecha(dia))}
           </h2>
-          <span className="font-mono text-etiqueta text-texto-tenue">
-            {[...porHora].map(([h, n]) => `${h} h: ${n}`).join(' · ')}
+          <span
+            role="note"
+            aria-label="Turnos por franja"
+            className="font-mono text-etiqueta text-texto-tenue"
+          >
+            {[...franjas].map(([desde, n], i) => (
+              <span key={desde}>
+                {i > 0 && ' · '}
+                {cupo && n >= cupo.cupo ? (
+                  <span className="font-semibold text-atencion">
+                    {desde}: {n}/{cupo.cupo}, llena
+                  </span>
+                ) : (
+                  `${desde}: ${cupo ? `${n}/${cupo.cupo}` : n}`
+                )}
+              </span>
+            ))}
           </span>
         </header>
         {turnos.isPending && (
@@ -200,6 +220,11 @@ export function PantallaAgenda() {
                   <span className="text-etiqueta text-texto-suave">Para {t.asesor.nombre}</span>
                 )}
                 <span className="ml-auto flex items-center gap-2">
+                  {t.sobreturno && (
+                    <span className="inline-flex rounded-full border border-atencion px-2 text-etiqueta text-atencion">
+                      Sobreturno
+                    </span>
+                  )}
                   <EstadoTurno estado={t.estado} />
                   {puedeCambiar && t.estado === 'agendado' && (
                     <Boton tamano="chico" onClick={() => setForm({ turno: t })}>
@@ -236,4 +261,20 @@ export function EstadoTurno({ estado }: { estado: Turno['estado'] }) {
     )
   }
   return <span className="text-etiqueta text-texto-suave">{ESTADO_TURNO_NOMBRE[estado]}</span>
+}
+
+/**
+ * Cuántos turnos vigentes hay en cada franja, con la hora de inicio de la franja como clave y en
+ * orden. Los cancelados no ocupan lugar; los que no vinieron, ya pasaron.
+ */
+export function contarFranjas(turnos: Turno[], minutos: number): Map<string, number> {
+  const franjas = new Map<string, number>()
+  for (const t of [...turnos].sort((a, b) => a.fechaHora.localeCompare(b.fechaHora))) {
+    if (t.estado === 'cancelado' || t.estado === 'ausente') continue
+    const [h = 0, m = 0] = horaDe(t.fechaHora).split(':').map(Number)
+    const inicio = Math.floor((h * 60 + m) / minutos) * minutos
+    const clave = `${String(Math.floor(inicio / 60)).padStart(2, '0')}:${String(inicio % 60).padStart(2, '0')}`
+    franjas.set(clave, (franjas.get(clave) ?? 0) + 1)
+  }
+  return franjas
 }
