@@ -150,9 +150,14 @@ comprobante en PDF y las pantallas.
 - **En la tablet todo va al dedo**: la densidad táctil la pone el aparato, no la pantalla, así que
   la entrega en la tablet también la tiene. La tablet tiene «Entregar un auto» al lado de
   «Salir».
+- **La firma del ingreso es optativa**, al revés que la del egreso: si el cliente está adelante
+  firma en la pantalla —en la PC, un bloque al final; en la tablet, el último paso, después de
+  repasar—, y si no, firma la copia impresa como siempre. Se manda apenas se abre la orden; si
+  no se guarda, la orden queda abierta igual y se avisa. Firmada, la copia del cliente sale con
+  la firma sobre la línea. Una firma que no se puede leer no impide imprimir: queda la línea en
+  blanco.
 
 ### Lo que queda
 
-- La firma en pantalla también en el ingreso: la pieza está, falta ponerla en la recepción.
 - Las fotos del vehículo, al recibirlo y al entregarlo.
 - Cerrar la visita de la puerta al entregar, cuando el cliente vino a buscar el auto y se anotó.

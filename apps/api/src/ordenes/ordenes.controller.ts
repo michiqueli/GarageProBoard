@@ -218,6 +218,13 @@ export class ControladorOrdenes {
               total: i.total,
             })),
           total: o.total,
+          // Firmada en la pantalla al dejar el auto: la copia del cliente ya sale firmada.
+          firma: o.firmas.ingreso
+            ? await this.firmas
+                .imagen(o.id, 'ingreso')
+                .then((f) => ({ imagen: f.contenido, aclaracion: f.aclaracion }))
+                .catch(() => null)
+            : null,
         })
         return new File([bytes], `Orden-${String(o.numero).padStart(6, '0')}.pdf`, {
           type: 'application/pdf',

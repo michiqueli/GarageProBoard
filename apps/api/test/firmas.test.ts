@@ -1,4 +1,5 @@
 import 'reflect-metadata'
+import { crc32, deflateSync } from 'node:zlib'
 import { eq } from '@gpb/db'
 import { vehiculo } from '@gpb/db/schema'
 import type { NestFastifyApplication } from '@nestjs/platform-fastify'
@@ -127,5 +128,47 @@ describe('la firma en la pantalla', () => {
   it('sólo un PNG, y con aclaración', async () => {
     expect((await firmar('ingreso', 'Juan', Buffer.from('no es una imagen'))).statusCode).toBe(422)
     expect((await firmar('ingreso', '', png(600, 200))).statusCode).toBe(400)
+  })
+})
+
+/** Un PNG entero, que pdfkit pueda leer: blanco, del tamaño pedido. */
+function pngDeVerdad(ancho: number, alto: number): Buffer {
+  const trozo = (tipo: string, datos: Buffer) => {
+    const largo = Buffer.alloc(4)
+    largo.writeUInt32BE(datos.length)
+    const cuerpo = Buffer.concat([Buffer.from(tipo, 'latin1'), datos])
+    const crc = Buffer.alloc(4)
+    crc.writeUInt32BE(crc32(cuerpo))
+    return Buffer.concat([largo, cuerpo, crc])
+  }
+  const cabecera = Buffer.alloc(13)
+  cabecera.writeUInt32BE(ancho, 0)
+  cabecera.writeUInt32BE(alto, 4)
+  cabecera.set([8, 0, 0, 0, 0], 8) // 8 bits, escala de grises
+  const filas = Buffer.alloc((ancho + 1) * alto, 0xff)
+  for (let f = 0; f < alto; f++) filas[f * (ancho + 1)] = 0 // sin filtro
+  return Buffer.concat([
+    Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]),
+    trozo('IHDR', cabecera),
+    trozo('IDAT', deflateSync(filas)),
+    trozo('IEND', Buffer.alloc(0)),
+  ])
+}
+
+const imagenesEn = (pdf: Buffer) =>
+  (pdf.toString('latin1').match(/\/Subtype \/Image/g) ?? []).length
+
+describe('la orden impresa', () => {
+  it('una firma que no se puede leer no impide imprimirla', async () => {
+    // La de arriba es sólo una cabecera de PNG: se guardó, pero no se puede dibujar.
+    const r = await pedir('GET', `/ordenes/${ordenId}/pdf`)
+    expect(r.statusCode, r.body).toBe(200)
+  })
+
+  it('firmada en la pantalla al recibir el auto, la copia del cliente sale con la firma', async () => {
+    const antes = imagenesEn((await pedir('GET', `/ordenes/${ordenId}/pdf`)).rawPayload)
+    expect((await firmar('ingreso', 'Juan Pérez', pngDeVerdad(600, 200))).statusCode).toBe(201)
+    const despues = imagenesEn((await pedir('GET', `/ordenes/${ordenId}/pdf`)).rawPayload)
+    expect(despues).toBe(antes + 1)
   })
 })

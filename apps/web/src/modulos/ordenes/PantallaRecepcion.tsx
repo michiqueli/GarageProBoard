@@ -4,6 +4,7 @@ import { type FormEvent, type ReactNode, useId, useState } from 'react'
 import { notificar } from '../../componentes/avisos.ts'
 import { Boton } from '../../componentes/Boton.tsx'
 import { Campo } from '../../componentes/Campo.tsx'
+import { Firma } from '../../componentes/Firma.tsx'
 import { IconoImprimir } from '../../componentes/iconos.tsx'
 import { SelectorCliente } from '../../componentes/SelectorCliente.tsx'
 import { SelectorVehiculo } from '../../componentes/SelectorVehiculo.tsx'
@@ -27,8 +28,8 @@ import { useRecepcion } from './useRecepcion.ts'
  */
 export function PantallaRecepcion() {
   const navegar = useNavigate()
-  const r = useRecepcion((o) => {
-    notificar.ok(`${nombreOrden(o.numero)} abierta`, {
+  const r = useRecepcion((o, firmada) => {
+    notificar.ok(`${nombreOrden(o.numero)} abierta${firmada ? ' y firmada' : ''}`, {
       accion: { texto: 'Imprimir la orden', alHacer: () => void imprimirOrden(o.id) },
     })
     void navegar({ to: '/ordenes/$id', params: { id: o.id } })
@@ -186,6 +187,30 @@ export function PantallaRecepcion() {
           ayuda="Lo que quede en ámbar o en rojo se le puede presupuestar desde la orden"
         >
           <RevisionRecepcion puntos={r.puntosRevision} onChange={r.contestar} enRecepcion />
+        </Bloque>
+
+        <Bloque
+          titulo="La firma"
+          ayuda="Si el cliente está adelante, que firme acá. Si no, firma la copia impresa"
+        >
+          <div className="grid gap-3 lg:grid-cols-[2fr_3fr]">
+            <div className="grid content-start">
+              <Campo
+                etiqueta="Quién firma"
+                value={r.aclaracion}
+                onChange={(e) => poner('firmaAclaracion', e.target.value)}
+                aria-invalid={r.faltaAclaracion}
+                ayuda={
+                  r.faltaAclaracion
+                    ? 'Escribí el nombre de quien firma'
+                    : 'La aclaración de la firma'
+                }
+              />
+            </div>
+            <div className="max-w-xl">
+              <Firma etiqueta="Firma del cliente" alCambiar={(f) => poner('firma', f)} />
+            </div>
+          </div>
         </Bloque>
 
         <div className="flex flex-wrap items-center gap-2">

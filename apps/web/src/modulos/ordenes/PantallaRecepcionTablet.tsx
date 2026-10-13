@@ -5,6 +5,7 @@ import { Link } from '@tanstack/react-router'
 import { type ReactNode, useEffect, useRef, useState } from 'react'
 import { Boton } from '../../componentes/Boton.tsx'
 import { Campo } from '../../componentes/Campo.tsx'
+import { Firma } from '../../componentes/Firma.tsx'
 import { IconoImprimir } from '../../componentes/iconos.tsx'
 import { Patente } from '../../componentes/Patente.tsx'
 import { SelectorCliente } from '../../componentes/SelectorCliente.tsx'
@@ -33,6 +34,8 @@ const PASOS = [
   { id: 'inventario', titulo: 'Qué trae' },
   { id: 'revision', titulo: 'Revisión' },
   { id: 'revisar', titulo: 'Repasar' },
+  // Al final: el cliente firma lo que acaba de repasar.
+  { id: 'firma', titulo: 'Firma' },
 ] as const
 type Paso = (typeof PASOS)[number]['id']
 
@@ -54,14 +57,18 @@ type Paso = (typeof PASOS)[number]['id']
  *
  * Registrada como estación de recepción, la tablet arranca acá: se entra con la credencial
  * —`EntradaTablet`— y la sesión se cierra sola a los quince minutos sin tocarla. Lo que falta
- * de lo decidido en ese documento son las fotos y la firma en pantalla.
+ * de lo decidido en ese documento son las fotos.
  */
 export function PantallaRecepcionTablet() {
   const veredicto = useVeredicto(accesoDeRuta(contrato.ordenes.abrir))
   const [abierta, setAbierta] = useState<OrdenAbierta | null>(null)
   const [paso, setPaso] = useState<Paso>('vehiculo')
   const [intento, setIntento] = useState<Partial<Record<Paso, boolean>>>({})
-  const r = useRecepcion(setAbierta)
+  const [firmada, setFirmada] = useState(false)
+  const r = useRecepcion((o, f) => {
+    setAbierta(o)
+    setFirmada(f)
+  })
   const { datos: d, poner } = r
   const conCola = usePuedeUsar(contrato.recepcion.hoy)
   /** Lo buscado que no estaba, mientras se da de alta el auto. */
@@ -90,6 +97,9 @@ export function PantallaRecepcionTablet() {
     ...(d.pedido.trim().length >= 3
       ? {}
       : { pedido: 'Anotá qué pide el cliente, con sus palabras.' }),
+    ...(d.firma && r.aclaracion.trim().length < 3
+      ? { firma: 'Escribí el nombre de quien firma.' }
+      : {}),
   }
 
   // Al cambiar de paso, arriba de todo y con el foco en el paso: en una tablet no hay otra
@@ -107,6 +117,8 @@ export function PantallaRecepcionTablet() {
   }, [paso])
 
   function ir(destino: Paso) {
+    // El lienzo se vacía al salir del paso: una firma que ya no se ve no se manda.
+    if (paso === 'firma' && destino !== 'firma') poner('firma', null)
     setPaso(destino)
   }
 
@@ -190,8 +202,9 @@ export function PantallaRecepcionTablet() {
           <h1 className="font-display text-3xl font-bold tabular">{nombreOrden(abierta.numero)}</h1>
           {abierta.vehiculo.dominio && <Patente dominio={abierta.vehiculo.dominio} />}
           <p className="max-w-md text-dato text-texto-suave">
-            Imprimila para que el cliente firme la copia con el estado del vehículo, y la del taller
-            vaya con el auto.
+            {firmada
+              ? 'El cliente ya firmó. Imprimila si quiere llevarse la copia, y la del taller va con el auto.'
+              : 'Imprimila para que el cliente firme la copia con el estado del vehículo, y la del taller vaya con el auto.'}
           </p>
           <div className="flex flex-wrap justify-center gap-2">
             <Boton
@@ -233,7 +246,7 @@ export function PantallaRecepcionTablet() {
         </div>
       )}
       <nav aria-label="Pasos de la recepción">
-        <ol className="grid grid-cols-4 gap-1.5 sm:grid-cols-7">
+        <ol className="grid grid-cols-4 gap-1.5 sm:grid-cols-8">
           {PASOS.map((p, i) => {
             const actual = p.id === paso
             const hecho = i < indice
@@ -434,6 +447,26 @@ export function PantallaRecepcionTablet() {
         )}
 
         {paso === 'revisar' && <Revisar datos={d} puntos={r.puntosRevision} ir={ir} />}
+
+        {paso === 'firma' && (
+          <>
+            <Titulo>Que firme el cliente</Titulo>
+            <p className="text-dato text-texto-suave">
+              Firma que el auto entró como lo repasaron. Si prefiere firmar la copia impresa, abrila
+              sin firmar.
+            </p>
+            <div className="grid max-w-md gap-1">
+              <Campo
+                etiqueta="Quién firma"
+                value={r.aclaracion}
+                onChange={(e) => poner('firmaAclaracion', e.target.value)}
+                aria-invalid={Boolean(intento.firma && faltaEn.firma)}
+              />
+              {intento.firma && faltaEn.firma && <Falta>{faltaEn.firma}</Falta>}
+            </div>
+            <Firma etiqueta="Firma del cliente" alCambiar={(f) => poner('firma', f)} />
+          </>
+        )}
       </section>
 
       <div className="flex items-center gap-2">
@@ -441,14 +474,14 @@ export function PantallaRecepcionTablet() {
           Anterior
         </Boton>
         <span className="ml-auto" />
-        {paso === 'revisar' ? (
+        {paso === 'firma' ? (
           <Boton
             accion="global.guardar"
             variante="principal"
             deshabilitado={r.abriendo}
             onClick={abrir}
           >
-            {r.abriendo ? 'Abriendo…' : 'Abrir la orden'}
+            {r.abriendo ? 'Abriendo…' : d.firma ? 'Abrir la orden' : 'Abrir sin firmar'}
           </Boton>
         ) : (
           <Boton variante="principal" onClick={siguiente}>

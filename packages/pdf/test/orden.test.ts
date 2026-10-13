@@ -73,6 +73,24 @@ describe('la orden impresa', () => {
     }))
     expect(paginas(await generarOrdenPdf({ ...ORDEN, revision: revisada, items }))).toBe(4)
   })
+
+  it('firmada en la pantalla, la copia del cliente sale con la firma y sin una hoja de más', async () => {
+    const pdf = await generarOrdenPdf({
+      ...ORDEN,
+      firma: { imagen: PNG_MINIMO, aclaracion: 'Juan Pérez' },
+    })
+    expect(paginas(pdf)).toBe(2)
+    expect(Buffer.from(pdf).toString('latin1')).toMatch(/\/Subtype \/Image/)
+  })
+
+  it('una firma que no se puede leer no impide imprimirla: queda la línea para el papel', async () => {
+    const pdf = await generarOrdenPdf({
+      ...ORDEN,
+      firma: { imagen: Uint8Array.from([0x89, 0x50, 0x4e, 0x47]), aclaracion: 'Juan Pérez' },
+    })
+    expect(paginas(pdf)).toBe(2)
+    expect(Buffer.from(pdf).toString('latin1')).not.toMatch(/\/Subtype \/Image/)
+  })
 })
 
 /** Un PNG de 1×1 de verdad: pdfkit lee la imagen entera, no sólo la cabecera. */

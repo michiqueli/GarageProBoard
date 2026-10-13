@@ -4,6 +4,7 @@ import { ORPCError } from '@orpc/client'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useNavigate } from '@tanstack/react-router'
 import { useState } from 'react'
+import { notificar } from '../../componentes/avisos.ts'
 import type { ClienteElegido } from '../../componentes/SelectorCliente.tsx'
 import type { VehiculoElegido } from '../../componentes/SelectorVehiculo.tsx'
 import { usarSesion } from '../../sesion/almacen.ts'
@@ -48,6 +49,13 @@ export interface DatosRecepcion {
   dominioSugerido: string
   /** Los pendientes de la vez anterior que se suman a esta orden. */
   pendienteIds: string[]
+  /**
+   * La firma del cliente en la pantalla, si firmó ahí. Es optativa: sin ella, firma la copia
+   * impresa, como siempre.
+   */
+  firma: Blob | null
+  /** Quién firma. Mientras nadie lo escriba, es quien trae el auto. */
+  firmaAclaracion: string | null
 }
 
 const VACIA: DatosRecepcion = {
@@ -69,6 +77,8 @@ const VACIA: DatosRecepcion = {
   visita: null,
   dominioSugerido: '',
   pendienteIds: [],
+  firma: null,
+  firmaAclaracion: null,
 }
 
 export type OrdenAbierta = Awaited<ReturnType<typeof api.ordenes.abrir>>
@@ -82,7 +92,7 @@ export type OrdenAbierta = Awaited<ReturnType<typeof api.ordenes.abrir>>
  * dato a la recepción se agrega en uno solo, y el de menos uso queda viejo sin que nadie se
  * entere. Lo único que cambia entre las dos es qué se hace con la orden recién abierta.
  */
-export function useRecepcion(alAbrir: (orden: OrdenAbierta) => void) {
+export function useRecepcion(alAbrir: (orden: OrdenAbierta, firmada: boolean) => void) {
   const tenantId = usarSesion((e) => e.datos?.tenant.id)
   const cache = useQueryClient()
   const navegar = useNavigate()
@@ -203,9 +213,13 @@ export function useRecepcion(alAbrir: (orden: OrdenAbierta) => void) {
     }))
   }
 
+  /** Lo escrito, tal cual: recortarlo mientras se tipea se comería el espacio entre nombres. */
+  const aclaracionEscrita = datos.firmaAclaracion ?? datos.traeNombre
+  const aclaracion = aclaracionEscrita.trim()
+
   const abrir = useMutation({
-    mutationFn: () =>
-      api.ordenes.abrir({
+    mutationFn: async () => {
+      const orden = await api.ordenes.abrir({
         vehiculoId: datos.vehiculo?.id as string,
         pagaId: datos.paga?.id ?? null,
         traeNombre: datos.traeNombre,
@@ -227,8 +241,26 @@ export function useRecepcion(alAbrir: (orden: OrdenAbierta) => void) {
         items: [],
         visitaId: datos.visita?.id ?? null,
         pendienteIds: datos.pendienteIds,
-      }),
-    onSuccess: async (o) => {
+      })
+      if (!datos.firma) return { orden, firmada: false }
+      // La orden ya está abierta: si la firma no se guarda, no se deshace por eso. Se avisa,
+      // y el cliente firma la copia impresa como siempre.
+      try {
+        await api.ordenes.firmar({
+          id: orden.id,
+          momento: 'ingreso',
+          aclaracion,
+          imagen: new File([datos.firma], 'firma.png', { type: 'image/png' }),
+        })
+        return { orden, firmada: true }
+      } catch {
+        notificar.error(
+          `${nombreOrden(orden.numero)} se abrió, pero la firma no se guardó. Imprimila para que el cliente firme la copia.`,
+        )
+        return { orden, firmada: false }
+      }
+    },
+    onSuccess: async ({ orden: o, firmada }) => {
       await Promise.all([
         cache.invalidateQueries({ queryKey: ['ordenes', tenantId] }),
         // La visita se cerró con la orden: deja de estar en la cola y en la puerta.
@@ -237,7 +269,7 @@ export function useRecepcion(alAbrir: (orden: OrdenAbierta) => void) {
         cache.invalidateQueries({ queryKey: ['tablero', tenantId], exact: false }),
         cache.invalidateQueries({ queryKey: ['pendientes', tenantId], exact: false }),
       ])
-      alAbrir(o)
+      alAbrir(o, firmada)
     },
     meta: {
       error: (error) => {
@@ -261,12 +293,15 @@ export function useRecepcion(alAbrir: (orden: OrdenAbierta) => void) {
 
   const faltaVehiculo = !datos.vehiculo
   const faltaPedido = datos.pedido.trim().length < 3
+  /** Una firma sin aclaración no dice de quién es. */
+  const faltaAclaracion = Boolean(datos.firma) && aclaracion.length < 3
 
   /** Intenta abrirla. Si falta algo, lo marca y devuelve qué, para que la vista lleve ahí. */
-  function enviar(): 'vehiculo' | 'pedido' | null {
+  function enviar(): 'vehiculo' | 'pedido' | 'firma' | null {
     setTocado(true)
     if (faltaVehiculo) return 'vehiculo'
     if (faltaPedido) return 'pedido'
+    if (faltaAclaracion) return 'firma'
     if (!abrir.isPending) abrir.mutate()
     return null
   }
@@ -295,5 +330,7 @@ export function useRecepcion(alAbrir: (orden: OrdenAbierta) => void) {
     abriendo: abrir.isPending,
     faltaVehiculo: tocado && faltaVehiculo,
     faltaPedido: tocado && faltaPedido,
+    aclaracion: aclaracionEscrita,
+    faltaAclaracion: tocado && faltaAclaracion,
   }
 }

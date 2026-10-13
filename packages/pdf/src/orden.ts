@@ -71,6 +71,11 @@ export interface DatosOrdenImpresa {
     total: string
   }>
   total: string
+  /**
+   * La firma que el cliente hizo en la pantalla al dejar el auto, si firmó ahí. Sin ella, la
+   * copia del cliente lleva la línea en blanco para firmarla en papel.
+   */
+  firma?: { imagen: Uint8Array; aclaracion: string } | null | undefined
 }
 
 const MM = 72 / 25.4
@@ -149,6 +154,26 @@ const FONDO = 297 * MM - mm(12)
  * muchos renglones no entra en una A4, y lo que se escribe por debajo del borde no se imprime:
  * desaparece sin aviso, que es peor que una hoja más.
  */
+/**
+ * La firma de la pantalla, si se puede leer. Una imagen rota no puede impedir imprimir la
+ * orden: sin ella queda la línea en blanco, y se firma en papel como siempre.
+ */
+function firmaDibujada(
+  doc: Doc,
+  firma: { imagen: Uint8Array } | null | undefined,
+  x: number,
+  y: number,
+  caja: [number, number],
+): boolean {
+  if (!firma) return false
+  try {
+    doc.image(Buffer.from(firma.imagen), x, y, { fit: caja })
+    return true
+  } catch {
+    return false
+  }
+}
+
 function lugar(doc: Doc, y: number, alto: number, encabezado: string): number {
   if (y + alto <= FONDO) return y
   doc.addPage()
@@ -613,8 +638,10 @@ function hoja(doc: Doc, o: DatosOrdenImpresa, copia: 'TALLER' | 'CLIENTE') {
   if (copia === 'CLIENTE') {
     // La firma va al pie, y si lo de arriba llegó hasta ahí, al pie de la hoja siguiente: una
     // firma encimada sobre la revisión no la puede leer nadie.
-    y = lugar(doc, y, mm(12) + mm(33), continua)
-    const yFirma = Math.max(y + mm(12), 297 * MM - mm(45))
+    // Firmada en la pantalla, la imagen necesita más alto que una línea en blanco.
+    const extra = o.firma ? mm(8) : 0
+    y = lugar(doc, y, mm(12) + mm(33) + extra, continua)
+    const yFirma = Math.max(y + mm(12) + extra, 297 * MM - mm(45))
     doc
       .font(NORMAL)
       .fontSize(7.5)
@@ -625,10 +652,14 @@ function hoja(doc: Doc, o: DatosOrdenImpresa, copia: 'TALLER' | 'CLIENTE') {
           'consultan antes de hacerse. El taller no se responsabiliza por objetos dejados dentro ' +
           'del vehículo.',
         IZQ,
-        yFirma - mm(14),
+        yFirma - mm(14) - extra,
         { width: UTIL },
       )
       .fillColor('#000')
+    const firmada = firmaDibujada(doc, o.firma, IZQ, yFirma - mm(3) - extra, [
+      mm(75),
+      mm(12.5) + extra,
+    ])
     doc
       .lineWidth(0.6)
       .moveTo(IZQ, yFirma + mm(10))
@@ -641,10 +672,12 @@ function hoja(doc: Doc, o: DatosOrdenImpresa, copia: 'TALLER' | 'CLIENTE') {
     doc
       .font(NORMAL)
       .fontSize(8)
-      .text('Firma y aclaración del cliente', IZQ, yFirma + mm(12), {
-        width: mm(75),
-        align: 'center',
-      })
+      .text(
+        firmada && o.firma ? `Firma de ${o.firma.aclaracion}` : 'Firma y aclaración del cliente',
+        IZQ,
+        yFirma + mm(12),
+        { width: mm(75), align: 'center' },
+      )
     doc.text('Firma del asesor', DER - mm(75), yFirma + mm(12), { width: mm(75), align: 'center' })
   }
 }
@@ -1152,17 +1185,14 @@ export async function generarEgresoPdf(e: DatosEgresoImpreso): Promise<Uint8Arra
     )
     .fillColor('#000')
   const yFirma = y + mm(8)
-  if (e.firma) {
-    doc.image(Buffer.from(e.firma.imagen), IZQ, yFirma, { fit: [mm(75), mm(24)] })
-  }
+  const firmada = firmaDibujada(doc, e.firma, IZQ, yFirma, [mm(75), mm(24)])
   doc
     .lineWidth(0.6)
     .moveTo(IZQ, yFirma + mm(26))
     .lineTo(IZQ + mm(75), yFirma + mm(26))
     .stroke()
-  const aclaracion = e.firma
-    ? `Firma de ${e.firma.aclaracion}`
-    : 'Firma y aclaración de quien retira'
+  const aclaracion =
+    firmada && e.firma ? `Firma de ${e.firma.aclaracion}` : 'Firma y aclaración de quien retira'
   doc
     .font(NORMAL)
     .fontSize(8)

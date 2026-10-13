@@ -23,6 +23,7 @@ const ordenes = {
   pasarAPresupuesto: vi.fn(),
   pendientes: vi.fn(),
   descartarPendiente: vi.fn(),
+  firmar: vi.fn(),
 }
 const listarVehiculos = vi.fn()
 const listarHojas = vi.fn()
@@ -62,6 +63,15 @@ vi.mock('../src/sesion/cliente.ts', () => ({
     ),
   },
   renovar: () => renovar(),
+}))
+
+// jsdom no dibuja: la firma se reemplaza por un botón que entrega una imagen.
+vi.mock('../src/componentes/Firma.tsx', () => ({
+  Firma: ({ alCambiar }: { alCambiar: (b: Blob | null) => void }) => (
+    <button type="button" onClick={() => alCambiar(new Blob(['firma'], { type: 'image/png' }))}>
+      Firmar de prueba
+    </button>
+  ),
 }))
 
 const TITULAR = {
@@ -291,6 +301,46 @@ describe('la recepción', () => {
     )
   })
 
+  it('si el cliente firma en la pantalla, la firma va con la orden recién abierta', async () => {
+    listarVehiculos.mockResolvedValue({
+      datos: [
+        {
+          id: ORDEN.vehiculo.id,
+          chasis: ORDEN.vehiculo.chasis,
+          dominio: 'AB123CD',
+          anio: 2022,
+          color: null,
+          marca: 'Volkswagen',
+          modelo: 'Amarok',
+          carroceria: null,
+          titular: TITULAR,
+        },
+      ],
+      total: 1,
+    })
+    ordenes.abrir.mockResolvedValue({ ...FICHA, estado: 'recibida' })
+    await montarApp('/ordenes/nueva')
+
+    await userEvent.type(await screen.findByLabelText('Vehículo'), 'ab123')
+    await screen.findByRole('list', { name: 'Vehículos que coinciden con ab123' })
+    await userEvent.keyboard('{Enter}')
+    await userEvent.type(screen.getByLabelText('Qué pide el cliente'), 'Ruido al frenar')
+
+    // Una firma sin aclaración no dice de quién es: no abre, y dice qué falta.
+    await userEvent.click(screen.getByRole('button', { name: 'Firmar de prueba' }))
+    await userEvent.keyboard('{F2}')
+    expect(screen.getByText('Escribí el nombre de quien firma')).toBeDefined()
+    expect(ordenes.abrir).not.toHaveBeenCalled()
+
+    await userEvent.type(screen.getByLabelText('Quién firma'), 'Ana Gómez')
+    await userEvent.keyboard('{F2}')
+    await waitFor(() =>
+      expect(ordenes.firmar).toHaveBeenCalledWith(
+        expect.objectContaining({ id: FICHA.id, momento: 'ingreso', aclaracion: 'Ana Gómez' }),
+      ),
+    )
+  })
+
   it('sin auto ni pedido no abre, y dice qué falta', async () => {
     await montarApp('/ordenes/nueva')
     await screen.findByLabelText('Vehículo')
@@ -499,7 +549,11 @@ describe('la recepción en tablet', () => {
     expect(screen.getByText('R Rayón')).toBeDefined()
     expect(screen.getByText('Todo lo revisado está')).toBeDefined()
     expect(screen.getByText('1 urgente')).toBeDefined()
-    await userEvent.click(screen.getByRole('button', { name: /Abrir la orden/ }))
+    await userEvent.click(screen.getByRole('button', { name: 'Siguiente' }))
+
+    // La firma es optativa: sin ella, la copia impresa.
+    await screen.findByText('Que firme el cliente')
+    await userEvent.click(screen.getByRole('button', { name: /Abrir sin firmar/ }))
 
     await waitFor(() =>
       expect(ordenes.abrir).toHaveBeenCalledWith(
@@ -512,6 +566,8 @@ describe('la recepción en tablet', () => {
       ),
     )
     expect(await screen.findByText('OT 000057')).toBeDefined()
+    expect(ordenes.firmar).not.toHaveBeenCalled()
+    expect(screen.getByText(/Imprimila para que el cliente firme la copia/)).toBeDefined()
 
     // Y se sigue con el próximo, sin volver a entrar: vuelve a la cola, y de ahí sale vacía.
     await userEvent.click(screen.getByRole('button', { name: 'Volver a la cola' }))
@@ -1040,7 +1096,10 @@ describe('la cola de la tablet', () => {
     await userEvent.click(screen.getByRole('button', { name: /Repasar/ }))
     await userEvent.click(screen.getByRole('button', { name: /Qué pide/ }))
     await userEvent.type(screen.getByLabelText('Qué pide el cliente'), 'Service de 20.000')
-    await userEvent.click(screen.getByRole('button', { name: /Repasar/ }))
+    await userEvent.click(screen.getByRole('button', { name: /Firma/ }))
+    // Firma quien lo trae, que ya se sabe desde la puerta.
+    expect(screen.getByLabelText('Quién firma')).toHaveProperty('value', 'Juan Pérez')
+    await userEvent.click(screen.getByRole('button', { name: 'Firmar de prueba' }))
     await userEvent.click(screen.getByRole('button', { name: /Abrir la orden/ }))
 
     await waitFor(() =>
@@ -1048,6 +1107,12 @@ describe('la cola de la tablet', () => {
         expect.objectContaining({ visitaId: 'v1', traeTelefono: '351 555-1234' }),
       ),
     )
+    await waitFor(() =>
+      expect(ordenes.firmar).toHaveBeenCalledWith(
+        expect.objectContaining({ id: FICHA.id, momento: 'ingreso', aclaracion: 'Juan Pérez' }),
+      ),
+    )
+    expect(await screen.findByText(/El cliente ya firmó/)).toBeDefined()
   })
 
   it('si vino con turno, arranca con su pedido y con el auto ya elegido', async () => {
