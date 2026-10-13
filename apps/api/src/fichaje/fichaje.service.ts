@@ -85,19 +85,21 @@ export function enPalabras(segundos: number): string {
   return `${Math.floor(minutos / 60)} h ${String(minutos % 60).padStart(2, '0')} min`
 }
 
+const ZONA = 'America/Argentina/Buenos_Aires'
+
 /** «08:12», en la hora de Argentina, que es la del taller. */
 export function hora(fecha: Date): string {
   return new Intl.DateTimeFormat('es-AR', {
     hour: '2-digit',
     minute: '2-digit',
-    timeZone: 'America/Argentina/Buenos_Aires',
+    timeZone: ZONA,
   }).format(fecha)
 }
 
 /** El día laboral en Argentina: el taller abre y cierra el mismo día, no en UTC. */
 export function diaArgentino(fecha = new Date()): string {
   return new Intl.DateTimeFormat('en-CA', {
-    timeZone: 'America/Argentina/Buenos_Aires',
+    timeZone: ZONA,
   }).format(fecha)
 }
 
@@ -682,17 +684,23 @@ export function numeroDeOrden(numero: number): string {
  * marcado.
  */
 export async function cerrarSesionesDeAyer(tx: Db, tenantId: string): Promise<number> {
+  // El día y las 20:00 son los de Argentina: Postgres corre en UTC, y contado ahí el corte
+  // caía a las 17:00 y «ayer» empezaba a las 21:00.
+  const zona = sql.raw(`'${ZONA}'`)
   const filas = await tx
     .update(sesionTrabajo)
     .set({
-      fin: sql`greatest(date_trunc('day', ${sesionTrabajo.inicio}) + interval '20 hours', ${sesionTrabajo.inicio})`,
+      fin: sql`greatest(
+        (date_trunc('day', ${sesionTrabajo.inicio} at time zone ${zona}) + interval '20 hours') at time zone ${zona},
+        ${sesionTrabajo.inicio}
+      )`,
       cerradaPor: 'auto',
     })
     .where(
       and(
         eq(sesionTrabajo.tenantId, tenantId),
         isNull(sesionTrabajo.fin),
-        sql`${sesionTrabajo.inicio} < date_trunc('day', now())`,
+        sql`${sesionTrabajo.inicio} < date_trunc('day', now() at time zone ${zona}) at time zone ${zona}`,
       ),
     )
     .returning({ id: sesionTrabajo.id })

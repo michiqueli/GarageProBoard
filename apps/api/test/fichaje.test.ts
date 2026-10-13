@@ -418,6 +418,27 @@ describe('el cierre de fin de turno', () => {
     expect(vieja?.cerradaPor).toBe('auto')
   })
 
+  it('se cierra a las 20:00 de Argentina, no a las de Postgres, que corre en UTC', async () => {
+    await escanear(tokenTaller, credencialQr)
+    await escanear(tokenTaller, ordenQr, credencialQr)
+
+    const ayer = new Intl.DateTimeFormat('en-CA', {
+      timeZone: 'America/Argentina/Buenos_Aires',
+    }).format(new Date(Date.now() - 24 * 60 * 60 * 1000))
+    await api.pg.dbDuenio
+      .update(sesionTrabajo)
+      .set({ inicio: new Date(`${ayer}T10:00:00-03:00`) })
+      .where(isNull(sesionTrabajo.fin))
+
+    await escanear(tokenTaller, credencialQr)
+
+    const [vieja] = await api.pg.dbDuenio
+      .select()
+      .from(sesionTrabajo)
+      .where(eq(sesionTrabajo.cerradaPor, 'auto'))
+    expect(vieja?.fin?.toISOString()).toBe(new Date(`${ayer}T20:00:00-03:00`).toISOString())
+  })
+
   it('una sesión de hoy no se toca', async () => {
     await escanear(tokenTaller, credencialQr)
     await escanear(tokenTaller, ordenQr, credencialQr)
