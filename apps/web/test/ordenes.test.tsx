@@ -25,6 +25,8 @@ const ordenes = {
   descartarPendiente: vi.fn(),
   firmar: vi.fn(),
   subirFoto: vi.fn(),
+  foto: vi.fn(),
+  quitarFoto: vi.fn(),
 }
 const listarVehiculos = vi.fn()
 const listarHojas = vi.fn()
@@ -123,6 +125,7 @@ const FICHA = {
   terminadaEn: null,
   entregadaEn: null,
   firmas: { ingreso: null, egreso: null },
+  fotos: [],
   factura: null,
   items: [
     {
@@ -789,6 +792,30 @@ describe('la ficha', () => {
     await confirmarDialogo('Terminar y mandar a caja')
     await waitFor(() => expect(ordenes.terminar).toHaveBeenCalledWith({ id: ORDEN.id }))
     expect(await screen.findByText('Está en caja, esperando que la facturen.')).toBeDefined()
+  })
+
+  it('muestra las fotos de cuando entró, y darlas de baja pregunta antes', async () => {
+    const FOTO = {
+      id: '77777777-7777-4777-8777-777777777777',
+      momento: 'ingreso' as const,
+      nota: 'Rayón en la puerta',
+      sacadaEn: '2026-10-13T12:00:00.000Z',
+      sacadaPor: 'Martín Gutiérrez',
+    }
+    ordenes.ficha.mockResolvedValue({ ...FICHA, fotos: [FOTO] })
+    ordenes.foto.mockResolvedValue(new Blob(['x'], { type: 'image/jpeg' }))
+    ordenes.quitarFoto.mockResolvedValue({ hecho: true })
+    await montarApp(`/ordenes/${ORDEN.id}`)
+
+    const fotos = await screen.findByRole('region', { name: 'Fotos' })
+    expect(await within(fotos).findByAltText('Foto 1 al recibirlo')).toBeDefined()
+    expect(within(fotos).getByText('Rayón en la puerta')).toBeDefined()
+
+    await userEvent.click(within(fotos).getByRole('button', { name: /Dar de baja/ }))
+    await confirmarDialogo('Dar de baja')
+    await waitFor(() =>
+      expect(ordenes.quitarFoto).toHaveBeenCalledWith({ id: FICHA.id, fotoId: FOTO.id }),
+    )
   })
 })
 

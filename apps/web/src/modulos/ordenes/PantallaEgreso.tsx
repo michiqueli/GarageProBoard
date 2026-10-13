@@ -9,7 +9,7 @@ import { ORPCError } from '@orpc/client'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { getRouteApi, Link, useNavigate } from '@tanstack/react-router'
 import { type ReactNode, useState } from 'react'
-import { confirmar } from '../../componentes/avisos.ts'
+import { confirmar, notificar } from '../../componentes/avisos.ts'
 import { Boton, clasesBoton } from '../../componentes/Boton.tsx'
 import { Campo } from '../../componentes/Campo.tsx'
 import { Firma } from '../../componentes/Firma.tsx'
@@ -23,6 +23,7 @@ import { usePuede } from '../../sesion/permisos.ts'
 import { useAtajo, useVolver } from '../../teclado/index.ts'
 import { nombreComprobante } from '../caja/comprobantes.ts'
 import { type Danio, DiagramaDanios, describirDanio } from './DiagramaDanios.tsx'
+import { type FotoNueva, FotosVehiculo, subirFotos } from './FotosVehiculo.tsx'
 import { type Combustible, imprimirEgreso, nombreOrden } from './ordenes.ts'
 import { ElegirCombustible } from './PantallaRecepcion.tsx'
 import { Semaforo } from './RevisionRecepcion.tsx'
@@ -97,6 +98,8 @@ function Egreso({ orden: o, visitaId }: { orden: Orden; visitaId?: string | unde
   const [motivo, setMotivo] = useState('')
   const [aclaracion, setAclaracion] = useState(o.traeNombre ?? o.titular?.razonSocial ?? '')
   const [firma, setFirma] = useState<Blob | null>(null)
+  /** Las fotos de cómo sale. Optativas, como al recibirlo. */
+  const [fotos, setFotos] = useState<FotoNueva[]>([])
 
   const sinFacturar = o.estado !== 'facturada'
   const km = kilometraje.trim() ? Number(kilometraje.replace(/\D/g, '')) : null
@@ -119,6 +122,22 @@ function Egreso({ orden: o, visitaId }: { orden: Orden; visitaId?: string | unde
         aclaracion: aclaracion.trim(),
         imagen: new File([firma as Blob], 'firma.png', { type: 'image/png' }),
       })
+      // Después las fotos, antes de entregar: con la orden entregada ya no se suben. La que
+      // se sube sale de la pantalla, así un reintento no la sube dos veces.
+      const fallaron = await subirFotos(async (f) => {
+        await api.ordenes.subirFoto({
+          id: o.id,
+          momento: 'egreso',
+          nota: f.nota.trim() || null,
+          imagen: new File([f.imagen], 'foto.jpg', { type: f.imagen.type || 'image/jpeg' }),
+        })
+        setFotos((actuales) => actuales.filter((x) => x.clave !== f.clave))
+      }, fotos)
+      if (fallaron) {
+        notificar.error(
+          `${fallaron === 1 ? 'Una foto no se guardó' : `${fallaron} fotos no se guardaron`}: el auto se entrega igual.`,
+        )
+      }
       return api.ordenes.entregar({
         id: o.id,
         kilometraje: km,
@@ -316,6 +335,12 @@ function Egreso({ orden: o, visitaId }: { orden: Orden; visitaId?: string | unde
               />
             )}
           </div>
+        </div>
+      </Seccion>
+
+      <Seccion titulo="Fotos">
+        <div className="px-3 py-2.5">
+          <FotosVehiculo fotos={fotos} onChange={setFotos} />
         </div>
       </Seccion>
 

@@ -59,8 +59,7 @@ type Paso = (typeof PASOS)[number]['id']
  * si quien la usa puede ver la puerta. Si no, directo al primer paso, como antes.
  *
  * Registrada como estación de recepción, la tablet arranca acá: se entra con la credencial
- * —`EntradaTablet`— y la sesión se cierra sola a los quince minutos sin tocarla. Lo que falta
- * de lo decidido en ese documento son las fotos.
+ * —`EntradaTablet`— y la sesión se cierra sola a los quince minutos sin tocarla.
  */
 export function PantallaRecepcionTablet() {
   const veredicto = useVeredicto(accesoDeRuta(contrato.ordenes.abrir))

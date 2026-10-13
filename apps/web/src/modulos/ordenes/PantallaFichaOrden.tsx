@@ -31,6 +31,7 @@ import { usePuedeUsar } from '../../sesion/permisos.ts'
 import { useAtajo, useCambiosSinGuardar, useVolver } from '../../teclado/index.ts'
 import { ALICUOTAS, abrirPdf, nombreComprobante } from '../caja/comprobantes.ts'
 import { type Danio, DiagramaDanios } from './DiagramaDanios.tsx'
+import { FotosDeLaOrden } from './FotosDeLaOrden.tsx'
 import { type Inventario, InventarioRecepcion } from './InventarioRecepcion.tsx'
 import {
   COMBUSTIBLES,
@@ -334,6 +335,7 @@ export function PantallaFichaOrden() {
           <Presupuestos orden={o} editable={puedeEditar && enTaller} guardada={actualizar} />
           <PedidosDeLaOrden orden={o} />
           {(o.firmas.ingreso || o.firmas.egreso) && <Firmas orden={o} />}
+          <FotosDeLaOrden orden={o} />
           <Tiempos orden={o} />
         </>
       )}

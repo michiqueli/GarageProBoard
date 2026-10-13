@@ -163,9 +163,16 @@ comprobante en PDF y las pantallas.
   retirar»; tomarlo lo agarra, la visita viaja con el auto que se elige, y entregarlo la cierra
   con un resultado nuevo, `entrega`, que guarda la orden como `orden` al recibirlo. Trabarla y
   cerrarla es la misma pieza que usa abrir: si la tiene otro, no se entrega.
+- **Las fotos del vehículo son optativas**, al recibirlo y al entregarlo: el dibujo de la hoja
+  sigue siendo lo que se firma, y la foto es la prueba de que el rayón ya estaba. En la
+  recepción, un bloque en la PC y un paso en la tablet después de «Cómo está», con la cámara
+  trasera; en la entrega, una sección antes del cobro. El navegador las achica a 1600 px en
+  JPEG antes de subirlas, hasta doce por momento, cada una con lo que muestra si se quiere. Se
+  suben con la orden —después de la firma al recibirlo, antes de entregar al devolverlo— y si
+  alguna falla se avisa sin frenar nada. La ficha de la orden las muestra; con la orden abierta
+  se suman las de entrada y se dan de baja, que no borra nada: las marca con quién.
 
 ### Lo que queda
 
-- Las fotos del vehículo, al recibirlo y al entregarlo.
 - La hora de retiro: hoy la entrega estimada es un día; el taller da una hora, y la puerta podría
   saber a quién espera.

@@ -15,6 +15,7 @@ const ordenes = {
   firmar: vi.fn(),
   entregar: vi.fn(),
   pdfEgreso: vi.fn(),
+  subirFoto: vi.fn(),
 }
 const renovar = vi.fn()
 const recepcion = { hoy: vi.fn(), atender: vi.fn(), soltar: vi.fn() }
@@ -100,6 +101,7 @@ const ORDEN = {
   },
   egreso: null,
   firmas: { ingreso: null, egreso: null },
+  fotos: [],
 }
 
 beforeEach(() => {
@@ -280,6 +282,33 @@ describe('la entrega', () => {
       expect(ordenes.entregar).toHaveBeenCalledWith(
         expect.objectContaining({ sinFactura: { motivo: 'Garantía' } }),
       ),
+    )
+  })
+})
+
+describe('las fotos de cómo sale', () => {
+  it('son optativas, y las que se sacan se suben antes de entregar', async () => {
+    ordenes.firmar.mockResolvedValue({ ingreso: null, egreso: null })
+    ordenes.subirFoto.mockResolvedValue({})
+    ordenes.entregar.mockResolvedValue({ ...ORDEN, estado: 'entregada' })
+    await montarApp(`/entregas/${ORDEN.id}`)
+
+    await userEvent.upload(
+      await screen.findByLabelText('Fotos del vehículo'),
+      new File(['foto'], 'frente.jpg', { type: 'image/jpeg' }),
+    )
+    expect(await screen.findByAltText('Foto 1')).toBeDefined()
+    await userEvent.click(screen.getByRole('button', { name: 'Firmar de prueba' }))
+    await userEvent.keyboard('{F4}')
+    await confirmarDialogo('Entregar')
+
+    await waitFor(() => expect(ordenes.entregar).toHaveBeenCalled())
+    expect(ordenes.subirFoto).toHaveBeenCalledWith(
+      expect.objectContaining({ id: ORDEN.id, momento: 'egreso' }),
+    )
+    // Antes de entregar: con la orden entregada ya no se suben.
+    expect(ordenes.subirFoto.mock.invocationCallOrder[0]).toBeLessThan(
+      ordenes.entregar.mock.invocationCallOrder[0] as number,
     )
   })
 })
