@@ -116,6 +116,20 @@ export const PRINCIPALES: Seccion[] = [
     ),
   },
   {
+    // La otra punta de la recepción: el auto vuelve al cliente.
+    id: 'entregas',
+    etiqueta: 'Entregas',
+    to: '/entregas',
+    requiere: accesoDeRuta(contrato.ordenes.entregar),
+    icono: (
+      <svg viewBox="0 0 16 16" {...trazo} aria-hidden="true">
+        <path d="M2 9.5h3l2 2h4.5a1.5 1.5 0 0 0 0-3H9" />
+        <path d="M5 9.5 7.5 7h3" />
+        <path d="M2 13.5h12" />
+      </svg>
+    ),
+  },
+  {
     id: 'taller',
     // «Taller» a secas, y no «Tablero de piso»: el menú ya tiene una sección «Tablero» —el de
     // inicio, todavía sin construir— y dos entradas que arrancan igual se pisan. Además es la
@@ -177,16 +191,6 @@ export const PRINCIPALES: Seccion[] = [
       <svg viewBox="0 0 16 16" {...trazo} aria-hidden="true">
         <rect x="2" y="4" width="12" height="8" rx="1" />
         <path d="M2 7h12" />
-      </svg>
-    ),
-  },
-  {
-    id: 'entregas',
-    etiqueta: 'Entregas',
-    requiere: { modulo: 'servicios', accion: 'ver', sujeto: 'Orden' },
-    icono: (
-      <svg viewBox="0 0 16 16" {...trazo} aria-hidden="true">
-        <path d="M2 8l4 4 8-8" />
       </svg>
     ),
   },

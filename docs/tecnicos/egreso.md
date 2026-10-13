@@ -122,3 +122,37 @@ que Michi subió, «después vemos de cambiarlas».
 - **No verifica el stock contra las cajas al entregar.** Escanear las cajas en el momento del
   egreso, con el cliente esperando, se pensó y se descartó: el control va donde la caja sale
   del depósito, y el cliente compara con la lista.
+
+## Lo que salió al construirlo (13/10/2026)
+
+Se construyó en el orden de arriba, un commit por paso, y el egreso en tres: la API, el
+comprobante en PDF y las pantallas.
+
+- **Entregar sin factura es una acción nueva, `autorizar`**, en la fila de órdenes de la grilla de
+  roles: «autorizar (entregar sin factura)». La tiene el gerente por `administrar all`; a los
+  demás roles se la da cada concesionaria. Se pensó en reusar `anular` o `facturar` y se
+  descartó: cada uno dice otra cosa, y un permiso que significa dos cosas termina dándose por la
+  que no era.
+- **Los km de salida no pueden ser menos que los de entrada**, y quedan en el vehículo.
+- **La firma se manda antes que la entrega.** Si la entrega falla, firmar de nuevo reemplaza la
+  anterior sin perderla. La API no exige la firma: la pantalla no deja entregar sin ella.
+- **Lo que no se hizo se calcula, no se carga** (`loQueNoSeHizo`): los renglones rechazados, con
+  el color del punto de la revisión del que salieron, y lo ámbar o rojo de la revisión que no
+  llegó a la orden. La pantalla lo muestra antes de entregar, el PDF lo imprime y la entrega lo
+  anota como pendiente del vehículo.
+- **Los daños nuevos se marcan sobre el mismo dibujo**, en una lista aparte de los de entrada:
+  la pantalla dice en texto qué tenía al recibirlo, y el dibujo sólo lleva lo nuevo.
+- **El código de barras se escanea al preparar el pedido**, no al entregar: es el pedido el que
+  pasa las piezas a la orden. Un código desconocido se asocia ahí a la pieza de un renglón, y el
+  catálogo de códigos se llena sin cargarlo a mano. Editar la orden conserva los códigos.
+- **Una estación que no ficha ya no ficha**, de paso: la tablet de recepción se sumó a las
+  estaciones, y la API aceptaba escaneos de cualquiera.
+- **En la tablet todo va al dedo**: la densidad táctil la pone el aparato, no la pantalla, así que
+  la entrega en la tablet también la tiene. La tablet tiene «Entregar un auto» al lado de
+  «Salir».
+
+### Lo que queda
+
+- La firma en pantalla también en el ingreso: la pieza está, falta ponerla en la recepción.
+- Las fotos del vehículo, al recibirlo y al entregarlo.
+- Cerrar la visita de la puerta al entregar, cuando el cliente vino a buscar el auto y se anotó.

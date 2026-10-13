@@ -39,3 +39,18 @@ export async function imprimirOrden(id: string) {
     notificar.error(`No se pudo abrir la orden para imprimir. ${mensajeGeneral(error)}`)
   }
 }
+
+/** El comprobante de la entrega, en otra pestaña: se imprime o se le manda al cliente. */
+export async function imprimirEgreso(id: string) {
+  const ventana = window.open('', '_blank')
+  try {
+    const archivo = (await api.ordenes.pdfEgreso({ id })) as Blob
+    const url = URL.createObjectURL(archivo)
+    if (ventana) ventana.location.href = url
+    else window.location.href = url
+    setTimeout(() => URL.revokeObjectURL(url), 60_000)
+  } catch (error) {
+    ventana?.close()
+    notificar.error(`No se pudo abrir el comprobante de la entrega. ${mensajeGeneral(error)}`)
+  }
+}

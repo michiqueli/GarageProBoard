@@ -191,6 +191,26 @@ const rutaAgenda = createRoute({
   ),
 })
 
+const rutaEntregas = createRoute({
+  getParentRoute: () => conSesion,
+  path: 'entregas',
+  staticData: { pantalla: 'entregas' },
+  component: lazyRouteComponent(
+    () => import('./modulos/ordenes/PantallaEntregas.tsx'),
+    'PantallaEntregas',
+  ),
+})
+
+const rutaEgreso = createRoute({
+  getParentRoute: () => conSesion,
+  path: 'entregas/$id',
+  staticData: { pantalla: 'entregas' },
+  component: lazyRouteComponent(
+    () => import('./modulos/ordenes/PantallaEgreso.tsx'),
+    'PantallaEgreso',
+  ),
+})
+
 const rutaCupoAgenda = createRoute({
   getParentRoute: () => conSesion,
   path: 'agenda/cupo',
@@ -517,6 +537,8 @@ const arbol = raiz.addChildren([
     rutaPuerta,
     rutaAgenda,
     rutaCupoAgenda,
+    rutaEntregas,
+    rutaEgreso,
     rutaEsperas,
     rutaFichaOrden,
     rutaVehiculos,
@@ -583,7 +605,10 @@ function Raiz() {
   const densidadDeRuta = useMatches({
     select: (ms) => ms.find((m) => m.staticData?.densidad)?.staticData.densidad,
   })
-  useDensidad(densidadDeRuta ?? datos?.config.densidad)
+  // En la tablet de recepción todo va al dedo, no sólo la recepción: también la entrega.
+  useDensidad(
+    densidadDeRuta ?? (datos && esTabletDeRecepcion() ? 'tactil' : datos?.config.densidad),
+  )
 
   // Al cambiar de usuario se tira la caché: en la PC compartida del mostrador, el
   // cambio de turno no puede dejar a la vista los datos del turno anterior.

@@ -479,6 +479,12 @@ function Marco({ children }: { children: ReactNode }) {
         >
           Vista de escritorio
         </Link>
+        <Link
+          to="/entregas"
+          className="inline-flex h-campo items-center rounded-base border border-borde px-3 text-etiqueta text-texto-suave"
+        >
+          Entregar un auto
+        </Link>
         <Boton onClick={() => void salir()}>Salir</Boton>
       </header>
       <main className="mx-auto grid max-w-4xl gap-4 px-4 py-4">{children}</main>

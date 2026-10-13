@@ -442,6 +442,22 @@ const ESTATICAS: EntradaIndice[] = [
     requiere: accesoDeRuta(contrato.turnos.fijarCupo),
   },
   {
+    id: 'entregas',
+    titulo: 'Entregar un vehículo',
+    donde: 'Principal → Entregas',
+    claves: [
+      'entregar',
+      'egreso',
+      'retiro',
+      'devolver el auto',
+      'firma del cliente',
+      'comprobante de entrega',
+      'para entregar',
+    ],
+    destino: { to: '/entregas' },
+    requiere: accesoDeRuta(contrato.ordenes.entregar),
+  },
+  {
     id: 'ordenes.recepcionTablet',
     titulo: 'Recibir un vehículo en tablet',
     donde: 'Principal → Tablet de recepción',

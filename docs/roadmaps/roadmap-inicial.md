@@ -426,8 +426,9 @@ puesto por el dispositivo. Por qué no una app ahora y por qué no un usuario co
 - ⬜ Fichaje del piso de taller y escaneo de chasis por código de barras
 - ⬜ **Recepción de 0km**: leer el chasis del código de barras y fotodocumentar las averías
       de transporte antes de aceptar la unidad
-- 🔨 Ingreso y egreso de vehículos en tablet, viendo los turnos del día: el ingreso está, con la
-      cola de la puerta y los turnos que llegan; falta el egreso
+- ✅ Ingreso y egreso de vehículos en tablet, viendo los turnos del día: el ingreso con la cola de
+      la puerta y los turnos que llegan, y el egreso —desde el 13/10/2026— con lo hecho y sus cajas,
+      lo no hecho, cómo sale, el cobro y la firma en pantalla. Ver [el egreso](../tecnicos/egreso.md)
 - ✅ **La tablet como estación de recepción**: se registra en Estaciones, arranca pidiendo la
       credencial, abre la sesión de la cuenta vinculada con ese legajo en la sucursal de la
       tablet, y se cierra sola a los quince minutos sin tocarla. Desde el 13/10/2026
