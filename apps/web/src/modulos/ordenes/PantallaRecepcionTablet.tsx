@@ -21,6 +21,7 @@ import { DiagramaDanios, describirDanio, ElegirCarroceria } from './DiagramaDani
 import { InventarioRecepcion } from './InventarioRecepcion.tsx'
 import { COMBUSTIBLES, imprimirOrden, nombreOrden } from './ordenes.ts'
 import { ElegirCombustible, Texto } from './PantallaRecepcion.tsx'
+import { PendientesDelVehiculo } from './PendientesDelVehiculo.tsx'
 import { type PuntoRevisado, RevisionRecepcion } from './RevisionRecepcion.tsx'
 import { type OrdenAbierta, useRecepcion } from './useRecepcion.ts'
 
@@ -306,6 +307,11 @@ export function PantallaRecepcionTablet() {
               )}
             </div>
             <SelectorCliente etiqueta="Paga" valor={d.paga} onChange={(v) => poner('paga', v)} />
+            <PendientesDelVehiculo
+              pendientes={r.pendientes}
+              elegidos={d.pendienteIds}
+              alternar={r.alternarPendiente}
+            />
           </>
         )}
 

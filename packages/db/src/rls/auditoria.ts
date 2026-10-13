@@ -71,6 +71,10 @@ export const TABLAS_AUDITADAS: readonly TablaAuditada[] = [
   },
   { tabla: 'orden' },
   {
+    tabla: 'vehiculo_pendiente',
+    nota: 'Lo que se le recomendó y no autorizó, y quién lo descartó y por qué: es lo que se discute cuando falla lo que se había avisado.',
+  },
+  {
     tabla: 'orden_firma',
     nota: 'Quién firmó, cuándo, y quién la puso a firmar: si alguien dice que no firmó, se mira acá.',
   },

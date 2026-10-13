@@ -52,6 +52,7 @@ export function Boton({
   variante = 'normal',
   tamano = 'normal',
   deshabilitado = false,
+  presionado,
 }: {
   accion?: string
   onClick: () => void
@@ -61,6 +62,8 @@ export function Boton({
   variante?: Variante
   tamano?: Tamano
   deshabilitado?: boolean
+  /** Para los que alternan —«Sumar a esta orden»—: el lector de pantalla dice si está puesto. */
+  presionado?: boolean | undefined
 }) {
   const { teclaDe } = useTeclado()
   const tecla = accion ? teclaDe(accion) : undefined
@@ -72,6 +75,7 @@ export function Boton({
       type="button"
       onClick={onClick}
       disabled={deshabilitado}
+      aria-pressed={presionado}
       className={clasesBoton(variante, tamano)}
     >
       {icono}

@@ -24,6 +24,8 @@ import { ControladorFirmas } from './ordenes/firmas.controller.ts'
 import { ServicioFirmas } from './ordenes/firmas.service.ts'
 import { ControladorOrdenes } from './ordenes/ordenes.controller.ts'
 import { ServicioOrdenes } from './ordenes/ordenes.service.ts'
+import { ControladorPendientes } from './ordenes/pendientes.controller.ts'
+import { ServicioPendientes } from './ordenes/pendientes.service.ts'
 import { ControladorOrganizacion } from './organizacion/organizacion.controller.ts'
 import { ServicioOrganizacion } from './organizacion/organizacion.service.ts'
 import { ModuloPadron } from './padron/padron.module.ts'
@@ -94,6 +96,7 @@ import { ServicioVehiculos } from './vehiculos/vehiculos.service.ts'
     ControladorComprobantes,
     ControladorOrdenes,
     ControladorFirmas,
+    ControladorPendientes,
     ControladorRepuestos,
     ControladorPedidosRepuestos,
     ControladorCompras,
@@ -120,6 +123,7 @@ import { ServicioVehiculos } from './vehiculos/vehiculos.service.ts'
     ServicioComprobantes,
     ServicioOrdenes,
     ServicioFirmas,
+    ServicioPendientes,
     ServicioRepuestos,
     ServicioPedidosRepuestos,
     ServicioCompras,

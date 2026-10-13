@@ -204,6 +204,17 @@ export const sesionDeTrabajo = z.object({
   cerradaPor: z.enum(['mecanico', 'auto', 'jefe']).nullable(),
 })
 
+/** Lo que se le recomendó a un auto y no se hizo. */
+export const pendienteVehiculo = z.object({
+  id: z.uuid(),
+  descripcion: z.string(),
+  origen: z.enum(['presupuesto', 'revision']),
+  semaforo: z.enum(['ambar', 'rojo']).nullable(),
+  /** Cuándo se le dijo: al entregar el auto. */
+  informadoEn: z.iso.datetime(),
+  orden: z.object({ id: z.uuid(), numero: z.number().int() }),
+})
+
 const firmaOrden = z.object({ aclaracion: z.string(), firmadoEn: z.iso.datetime() }).nullable()
 
 export const ordenDetalle = ordenResumen.extend({
@@ -353,6 +364,11 @@ export const contratoOrdenes = {
          * con la orden: es lo que une cuánto esperó alguien con qué se le hizo.
          */
         visitaId: z.uuid().nullish(),
+        /**
+         * Lo que quedó pendiente de la vez anterior y se suma a esta orden: va como trabajo sin
+         * precio, y el pendiente queda resuelto con ella.
+         */
+        pendienteIds: z.array(z.uuid()).max(50).default([]),
       }),
     )
     .errors({
@@ -599,6 +615,43 @@ export const contratoOrdenes = {
     .input(conId)
     .errors({ ...NO_ENCONTRADA, ...ESTADO_INVALIDO })
     .output(ordenDetalle),
+
+  pendientes: conPermiso('servicios', 'ver', 'Orden')
+    .route({
+      method: 'GET',
+      path: '/vehiculos/{id}/pendientes',
+      tags: [TAG],
+      operationId: 'pendientesDelVehiculo',
+      summary: 'Lo que se le recomendó al auto y no se hizo, todavía sin resolver',
+      description:
+        'Se anota al entregarlo: lo rechazado del presupuesto y lo ámbar o rojo de la revisión ' +
+        'que no pasó a la orden. Los más nuevos primero.',
+    })
+    .input(conId)
+    .output(z.object({ datos: z.array(pendienteVehiculo) })),
+
+  descartarPendiente: conPermiso('servicios', 'editar', 'Orden')
+    .route({
+      method: 'POST',
+      path: '/vehiculos/pendientes/{id}/descartar',
+      tags: [TAG],
+      operationId: 'descartarPendienteVehiculo',
+      summary: 'Descartar un pendiente: lo hizo en otro lado, vendió el auto',
+      description: 'No se borra: queda con el motivo y con quién lo descartó.',
+    })
+    .input(
+      conId.extend({
+        motivo: z
+          .string()
+          .trim()
+          .min(3, 'Decí por qué se descarta')
+          .max(300, 'Es largo: hasta 300 letras'),
+      }),
+    )
+    .errors({
+      NO_ENCONTRADO: { status: 404, message: 'Ese pendiente no existe o ya se resolvió' },
+    })
+    .output(z.object({ hecho: z.literal(true) })),
 
   firmar: conPermiso('servicios', 'editar', 'Orden')
     .route({

@@ -243,6 +243,9 @@ verdad. Qué se trae y qué cambia ahora que el DMS es nuestro, en
       televisor colgado en el piso, que se autentica con el token de una estación de tipo
       `tablero` y no se toca. Con los **dos relojes** —mano de obra y tiempo en taller— y el
       tiempo muerto, que es la diferencia
+- ✅ **Los pendientes del vehículo**: lo que el cliente no autorizó —del presupuesto o de la
+      revisión— queda con el auto al entregarlo, y la recepción siguiente lo ofrece para sumarlo a la
+      orden nueva o descartarlo con motivo. Desde el 13/10/2026, en [el egreso](../tecnicos/egreso.md)
 - ✅ Flujo de recepción **sin tocar el mouse**: patente, Enter, Tab, F2
 
 **Criterio de terminado:** una orden entra, se trabaja, se factura y se cobra.

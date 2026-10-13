@@ -50,6 +50,7 @@ import {
   turno,
   usuario,
   vehiculo,
+  vehiculoPendiente,
   visita,
 } from '@gpb/db/schema'
 import { generarPresupuestoPdf } from '@gpb/pdf'
@@ -255,6 +256,7 @@ export class ServicioOrdenes {
       items: ItemEntrada[]
       revision?: RespuestaEntrada[] | undefined
       visitaId?: string | null | undefined
+      pendienteIds?: string[] | undefined
     },
     ip?: string,
   ) {
@@ -301,6 +303,34 @@ export class ServicioOrdenes {
         .select({ id: titularidad.clienteId })
         .from(titularidad)
         .where(and(eq(titularidad.vehiculoId, auto.id), isNull(titularidad.hasta)))
+      // Lo que quedó pendiente de la vez anterior y se suma a ésta: va como trabajo sin precio,
+      // como lo que sale de la revisión, para presupuestarlo con el circuito de siempre.
+      const idsPendientes = [...new Set(entrada.pendienteIds ?? [])]
+      const pendientes = idsPendientes.length
+        ? await tx
+            .select()
+            .from(vehiculoPendiente)
+            .where(
+              and(
+                inArray(vehiculoPendiente.id, idsPendientes),
+                eq(vehiculoPendiente.vehiculoId, auto.id),
+                isNull(vehiculoPendiente.resueltoEn),
+              ),
+            )
+            .for('update')
+        : []
+      if (pendientes.length !== idsPendientes.length) throw new ErrorOrdenes('NO_ENCONTRADO')
+      const items: ItemEntrada[] = [
+        ...entrada.items,
+        ...pendientes.map((p) => ({
+          tipo: 'trabajo' as const,
+          descripcion: p.descripcion,
+          cantidad: '1',
+          precioUnitario: '0',
+          codigoAlicuota: 5,
+        })),
+      ]
+
       const pagaId = entrada.pagaId ?? titular?.id ?? null
       await this.verificarReferencias(tx, pagaId)
       const { revision } = await this.contestar(tx, sesion, {}, entrada.revision ?? [])
@@ -345,13 +375,25 @@ export class ServicioOrdenes {
         .returning({ id: orden.id })
       if (!creada) throw new Error('No se pudo abrir la orden.')
 
-      if (entrada.items.length) {
-        await this.guardarItems(tx, sesion, creada.id, entrada.items)
-        await moverDiferencia(tx, sesion, new Map(), porRepuesto(entrada.items), {
+      if (items.length) {
+        await this.guardarItems(tx, sesion, creada.id, items)
+        await moverDiferencia(tx, sesion, new Map(), porRepuesto(items), {
           sucursalId: sesion.sucursalId,
           tipo: 'orden',
           ordenId: creada.id,
         })
+      }
+
+      if (pendientes.length) {
+        await tx
+          .update(vehiculoPendiente)
+          .set({
+            resueltoEn: new Date(),
+            resolucion: 'en_orden',
+            resueltoOrdenId: creada.id,
+            resueltoPor: sesion.usuarioId,
+          })
+          .where(inArray(vehiculoPendiente.id, idsPendientes))
       }
 
       // Los kilómetros de la recepción son el dato más fresco del auto.
@@ -673,6 +715,19 @@ export class ServicioOrdenes {
       ['facturada'],
       'Se entrega una orden facturada.',
       async (tx, sesion, o) => {
+        // Lo que no se hizo queda con el vehículo: la próxima recepción lo ofrece de nuevo.
+        const items = await tx.select().from(ordenItem).where(eq(ordenItem.ordenId, id))
+        const noSeHizo = loQueNoSeHizo(o.revision, items)
+        if (noSeHizo.length) {
+          await tx.insert(vehiculoPendiente).values(
+            noSeHizo.map((p) => ({
+              tenantId: sesion.tenantId,
+              vehiculoId: o.vehiculoId,
+              ordenId: id,
+              ...p,
+            })),
+          )
+        }
         await tx
           .update(orden)
           .set({ estado: 'entregada', entregadaEn: new Date(), actualizadoEn: new Date() })
@@ -1539,4 +1594,42 @@ export function horaArgentina(fecha: Date) {
   }).formatToParts(fecha)
   const v = (t: string) => partes.find((x) => x.type === t)?.value ?? ''
   return `${v('year')}-${v('month')}-${v('day')}T${v('hour')}:${v('minute')}`
+}
+
+/**
+ * Lo que se le recomendó al auto y no se hizo, como queda anotado al entregarlo: los renglones
+ * que el cliente rechazó —con su color, si salieron de la revisión— y lo que quedó en ámbar o en
+ * rojo en la revisión sin llegar a la orden.
+ */
+export function loQueNoSeHizo(
+  revision: RevisionOrden,
+  items: Array<{ id: string; descripcion: string; autorizacion: string | null }>,
+): Array<{
+  origen: 'presupuesto' | 'revision'
+  descripcion: string
+  semaforo: 'ambar' | 'rojo' | null
+}> {
+  const colorDe = new Map(
+    Object.values(revision).flatMap((r) =>
+      r.itemId && ESTADOS_CON_TRABAJO.includes(r.estado)
+        ? [[r.itemId, r.estado as 'ambar' | 'rojo'] as const]
+        : [],
+    ),
+  )
+  const vivos = new Set(items.map((i) => i.id))
+  const rechazados = items
+    .filter((i) => i.autorizacion === 'rechazado')
+    .map((i) => ({
+      origen: 'presupuesto' as const,
+      descripcion: i.descripcion,
+      semaforo: colorDe.get(i.id) ?? null,
+    }))
+  const sinPasar = Object.values(revision)
+    .filter((r) => ESTADOS_CON_TRABAJO.includes(r.estado) && !(r.itemId && vivos.has(r.itemId)))
+    .map((r) => ({
+      origen: 'revision' as const,
+      descripcion: trabajoDePunto(r.nombre, r.nota),
+      semaforo: r.estado as 'ambar' | 'rojo',
+    }))
+  return [...rechazados, ...sinPasar]
 }

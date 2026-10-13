@@ -21,6 +21,8 @@ const ordenes = {
   pdfPresupuesto: vi.fn(),
   revisar: vi.fn(),
   pasarAPresupuesto: vi.fn(),
+  pendientes: vi.fn(),
+  descartarPendiente: vi.fn(),
 }
 const listarVehiculos = vi.fn()
 const listarHojas = vi.fn()
@@ -156,6 +158,7 @@ beforeEach(() => {
   ])
     f.mockReset()
   recepcion.hoy.mockResolvedValue({ datos: [] })
+  ordenes.pendientes.mockResolvedValue({ datos: [] })
   usarSesion.getState().limpiar()
   renovar.mockImplementation(async () => {
     usarSesion.getState().establecer(SESION)
@@ -234,6 +237,58 @@ describe('la recepción', () => {
       ),
     )
     await waitFor(() => expect(router.state.location.pathname).toBe(`/ordenes/${ORDEN.id}`))
+  })
+
+  it('ofrece lo que quedó pendiente, y lo que se elige va con la orden', async () => {
+    listarVehiculos.mockResolvedValue({
+      datos: [
+        {
+          id: ORDEN.vehiculo.id,
+          chasis: ORDEN.vehiculo.chasis,
+          dominio: 'AB123CD',
+          anio: 2022,
+          color: null,
+          marca: 'Volkswagen',
+          modelo: 'Amarok',
+          carroceria: null,
+          titular: TITULAR,
+        },
+      ],
+      total: 1,
+    })
+    ordenes.pendientes.mockResolvedValue({
+      datos: [
+        {
+          id: '77777777-0000-4000-8000-000000000001',
+          descripcion: 'Pastillas de freno',
+          origen: 'revision',
+          semaforo: 'rojo',
+          informadoEn: '2026-09-20T12:00:00.000Z',
+          orden: { id: ORDEN.id, numero: 1 },
+        },
+      ],
+    })
+    ordenes.abrir.mockResolvedValue({ ...FICHA, estado: 'recibida' })
+    await montarApp('/ordenes/nueva')
+
+    await userEvent.type(await screen.findByLabelText('Vehículo'), 'ab123')
+    await screen.findByRole('list', { name: 'Vehículos que coinciden con ab123' })
+    await userEvent.keyboard('{Enter}')
+
+    const pendientes = await screen.findByRole('region', { name: 'Quedaron pendientes' })
+    expect(within(pendientes).getByText('Pastillas de freno')).toBeDefined()
+    await userEvent.click(within(pendientes).getByRole('button', { name: 'Sumar a esta orden' }))
+    expect(
+      within(pendientes).getByRole('button', { name: 'Se suma a esta orden', pressed: true }),
+    ).toBeDefined()
+
+    await userEvent.type(screen.getByLabelText('Qué pide el cliente'), 'Los frenos')
+    await userEvent.keyboard('{F2}')
+    await waitFor(() =>
+      expect(ordenes.abrir).toHaveBeenCalledWith(
+        expect.objectContaining({ pendienteIds: ['77777777-0000-4000-8000-000000000001'] }),
+      ),
+    )
   })
 
   it('sin auto ni pedido no abre, y dice qué falta', async () => {

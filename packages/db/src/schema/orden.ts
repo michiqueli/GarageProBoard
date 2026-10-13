@@ -351,3 +351,54 @@ export const ordenFirma = pgTable(
     check('orden_firma_momento_valido', sql`${t.momento} in ('ingreso', 'egreso')`),
   ],
 )
+
+/**
+ * Lo que se le recomendó a un vehículo y el cliente no autorizó: lo rechazado del presupuesto,
+ * y lo que quedó en ámbar o en rojo en la revisión sin pasar a la orden. Ver
+ * `docs/tecnicos/egreso.md`.
+ *
+ * Se anota al entregar el auto, que es cuando queda dicho que no se hizo. En la recepción
+ * siguiente se ofrece de nuevo: se suma a la orden nueva (`en_orden`) o se descarta con motivo
+ * —lo hizo en otro lado, vendió el auto—. Lo que no se resolvió sigue a la vista.
+ */
+export const vehiculoPendiente = pgTable(
+  'vehiculo_pendiente',
+  {
+    id: pk(),
+    tenantId: tenantId().references(() => tenant.id),
+    vehiculoId: uuid()
+      .notNull()
+      .references(() => vehiculo.id),
+    /** La orden en la que se recomendó y no se autorizó. */
+    ordenId: uuid()
+      .notNull()
+      .references(() => orden.id),
+    origen: text().notNull(),
+    descripcion: text().notNull(),
+    /** El color de la revisión, si salió de ahí. */
+    semaforo: text(),
+    creadoEn: creadoEn(),
+    resueltoEn: timestamp({ withTimezone: true }),
+    resolucion: text(),
+    /** La orden a la que se sumó, si se sumó. */
+    resueltoOrdenId: uuid().references(() => orden.id),
+    motivo: text(),
+    resueltoPor: uuid().references(() => usuario.id),
+  },
+  (t) => [
+    index('vehiculo_pendiente_vehiculo_idx').on(t.vehiculoId).where(sql`resuelto_en is null`),
+    check('vehiculo_pendiente_origen_valido', sql`${t.origen} in ('presupuesto', 'revision')`),
+    check(
+      'vehiculo_pendiente_semaforo_valido',
+      sql`${t.semaforo} is null or ${t.semaforo} in ('ambar', 'rojo')`,
+    ),
+    check(
+      'vehiculo_pendiente_resolucion_valida',
+      sql`(${t.resueltoEn} is null and ${t.resolucion} is null) or (${t.resueltoEn} is not null and ${t.resolucion} in ('en_orden', 'descartado'))`,
+    ),
+    check(
+      'vehiculo_pendiente_descarte_con_motivo',
+      sql`${t.resolucion} is distinct from 'descartado' or ${t.motivo} is not null`,
+    ),
+  ],
+)

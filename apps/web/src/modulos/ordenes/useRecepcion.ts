@@ -1,3 +1,4 @@
+import { contrato } from '@gpb/contracts'
 import { type Carroceria, HOJA_DE, HOJA_POR_OMISION } from '@gpb/core'
 import { ORPCError } from '@orpc/client'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
@@ -8,6 +9,7 @@ import type { VehiculoElegido } from '../../componentes/SelectorVehiculo.tsx'
 import { usarSesion } from '../../sesion/almacen.ts'
 import { api } from '../../sesion/cliente.ts'
 import { mensajeGeneral } from '../../sesion/consultas.ts'
+import { usePuedeUsar } from '../../sesion/permisos.ts'
 import type { Danio } from './DiagramaDanios.tsx'
 import type { Inventario } from './InventarioRecepcion.tsx'
 import { type Combustible, nombreOrden } from './ordenes.ts'
@@ -44,6 +46,8 @@ export interface DatosRecepcion {
    * no aparece, ofrece darlo de alta.
    */
   dominioSugerido: string
+  /** Los pendientes de la vez anterior que se suman a esta orden. */
+  pendienteIds: string[]
 }
 
 const VACIA: DatosRecepcion = {
@@ -64,6 +68,7 @@ const VACIA: DatosRecepcion = {
   revision: {},
   visita: null,
   dominioSugerido: '',
+  pendienteIds: [],
 }
 
 export type OrdenAbierta = Awaited<ReturnType<typeof api.ordenes.abrir>>
@@ -91,7 +96,14 @@ export function useRecepcion(alAbrir: (orden: OrdenAbierta) => void) {
   function elegirVehiculo(v: VehiculoElegido | null) {
     // Quien paga arranca en el titular: es el caso de todos los días. Y las marcas se van con
     // el auto: son puntos de su dibujo, no de la pantalla.
-    setDatos((d) => ({ ...d, vehiculo: v, paga: v?.titular ?? null, carroceria: null, danios: [] }))
+    setDatos((d) => ({
+      ...d,
+      vehiculo: v,
+      paga: v?.titular ?? null,
+      carroceria: null,
+      danios: [],
+      pendienteIds: [],
+    }))
   }
 
   /**
@@ -158,6 +170,27 @@ export function useRecepcion(alAbrir: (orden: OrdenAbierta) => void) {
     setDatos((d) => ({ ...d, revision: { ...d.revision, [puntoId]: cambio } }))
   }
 
+  /**
+   * Lo que se le recomendó al auto la vez anterior y no se hizo. Se ofrece apenas se elige el
+   * auto: es cuando el asesor todavía está hablando con el cliente.
+   */
+  const puedeVerPendientes = usePuedeUsar(contrato.ordenes.pendientes)
+  const vehiculoId = datos.vehiculo?.id
+  const pendientes = useQuery({
+    queryKey: ['pendientes', tenantId, vehiculoId],
+    queryFn: () => api.ordenes.pendientes({ id: vehiculoId as string }),
+    enabled: Boolean(vehiculoId) && puedeVerPendientes,
+  })
+
+  function alternarPendiente(id: string) {
+    setDatos((d) => ({
+      ...d,
+      pendienteIds: d.pendienteIds.includes(id)
+        ? d.pendienteIds.filter((x) => x !== id)
+        : [...d.pendienteIds, id],
+    }))
+  }
+
   /** Se pregunta cuando nadie lo sabe: con un modelo sin carrocería, o sin modelo cargado. */
   const faltaCarroceria = !datos.vehiculo?.carroceria
 
@@ -193,6 +226,7 @@ export function useRecepcion(alAbrir: (orden: OrdenAbierta) => void) {
           .map(([puntoId, c]) => ({ puntoId, estado: c.estado, nota: c.nota })),
         items: [],
         visitaId: datos.visita?.id ?? null,
+        pendienteIds: datos.pendienteIds,
       }),
     onSuccess: async (o) => {
       await Promise.all([
@@ -201,6 +235,7 @@ export function useRecepcion(alAbrir: (orden: OrdenAbierta) => void) {
         cache.invalidateQueries({ queryKey: ['visitas', tenantId] }),
         // El auto que se acaba de recibir tiene que aparecer en el taller sin recargar.
         cache.invalidateQueries({ queryKey: ['tablero', tenantId], exact: false }),
+        cache.invalidateQueries({ queryKey: ['pendientes', tenantId], exact: false }),
       ])
       alAbrir(o)
     },
@@ -253,6 +288,8 @@ export function useRecepcion(alAbrir: (orden: OrdenAbierta) => void) {
     elegirCarroceria,
     puntosRevision,
     contestar,
+    pendientes: pendientes.data?.datos ?? [],
+    alternarPendiente,
     enviar,
     empezarOtra,
     abriendo: abrir.isPending,
