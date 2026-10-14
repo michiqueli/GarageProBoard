@@ -27,10 +27,13 @@ const ordenes = {
   subirFoto: vi.fn(),
   foto: vi.fn(),
   quitarFoto: vi.fn(),
+  ponerEnEspera: vi.fn(),
+  terminarEspera: vi.fn(),
 }
 const listarVehiculos = vi.fn()
 const listarHojas = vi.fn()
 const listarPuntos = vi.fn()
+const listarMotivos = vi.fn()
 const listarRepuestos = vi.fn()
 const listarPedidos = vi.fn()
 const renovar = vi.fn()
@@ -49,6 +52,7 @@ vi.mock('../src/sesion/cliente.ts', () => ({
     pedidosRepuestos: { listar: (x: unknown) => listarPedidos(x) },
     clientes: { listar: vi.fn().mockResolvedValue({ datos: [], total: 0 }) },
     revision: { listar: () => listarPuntos() },
+    motivosEspera: { listar: () => listarMotivos() },
     recepcion: {
       hoy: () => recepcion.hoy(),
       atender: (x: unknown) => recepcion.atender(x),
@@ -126,6 +130,7 @@ const FICHA = {
   entregadaEn: null,
   firmas: { ingreso: null, egreso: null },
   fotos: [],
+  esperas: [],
   factura: null,
   items: [
     {
@@ -168,10 +173,18 @@ beforeEach(() => {
     listarVehiculos,
     listarHojas,
     listarPuntos,
+    listarMotivos,
     renovar,
   ])
     f.mockReset()
   recepcion.hoy.mockResolvedValue({ datos: [] })
+  listarMotivos.mockResolvedValue({
+    datos: [
+      { id: 'm1', nombre: 'Repuestos', activo: true, propio: false },
+      { id: 'm2', nombre: 'Diagnóstico', activo: true, propio: false },
+      { id: 'm3', nombre: 'Lavadero', activo: false, propio: true },
+    ],
+  })
   ordenes.pendientes.mockResolvedValue({ datos: [] })
   usarSesion.getState().limpiar()
   renovar.mockImplementation(async () => {
@@ -792,6 +805,57 @@ describe('la ficha', () => {
     await confirmarDialogo('Terminar y mandar a caja')
     await waitFor(() => expect(ordenes.terminar).toHaveBeenCalledWith({ id: ORDEN.id }))
     expect(await screen.findByText('Está en caja, esperando que la facturen.')).toBeDefined()
+  })
+
+  it('se pone en espera eligiendo el motivo, sin los apagados', async () => {
+    const abierta = {
+      id: 'e1',
+      motivo: 'Diagnóstico',
+      nota: 'Viene el técnico de la marca',
+      desde: new Date().toISOString(),
+      hasta: null as string | null,
+      abiertaPor: 'Martín Gutiérrez',
+      cerradaPor: null as string | null,
+    }
+    const enEspera = { ...FICHA, esperas: [abierta] }
+    const cerrada = {
+      ...FICHA,
+      esperas: [{ ...abierta, hasta: new Date().toISOString(), cerradaPor: 'Martín Gutiérrez' }],
+    }
+    // La ficha se vuelve a pedir después de cada cambio: tiene que decir lo mismo que la respuesta.
+    ordenes.ponerEnEspera.mockImplementation(async () => {
+      ordenes.ficha.mockResolvedValue(enEspera)
+      return enEspera
+    })
+    ordenes.terminarEspera.mockImplementation(async () => {
+      ordenes.ficha.mockResolvedValue(cerrada)
+      return cerrada
+    })
+    await montarApp(`/ordenes/${ORDEN.id}`)
+
+    await userEvent.click(await screen.findByRole('button', { name: 'Poner en espera' }))
+    const form = screen.getByRole('region', { name: 'Poner en espera' })
+    const motivo = within(form).getByLabelText('Por qué espera')
+    expect(within(motivo).queryByText('Lavadero')).toBeNull()
+    await userEvent.selectOptions(motivo, 'Diagnóstico')
+    await userEvent.type(within(form).getByLabelText('Nota'), 'Viene el técnico de la marca')
+    await userEvent.click(within(form).getByRole('button', { name: 'Poner en espera' }))
+
+    await waitFor(() =>
+      expect(ordenes.ponerEnEspera).toHaveBeenCalledWith({
+        id: FICHA.id,
+        motivoId: 'm2',
+        nota: 'Viene el técnico de la marca',
+      }),
+    )
+    const espera = await screen.findByRole('region', { name: 'Espera' })
+    expect(within(espera).getByText('Espera: Diagnóstico')).toBeDefined()
+
+    await userEvent.click(within(espera).getByRole('button', { name: 'Terminó la espera' }))
+    await waitFor(() => expect(ordenes.terminarEspera).toHaveBeenCalledWith({ id: FICHA.id }))
+    // Cerrada, queda en la historia de la orden.
+    const historia = await screen.findByRole('region', { name: 'Esperas' })
+    expect(within(historia).getByText('Diagnóstico')).toBeDefined()
   })
 
   it('muestra las fotos de cuando entró, y darlas de baja pregunta antes', async () => {

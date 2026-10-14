@@ -31,6 +31,7 @@ import { usePuedeUsar } from '../../sesion/permisos.ts'
 import { useAtajo, useCambiosSinGuardar, useVolver } from '../../teclado/index.ts'
 import { ALICUOTAS, abrirPdf, nombreComprobante } from '../caja/comprobantes.ts'
 import { type Danio, DiagramaDanios } from './DiagramaDanios.tsx'
+import { EsperaDeLaOrden, HistoriaDeEsperas } from './EsperaDeLaOrden.tsx'
 import { FotosDeLaOrden } from './FotosDeLaOrden.tsx'
 import { type Inventario, InventarioRecepcion } from './InventarioRecepcion.tsx'
 import {
@@ -302,6 +303,15 @@ export function PantallaFichaOrden() {
             </span>
           </section>
 
+          {enTaller && (
+            <EsperaDeLaOrden
+              orden={o}
+              editable={puedeEditar}
+              hacer={(f) => accion.mutate(f)}
+              haciendo={accion.isPending}
+            />
+          )}
+
           {modificando ? (
             <FormRecepcion
               orden={o}
@@ -336,6 +346,7 @@ export function PantallaFichaOrden() {
           <PedidosDeLaOrden orden={o} />
           {(o.firmas.ingreso || o.firmas.egreso) && <Firmas orden={o} />}
           <FotosDeLaOrden orden={o} />
+          <HistoriaDeEsperas orden={o} />
           <Tiempos orden={o} />
         </>
       )}

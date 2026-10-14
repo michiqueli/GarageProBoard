@@ -102,6 +102,7 @@ const ORDEN = {
   egreso: null,
   firmas: { ingreso: null, egreso: null },
   fotos: [],
+  esperas: [],
 }
 
 beforeEach(() => {
