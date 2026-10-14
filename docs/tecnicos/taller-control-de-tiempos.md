@@ -85,6 +85,26 @@ Por eso existe `work_order_hold` con motivo —repuestos, autorización del clie
 autorización de garantía, diagnóstico, elevador—: sin motivos de espera no hay forma de
 explicar por qué un auto estuvo seis días.
 
+### Cómo quedó (13/10/2026)
+
+- **`motivo_espera` es un catálogo de la concesionaria**, como los puntos de la revisión: se
+  siembra la primera vez que se pide con los cinco de arriba, y cada taller apaga los que no
+  usa y agrega los suyos en Taller → Motivos de espera. No hay baja.
+- **`orden_espera` guarda cada rato parado**, con desde, hasta, motivo, nota y quién la abrió y
+  la cerró. **Una sola abierta por orden** —un índice único lo garantiza—: si aparece otra
+  cosa que esperar, la anterior se cierra ahí, y la suma de las esperas nunca pasa del tiempo
+  en el taller.
+- **El estado y la espera no se contradicen.** Pasar a «esperando repuesto» abre la de
+  repuestos; mandar un presupuesto abre la de autorización del cliente; volver a trabajo,
+  contestar el presupuesto, terminar o anular cierran la abierta. Al revés también: poner en
+  espera por repuestos o autorización pasa la orden a ese estado, y terminar la espera la
+  devuelve a en proceso. Los demás motivos no tocan el estado.
+- **El fichaje no cierra esperas.** Su sesión es la de la estación, no la de una persona, y una
+  espera puesta a mano —«viene el técnico de la marca»— la tiene que terminar alguien que la vea.
+- **El tablero** muestra «Espera: Repuestos, desde las 10:30» en ámbar donde antes decía
+  «Parado» en rojo, y el muerto dice cuánto de eso estuvo esperando. Sin la nota: el tablero
+  también sale en la tele del piso.
+
 ## Las reglas que se traen tal cual
 
 1. **Los timestamps los pone el servidor**, nunca el cliente: los relojes de las PC del

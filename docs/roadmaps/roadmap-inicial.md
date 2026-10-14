@@ -220,7 +220,11 @@ verdad. Qué se trae y qué cambia ahora que el DMS es nuestro, en
       se emite, se reemplaza y se revoca **con motivo**, y se imprime de a diez por hoja para
       recortar. Es la mitad del fichaje que no es el kiosco, y el legajo grande en la tarjeta es
       lo que se tipea cuando el QR se ensucia. En RRHH → Personal
-- ⬜ Esperas con motivo: sin eso no se explica por qué un auto estuvo seis días
+- ✅ **Esperas con motivo**, desde el 13/10/2026: por qué está parado un auto, con motivos que
+      cada taller apaga y completa. «Esperando repuesto», el presupuesto enviado y volver a
+      trabajo las abren y cierran solos; el tablero dice qué espera cada auto parado y cuánto del
+      tiempo muerto tiene motivo, y la orden cuenta su historia. Ver
+      [el control de tiempos](../tecnicos/taller-control-de-tiempos.md)
 - ✅ Auto-cierre de fin de turno, colgado del primer escaneo del día: un trabajo programado
       no sirve si el proceso se reinició antes de la hora, y además tendría que recorrer todas
       las concesionarias, que es justo lo que RLS le impide al rol de la aplicación

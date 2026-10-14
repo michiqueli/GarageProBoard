@@ -357,6 +357,16 @@ const rutaTablero = createRoute({
   ),
 })
 
+const rutaMotivosEspera = createRoute({
+  getParentRoute: () => conSesion,
+  path: 'taller/motivos-espera',
+  staticData: { pantalla: 'ordenes' },
+  component: lazyRouteComponent(
+    () => import('./modulos/fichaje/PantallaMotivosEspera.tsx'),
+    'PantallaMotivosEspera',
+  ),
+})
+
 const rutaEstaciones = createRoute({
   getParentRoute: () => conSesion,
   path: 'estaciones',
@@ -555,6 +565,7 @@ const arbol = raiz.addChildren([
     rutaUsuarios,
     rutaRrhh,
     rutaTablero,
+    rutaMotivosEspera,
     rutaEstaciones,
     rutaHojaRecepcion,
     rutaRoles,
