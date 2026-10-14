@@ -6,6 +6,7 @@ import {
   MAXIMO_BYTES_FIRMA,
   MAXIMO_BYTES_FOTO,
   MAXIMO_FOTOS,
+  MAXIMO_NOTA_ESPERA,
   MAXIMO_NOTA_FOTO,
   MAXIMO_NOTA_PUNTO,
   MOMENTOS_FIRMA,
@@ -229,9 +230,22 @@ export const fotoOrden = z.object({
   sacadaPor: z.string().nullable(),
 })
 
+/** Un rato en que el auto estuvo parado. Sin `hasta`, todavía espera. */
+export const esperaOrden = z.object({
+  id: z.uuid(),
+  motivo: z.string(),
+  nota: z.string().nullable(),
+  desde: z.iso.datetime(),
+  hasta: z.iso.datetime().nullable(),
+  abiertaPor: z.string().nullable(),
+  cerradaPor: z.string().nullable(),
+})
+
 export const ordenDetalle = ordenResumen.extend({
   /** Las fotos del auto al recibirlo y al devolverlo, en el orden en que se sacaron. */
   fotos: z.array(fotoOrden),
+  /** Por qué estuvo parado, y cuándo: la explicación del tiempo muerto. La última puede seguir abierta. */
+  esperas: z.array(esperaOrden),
   /** La firma del cliente al recibir el auto y al devolverlo, si se firmó en la pantalla. */
   firmas: z.object({ ingreso: firmaOrden, egreso: firmaOrden }),
   traeNombre: z.string().nullable(),
@@ -515,6 +529,47 @@ export const contratoOrdenes = {
       summary: 'Dónde está el auto: en proceso, esperando repuesto o autorización',
     })
     .input(conId.extend({ estado: z.enum(ESTADOS_EN_TALLER) }))
+    .errors({ ...NO_ENCONTRADA, ...ESTADO_INVALIDO })
+    .output(ordenDetalle),
+
+  ponerEnEspera: conPermiso('servicios', 'editar', 'Orden')
+    .route({
+      method: 'POST',
+      path: '/ordenes/{id}/espera',
+      tags: [TAG],
+      operationId: 'ponerOrdenEnEspera',
+      summary: 'Por qué está parado el auto: repuestos, autorización, diagnóstico, elevador…',
+      description:
+        'Si ya esperaba otra cosa, esa espera se cierra acá: un auto espera una cosa por vez. ' +
+        'Repuestos y autorización del cliente pasan además la orden a su estado.',
+    })
+    .input(
+      conId.extend({
+        motivoId: z.uuid(),
+        nota: z
+          .string()
+          .trim()
+          .max(MAXIMO_NOTA_ESPERA, `Es largo: hasta ${MAXIMO_NOTA_ESPERA} letras`)
+          .nullish(),
+      }),
+    )
+    .errors({
+      ...NO_ENCONTRADA,
+      ...ESTADO_INVALIDO,
+      MOTIVO_INVALIDO: { status: 422, message: 'Ese motivo de espera no existe o está apagado' },
+    })
+    .output(ordenDetalle),
+
+  terminarEspera: conPermiso('servicios', 'editar', 'Orden')
+    .route({
+      method: 'POST',
+      path: '/ordenes/{id}/espera/terminar',
+      tags: [TAG],
+      operationId: 'terminarEsperaDeOrden',
+      summary: 'Lo que esperaba ya llegó: el auto vuelve a trabajo',
+      description: 'Si la orden estaba esperando repuesto o autorización, vuelve a en proceso.',
+    })
+    .input(conId)
     .errors({ ...NO_ENCONTRADA, ...ESTADO_INVALIDO })
     .output(ordenDetalle),
 

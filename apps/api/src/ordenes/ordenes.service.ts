@@ -1,5 +1,6 @@
 import {
   type Carroceria,
+  ESPERA_DEL_ESTADO,
   ESTADOS_CON_TRABAJO,
   type EstadoRevision,
   HOJA_DE,
@@ -64,6 +65,14 @@ import { CORREO } from '../comun/simbolos.ts'
 import { cerrarSesionesDeLaOrden } from '../fichaje/tablero.ts'
 import { moverDiferencia, porRepuesto, repuestosExisten } from '../repuestos/stock.ts'
 import { enOrdenDeHoja, puntosDelTaller } from '../revision/revision.service.ts'
+import {
+  abrirEspera,
+  cerrarEspera,
+  esperaSegunEstado,
+  esperasDe,
+  estadoDelMotivo,
+  motivosDelTaller,
+} from './esperas.ts'
 import { firmasDe } from './firmas.service.ts'
 import { fotosDe } from './fotos.service.ts'
 
@@ -78,6 +87,7 @@ type Codigo =
   | 'ITEM_INVALIDO'
   | 'PUNTO_INVALIDO'
   | 'VISITA_INVALIDA'
+  | 'MOTIVO_INVALIDO'
   | 'CORREO_NO_CONFIGURADO'
   | 'CORREO_NO_ENVIADO'
   | 'SIN_AUTORIZACION'
@@ -677,12 +687,77 @@ export class ServicioOrdenes {
       'Sólo se cambia el estado de una orden que está en el taller.',
       async (tx, sesion, o) => {
         await tx.update(orden).set({ estado, actualizadoEn: new Date() }).where(eq(orden.id, id))
+        await esperaSegunEstado(tx, sesion, id, estado)
         await this.auditar(
           tx,
           sesion,
           id,
           'modificacion',
           { numero: o.numero, estado, antes: o.estado },
+          ip,
+        )
+      },
+    )
+  }
+
+  /**
+   * Por qué está parado el auto. Si ya esperaba otra cosa, esa se cierra: un auto espera una cosa
+   * por vez. Los motivos que tienen estado —repuestos, autorización del cliente— pasan la orden a
+   * ese estado; los demás, si estaba en uno de ésos, la devuelven a en proceso.
+   */
+  ponerEnEspera(id: string, motivoId: string, nota: string | null, ip?: string) {
+    return this.conOrdenEn(
+      id,
+      EN_TALLER,
+      'Sólo se pone en espera una orden que está en el taller.',
+      async (tx, sesion, o) => {
+        const motivos = await motivosDelTaller(tx, sesion)
+        const motivo = motivos.find((m) => m.id === motivoId && m.activo)
+        if (!motivo) throw new ErrorOrdenes('MOTIVO_INVALIDO')
+        await abrirEspera(tx, sesion, id, motivo.id, nota)
+
+        const estado =
+          estadoDelMotivo(motivo.clave) ?? (o.estado in ESPERA_DEL_ESTADO ? 'en_proceso' : o.estado)
+        if (estado !== o.estado) {
+          await tx.update(orden).set({ estado, actualizadoEn: new Date() }).where(eq(orden.id, id))
+        }
+        await this.auditar(
+          tx,
+          sesion,
+          id,
+          'modificacion',
+          {
+            numero: o.numero,
+            estado,
+            antes: o.estado,
+            texto: `La puso en espera: ${motivo.nombre}${nota ? `, ${nota}` : ''}`,
+          },
+          ip,
+        )
+      },
+    )
+  }
+
+  /** Lo que esperaba llegó: se cierra la espera, y si estaba esperando repuesto o autorización, vuelve a trabajo. */
+  terminarEspera(id: string, ip?: string) {
+    return this.conOrdenEn(
+      id,
+      EN_TALLER,
+      'Sólo se termina la espera de una orden que está en el taller.',
+      async (tx, sesion, o) => {
+        if (!(await cerrarEspera(tx, sesion, id))) {
+          throw new ErrorOrdenes('ESTADO_INVALIDO', { motivo: 'El auto no estaba esperando nada.' })
+        }
+        const estado = o.estado in ESPERA_DEL_ESTADO ? 'en_proceso' : o.estado
+        if (estado !== o.estado) {
+          await tx.update(orden).set({ estado, actualizadoEn: new Date() }).where(eq(orden.id, id))
+        }
+        await this.auditar(
+          tx,
+          sesion,
+          id,
+          'modificacion',
+          { numero: o.numero, estado, antes: o.estado, texto: 'Terminó la espera' },
           ip,
         )
       },
@@ -709,6 +784,8 @@ export class ServicioOrdenes {
           .update(orden)
           .set({ estado: 'terminada', terminadaEn: new Date(), actualizadoEn: new Date() })
           .where(eq(orden.id, id))
+        // Terminada ya no espera nada: lo que estuviera abierto se cierra acá.
+        await esperaSegunEstado(tx, sesion, id, 'terminada')
         // El que se olvidó de pasar la credencial al terminar no puede quedar fichado toda la
         // noche: su reloj seguiría corriendo y la mano de obra de esta orden crecería sola.
         await cerrarSesionesDeLaOrden(tx, id)
@@ -905,6 +982,7 @@ export class ServicioOrdenes {
           .update(orden)
           .set({ estado: 'anulada', actualizadoEn: new Date() })
           .where(eq(orden.id, id))
+        await esperaSegunEstado(tx, sesion, id, 'anulada')
         await this.auditar(tx, sesion, id, 'baja', { numero: o.numero, antes: o.estado }, ip)
       },
     )
@@ -966,6 +1044,8 @@ export class ServicioOrdenes {
           .update(orden)
           .set({ estado: 'esperando_autorizacion', actualizadoEn: new Date() })
           .where(eq(orden.id, id))
+        // Mandar el presupuesto es empezar a esperar al cliente.
+        await esperaSegunEstado(tx, sesion, id, 'esperando_autorizacion')
         await this.auditar(
           tx,
           sesion,
@@ -1110,6 +1190,7 @@ export class ServicioOrdenes {
             .update(orden)
             .set({ estado: 'en_proceso', actualizadoEn: new Date() })
             .where(eq(orden.id, id))
+          await esperaSegunEstado(tx, sesion, id, 'en_proceso')
         }
         await this.auditar(
           tx,
@@ -1536,6 +1617,7 @@ export class ServicioOrdenes {
       terminadaEn: o.terminadaEn?.toISOString() ?? null,
       firmas: await firmasDe(tx, o.id),
       fotos: await fotosDe(tx, o.id),
+      esperas: await esperasDe(tx, o.id),
       entregadaEn: o.entregadaEn?.toISOString() ?? null,
       items: items.map((i) => ({
         id: i.id,

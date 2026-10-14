@@ -79,6 +79,14 @@ export const TABLAS_AUDITADAS: readonly TablaAuditada[] = [
     nota: 'Quién firmó, cuándo, y quién la puso a firmar: si alguien dice que no firmó, se mira acá.',
   },
   {
+    tabla: 'orden_espera',
+    nota: 'Cuándo se puso en espera un auto, por qué y quién la cerró: es lo que explica por qué estuvo seis días.',
+  },
+  {
+    tabla: 'motivo_espera',
+    nota: 'Los motivos con los que se explica el tiempo muerto: apagar uno cambia lo que el taller puede decir.',
+  },
+  {
     tabla: 'orden_foto',
     nota: 'Quién sacó cada foto del auto y quién la dio de baja: una foto que falta es la que alguien quería que faltara.',
   },

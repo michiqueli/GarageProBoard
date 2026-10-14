@@ -98,6 +98,22 @@ export class ControladorOrdenes {
     )
   }
 
+  @Operacion(c.ponerEnEspera)
+  ponerEnEspera(@Req() pedido: FastifyRequest) {
+    return implement(c.ponerEnEspera).handler(({ input, errors }) =>
+      this.servicio
+        .ponerEnEspera(input.id, input.motivoId, input.nota ?? null, pedido.ip)
+        .catch((e) => traducir(e, errors)),
+    )
+  }
+
+  @Operacion(c.terminarEspera)
+  terminarEspera(@Req() pedido: FastifyRequest) {
+    return implement(c.terminarEspera).handler(({ input, errors }) =>
+      this.servicio.terminarEspera(input.id, pedido.ip).catch((e) => traducir(e, errors)),
+    )
+  }
+
   @Operacion(c.terminar)
   terminar(@Req() pedido: FastifyRequest) {
     return implement(c.terminar).handler(({ input, errors }) =>
