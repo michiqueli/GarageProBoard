@@ -37,6 +37,12 @@ export const ACCIONES_PERMISO = [
    * y clientes de confianza.
    */
   'autorizar',
+  /**
+   * Corregir los tiempos del taller: una sesión que se cerró sola a las 20:00, un mecánico que
+   * se olvidó de fichar. Es aparte de `editar` y de `autorizar` porque toca lo que cuesta la
+   * mano de obra y lo que cobra el mecánico: va con motivo, y queda el antes y el después.
+   */
+  'corregir',
 ] as const
 
 export type AccionPermiso = (typeof ACCIONES_PERMISO)[number]
@@ -78,6 +84,7 @@ const VERBOS: Record<AccionPermiso, string> = {
   configurar: 'configurar',
   administrar: 'administrar',
   autorizar: 'autorizar',
+  corregir: 'corregir',
 }
 
 const SUSTANTIVOS: Record<Sujeto, string> = {

@@ -13,6 +13,7 @@ import {
   uuid,
 } from 'drizzle-orm/pg-core'
 import { creadoEn, pk, tenantId } from './_comunes.ts'
+import { usuario } from './acceso.ts'
 import { empleado } from './comercial.ts'
 import { orden } from './orden.ts'
 import { sucursal } from './organizacion.ts'
@@ -171,6 +172,37 @@ export const sesionTrabajo = pgTable(
     index('sesion_trabajo_rango_idx').on(t.tenantId, t.empleadoId, t.inicio),
     check('sesion_trabajo_cierre_valido', sql`${t.cerradaPor} in ('mecanico', 'auto', 'jefe')`),
     check('sesion_trabajo_fin_despues', sql`${t.fin} is null or ${t.fin} >= ${t.inicio}`),
+  ],
+)
+
+/**
+ * Cada corrección de una sesión de trabajo, con el antes y el después. Ver
+ * `docs/tecnicos/taller-control-de-tiempos.md`, regla 3: **ninguna corrección de tiempo sin
+ * auditoría, con motivo obligatorio**.
+ *
+ * La sesión se corrige en su lugar —es la que suman el tablero y la orden—, y esta tabla es lo
+ * que permite contestar «¿quién me sacó dos horas?». No se modifica ni se borra.
+ */
+export const ajusteSesion = pgTable(
+  'ajuste_sesion',
+  {
+    id: pk(),
+    tenantId: tenantId().references(() => tenant.id),
+    sesionId: uuid()
+      .notNull()
+      .references(() => sesionTrabajo.id),
+    inicioAntes: timestamp({ withTimezone: true }).notNull(),
+    finAntes: timestamp({ withTimezone: true }),
+    inicioDespues: timestamp({ withTimezone: true }).notNull(),
+    finDespues: timestamp({ withTimezone: true }).notNull(),
+    motivo: text().notNull(),
+    creadoEn: creadoEn(),
+    creadoPor: uuid().references(() => usuario.id),
+  },
+  (t) => [
+    index('ajuste_sesion_sesion_idx').on(t.sesionId),
+    check('ajuste_sesion_motivo_valido', sql`length(btrim(${t.motivo})) >= 5`),
+    check('ajuste_sesion_rango_valido', sql`${t.finDespues} > ${t.inicioDespues}`),
   ],
 )
 

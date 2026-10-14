@@ -5,6 +5,7 @@ import {
   type EstadoRevision,
   HOJA_DE,
   HOJA_POR_OMISION,
+  MAXIMO_HORAS_SESION,
   plata,
   puedeSobre,
   type SeccionRevision,
@@ -27,6 +28,7 @@ import {
   sql,
 } from '@gpb/db'
 import {
+  ajusteSesion,
   cliente,
   comprobante,
   type DanioRecepcion,
@@ -88,6 +90,7 @@ type Codigo =
   | 'PUNTO_INVALIDO'
   | 'VISITA_INVALIDA'
   | 'MOTIVO_INVALIDO'
+  | 'TIEMPO_INVALIDO'
   | 'CORREO_NO_CONFIGURADO'
   | 'CORREO_NO_ENVIADO'
   | 'SIN_AUTORIZACION'
@@ -176,6 +179,13 @@ export const EN_TALLER: EstadoOrden[] = [
 ]
 /** Una orden cerrada del todo: ya no se toca. */
 const CERRADA: EstadoOrden[] = ['facturada', 'entregada', 'anulada']
+
+/** «08:12», en la hora del taller: el servidor corre en UTC. */
+const HORA_TALLER = new Intl.DateTimeFormat('es-AR', {
+  hour: '2-digit',
+  minute: '2-digit',
+  timeZone: 'America/Argentina/Buenos_Aires',
+})
 
 export interface DatosRecepcion {
   pagaId?: string | null | undefined
@@ -758,6 +768,81 @@ export class ServicioOrdenes {
           id,
           'modificacion',
           { numero: o.numero, estado, antes: o.estado, texto: 'Terminó la espera' },
+          ip,
+        )
+      },
+    )
+  }
+
+  /**
+   * Corrige una sesión de trabajo: la que se cerró sola a las 20:00, el mecánico que se olvidó
+   * de fichar. Regla 3 del control de tiempos: **ninguna corrección sin auditoría, con motivo**.
+   * La sesión se corrige en su lugar —es la que suman el tablero y la orden— y el antes y el
+   * después quedan en `ajuste_sesion`. Una abierta se cierra acá.
+   */
+  corregirSesion(
+    id: string,
+    sesionId: string,
+    entrada: { inicio: string; fin: string; motivo: string },
+    ip?: string,
+  ) {
+    return this.conOrdenEn(
+      id,
+      [...EN_TALLER, 'terminada', 'facturada'],
+      'Una orden entregada o anulada ya no se corrige: sus tiempos quedan como están.',
+      async (tx, sesion, o) => {
+        const [s] = await tx
+          .select()
+          .from(sesionTrabajo)
+          .where(and(eq(sesionTrabajo.id, sesionId), eq(sesionTrabajo.ordenId, id)))
+          .for('update')
+        if (!s) throw new ErrorOrdenes('NO_ENCONTRADA')
+
+        const inicio = new Date(entrada.inicio)
+        const fin = new Date(entrada.fin)
+        const invalido = (motivo: string) => new ErrorOrdenes('TIEMPO_INVALIDO', { motivo })
+        if (fin <= inicio) throw invalido('El fin tiene que ser después del inicio.')
+        // Un minuto de gracia: el reloj de la PC del jefe no es el del servidor.
+        if (fin.getTime() > Date.now() + 60_000) {
+          throw invalido('El fin no puede ser más tarde que ahora.')
+        }
+        if (inicio < o.creadoEn) {
+          throw invalido(
+            `El auto entró a las ${HORA_TALLER.format(o.creadoEn)}: no se pudo trabajar antes.`,
+          )
+        }
+        if (fin.getTime() - inicio.getTime() > MAXIMO_HORAS_SESION * 3_600_000) {
+          throw invalido(
+            `Son más de ${MAXIMO_HORAS_SESION} horas seguidas. Si trabajó en dos turnos, que fiche dos veces.`,
+          )
+        }
+
+        await tx
+          .update(sesionTrabajo)
+          .set({ inicio, fin, cerradaPor: 'jefe', nota: entrada.motivo })
+          .where(eq(sesionTrabajo.id, sesionId))
+        await tx.insert(ajusteSesion).values({
+          tenantId: sesion.tenantId,
+          sesionId,
+          inicioAntes: s.inicio,
+          finAntes: s.fin,
+          inicioDespues: inicio,
+          finDespues: fin,
+          motivo: entrada.motivo,
+          creadoPor: sesion.usuarioId,
+        })
+
+        const rango = (a: Date, b: Date | null) =>
+          `${HORA_TALLER.format(a)}–${b ? HORA_TALLER.format(b) : 'abierta'}`
+        await this.auditar(
+          tx,
+          sesion,
+          id,
+          'modificacion',
+          {
+            numero: o.numero,
+            texto: `Corrigió un tiempo: ${rango(s.inicio, s.fin)} pasó a ${rango(inicio, fin)}, porque ${entrada.motivo}`,
+          },
           ip,
         )
       },
@@ -1565,6 +1650,7 @@ export class ServicioOrdenes {
         inicio: sesionTrabajo.inicio,
         fin: sesionTrabajo.fin,
         cerradaPor: sesionTrabajo.cerradaPor,
+        nota: sesionTrabajo.nota,
         legajo: empleado.legajo,
         nombre: entidadComercial.nombre,
         apellido: entidadComercial.apellido,
@@ -1585,6 +1671,7 @@ export class ServicioOrdenes {
       fin: f.fin?.toISOString() ?? null,
       minutos: Math.max(0, Math.round(((f.fin?.getTime() ?? ahora) - f.inicio.getTime()) / 60_000)),
       cerradaPor: f.cerradaPor as 'mecanico' | 'auto' | 'jefe' | null,
+      motivoCorreccion: f.nota,
     }))
     const [paga] = o.pagaId
       ? await tx

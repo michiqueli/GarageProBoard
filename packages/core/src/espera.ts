@@ -29,3 +29,10 @@ export const ESPERA_DEL_ESTADO = {
 
 export const MAXIMO_NOTA_ESPERA = 200
 export const MAXIMO_NOMBRE_MOTIVO = 60
+
+/** Una sesión de trabajo corregida a mano no puede pasar de esto: un turno largo y un poco más. */
+export const MAXIMO_HORAS_SESION = 16
+
+/** El motivo de una corrección de tiempo: obligatorio, y con algo que decir. */
+export const MINIMO_MOTIVO_CORRECCION = 5
+export const MAXIMO_MOTIVO_CORRECCION = 200

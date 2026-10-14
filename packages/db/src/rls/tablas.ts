@@ -21,6 +21,7 @@ export const TABLAS_CON_TENANT = [
   'orden_firma',
   'orden_foto',
   'orden_espera',
+  'ajuste_sesion',
   'motivo_espera',
   'vehiculo_pendiente',
   'repuesto',

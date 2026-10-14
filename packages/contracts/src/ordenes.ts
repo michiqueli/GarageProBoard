@@ -6,9 +6,11 @@ import {
   MAXIMO_BYTES_FIRMA,
   MAXIMO_BYTES_FOTO,
   MAXIMO_FOTOS,
+  MAXIMO_MOTIVO_CORRECCION,
   MAXIMO_NOTA_ESPERA,
   MAXIMO_NOTA_FOTO,
   MAXIMO_NOTA_PUNTO,
+  MINIMO_MOTIVO_CORRECCION,
   MOMENTOS_FIRMA,
   MOMENTOS_FOTO,
   SECCIONES_REVISION,
@@ -207,6 +209,8 @@ export const sesionDeTrabajo = z.object({
   /** Minutos, o lo que lleva hasta ahora si todavía está abierta. */
   minutos: z.number().int(),
   cerradaPor: z.enum(['mecanico', 'auto', 'jefe']).nullable(),
+  /** Por qué se corrigió, si la corrigió alguien a mano. */
+  motivoCorreccion: z.string().nullable(),
 })
 
 /** Lo que se le recomendó a un auto y no se hizo. */
@@ -571,6 +575,41 @@ export const contratoOrdenes = {
     })
     .input(conId)
     .errors({ ...NO_ENCONTRADA, ...ESTADO_INVALIDO })
+    .output(ordenDetalle),
+
+  corregirSesion: conPermiso('servicios', 'corregir', 'Orden')
+    .route({
+      method: 'POST',
+      path: '/ordenes/{id}/sesiones/{sesionId}',
+      tags: [TAG],
+      operationId: 'corregirSesionDeTrabajo',
+      summary: 'Corregir el inicio y el fin de una sesión de trabajo, con motivo',
+      description:
+        'Para la que se cerró sola a las 20:00 o el mecánico que se olvidó de fichar. Queda el ' +
+        'antes, el después, el motivo y quién la corrigió. Una abierta se cierra acá. Una orden ' +
+        'entregada o anulada ya no se corrige.',
+    })
+    .input(
+      conId.extend({
+        sesionId: z.uuid(),
+        inicio: z.iso.datetime({ offset: true }),
+        fin: z.iso.datetime({ offset: true }),
+        motivo: z
+          .string()
+          .trim()
+          .min(MINIMO_MOTIVO_CORRECCION, 'Decí por qué se corrige: queda escrito')
+          .max(MAXIMO_MOTIVO_CORRECCION, `Es largo: hasta ${MAXIMO_MOTIVO_CORRECCION} letras`),
+      }),
+    )
+    .errors({
+      ...NO_ENCONTRADA,
+      ...ESTADO_INVALIDO,
+      TIEMPO_INVALIDO: {
+        status: 422,
+        message: 'Esos horarios no pueden ser',
+        data: z.object({ motivo: z.string() }),
+      },
+    })
     .output(ordenDetalle),
 
   terminar: conPermiso('servicios', 'editar', 'Orden')

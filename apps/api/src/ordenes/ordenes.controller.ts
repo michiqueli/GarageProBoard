@@ -114,6 +114,20 @@ export class ControladorOrdenes {
     )
   }
 
+  @Operacion(c.corregirSesion)
+  corregirSesion(@Req() pedido: FastifyRequest) {
+    return implement(c.corregirSesion).handler(({ input, errors }) =>
+      this.servicio
+        .corregirSesion(
+          input.id,
+          input.sesionId,
+          { inicio: input.inicio, fin: input.fin, motivo: input.motivo },
+          pedido.ip,
+        )
+        .catch((e) => traducir(e, errors)),
+    )
+  }
+
   @Operacion(c.terminar)
   terminar(@Req() pedido: FastifyRequest) {
     return implement(c.terminar).handler(({ input, errors }) =>

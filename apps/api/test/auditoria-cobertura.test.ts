@@ -74,6 +74,7 @@ const AUDITAN: readonly string[] = [
   'ordenes.cambiarEstado',
   'ordenes.ponerEnEspera',
   'ordenes.terminarEspera',
+  'ordenes.corregirSesion',
   'ordenes.terminar',
   'ordenes.entregar',
   'ordenes.reabrir',

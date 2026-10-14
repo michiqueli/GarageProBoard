@@ -139,6 +139,10 @@ export const TABLAS_AUDITADAS: readonly TablaAuditada[] = [
     cuandoActualiza: 'old.fin is not null',
     nota: 'Cerrar una sesión abierta es un escaneo más. Tocar una ya cerrada es corregir mano de obra, y eso no pasa sin quedar escrito.',
   },
+  {
+    tabla: 'ajuste_sesion',
+    nota: 'Cada corrección de tiempo con su antes, su después y el motivo: es lo que contesta «¿quién me sacó dos horas?».',
+  },
   { tabla: 'marca' },
   { tabla: 'modelo' },
   { tabla: 'vehiculo' },

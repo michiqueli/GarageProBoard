@@ -295,6 +295,13 @@
       "when": 1791940481332,
       "tag": "0041_esperas",
       "breakpoints": true
+    },
+    {
+      "idx": 42,
+      "version": "7",
+      "when": 1791942841428,
+      "tag": "0042_ajuste_sesion",
+      "breakpoints": true
     }
   ]
 }

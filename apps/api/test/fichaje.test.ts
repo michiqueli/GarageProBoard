@@ -1,6 +1,13 @@
 import { TIPOS_QR } from '@gpb/core'
 import { and, eq, isNull } from '@gpb/db'
-import { credencial, eventoEscaneo, jornada, orden, sesionTrabajo } from '@gpb/db/schema'
+import {
+  ajusteSesion,
+  credencial,
+  eventoEscaneo,
+  jornada,
+  orden,
+  sesionTrabajo,
+} from '@gpb/db/schema'
 import type { NestFastifyApplication } from '@nestjs/platform-fastify'
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest'
 import { qrFirmado } from '../src/comun/qr.ts'
@@ -59,6 +66,7 @@ beforeAll(async () => {
   const semilla = await sembrarConcesionaria(api.pg.dbDuenio, {
     slug: 'fichaje',
     email: 'gerente@fichaje.test',
+    otros: [{ email: 'asesor@fichaje.test', rol: 'Asesor de servicios' }],
     vehiculos: [{ dominio: 'AB123CD', chasis: '8AWDB45Z9LA123456' }],
   })
   tenantId = semilla.tenant.id
@@ -133,6 +141,8 @@ afterAll(async () => {
 
 /** Cada prueba arranca sin sesiones abiertas ni jornada: si no, se pisan entre ellas. */
 beforeEach(async () => {
+  // Primero los ajustes: apuntan a las sesiones.
+  await api.pg.dbDuenio.delete(ajusteSesion)
   await api.pg.dbDuenio.delete(sesionTrabajo)
   await api.pg.dbDuenio.delete(jornada)
   await api.pg.dbDuenio.update(orden).set({ estado: 'recibida' }).where(eq(orden.id, ordenId))
@@ -392,6 +402,113 @@ describe('la asistencia', () => {
     })
     expect(r.statusCode, r.body).toBe(200)
     expect(r.json().datos[0]).toMatchObject({ nombre: 'Diego Sosa', legajo: '0007', minutos: 0 })
+  })
+})
+
+describe('corregir un tiempo', () => {
+  const HORA = 3_600_000
+  const hace = (ms: number) => new Date(Date.now() - ms).toISOString()
+
+  /** Una sesión abierta del mecánico, en una orden que entró ayer. */
+  async function unaSesion() {
+    await api.pg.dbDuenio
+      .update(orden)
+      .set({ creadoEn: new Date(Date.now() - 24 * HORA) })
+      .where(eq(orden.id, ordenId))
+    await escanear(tokenTaller, credencialQr)
+    await escanear(tokenTaller, ordenQr, credencialQr)
+    const [s] = await api.pg.dbDuenio.select().from(sesionTrabajo)
+    return s?.id as string
+  }
+
+  function corregir(token: string, sesionId: string, datos: object) {
+    return app.inject({
+      method: 'POST',
+      url: `/api/ordenes/${ordenId}/sesiones/${sesionId}`,
+      headers: { authorization: `Bearer ${token}` },
+      payload: datos,
+    })
+  }
+
+  it('con motivo: queda corregida por el jefe, y el antes y el después quedan escritos', async () => {
+    const sesionId = await unaSesion()
+    const gerente = await entrar('gerente@fichaje.test')
+    const r = await corregir(gerente, sesionId, {
+      inicio: hace(3 * HORA),
+      fin: hace(1 * HORA),
+      motivo: 'Se olvidó de pasar la credencial al irse',
+    })
+    expect(r.statusCode, r.body).toBe(200)
+    const [corregida] = r.json().sesiones
+    expect(corregida).toMatchObject({
+      cerradaPor: 'jefe',
+      minutos: 120,
+      motivoCorreccion: 'Se olvidó de pasar la credencial al irse',
+    })
+
+    const [ajuste] = await api.pg.dbDuenio.select().from(ajusteSesion)
+    // Estaba abierta: el antes no tenía fin.
+    expect(ajuste).toMatchObject({ sesionId, finAntes: null })
+  })
+
+  it('los horarios tienen que poder ser, y el motivo es obligatorio', async () => {
+    const sesionId = await unaSesion()
+    const gerente = await entrar('gerente@fichaje.test')
+    const motivo = 'Corrección de prueba'
+
+    const alReves = await corregir(gerente, sesionId, {
+      inicio: hace(1 * HORA),
+      fin: hace(2 * HORA),
+      motivo,
+    })
+    expect(alReves.statusCode).toBe(422)
+    expect(alReves.json()).toMatchObject({
+      code: 'TIEMPO_INVALIDO',
+      data: { motivo: 'El fin tiene que ser después del inicio.' },
+    })
+
+    const futuro = await corregir(gerente, sesionId, {
+      inicio: hace(1 * HORA),
+      fin: hace(-2 * HORA),
+      motivo,
+    })
+    expect(futuro.json().data.motivo).toBe('El fin no puede ser más tarde que ahora.')
+
+    const antesDeEntrar = await corregir(gerente, sesionId, {
+      inicio: hace(30 * HORA),
+      fin: hace(29 * HORA),
+      motivo,
+    })
+    expect(antesDeEntrar.json().data.motivo).toMatch(/^El auto entró a las/)
+
+    const eterna = await corregir(gerente, sesionId, {
+      inicio: hace(20 * HORA),
+      fin: hace(1 * HORA),
+      motivo,
+    })
+    expect(eterna.json().data.motivo).toMatch(/más de 16 horas/)
+
+    const sinMotivo = await corregir(gerente, sesionId, {
+      inicio: hace(3 * HORA),
+      fin: hace(1 * HORA),
+      motivo: 'x',
+    })
+    expect(sinMotivo.statusCode).toBe(400)
+    expect(await api.pg.dbDuenio.select().from(ajusteSesion)).toEqual([])
+  })
+
+  it('el asesor no corrige tiempos; y una orden entregada ya no se toca', async () => {
+    const sesionId = await unaSesion()
+    const datos = { inicio: hace(3 * HORA), fin: hace(1 * HORA), motivo: 'Corrección de prueba' }
+
+    const asesor = await entrar('asesor@fichaje.test')
+    expect((await corregir(asesor, sesionId, datos)).statusCode).toBe(403)
+
+    await api.pg.dbDuenio.update(orden).set({ estado: 'entregada' }).where(eq(orden.id, ordenId))
+    const gerente = await entrar('gerente@fichaje.test')
+    const r = await corregir(gerente, sesionId, datos)
+    expect(r.statusCode).toBe(409)
+    expect(r.json().code).toBe('ESTADO_INVALIDO')
   })
 })
 
