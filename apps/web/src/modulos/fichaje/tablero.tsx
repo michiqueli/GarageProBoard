@@ -47,6 +47,20 @@ export function Estado({ estado, grande }: { estado: Tarjeta['estado']; grande?:
  * caminando hasta el fondo y preguntando.
  */
 export function Quien({ auto, grande }: { auto: Tarjeta; grande?: boolean }) {
+  // Parado con motivo no es lo mismo que parado sin explicación: el primero espera algo, el
+  // segundo es el que hay que ir a mirar.
+  if (auto.trabajando.length === 0 && auto.espera) {
+    return (
+      <span
+        className={`inline-flex items-baseline gap-1.5 rounded-full border border-atencion text-atencion ${
+          grande ? 'px-3 text-[1rem]' : 'px-2 text-etiqueta'
+        }`}
+      >
+        <span className="font-semibold">Espera: {auto.espera.motivo}</span>
+        <span className="opacity-80">desde {HORA.format(new Date(auto.espera.desde))}</span>
+      </span>
+    )
+  }
   if (auto.trabajando.length === 0) {
     return (
       <span
@@ -92,6 +106,12 @@ export function Relojes({ auto, grande }: { auto: Tarjeta; grande?: boolean }) {
         <span className={auto.muertoMin > auto.manoDeObraMin ? 'text-atencion' : 'opacity-60'}>
           <span className="opacity-60">Muerto </span>
           {enHoras(auto.muertoMin)}
+          {auto.esperadoMin > 0 && (
+            <span className="opacity-60">
+              {' '}
+              (esperando {enHoras(Math.min(auto.esperadoMin, auto.muertoMin))})
+            </span>
+          )}
         </span>
       )}
     </span>

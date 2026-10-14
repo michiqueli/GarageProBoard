@@ -145,6 +145,19 @@ describe('las esperas de una orden', () => {
     expect(nada.statusCode).toBe(409)
   })
 
+  it('el tablero dice qué espera cada auto, sin la nota', async () => {
+    const o = (await pedir('GET', '/ordenes?estado=en_taller')).json().datos[0]
+    await pedir('POST', `/ordenes/${o.id}/espera`, {
+      motivoId: await motivo('Diagnóstico'),
+      nota: 'Nota que no va a la tele',
+    })
+    const tablero = (await pedir('GET', '/taller/tablero')).json()
+    const tarjeta = tablero.autos.find((a: { id: string }) => a.id === o.id)
+    expect(tarjeta.espera).toMatchObject({ motivo: 'Diagnóstico' })
+    expect(tarjeta.esperadoMin).toBeGreaterThanOrEqual(0)
+    expect(JSON.stringify(tarjeta)).not.toContain('Nota que no va a la tele')
+  })
+
   it('un motivo apagado no se usa', async () => {
     const o = (await pedir('GET', '/ordenes?estado=en_taller')).json().datos[0]
     const apagado = (await motivos()).find((m) => !m.activo)

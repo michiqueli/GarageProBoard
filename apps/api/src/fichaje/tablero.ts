@@ -4,7 +4,9 @@ import {
   entidadComercial,
   marca,
   modelo,
+  motivoEspera,
   orden,
+  ordenEspera,
   sesionTrabajo,
   sucursal,
   vehiculo,
@@ -108,8 +110,28 @@ export async function armarTablero(tx: Db, sucursalId: string) {
     .where(inArray(sesionTrabajo.ordenId, ids))
     .groupBy(sesionTrabajo.ordenId)
 
+  // Por qué está parado y cuánto lleva esperado: la parte del tiempo muerto que tiene motivo.
+  const esperas = await tx
+    .select({
+      ordenId: ordenEspera.ordenId,
+      motivo: motivoEspera.nombre,
+      desde: ordenEspera.desde,
+      hasta: ordenEspera.hasta,
+    })
+    .from(ordenEspera)
+    .innerJoin(motivoEspera, eq(motivoEspera.id, ordenEspera.motivoId))
+    .where(inArray(ordenEspera.ordenId, ids))
+
   const tarjetas = autos.map((a) => {
     const suyas = abiertas.filter((s) => s.ordenId === a.id)
+    const susEsperas = esperas.filter((e) => e.ordenId === a.id)
+    const actual = susEsperas.find((e) => !e.hasta)
+    const esperadoMin = Math.round(
+      susEsperas.reduce(
+        (total, e) => total + ((e.hasta ?? ahora).getTime() - e.desde.getTime()),
+        0,
+      ) / 60_000,
+    )
     const segundos = Number(trabajado.find((t) => t.ordenId === a.id)?.segundos ?? 0)
     const manoDeObraMin = Math.round(segundos / 60)
     const enTallerMin = minutos(a.ingreso, ahora)
@@ -136,6 +158,8 @@ export async function armarTablero(tx: Db, sucursalId: string) {
       // Nunca negativo: dos mecánicos en paralelo pueden sumar más mano de obra que el rato
       // que el auto lleva adentro, y un «tiempo muerto» en rojo de −40 no significa nada.
       muertoMin: Math.max(0, enTallerMin - manoDeObraMin),
+      espera: actual ? { motivo: actual.motivo, desde: actual.desde.toISOString() } : null,
+      esperadoMin,
     }
   })
 

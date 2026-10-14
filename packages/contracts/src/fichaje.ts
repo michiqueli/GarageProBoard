@@ -94,6 +94,13 @@ export const tarjetaTablero = z.object({
   manoDeObraMin: z.number().int(),
   enTallerMin: z.number().int(),
   muertoMin: z.number().int(),
+  /**
+   * Qué espera ahora, si está en espera. Sin la nota: el tablero también sale en la tele del
+   * taller, a la vista de todos.
+   */
+  espera: z.object({ motivo: z.string(), desde: z.iso.datetime() }).nullable(),
+  /** Cuánto lleva esperado en total, con motivo: la parte del tiempo muerto que tiene explicación. */
+  esperadoMin: z.number().int(),
 })
 
 export const tableroSalida = z.object({

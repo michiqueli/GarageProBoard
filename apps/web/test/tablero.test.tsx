@@ -38,6 +38,8 @@ const TRABAJANDO = {
   manoDeObraMin: 95,
   enTallerMin: 240,
   muertoMin: 145,
+  espera: null,
+  esperadoMin: 0,
 }
 
 const PARADO = {
@@ -84,6 +86,29 @@ describe('el tablero', () => {
 
     expect(within(fila('Volkswagen Amarok')).getByText(/Diego Sosa/)).toBeDefined()
     expect(within(fila('Renault Kangoo')).getByText('Parado')).toBeDefined()
+  })
+
+  it('el parado que espera algo dice qué, y cuánto del tiempo muerto tiene motivo', async () => {
+    fichaje.tablero.mockResolvedValue({
+      sucursal: 'Casa Central',
+      alMomento: '2026-09-20T15:00:00.000Z',
+      autos: [
+        {
+          ...PARADO,
+          espera: { motivo: 'Repuestos', desde: '2026-09-20T13:30:00.000Z' },
+          esperadoMin: 420,
+        },
+      ],
+      resumen: { enTaller: 1, conAlguien: 0, parados: 1 },
+    })
+    entraComo(SESION)
+    await montarApp('/taller')
+    await screen.findByText('Renault Kangoo')
+
+    const kangoo = fila('Renault Kangoo')
+    expect(within(kangoo).getByText('Espera: Repuestos')).toBeDefined()
+    expect(within(kangoo).queryByText('Parado')).toBeNull()
+    expect(within(kangoo).getByText(/esperando 7 h 00 min/)).toBeDefined()
   })
 
   it('los tres números del encabezado', async () => {
