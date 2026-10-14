@@ -406,6 +406,11 @@ function Formulario({
                     {accion === 'autorizar' && sujeto === 'Orden' && (
                       <span className="text-etiqueta text-texto-tenue">(entregar sin factura)</span>
                     )}
+                    {accion === 'corregir' && sujeto === 'Orden' && (
+                      <span className="text-etiqueta text-texto-tenue">
+                        (los tiempos del taller)
+                      </span>
+                    )}
                     {accion === 'administrar' && (
                       <span className="text-etiqueta text-texto-tenue">(todo sobre usuarios)</span>
                     )}

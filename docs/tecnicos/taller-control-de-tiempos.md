@@ -111,7 +111,11 @@ explicar por qué un auto estuvo seis días.
    taller están siempre mal.
 2. **Todo escaneo se loguea crudo**, resuelva o falle. Cuando un mecánico diga «yo
    fiché», esa tabla es la respuesta.
-3. **Ninguna corrección de tiempo sin auditoría**, con motivo obligatorio.
+3. **Ninguna corrección de tiempo sin auditoría**, con motivo obligatorio. Hecho el 13/10/2026:
+   la sesión se corrige en su lugar y `ajuste_sesion` guarda el antes, el después, el motivo y
+   quién; lo permite la acción «corregir órdenes», aparte de editar y de autorizar. No pasa un
+   fin antes del inicio o en el futuro, un inicio anterior a la entrada del auto, más de 16
+   horas seguidas, ni una orden entregada o anulada.
 4. **Auto-cierre de fin de turno**, y no sólo con un job a las 20:00: también **al
    arrancar**, poniéndose al día con lo que quedó abierto. Si el servidor se reinició
    antes de las 20:00, el job no corrió nunca. Se marca como cierre automático para que

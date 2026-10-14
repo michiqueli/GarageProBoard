@@ -29,6 +29,7 @@ const ordenes = {
   quitarFoto: vi.fn(),
   ponerEnEspera: vi.fn(),
   terminarEspera: vi.fn(),
+  corregirSesion: vi.fn(),
 }
 const listarVehiculos = vi.fn()
 const listarHojas = vi.fn()
@@ -1105,6 +1106,7 @@ describe('anular la orden', () => {
           fin: '2026-09-20T13:35:00.000Z',
           minutos: 95,
           cerradaPor: 'mecanico',
+          motivoCorreccion: null,
         },
       ],
     })
@@ -1115,27 +1117,71 @@ describe('anular la orden', () => {
     expect(within(tiempos).getAllByText('1 h 35 min').length).toBeGreaterThan(0)
   })
 
-  /** Lo que cerró el fin de turno es lo que probablemente esté mal: hay que poder mirarlo. */
-  it('marca las que no cerró el mecánico', async () => {
-    ordenes.ficha.mockResolvedValue({
+  /**
+   * Lo que cerró el fin de turno es lo que probablemente esté mal: hay que poder mirarlo y
+   * corregirlo, con motivo.
+   */
+  it('marca las que no cerró el mecánico, y se corrigen con motivo', async () => {
+    const auto = {
+      id: 's1',
+      nombre: 'Diego Sosa',
+      legajo: '0001',
+      inicio: '2026-09-19T12:00:00.000Z',
+      fin: '2026-09-19T23:00:00.000Z',
+      minutos: 660,
+      cerradaPor: 'auto' as const,
+      motivoCorreccion: null,
+    }
+    ordenes.ficha.mockResolvedValue({ ...FICHA, manoDeObraMin: 660, sesiones: [auto] })
+    const corregida = {
       ...FICHA,
-      manoDeObraMin: 600,
+      manoDeObraMin: 300,
       sesiones: [
         {
-          id: 's1',
-          nombre: 'Diego Sosa',
-          legajo: '0001',
-          inicio: '2026-09-19T12:00:00.000Z',
-          fin: '2026-09-19T22:00:00.000Z',
-          minutos: 600,
-          cerradaPor: 'auto',
+          ...auto,
+          fin: '2026-09-19T17:00:00.000Z',
+          minutos: 300,
+          cerradaPor: 'jefe' as const,
+          motivoCorreccion: 'Se fue a las 14 sin pasar la credencial',
         },
       ],
+    }
+    ordenes.corregirSesion.mockImplementation(async () => {
+      ordenes.ficha.mockResolvedValue(corregida)
+      return corregida
     })
     await montarApp(`/ordenes/${ORDEN.id}`)
 
     const tiempos = await screen.findByRole('region', { name: 'Tiempos de taller' })
-    expect(within(tiempos).getByText('cerrada al fin del turno')).toBeDefined()
+    expect(within(tiempos).getByText('cerrada al fin del turno: corregila')).toBeDefined()
+    await userEvent.click(within(tiempos).getByRole('button', { name: /Corregir/ }))
+
+    const form = within(tiempos).getByRole('form', { name: 'Corregir el tiempo de Diego Sosa' })
+    const corregir = within(form).getByRole('button', { name: 'Corregir' }) as HTMLButtonElement
+    // Sin motivo no se corrige.
+    expect(corregir.disabled).toBe(true)
+    const fin = within(form).getByLabelText('Terminó')
+    await userEvent.clear(fin)
+    await userEvent.type(fin, '2026-09-19T14:00')
+    await userEvent.type(
+      within(form).getByLabelText('Por qué se corrige'),
+      'Se fue a las 14 sin pasar la credencial',
+    )
+    await userEvent.click(corregir)
+
+    await waitFor(() =>
+      expect(ordenes.corregirSesion).toHaveBeenCalledWith(
+        expect.objectContaining({
+          id: FICHA.id,
+          sesionId: 's1',
+          fin: new Date('2026-09-19T14:00').toISOString(),
+          motivo: 'Se fue a las 14 sin pasar la credencial',
+        }),
+      ),
+    )
+    expect(
+      await within(tiempos).findByText('corregida: Se fue a las 14 sin pasar la credencial'),
+    ).toBeDefined()
   })
 
   it('sin nadie que haya fichado, explica de dónde salen los minutos', async () => {

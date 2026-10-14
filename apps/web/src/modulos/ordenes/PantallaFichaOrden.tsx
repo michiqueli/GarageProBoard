@@ -30,6 +30,7 @@ import { mensajeGeneral } from '../../sesion/consultas.ts'
 import { usePuedeUsar } from '../../sesion/permisos.ts'
 import { useAtajo, useCambiosSinGuardar, useVolver } from '../../teclado/index.ts'
 import { ALICUOTAS, abrirPdf, nombreComprobante } from '../caja/comprobantes.ts'
+import { CorregirSesion } from './CorregirSesion.tsx'
 import { type Danio, DiagramaDanios } from './DiagramaDanios.tsx'
 import { EsperaDeLaOrden, HistoriaDeEsperas } from './EsperaDeLaOrden.tsx'
 import { FotosDeLaOrden } from './FotosDeLaOrden.tsx'
@@ -347,7 +348,7 @@ export function PantallaFichaOrden() {
           {(o.firmas.ingreso || o.firmas.egreso) && <Firmas orden={o} />}
           <FotosDeLaOrden orden={o} />
           <HistoriaDeEsperas orden={o} />
-          <Tiempos orden={o} />
+          <Tiempos orden={o} guardada={actualizar} />
         </>
       )}
     </Shell>
@@ -1536,7 +1537,19 @@ function ResponderPresupuesto({
  * la que cerró el fin de turno o el jefe al terminar la orden es la que probablemente esté mal,
  * y es la que el jefe de taller tiene que poder mirar.
  */
-function Tiempos({ orden }: { orden: Orden }) {
+function Tiempos({
+  orden,
+  guardada,
+}: {
+  orden: Orden
+  guardada: (o: Orden) => void | Promise<void>
+}) {
+  // Corregir es de quien tiene el permiso, y sólo mientras la orden no se entregó ni se anuló.
+  const puedeCorregir =
+    usePuedeUsar(contrato.ordenes.corregirSesion) &&
+    [...EN_TALLER, 'terminada', 'facturada'].includes(orden.estado)
+  const [corrigiendo, setCorrigiendo] = useState<string | null>(null)
+
   if (orden.sesiones.length === 0) {
     return (
       <Seccion titulo="Tiempos de taller">
@@ -1574,15 +1587,40 @@ function Tiempos({ orden }: { orden: Orden }) {
               {RELOJ.format(new Date(s.inicio))} →{' '}
               {s.fin ? RELOJ.format(new Date(s.fin)) : 'sigue adentro'}
             </span>
-            <span className="ml-auto flex items-baseline gap-2">
+            <span className="ml-auto flex flex-wrap items-baseline gap-2">
               {s.cerradaPor === 'auto' && (
-                <span className="text-etiqueta text-atencion">cerrada al fin del turno</span>
+                <span className="text-etiqueta text-atencion">
+                  cerrada al fin del turno{puedeCorregir ? ': corregila' : ''}
+                </span>
               )}
-              {s.cerradaPor === 'jefe' && (
+              {s.cerradaPor === 'jefe' && s.motivoCorreccion && (
+                <span className="text-etiqueta text-texto-suave">
+                  corregida: {s.motivoCorreccion}
+                </span>
+              )}
+              {s.cerradaPor === 'jefe' && !s.motivoCorreccion && (
                 <span className="text-etiqueta text-atencion">cerrada al terminar la orden</span>
               )}
               <span className="font-mono tabular-nums">{enHorasYMinutos(s.minutos)}</span>
+              {puedeCorregir && corrigiendo !== s.id && (
+                <Boton
+                  tamano="chico"
+                  icono={<IconoEditar />}
+                  variante={s.cerradaPor === 'auto' ? 'principal' : 'normal'}
+                  onClick={() => setCorrigiendo(s.id)}
+                >
+                  Corregir
+                </Boton>
+              )}
             </span>
+            {corrigiendo === s.id && (
+              <CorregirSesion
+                orden={orden}
+                sesion={s}
+                alTerminar={() => setCorrigiendo(null)}
+                guardada={guardada}
+              />
+            )}
           </li>
         ))}
       </ul>

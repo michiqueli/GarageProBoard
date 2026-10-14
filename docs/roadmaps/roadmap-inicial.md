@@ -228,7 +228,10 @@ verdad. Qué se trae y qué cambia ahora que el DMS es nuestro, en
 - ✅ Auto-cierre de fin de turno, colgado del primer escaneo del día: un trabajo programado
       no sirve si el proceso se reinició antes de la hora, y además tendría que recorrer todas
       las concesionarias, que es justo lo que RLS le impide al rol de la aplicación
-- ⬜ Correcciones de tiempo con auditoría y motivo obligatorio
+- ✅ **Correcciones de tiempo**, desde el 13/10/2026: desde Tiempos en la ficha, con motivo
+      obligatorio, y el antes y el después en `ajuste_sesion`. Una acción propia, «corregir
+      órdenes», que cada concesionaria le da a quien haga de jefe de taller. Falta **anular una
+      sesión** fichada en la orden equivocada
 - ✅ Repuestos consumidos, con descuento de stock: la orden busca en el catálogo y el stock
       sigue a sus renglones; los pedidos de repuestos del taller pasan a la orden al entregarlos.
       Ver [repuestos](../tecnicos/repuestos.md)
