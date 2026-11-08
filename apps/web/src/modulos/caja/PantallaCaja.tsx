@@ -535,12 +535,7 @@ function Facturar({
     )
   }
 
-  const errorReceptor =
-    receptor.error instanceof ORPCError
-      ? receptor.error.message
-      : receptor.isError
-        ? mensajeGeneral(receptor.error)
-        : null
+  const errorReceptor = receptor.isError ? mensajeGeneral(receptor.error) : null
 
   return (
     <section
