@@ -28,6 +28,7 @@ export const ACCIONES_POR_SUJETO: Readonly<
   Auditoria: ['ver'],
   Visita: ['ver', 'crear', 'editar'],
   Turno: ['ver', 'crear', 'editar'],
+  Unidad: ['ver', 'crear', 'editar', 'anular', 'autorizar', 'configurar'],
 }
 
 export const SUJETOS_DE_ROL = SUJETOS.filter((s): s is Exclude<Sujeto, 'all'> => s !== 'all')

@@ -1,6 +1,7 @@
 export * from './_comunes.ts'
 export * from './acceso.ts'
 export * from './backoffice.ts'
+export * from './cartera.ts'
 export * from './catalogos.ts'
 export * from './comercial.ts'
 export * from './comprobante.ts'

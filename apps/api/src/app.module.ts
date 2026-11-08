@@ -5,6 +5,7 @@ import { LoggerModule } from 'nestjs-pino'
 import { ControladorAuditoria } from './auditoria/auditoria.controller.ts'
 import { ServicioAuditoria } from './auditoria/auditoria.service.ts'
 import { ModuloAuth } from './auth/auth.module.ts'
+import { ControladorCartera, ServicioCartera } from './cartera/cartera.ts'
 import { ControladorCertificados } from './certificados/certificados.controller.ts'
 import { ServicioCertificados } from './certificados/certificados.service.ts'
 import { ControladorClientes } from './clientes/clientes.controller.ts'
@@ -105,6 +106,7 @@ import { ServicioVehiculos } from './vehiculos/vehiculos.service.ts'
     ControladorFirmas,
     ControladorFotos,
     ControladorMotivosEspera,
+    ControladorCartera,
     ControladorCatalogoServices,
     ControladorPendientes,
     ControladorRepuestos,
@@ -135,6 +137,7 @@ import { ServicioVehiculos } from './vehiculos/vehiculos.service.ts'
     ServicioFirmas,
     ServicioFotos,
     ServicioMotivosEspera,
+    ServicioCartera,
     ServicioCatalogoServices,
     ServicioPendientes,
     ServicioRepuestos,

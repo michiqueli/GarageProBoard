@@ -3,6 +3,7 @@ import { z } from 'zod'
 import { publico } from './acceso.ts'
 import { contratoAuditoria } from './auditoria.ts'
 import { contratoAuth } from './auth.ts'
+import { contratoCartera } from './cartera.ts'
 import { contratoCertificados } from './certificados.ts'
 import { contratoClientes } from './clientes.ts'
 import { contratoComprobantes } from './comprobantes.ts'
@@ -32,6 +33,7 @@ import { contratoVehiculos } from './vehiculos.ts'
 export * from './acceso.ts'
 export * from './auditoria.ts'
 export * from './auth.ts'
+export * from './cartera.ts'
 export * from './certificados.ts'
 export * from './clientes.ts'
 export * from './comprobantes.ts'
@@ -80,6 +82,7 @@ export const contrato = {
   revision: contratoRevision,
   motivosEspera: contratoMotivosEspera,
   services: contratoServices,
+  cartera: contratoCartera,
   recepcion: contratoRecepcion,
   turnos: contratoTurnos,
   totem: contratoTotem,

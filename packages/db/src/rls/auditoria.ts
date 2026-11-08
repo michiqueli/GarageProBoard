@@ -71,6 +71,15 @@ export const TABLAS_AUDITADAS: readonly TablaAuditada[] = [
   },
   { tabla: 'orden' },
   {
+    tabla: 'cartera_config',
+    nota: 'Cómo trabaja el stock: cambiarlo cambia lo que se puede reservar y trasladar.',
+  },
+  { tabla: 'unidad' },
+  {
+    tabla: 'unidad_reserva',
+    nota: 'Quién reservó, con qué seña y quién la liberó o la pasó por encima: es lo que se mira cuando alguien reclama.',
+  },
+  {
     tabla: 'service_catalogo',
     nota: 'Qué services ofrece el taller. Sus renglones se reemplazan enteros y no se auditan uno por uno: importar un catálogo serían miles de filas de ruido.',
   },
@@ -186,6 +195,8 @@ export const TABLAS_SIN_AUDITAR: Readonly<
   orden_secuencia: 'Es un contador: la numeración sin huecos se verifica en las órdenes.',
   repuestos_secuencia: 'Es un contador: lo numerado se audita en el pedido y en la compra.',
   visita_secuencia: 'Es un contador: el número del día es para llamar, no un comprobante.',
+  unidad_movimiento:
+    'Es la bitácora de la unidad, sólo se agrega: lo que cuenta ya se audita en la unidad.',
   service_catalogo_item:
     'Se reemplazan enteros con su service, que sí se audita: importar un catálogo serían miles de filas de ruido.',
   orden_item:

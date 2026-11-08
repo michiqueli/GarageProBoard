@@ -61,6 +61,7 @@ export const SUJETOS = [
   'Auditoria',
   'Visita',
   'Turno',
+  'Unidad',
   'all',
 ] as const
 
@@ -101,6 +102,7 @@ const SUSTANTIVOS: Record<Sujeto, string> = {
   Auditoria: 'el registro de ingresos y cambios',
   Visita: 'las visitas de la recepción',
   Turno: 'los turnos del taller',
+  Unidad: 'el stock de unidades',
   all: 'todo el sistema',
 }
 
@@ -345,6 +347,7 @@ export const ROLES_PREDEFINIDOS: RolPredefinido[] = [
     habilidades: [
       { action: ['ver', 'crear', 'editar'], subject: ['Visita', 'Cliente'] },
       { action: 'ver', subject: 'Vehiculo' },
+      { action: ['ver', 'editar'], subject: 'Unidad' },
     ],
   },
   {

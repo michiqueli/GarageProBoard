@@ -40,6 +40,8 @@ export type TablaAuditada =
   | 'usuario'
   | 'vehiculo'
   | 'service_catalogo'
+  | 'unidad'
+  | 'cartera_config'
   | 'titularidad'
   | 'dispositivo'
 
