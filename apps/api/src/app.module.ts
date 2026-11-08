@@ -25,14 +25,14 @@ import { ServicioFirmas } from './ordenes/firmas.service.ts'
 import { ControladorFotos } from './ordenes/fotos.controller.ts'
 import { ServicioFotos } from './ordenes/fotos.service.ts'
 import { ControladorMotivosEspera, ServicioMotivosEspera } from './ordenes/motivos-espera.ts'
-import {
-  ControladorCatalogoServices,
-  ServicioCatalogoServices,
-} from './ordenes/services-catalogo.ts'
 import { ControladorOrdenes } from './ordenes/ordenes.controller.ts'
 import { ServicioOrdenes } from './ordenes/ordenes.service.ts'
 import { ControladorPendientes } from './ordenes/pendientes.controller.ts'
 import { ServicioPendientes } from './ordenes/pendientes.service.ts'
+import {
+  ControladorCatalogoServices,
+  ServicioCatalogoServices,
+} from './ordenes/services-catalogo.ts'
 import { ControladorOrganizacion } from './organizacion/organizacion.controller.ts'
 import { ServicioOrganizacion } from './organizacion/organizacion.service.ts'
 import { ModuloPadron } from './padron/padron.module.ts'
