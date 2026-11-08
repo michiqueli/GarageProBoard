@@ -55,6 +55,22 @@ html {
   letter-spacing: 0.04em;
 }
 
+.campo {
+  min-height: 2.75rem;
+  border: 1px solid var(--color-borde);
+  border-radius: var(--radius-base);
+  background: var(--color-superficie-2);
+  color: var(--color-texto);
+  font-size: var(--text-ui);
+  padding: 0 0.75rem;
+}
+
+/* El campo trampa: fuera de la vista, para que sólo lo llene un robot. */
+.trampa {
+  position: absolute;
+  left: -9999px;
+}
+
 .legal h2 {
   margin-top: 2.25rem;
   font-family: var(--font-display);

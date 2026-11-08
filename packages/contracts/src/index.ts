@@ -8,6 +8,7 @@ import { contratoCertificados } from './certificados.ts'
 import { contratoClientes } from './clientes.ts'
 import { contratoComprobantes } from './comprobantes.ts'
 import { contratoConfiguracion } from './configuracion.ts'
+import { contratoContacto } from './contacto.ts'
 import { contratoCostosUnidad } from './costos-unidad.ts'
 import { contratoFichaje } from './fichaje.ts'
 import { contratoHojas } from './hojas.ts'
@@ -40,6 +41,7 @@ export * from './clientes.ts'
 export * from './comprobantes.ts'
 export * from './comunes.ts'
 export * from './configuracion.ts'
+export * from './contacto.ts'
 export * from './costos-unidad.ts'
 export * from './fichaje.ts'
 export * from './hojas.ts'
@@ -86,6 +88,7 @@ export const contrato = {
   services: contratoServices,
   cartera: contratoCartera,
   costosUnidad: contratoCostosUnidad,
+  contacto: contratoContacto,
   recepcion: contratoRecepcion,
   turnos: contratoTurnos,
   totem: contratoTotem,

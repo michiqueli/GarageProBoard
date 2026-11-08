@@ -16,6 +16,7 @@ import { ServicioComprobantes } from './comprobantes/comprobantes.service.ts'
 import { ModuloBase } from './comun/base.module.ts'
 import { ControladorConfiguracion } from './configuracion/configuracion.controller.ts'
 import { ServicioConfiguracion } from './configuracion/configuracion.service.ts'
+import { ControladorContacto, ServicioContacto } from './contacto/contacto.ts'
 import { DatosDeLaEstacion } from './fichaje/estacion.ts'
 import { ServicioEstaciones } from './fichaje/estaciones.service.ts'
 import { ControladorFichaje } from './fichaje/fichaje.controller.ts'
@@ -108,6 +109,7 @@ import { ServicioVehiculos } from './vehiculos/vehiculos.service.ts'
     ControladorFotos,
     ControladorMotivosEspera,
     ControladorCartera,
+    ControladorContacto,
     ControladorCostosUnidad,
     ControladorCatalogoServices,
     ControladorPendientes,
@@ -140,6 +142,7 @@ import { ServicioVehiculos } from './vehiculos/vehiculos.service.ts'
     ServicioFotos,
     ServicioMotivosEspera,
     ServicioCartera,
+    ServicioContacto,
     ServicioCostosUnidad,
     ServicioCatalogoServices,
     ServicioPendientes,

@@ -166,6 +166,7 @@ const NO_AUDITAN: Readonly<Record<string, string>> = {
   'hojas.quitar':
     'Marca la imagen propia como reemplazada, y eso es una sola columna que el trigger ya cuenta.',
   'services.previsualizar': 'Mira las filas y contesta: no guarda nada.',
+  'contacto.enviar': 'Manda un mail y no guarda nada: no hay nada que auditar.',
   'costosUnidad.crearCategoria':
     'El trigger de unidad_categoria guarda el nombre con quién y cuándo: es todo lo que tiene.',
   'costosUnidad.editarCategoria':

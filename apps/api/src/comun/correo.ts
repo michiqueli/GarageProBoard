@@ -12,6 +12,8 @@ export interface Mensaje {
   texto: string
   /** La versión con formato. El texto queda para quien no la pueda ver. */
   html?: string | undefined
+  /** A quién le llega la respuesta, si no es el remitente. */
+  responderA?: string | undefined
   /** El nombre que ve quien lo recibe. La dirección sigue siendo la del remitente configurado. */
   nombreRemitente?: string | undefined
   adjuntos?: Adjunto[] | undefined
@@ -61,6 +63,7 @@ export function crearCorreoSmtp(
           to: m.para,
           subject: m.asunto,
           text: m.texto,
+          ...(m.responderA ? { replyTo: m.responderA } : {}),
           ...(m.html ? { html: m.html } : {}),
           attachments: (m.adjuntos ?? []).map((a) => ({
             filename: a.nombre,

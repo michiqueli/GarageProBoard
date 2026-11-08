@@ -33,7 +33,7 @@
         GaragePro<span class="text-marca">Board</span>
       </a>
       <a
-        href="mailto:hola@garageproboard.com?subject=Quiero%20ver%20GarageProBoard"
+        href="#contacto"
         class="rounded-base border border-marca bg-marca-suave px-3 py-1.5 text-ui font-semibold text-marca"
       >
         Pedí una demo
@@ -54,7 +54,7 @@
         </p>
         <div class="mt-8 flex flex-wrap gap-3">
           <a
-            href="mailto:hola@garageproboard.com?subject=Quiero%20ver%20GarageProBoard"
+        href="#contacto"
             class="rounded-base bg-marca px-5 py-3 font-semibold text-fondo"
           >
             Quiero verlo funcionando
@@ -224,13 +224,49 @@
           <h2 class="max-w-xl font-display text-seccion leading-tight font-bold">
             Mirá cómo quedaría en tu concesionaria.
           </h2>
-          <a
-            href="mailto:hola@garageproboard.com?subject=Quiero%20ver%20GarageProBoard"
-            class="rounded-base bg-fondo px-5 py-3 font-semibold text-texto"
-          >
-            hola@garageproboard.com
-          </a>
+          <p class="max-w-md text-lg font-medium">
+            Dejanos tus datos y te escribimos para mostrártelo con tus propios casos.
+          </p>
         </div>
+      </section>
+
+      <section id="contacto" class="mx-auto max-w-2xl scroll-mt-6 px-4 py-16 sm:px-6">
+        <h2 class="font-display text-seccion leading-tight font-semibold">Pedí una demo</h2>
+        <p class="mt-3 text-texto-suave">
+          Te contestamos por mail. También nos podés escribir a hola@garageproboard.com.
+        </p>
+        <form id="formulario-contacto" class="mt-8 grid gap-4 sm:grid-cols-2">
+          <label class="grid gap-1 text-dato font-medium text-texto-suave">
+            Tu nombre
+            <input name="nombre" required maxlength="100" autocomplete="name" class="campo" />
+          </label>
+          <label class="grid gap-1 text-dato font-medium text-texto-suave">
+            Concesionaria
+            <input name="concesionaria" maxlength="120" autocomplete="organization" class="campo" />
+          </label>
+          <label class="grid gap-1 text-dato font-medium text-texto-suave">
+            Correo
+            <input name="email" type="email" required maxlength="200" autocomplete="email" class="campo" />
+          </label>
+          <label class="grid gap-1 text-dato font-medium text-texto-suave">
+            Teléfono (opcional)
+            <input name="telefono" type="tel" maxlength="40" autocomplete="tel" class="campo" />
+          </label>
+          <label class="grid gap-1 text-dato font-medium text-texto-suave sm:col-span-2">
+            Contanos qué necesitás (opcional)
+            <textarea name="mensaje" rows="4" maxlength="2000" class="campo py-2"></textarea>
+          </label>
+          <label class="trampa" aria-hidden="true">
+            No completar
+            <input name="sitio" tabindex="-1" autocomplete="off" />
+          </label>
+          <div class="flex flex-wrap items-center gap-4 sm:col-span-2">
+            <button type="submit" class="rounded-base bg-marca px-5 py-3 font-semibold text-fondo disabled:opacity-60">
+              Quiero verlo funcionando
+            </button>
+            <p id="resultado-contacto" role="status" class="text-dato"></p>
+          </div>
+        </form>
       </section>
     </main>
 
@@ -243,5 +279,32 @@
         <a href="/terminos" class="hover:text-texto">Términos</a>
       </nav>
     </footer>
+    <script type="module">
+      const formulario = document.getElementById('formulario-contacto')
+      const resultado = document.getElementById('resultado-contacto')
+      const boton = formulario.querySelector('button')
+      formulario.addEventListener('submit', async (evento) => {
+        evento.preventDefault()
+        boton.disabled = true
+        resultado.className = 'text-dato text-texto-suave'
+        resultado.textContent = 'Enviando…'
+        try {
+          const r = await fetch('/api/publico/contacto', {
+            method: 'POST',
+            headers: { 'content-type': 'application/json' },
+            body: JSON.stringify(Object.fromEntries(new FormData(formulario))),
+          })
+          if (!r.ok) throw new Error((await r.json().catch(() => null))?.message)
+          formulario.reset()
+          resultado.className = 'text-dato text-ok'
+          resultado.textContent = 'Listo, te escribimos pronto.'
+        } catch (error) {
+          resultado.className = 'text-dato text-critico'
+          resultado.textContent = error.message || 'No se pudo mandar. Probá de nuevo en un momento.'
+        } finally {
+          boton.disabled = false
+        }
+      })
+    </script>
   </body>
 </html>
