@@ -465,10 +465,10 @@ esto**, no por código.
 
 Y cuanto antes esté, antes empieza a indexar: la competencia lleva treinta años de dominio.
 
-- 🔨 Hecha el 08/11/2026, falta publicarla. Landing de **GarageProBoard** con qué es, para quién y los módulos. La marca se presentó
+- ✅ Publicada el 08/11/2026 en https://garageproboard.com. Landing de **GarageProBoard** con qué es, para quién y los módulos. La marca se presentó
       en el INPI el 16/09/2026
 - 🔨 Dominio propio comprado. Falta el correo de contacto en ese dominio
-- 🔨 Borrador escrito; faltan los datos del titular y que los revise un abogado. **Política de privacidad y términos y condiciones.** Es el requisito formal de Meta y de
+- 🔨 Publicadas; falta que las revise un abogado. **Política de privacidad y términos y condiciones.** Es el requisito formal de Meta y de
       Mercado Pago, y además vamos a tratar datos de terceros —clientes de la concesionaria—
       con obligación de conservación
 - ⬜ Capturas de verdad del sistema. Las tres pantallas que más venden hoy: la orden de
