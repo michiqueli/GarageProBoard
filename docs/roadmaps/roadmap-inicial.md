@@ -1,6 +1,6 @@
 # Roadmap inicial
 
-Estado al 17/09/2026. Los hitos están ordenados por dependencia, no por deseo: cada uno
+Estado al 08/11/2026. Los hitos están ordenados por dependencia, no por deseo: cada uno
 necesita el anterior. Lo que no está acá no está decidido todavía.
 
 Del 5 en adelante se escribieron ese mismo día, después de relevar a la competencia: el
@@ -29,7 +29,7 @@ Monorepo, entorno reproducible y aislamiento multi-tenant probado.
 
 ---
 
-## Hito 1 — Entrar al sistema ⬜
+## Hito 1 — Entrar al sistema 🔨
 
 Sin esto no hay pantalla que mostrar a nadie.
 
@@ -90,7 +90,7 @@ sus permisos.
 
 ---
 
-## Hito 1.5 — Módulos activables y back-office ⬜
+## Hito 1.5 — Módulos activables y back-office 🔨
 
 Lleva medio número porque no estaba en el plan y entra antes que las pantallas del
 núcleo: cada pantalla que se escriba sin el filtro de módulo es una más para revisar
@@ -106,7 +106,8 @@ después. El mapa, la configuración por módulo y quién puede tocarla, en
       tocar sus credenciales. Ningún rol predefinido la trae salvo el gerente
 - 🔨 Pantalla de configuración **adentro de cada módulo**, más un índice que las liste. La
       primera es la hoja de recepción, en `/hoja-recepcion`: los dibujos del vehículo sobre los
-      que marca el que recibe, y los puntos de la revisión
+      que marca el que recibe, y los puntos de la revisión. Después, el cupo de la agenda y los
+      motivos de espera. Falta el índice
 - ✅ **Buscador del sistema en la barra lateral**, la misma cosa que la paleta de `F10`:
       «afip» lista certificados, padrón, puntos de venta y facturación. Índice en
       `apps/web/src/indice.ts`, con palabras clave por entrada y filtrado por permiso
@@ -128,7 +129,7 @@ desaparece de su sistema, sin tocar código y sin que se pierda un dato.
 
 ---
 
-## Hito 2 — El núcleo, con pantallas ⬜
+## Hito 2 — El núcleo, con pantallas 🔨
 
 Las entidades ya están modeladas; falta poder operarlas.
 
@@ -144,15 +145,16 @@ Las entidades ya están modeladas; falta poder operarlas.
 - ✅ Registrar Usuarios en el índice del buscador del sistema
 - ✅ Consulta al padrón de AFIP por CUIT: constancia de inscripción y A13 de respaldo,
       condición frente al IVA informada o deducida, probada contra AFIP
-- 🔨 ABM de entidades comerciales, usando la consulta al padrón: clientes ✅, con el
-      documento validado según su tipo y sin duplicar al que ya es proveedor. Proveedores ✅,
+- ✅ ABM de entidades comerciales, usando la consulta al padrón: clientes, con el
+      documento validado según su tipo y sin duplicar al que ya es proveedor, y proveedores,
       en Repuestos
 - ✅ ABM de vehículos: alta con marca, modelo y titular, edición sin tocar el chasis, y
       transferencia de titular que cierra la anterior sin borrarla
 - ✅ Búsqueda única en el encabezado (`F3`): por patente, por chasis, por cliente, por CUIT,
       cada grupo según los permisos de quien busca
 - 🔨 Ficha del vehículo con su historia: titulares anteriores con sus fechas y los cambios
-      contados en palabras. Faltan las órdenes de trabajo, que llegan con el Hito 4
+      contados en palabras. Faltan las órdenes de trabajo: el taller ya existe, y la ficha
+      todavía no las muestra
 - ✅ **Patrón de listado responsive** resuelto en la pantalla de OT: tabla densa en
       escritorio, tarjetas en teléfono, eligiendo cuál renderizar en vez de ocultar
       una con CSS.
@@ -161,7 +163,7 @@ Las entidades ya están modeladas; falta poder operarlas.
 
 ---
 
-## Hito 3 — Facturación electrónica ⬜
+## Hito 3 — Facturación electrónica 🔨
 
 La barrera de entrada más alta. Nada se vende sin esto.
 
@@ -194,7 +196,7 @@ y el PDF valida contra el QR.
 
 ---
 
-## Hito 4 — Taller: la orden de trabajo ⬜
+## Hito 4 — Taller: la orden de trabajo 🔨
 
 El corazón del producto y lo que el nombre promete. **La base no se arranca de cero:**
 sale de GarageTick, la aplicación anterior del autor, relevada con una concesionaria de
@@ -230,8 +232,8 @@ verdad. Qué se trae y qué cambia ahora que el DMS es nuestro, en
       las concesionarias, que es justo lo que RLS le impide al rol de la aplicación
 - ✅ **Correcciones de tiempo**, desde el 13/10/2026: desde Tiempos en la ficha, con motivo
       obligatorio, y el antes y el después en `ajuste_sesion`. Una acción propia, «corregir
-      órdenes», que cada concesionaria le da a quien haga de jefe de taller. Falta **anular una
-      sesión** fichada en la orden equivocada
+      órdenes», que cada concesionaria le da a quien haga de jefe de taller
+- ⬜ **Anular una sesión** fichada en la orden equivocada: toca todas las sumas de mano de obra
 - ✅ Repuestos consumidos, con descuento de stock: la orden busca en el catálogo y el stock
       sigue a sus renglones; los pedidos de repuestos del taller pasan a la orden al entregarlos.
       Ver [repuestos](../tecnicos/repuestos.md)
@@ -254,6 +256,8 @@ verdad. Qué se trae y qué cambia ahora que el DMS es nuestro, en
       revisión— queda con el auto al entregarlo, y la recepción siguiente lo ofrece para sumarlo a la
       orden nueva o descartarlo con motivo. Desde el 13/10/2026, en [el egreso](../tecnicos/egreso.md)
 - ✅ Flujo de recepción **sin tocar el mouse**: patente, Enter, Tab, F2
+- ⬜ **La hora de retiro**: la entrega estimada es un día, y el taller da una hora. Con ella, la
+      puerta sabe a quién espera
 
 **Criterio de terminado:** una orden entra, se trabaja, se factura y se cobra.
 
@@ -303,13 +307,13 @@ precio: un DMS que reemplaza al software contable se paga solo.
 
 ---
 
-### Hito 6 — La recepción y el cliente ⬜
+### Hito 6 — La recepción y el cliente 🔨
 
 Lo que pasa antes de que alguien sea una orden o una factura. Es la parte que ningún
 competidor de los tres relevados tiene resuelta, y donde se pierde la mayor cantidad de
 plata sin que nadie lo vea.
 
-Diseñado el 09/10/2026 junto con la agenda de turnos del Hito 2, porque son la misma puerta:
+Diseñado el 09/10/2026 junto con la agenda de turnos del Hito 4, porque son la misma puerta:
 la visita, la cola de las tablets, la derivación a una persona y el tótem, en
 [la recepción](../tecnicos/recepcion-y-turnos.md).
 
@@ -337,12 +341,14 @@ la visita, la cola de las tablets, la derivación a una persona y el tótem, en
 - ⬜ **Quejas y reclamos** centralizados, con alerta al responsable y seguimiento hasta que
       se cierran
 
+Fuera de alcance por ahora, decidido el 13/10/2026: la letra por tótem y el sonido del llamador.
+
 **Criterio de terminado:** entra alguien a la concesionaria, saca su turno solo, y queda
 registrado aunque se vaya sin comprar nada.
 
 ---
 
-### Hito 7 — Repuestos completo ⬜
+### Hito 7 — Repuestos completo 🔨
 
 La base está hecha en el Hito 4. Falta lo que convierte el módulo en una herramienta de
 compra en vez de un inventario.
@@ -390,7 +396,7 @@ compra en vez de un inventario.
 
 ---
 
-### Hito 10 — RRHH, con liquidación de sueldos ⬜
+### Hito 10 — RRHH, con liquidación de sueldos 🔨
 
 **Ninguno de los competidores relevados lo tiene** — AutoPack ni siquiera menciona RRHH—, y
 es de las cosas que más atan a un cliente. Con contabilidad, tesorería y sueldos adentro no
@@ -411,7 +417,7 @@ queda nada afuera que justifique un segundo proveedor.
 
 ---
 
-### Transversal — `apps/mobile` ⬜
+### Transversal — `apps/mobile` 🔨
 
 La app nativa, que se integra con todo lo anterior en vez de ser un sistema aparte.
 
@@ -440,6 +446,8 @@ puesto por el dispositivo. Por qué no una app ahora y por qué no un usuario co
 - ✅ **La tablet como estación de recepción**: se registra en Estaciones, arranca pidiendo la
       credencial, abre la sesión de la cuenta vinculada con ese legajo en la sucursal de la
       tablet, y se cierra sola a los quince minutos sin tocarla. Desde el 13/10/2026
+- ⬜ **La cámara en una tablet de verdad**: el lector de credenciales y las fotos necesitan
+      HTTPS o `localhost`, y todavía no se probaron en el aparato
 - ⬜ **Cola offline**: el fondo del taller no tiene wifi, y una app que necesita señal para
       fichar no se usa
 
@@ -491,7 +499,12 @@ Cosas que sabemos que faltan, para que no se descubran de golpe:
   comprobantes fiscales de terceros con obligación legal de conservación. `pgBackRest`
   o `wal-g` contra un bucket S3-compatible, con restauración **probada**, no solo
   configurada. Un VPS autogestionado sin backup probado es la forma de perder el
-  negocio en una tarde.
+  negocio en una tarde. **El almacén S3 entra en el mismo backup**: desde octubre guarda las
+  firmas de los clientes, las fotos del vehículo y los dibujos de cada hoja.
+- **Los dibujos de VW por omisión** son capturas, puestas el 13/10/2026 con un «después vemos
+  de cambiarlas». Antes de venderle a otra marca hacen falta imágenes con licencia comercial.
+- **La suite de la API falló a ratos y no se pudo reproducir**: siete corridas en verde el
+  13/10/2026. La próxima vez, el detalle queda en `apps/api/test-results/ultima-corrida.json`.
 - **Convenio Multilateral de Ingresos Brutos**: los campos están en el esquema, la lógica de
   coeficientes y retenciones por jurisdicción no. Dejó de ser deuda suelta: es parte del
   Hito 5, y se decide con un contable.
