@@ -1,0 +1,72 @@
+# La copia demo: la rama `developer`, con base y archivos propios y datos de prueba. Sólo la API
+# queda expuesta, y sólo al nginx del VPS. La levanta `actualizar-demo.sh`.
+name: gpb-demo
+
+services:
+  postgres:
+    image: postgres:18-alpine
+    container_name: gpb-demo-pg
+    restart: unless-stopped
+    env_file: ../../../.env.demo
+    environment:
+      POSTGRES_USER: gpb
+      POSTGRES_DB: gpb
+      POSTGRES_INITDB_ARGS: "--encoding=UTF8 --locale-provider=icu --icu-locale=es-AR"
+      TZ: America/Argentina/Buenos_Aires
+    volumes:
+      - pgdata:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U gpb -d gpb"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:8-alpine
+    container_name: gpb-demo-redis
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - redisdata:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  # Con la configuración de desarrollo: sin puertos publicados, sólo le habla la API de demo.
+  garage:
+    image: dxflrs/garage:v2.4.1
+    container_name: gpb-demo-garage
+    restart: unless-stopped
+    environment:
+      GARAGE_ALLOW_WORLD_READABLE_SECRETS: "true"
+    volumes:
+      - ../garage.toml:/etc/garage.toml:ro
+      - garagedata:/var/lib/garage
+    healthcheck:
+      test: ["CMD", "/garage", "status"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  api:
+    build:
+      context: ../..
+      dockerfile: infra/produccion/api/Dockerfile
+    image: gpb-demo-api
+    container_name: gpb-demo-api
+    restart: unless-stopped
+    env_file: ../../../.env.demo
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    ports:
+      - "127.0.0.1:3081:3080"
+
+volumes:
+  pgdata:
+  redisdata:
+  garagedata:

@@ -9,7 +9,7 @@
 // documentado, y esto corre una vez por máquina de desarrollo.
 import { execFileSync } from 'node:child_process'
 
-const CONTENEDOR = 'gpb-garage'
+const CONTENEDOR = process.env.GARAGE_CONTENEDOR ?? 'gpb-garage'
 // Los mismos del .env.example. Garage exige que la clave empiece con GK y mida 26.
 const ACCESS_KEY = 'GK1a2b3c4d5e6f708192a3b4c5'
 const SECRET_KEY = '3f8c1d7b2e5a9046c8b1f3d7e2a5c904b6d8f1e3a7c250b9d4f6e8a1c3b5d709'
