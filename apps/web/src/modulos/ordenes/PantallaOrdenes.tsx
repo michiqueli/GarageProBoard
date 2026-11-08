@@ -28,6 +28,11 @@ const FILTROS: Array<{ valor: Filtro; texto: string }> = [
 ]
 
 /**
+ * Otra PC o la tablet también abren órdenes: esta pantalla se entera sola, sin recargar.
+ */
+const AL_DIA = { staleTime: 0, refetchInterval: 20_000 } as const
+
+/**
  * Las órdenes de la sucursal: qué autos están en el taller, en qué estado y quién los tiene.
  * `Ins` recibe un auto nuevo; la ficha de cada orden es donde se trabaja.
  */
@@ -56,6 +61,7 @@ export function PantallaOrdenes() {
         ...(buscar.trim() ? { buscar: buscar.trim() } : {}),
       }),
     enabled: puedeVer,
+    ...AL_DIA,
   })
   const datos = consulta.data?.datos ?? []
   // ↑ ↓ marcan una fila y Enter la abre, también desde el buscador.
@@ -82,6 +88,7 @@ export function PantallaOrdenes() {
     queryKey: ['ordenes', tenantId, sucursalId, 'resumen'],
     queryFn: () => api.ordenes.listar({ pagina: 1, porPagina: 200, estado: 'en_taller' }),
     enabled: puedeVer,
+    ...AL_DIA,
   })
   const cuenta = (estados: Orden['estado'][]) =>
     (resumen.data?.datos ?? []).filter((o) => estados.includes(o.estado)).length
