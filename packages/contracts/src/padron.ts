@@ -48,4 +48,28 @@ export const contratoPadron = {
       },
     })
     .output(contribuyente),
+
+  porDocumento: conSesion
+    .route({
+      method: 'GET',
+      path: '/padron/dni/{dni}',
+      tags: ['Padrón de AFIP'],
+      operationId: 'consultarPadronPorDni',
+      summary: 'Datos de una persona según AFIP, a partir del DNI',
+      description: 'Busca el CUIL del DNI y devuelve lo mismo que la consulta por CUIT.',
+    })
+    .input(z.object({ dni: z.string().regex(/^[0-9]{7,8}$/, 'El DNI son 7 u 8 números') }))
+    .errors({
+      DNI_INEXISTENTE: { status: 404, message: 'AFIP no tiene registrado ese DNI' },
+      DNI_AMBIGUO: {
+        status: 409,
+        message: 'Ese DNI tiene más de un CUIL en AFIP: cargá el CUIL',
+      },
+      PADRON_NO_DISPONIBLE: {
+        status: 503,
+        message:
+          'No se pudo consultar a AFIP. Probá de nuevo en un rato, o cargá los datos a mano.',
+      },
+    })
+    .output(contribuyente),
 }

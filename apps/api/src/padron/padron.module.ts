@@ -20,6 +20,8 @@ function crearPadron(): ServicioPadron {
   if (!cuit || !cert || !key) {
     return {
       consultar: () => Promise.reject(new PadronNoDisponible('Falta configurar AFIP_PADRON_*')),
+      cuitsDeDocumento: () =>
+        Promise.reject(new PadronNoDisponible('Falta configurar AFIP_PADRON_*')),
     }
   }
 

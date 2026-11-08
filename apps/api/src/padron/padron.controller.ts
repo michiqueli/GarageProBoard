@@ -3,7 +3,7 @@ import { contrato } from '@gpb/contracts'
 import { Controller, Inject, Logger } from '@nestjs/common'
 import { implement } from '@orpc/nest'
 import { Operacion } from '../comun/operacion.ts'
-import { ServicioConsultaPadron } from './padron.service.ts'
+import { DocumentoAmbiguo, ServicioConsultaPadron } from './padron.service.ts'
 
 @Controller()
 export class ControladorPadron {
@@ -22,6 +22,26 @@ export class ControladorPadron {
         if (error instanceof PadronNoDisponible) {
           // Se registra la causa: a quien carga le alcanza con «probá en un rato», pero a
           // quien mantiene el sistema no.
+          this.log.warn(
+            `Padrón no disponible: ${String((error.cause as Error)?.message ?? error.cause)}`,
+          )
+          throw errors.PADRON_NO_DISPONIBLE()
+        }
+        throw error
+      }
+    })
+  }
+
+  @Operacion(contrato.padron.porDocumento)
+  porDocumento() {
+    return implement(contrato.padron.porDocumento).handler(async ({ input, errors }) => {
+      try {
+        const encontrado = await this.padron.porDocumento(input.dni)
+        if (!encontrado) throw errors.DNI_INEXISTENTE()
+        return encontrado
+      } catch (error) {
+        if (error instanceof DocumentoAmbiguo) throw errors.DNI_AMBIGUO()
+        if (error instanceof PadronNoDisponible) {
           this.log.warn(
             `Padrón no disponible: ${String((error.cause as Error)?.message ?? error.cause)}`,
           )

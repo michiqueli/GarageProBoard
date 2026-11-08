@@ -597,16 +597,27 @@ function Formulario({
    * sueldos, un apellido con una tilde distinta es un rechazo.
    */
   const padron = useMutation({
-    mutationFn: () => api.padron.consultar({ cuit: numeroDocumento }),
+    mutationFn: () =>
+      tipoDocumento === 96
+        ? api.padron.porDocumento({ dni: numeroDocumento })
+        : api.padron.consultar({ cuit: numeroDocumento }),
     onSuccess: (datos) => {
+      // Con el DNI, AFIP devuelve el CUIL: es el que va a pedir la liquidación de sueldos.
+      if (tipoDocumento === 96) {
+        setTipoDocumento(86)
+        setNumeroDocumento(datos.cuit)
+      }
       const [ape, nom] = datos.razonSocial.split(',')
       if (ape) setApellido(ape.trim())
       if (nom) setNombre(nom.trim())
       if (!nom)
         notificar.info(`AFIP lo tiene como «${datos.razonSocial}». Separá nombre y apellido.`)
     },
-    meta: { error: mensajeDe },
+    meta: { exito: 'Datos completados con lo que informa AFIP. Revisalos', error: mensajeDe },
   })
+
+  const documentoCompleto =
+    tipoDocumento === 96 ? /^[0-9]{7,8}$/.test(numeroDocumento) : numeroDocumento.length === 11
 
   const datos = () => ({
     nombre,
@@ -706,16 +717,14 @@ function Formulario({
                 onChange={(e) => setNumeroDocumento(e.target.value.replace(/\D/g, ''))}
                 ayuda={tipoDocumento === 96 ? '7 u 8 dígitos' : '11 dígitos, sin guiones'}
               />
-              {tipoDocumento === 86 && (
-                <Boton
-                  variante="sutil"
-                  tamano="chico"
-                  deshabilitado={numeroDocumento.length !== 11 || padron.isPending}
-                  onClick={() => padron.mutate()}
-                >
-                  {padron.isPending ? 'Consultando…' : 'Traer el nombre de AFIP'}
-                </Boton>
-              )}
+              <Boton
+                variante="sutil"
+                tamano="chico"
+                deshabilitado={!documentoCompleto || padron.isPending}
+                onClick={() => padron.mutate()}
+              >
+                {padron.isPending ? 'Consultando…' : 'Completar con AFIP'}
+              </Boton>
             </div>
           </>
         )}

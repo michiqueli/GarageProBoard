@@ -1,4 +1,4 @@
-import { cleanup, screen, within } from '@testing-library/react'
+import { cleanup, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { usarSesion } from '../src/sesion/almacen.ts'
@@ -22,14 +22,17 @@ const personal = {
   revocarCredencial: vi.fn(),
   pdfCredenciales: vi.fn(),
 }
-const padron = { consultar: vi.fn() }
+const padron = { consultar: vi.fn(), porDocumento: vi.fn() }
 const fichaje = { asistencia: vi.fn() }
 const renovar = vi.fn()
 
 vi.mock('../src/sesion/cliente.ts', () => ({
   api: {
     auth: { iniciar: vi.fn(), cerrar: vi.fn().mockResolvedValue({}), cambiarSucursal: vi.fn() },
-    padron: { consultar: (x: unknown) => padron.consultar(x) },
+    padron: {
+      consultar: (x: unknown) => padron.consultar(x),
+      porDocumento: (x: unknown) => padron.porDocumento(x),
+    },
     fichaje: { asistencia: (x: unknown) => fichaje.asistencia(x) },
     personal: {
       listar: (x: unknown) => personal.listar(x),
@@ -89,7 +92,13 @@ function entraComo(sesion: typeof SESION) {
 const fila = (nombre: string) => screen.getByText(nombre).closest('tr') as HTMLElement
 
 beforeEach(() => {
-  for (const f of [...Object.values(personal), padron.consultar, fichaje.asistencia, renovar])
+  for (const f of [
+    ...Object.values(personal),
+    padron.consultar,
+    padron.porDocumento,
+    fichaje.asistencia,
+    renovar,
+  ])
     f.mockReset()
   fichaje.asistencia.mockResolvedValue({ fecha: '2026-09-18', datos: [] })
   usarSesion.getState().limpiar()
@@ -330,6 +339,37 @@ describe('imprimir', () => {
 })
 
 describe('el alta', () => {
+  it('con el DNI busca el CUIL en AFIP, y lo deja cargado con el nombre', async () => {
+    entraComo(SESION)
+    padron.porDocumento.mockResolvedValue({
+      cuit: '27123456786',
+      razonSocial: 'PAZ, ANA',
+      tipoPersona: 'fisica',
+      tipoClave: 'CUIL',
+      activo: true,
+      condicionIva: { codigo: 5, fuente: 'afip', motivo: '' },
+      domicilio: null,
+      origen: 'a13',
+    })
+    await montarApp('/rrhh')
+    await screen.findByText('Pérez, Jorge')
+    await userEvent.click(screen.getByRole('button', { name: /Nuevo empleado/ }))
+    const formulario = await screen.findByRole('form', { name: 'Nuevo empleado' })
+
+    await userEvent.selectOptions(within(formulario).getByLabelText('Tipo'), '96')
+    await userEvent.type(within(formulario).getByLabelText('DNI'), '12345678')
+    await userEvent.click(within(formulario).getByRole('button', { name: /Completar con AFIP/ }))
+
+    await waitFor(() =>
+      expect((within(formulario).getByLabelText('CUIL') as HTMLInputElement).value).toBe(
+        '27123456786',
+      ),
+    )
+    expect(padron.porDocumento).toHaveBeenCalledWith({ dni: '12345678' })
+    expect((within(formulario).getByLabelText('Apellido') as HTMLInputElement).value).toBe('PAZ')
+    expect((within(formulario).getByLabelText('Nombre') as HTMLInputElement).value).toBe('ANA')
+  })
+
   it('trae el nombre de AFIP con el CUIL y lo separa en apellido y nombre', async () => {
     entraComo(SESION)
     padron.consultar.mockResolvedValue({
@@ -349,7 +389,7 @@ describe('el alta', () => {
     const formulario = await screen.findByRole('form', { name: 'Nuevo empleado' })
 
     await userEvent.type(within(formulario).getByLabelText('CUIL'), '20123456783')
-    await userEvent.click(within(formulario).getByRole('button', { name: /Traer el nombre/ }))
+    await userEvent.click(within(formulario).getByRole('button', { name: /Completar con AFIP/ }))
 
     expect((within(formulario).getByLabelText('Apellido') as HTMLInputElement).value).toBe('GOMEZ')
     expect((within(formulario).getByLabelText('Nombre') as HTMLInputElement).value).toBe(

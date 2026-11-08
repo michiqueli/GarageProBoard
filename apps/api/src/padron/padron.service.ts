@@ -4,6 +4,9 @@ import { Inject, Injectable } from '@nestjs/common'
 export const PADRON = Symbol('PADRON')
 
 /** Doce horas: lo que un contribuyente tarda en cambiar de condición es mucho más. */
+/** Ese DNI tiene más de un CUIT o CUIL en AFIP. */
+export class DocumentoAmbiguo extends Error {}
+
 const DURACION_MS = 12 * 60 * 60 * 1000
 const MAXIMO = 2000
 
@@ -37,5 +40,13 @@ export class ServicioConsultaPadron {
     }
     this.memoria.set(cuit, { valor, vence: Date.now() + DURACION_MS })
     return valor
+  }
+
+  /** Del DNI al CUIL, y de ahí a sus datos. Si hay más de uno no se elige: se pide el CUIL. */
+  async porDocumento(dni: string): Promise<Contribuyente | null> {
+    const cuits = await this.padron.cuitsDeDocumento(dni)
+    if (cuits.length > 1) throw new DocumentoAmbiguo()
+    const [cuit] = cuits
+    return cuit ? this.consultar(cuit) : null
   }
 }

@@ -30,6 +30,11 @@ const SOCIEDAD: Contribuyente = {
   origen: 'constancia',
 }
 
+const cuitsDeDocumento = vi.fn<ServicioPadron['cuitsDeDocumento']>(async (dni) => {
+  if (dni === '12345678') return ['30712345671']
+  if (dni === '22222222') return ['20222222223', '27222222224']
+  return []
+})
 const consultar = vi.fn<ServicioPadron['consultar']>(async (cuit) => {
   if (cuit === SOCIEDAD.cuit) return SOCIEDAD
   if (cuit === '30719876540') throw new PadronNoDisponible(new Error('connect ETIMEDOUT'))
@@ -41,7 +46,9 @@ let app: NestFastifyApplication
 let access: string
 
 beforeAll(async () => {
-  api = await levantarApi((m) => m.overrideProvider(PADRON).useValue({ consultar }))
+  api = await levantarApi((m) =>
+    m.overrideProvider(PADRON).useValue({ consultar, cuitsDeDocumento }),
+  )
   app = api.app
   await sembrarConcesionaria(api.pg.dbDuenio, { slug: 'padron', email: 'gerente@padron.test' })
   const r = await app.inject({
@@ -103,5 +110,33 @@ describe('el padrón', () => {
   it('sin sesión no se consulta', async () => {
     const r = await app.inject({ method: 'GET', url: '/api/padron/30712345671' })
     expect(r.statusCode).toBe(401)
+  })
+})
+
+describe('por DNI', () => {
+  async function pedirDni(dni: string) {
+    const entrada = await app.inject({
+      method: 'POST',
+      url: '/api/auth/iniciar',
+      payload: { email: 'gerente@padron.test', password: CLAVE, entrega: 'cuerpo' },
+    })
+    return app.inject({
+      method: 'GET',
+      url: `/api/padron/dni/${dni}`,
+      headers: { authorization: `Bearer ${entrada.json().access}` },
+    })
+  }
+
+  it('busca el CUIL y devuelve sus datos', async () => {
+    const r = await pedirDni('12345678')
+    expect(r.statusCode, r.body).toBe(200)
+    expect(r.json().cuit).toBe('30712345671')
+  })
+
+  it('si no existe lo dice, y si hay dos no elige', async () => {
+    expect((await pedirDni('11111111')).statusCode).toBe(404)
+    const dos = await pedirDni('22222222')
+    expect(dos.statusCode).toBe(409)
+    expect(dos.json().code).toBe('DNI_AMBIGUO')
   })
 })

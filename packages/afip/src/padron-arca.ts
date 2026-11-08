@@ -82,5 +82,16 @@ export function crearPadronArca(config: ConfiguracionPadron): ServicioPadron {
         throw new PadronNoDisponible(error)
       }
     },
+
+    async cuitsDeDocumento(dni: string): Promise<string[]> {
+      try {
+        const r = await arca.registerScopeThirteenService.getTaxIDByDocument(dni)
+        // Con un solo resultado, el SOAP lo devuelve suelto y no como lista.
+        return [r?.idPersona ?? []].flat().map(String)
+      } catch (error) {
+        if (esInexistente(error)) return []
+        throw new PadronNoDisponible(error)
+      }
+    },
   }
 }

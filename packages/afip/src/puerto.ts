@@ -138,4 +138,6 @@ export interface ServicioFiscal {
 export interface ServicioPadron {
   /** `null` si AFIP no lo encuentra en ningún padrón. */
   consultar(cuit: string): Promise<Contribuyente | null>
+  /** Los CUIT o CUIL de un DNI. Casi siempre uno; ninguno si AFIP no lo conoce. */
+  cuitsDeDocumento(dni: string): Promise<string[]>
 }
