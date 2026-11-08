@@ -33,3 +33,6 @@ pnpm-debug.log*
 # artefactos de compilacion incremental de TypeScript
 *.tsbuildinfo
 
+
+# Lo que se publica de la landing: sale de apps/landing/dist
+infra/produccion/landing/

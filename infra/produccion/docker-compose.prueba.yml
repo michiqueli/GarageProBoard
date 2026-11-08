@@ -1,0 +1,22 @@
+# Para ensayar el circuito en una máquina cualquiera, sin R2: el repositorio de pgBackRest es una
+# carpeta. Lo usa `ensayar-backup.sh`. Nunca se levanta en el VPS.
+name: gpb-ensayo
+
+services:
+  postgres:
+    container_name: gpb-ensayo-pg
+    environment:
+      PGBACKREST_REPO1_TYPE: posix
+      PGBACKREST_REPO1_PATH: /repo
+      # pgBackRest rechaza una variable definida y vacía, aunque el repositorio no sea S3.
+      PGBACKREST_REPO1_S3_ENDPOINT: !reset null
+      PGBACKREST_REPO1_S3_REGION: !reset null
+      PGBACKREST_REPO1_S3_BUCKET: !reset null
+      PGBACKREST_REPO1_S3_KEY: !reset null
+      PGBACKREST_REPO1_S3_KEY_SECRET: !reset null
+      PGBACKREST_REPO1_S3_URI_STYLE: !reset null
+    volumes:
+      - repo:/repo
+
+volumes:
+  repo:

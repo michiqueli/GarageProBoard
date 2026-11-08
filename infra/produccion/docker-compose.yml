@@ -1,0 +1,89 @@
+# La instalación de producción, en el VPS. Se levanta desde esta carpeta con su `.env`, que no se
+# versiona: ver `.env.example` y docs/tecnicos/produccion-y-backups.md.
+name: gpb-prod
+
+services:
+  postgres:
+    build: ./postgres
+    image: gpb-postgres:18
+    container_name: gpb-prod-pg
+    restart: unless-stopped
+    # Sin `ports`: a la base se llega sólo desde adentro de esta red.
+    environment:
+      POSTGRES_USER: gpb
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?falta POSTGRES_PASSWORD}
+      POSTGRES_DB: gpb
+      POSTGRES_INITDB_ARGS: "--encoding=UTF8 --locale-provider=icu --icu-locale=es-AR"
+      TZ: America/Argentina/Buenos_Aires
+      # pgBackRest toma su configuración de estas variables: no hay secretos en un archivo.
+      PGBACKREST_STANZA: gpb
+      PGBACKREST_PG1_PATH: /var/lib/postgresql/18/docker
+      PGBACKREST_PG1_USER: gpb
+      PGBACKREST_LOG_LEVEL_FILE: "off"
+      PGBACKREST_LOG_LEVEL_CONSOLE: info
+      PGBACKREST_START_FAST: "y"
+      PGBACKREST_REPO1_TYPE: ${PGBACKREST_REPO1_TYPE:-s3}
+      PGBACKREST_REPO1_PATH: /postgres
+      PGBACKREST_REPO1_S3_ENDPOINT: ${R2_ENDPOINT:-}
+      PGBACKREST_REPO1_S3_REGION: auto
+      PGBACKREST_REPO1_S3_BUCKET: ${R2_BUCKET_BACKUPS:-}
+      PGBACKREST_REPO1_S3_KEY: ${R2_ACCESS_KEY:-}
+      PGBACKREST_REPO1_S3_KEY_SECRET: ${R2_SECRET_KEY:-}
+      PGBACKREST_REPO1_S3_URI_STYLE: path
+      # Un backup completo por semana y los últimos cuatro; con el WAL se vuelve a cualquier
+      # momento de ese mes.
+      PGBACKREST_REPO1_RETENTION_FULL: "4"
+      # Salen del VPS cifrados: en R2 no se puede leer un comprobante ni con la cuenta abierta.
+      PGBACKREST_REPO1_CIPHER_TYPE: aes-256-cbc
+      PGBACKREST_REPO1_CIPHER_PASS: ${PGBACKREST_CIPHER_PASS:?falta PGBACKREST_CIPHER_PASS}
+    command:
+      - postgres
+      - -c
+      - wal_level=replica
+      - -c
+      - archive_mode=on
+      - -c
+      - archive_command=pgbackrest --stanza=gpb archive-push %p
+      # Como mucho cinco minutos de WAL sin subir: es lo máximo que se pierde si se quema el VPS.
+      - -c
+      - archive_timeout=300
+    volumes:
+      - pgdata:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U gpb -d gpb"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:8-alpine
+    container_name: gpb-prod-redis
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - redisdata:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  # La landing y, cuando se publique la aplicación, su proxy. Cloudflare va adelante.
+  caddy:
+    image: caddy:2-alpine
+    container_name: gpb-prod-caddy
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - ./landing:/srv/landing:ro
+      - caddydata:/data
+      - caddyconfig:/config
+
+volumes:
+  pgdata:
+  redisdata:
+  caddydata:
+  caddyconfig:

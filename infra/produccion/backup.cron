@@ -1,0 +1,13 @@
+# Copiar a /etc/cron.d/gpb-backup y ajustar la ruta. Horas de Argentina, si el VPS está en esa zona.
+# Fuera del horario de los talleres. Lo del WAL no está acá: sale solo, cada cinco minutos como mucho.
+RUTA=/opt/garageproboard/infra/produccion
+
+# Completo los domingos, diferencial el resto.
+30 2 * * 0   root $RUTA/respaldar.sh completo >> /var/log/gpb-backup.log 2>&1
+30 2 * * 1-6 root $RUTA/respaldar.sh diario   >> /var/log/gpb-backup.log 2>&1
+
+# Firmas, fotos y dibujos: cada hora.
+10 * * * *   root $RUTA/respaldar.sh archivos >> /var/log/gpb-backup.log 2>&1
+
+# El primero de cada mes se restaura de verdad. Si esto falla, los backups no sirven.
+0 5 1 * *    root $RUTA/respaldar.sh probar   >> /var/log/gpb-backup.log 2>&1
