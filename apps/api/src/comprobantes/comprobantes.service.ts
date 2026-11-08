@@ -24,6 +24,7 @@ import {
   provincia,
   puntoVenta,
   reglaComprobante,
+  sucursal,
   tipoComprobante,
   usuario,
 } from '@gpb/db/schema'
@@ -37,6 +38,7 @@ import { DatosDelTenant } from '../comun/datos.ts'
 import { CajaFuerte } from '../comun/secretos.ts'
 import { CORREO, FISCAL } from '../comun/simbolos.ts'
 import { ServicioConsultaPadron } from '../padron/padron.service.ts'
+import { armarCorreoComprobante } from './correo-comprobante.ts'
 import { aImpresion } from './impresion.ts'
 
 type Codigo =
@@ -204,15 +206,17 @@ export class ServicioComprobantes {
     try {
       await this.correo.enviar({
         para,
-        asunto: `${titulo} de ${datos.emisor.nombreFantasia ?? datos.emisor.razonSocial}`,
-        texto: [
-          `Hola, ${d.receptorNombre}:`,
-          '',
-          `Te enviamos la ${titulo} por $ ${Number(d.importeTotal).toLocaleString('es-AR', { minimumFractionDigits: 2 })}, emitida el ${d.fecha.split('-').reverse().join('/')}.`,
-          'Va adjunta en PDF.',
-          '',
-          datos.emisor.nombreFantasia ?? datos.emisor.razonSocial,
-        ].join('\n'),
+        ...armarCorreoComprobante({
+          titulo,
+          receptor: d.receptorNombre,
+          sucursal: datos.sucursal,
+          razonSocial: datos.emisor.razonSocial,
+          cuit: datos.emisor.cuit,
+          fecha: d.fecha,
+          total: d.importeTotal,
+          cae: d.cae as string,
+        }),
+        nombreRemitente: datos.sucursal,
         adjuntos: [{ nombre, contenido: bytes, tipo: 'application/pdf' }],
       })
     } catch (error) {
@@ -898,7 +902,18 @@ export class ServicioComprobantes {
         .from(condicionIva)
         .where(eq(condicionIva.codigo, d.receptorCondicionIva))
       if (!e) throw new ErrorComprobantes('NO_ENCONTRADO')
-      return { comprobante: d, emisor: e, condicionReceptor: receptorCondicion?.descripcion ?? '' }
+      const [lugar] = await tx
+        .select({ nombre: sucursal.nombre })
+        .from(comprobante)
+        .innerJoin(puntoVenta, eq(puntoVenta.id, comprobante.puntoVentaId))
+        .innerJoin(sucursal, eq(sucursal.id, puntoVenta.sucursalId))
+        .where(eq(comprobante.id, id))
+      return {
+        comprobante: d,
+        emisor: e,
+        condicionReceptor: receptorCondicion?.descripcion ?? '',
+        sucursal: lugar?.nombre ?? e.nombreFantasia ?? e.razonSocial,
+      }
     })
   }
 

@@ -10,6 +10,10 @@ export interface Mensaje {
   para: string
   asunto: string
   texto: string
+  /** La versión con formato. El texto queda para quien no la pueda ver. */
+  html?: string | undefined
+  /** El nombre que ve quien lo recibe. La dirección sigue siendo la del remitente configurado. */
+  nombreRemitente?: string | undefined
   adjuntos?: Adjunto[] | undefined
 }
 
@@ -47,14 +51,17 @@ export function crearCorreoSmtp(
     return { enviar: () => Promise.reject(new CorreoNoConfigurado()) }
   }
   const transporte = createTransport(url)
+  const origen = remitente ?? 'GarageProBoard <no-responder@garageproboard.com>'
+  const direccion = origen.match(/<([^>]+)>/)?.[1] ?? origen
   return {
     async enviar(m) {
       try {
         await transporte.sendMail({
-          from: remitente ?? 'GarageProBoard <no-responder@garageproboard.com>',
+          from: m.nombreRemitente ? { name: m.nombreRemitente, address: direccion } : origen,
           to: m.para,
           subject: m.asunto,
           text: m.texto,
+          ...(m.html ? { html: m.html } : {}),
           attachments: (m.adjuntos ?? []).map((a) => ({
             filename: a.nombre,
             content: Buffer.from(a.contenido),
