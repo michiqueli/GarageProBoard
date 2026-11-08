@@ -15,7 +15,7 @@ import {
 } from 'drizzle-orm/pg-core'
 import { actualizadoEn, creadoEn, pk, tenantId } from './_comunes.ts'
 import { usuario } from './acceso.ts'
-import { entidadComercial } from './comercial.ts'
+import { entidadComercial, proveedor } from './comercial.ts'
 import { empresa, sucursal } from './organizacion.ts'
 import { tenant } from './tenant.ts'
 import { vehiculo } from './vehiculo.ts'
@@ -168,5 +168,57 @@ export const unidadMovimiento = pgTable(
       'unidad_movimiento_tipo_valido',
       sql`${t.tipo} in ('ingreso', 'traslado', 'reserva', 'liberacion', 'precio', 'retiro')`,
     ),
+  ],
+)
+
+/** En qué se gasta una unidad. Cada concesionaria apaga las que no usa y suma las suyas. */
+export const unidadCategoria = pgTable(
+  'unidad_categoria',
+  {
+    id: pk(),
+    tenantId: tenantId().references(() => tenant.id),
+    nombre: text().notNull(),
+    activo: boolean().notNull().default(true),
+    creadoEn: creadoEn(),
+    actualizadoEn: actualizadoEn(),
+  },
+  (t) => [uniqueIndex('unidad_categoria_uq').on(t.tenantId, sql`lower(${t.nombre})`)],
+)
+
+/**
+ * Lo que costó una unidad, renglón por renglón: la compra, los gastos y las bonificaciones. Si el
+ * flete y la patente vivieran en otro lado, el margen sería un número inventado. No se modifica:
+ * se anula, con motivo.
+ */
+export const unidadConcepto = pgTable(
+  'unidad_concepto',
+  {
+    id: pk(),
+    tenantId: tenantId().references(() => tenant.id),
+    unidadId: uuid()
+      .notNull()
+      .references(() => unidad.id),
+    tipo: text().notNull(),
+    categoriaId: uuid().references(() => unidadCategoria.id),
+    descripcion: text().notNull(),
+    proveedorId: uuid().references(() => proveedor.id),
+    comprobante: text(),
+    fecha: date().notNull().default(sql`current_date`),
+    importe: numeric({ precision: 18, scale: 2 }).notNull(),
+    moneda: text().notNull(),
+    /** Pesos por dólar, cuando está en otra moneda que la unidad. */
+    cotizacion: numeric({ precision: 18, scale: 4 }),
+    anuladoEn: timestamp({ withTimezone: true }),
+    anuladoPor: uuid().references(() => usuario.id),
+    anulacionMotivo: text(),
+    creadoEn: creadoEn(),
+    creadoPor: uuid().references(() => usuario.id),
+  },
+  (t) => [
+    index('unidad_concepto_unidad_idx').on(t.unidadId, t.fecha),
+    check('unidad_concepto_tipo_valido', sql`${t.tipo} in ('compra', 'gasto', 'bonificacion')`),
+    check('unidad_concepto_importe_positivo', sql`${t.importe} > 0`),
+    check('unidad_concepto_moneda_valida', sql`${t.moneda} in ('ARS', 'USD')`),
+    check('unidad_concepto_cotizacion_valida', sql`${t.cotizacion} is null or ${t.cotizacion} > 0`),
   ],
 )

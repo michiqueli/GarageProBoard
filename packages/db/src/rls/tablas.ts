@@ -30,6 +30,8 @@ export const TABLAS_CON_TENANT = [
   'unidad',
   'unidad_reserva',
   'unidad_movimiento',
+  'unidad_categoria',
+  'unidad_concepto',
   'repuesto',
   'repuesto_stock',
   'repuesto_codigo_barras',

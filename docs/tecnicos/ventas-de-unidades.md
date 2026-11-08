@@ -66,8 +66,20 @@ Con una reserva que bloquea, **pasarla por encima** es una excepción: pide la a
 Las reservas vencen solas al consultarlas, con la fecha de Argentina: un trabajo programado tendría
 que recorrer todas las concesionarias, que es lo que RLS le impide al rol de la aplicación.
 
-## Lo que todavía no está en el paso 1
+## Paso 2: lo que costó
+
+Cada unidad junta su compra, sus gastos y sus bonificaciones, renglón por renglón. Si el flete y la
+patente vivieran en otro lado, el margen sería un número inventado.
+
+- **Es optativo.** Quien no carga nada no ve números.
+- **Es un permiso aparte**, `CostoUnidad`: el que vende no tiene por qué saber cuánto se pagó. El
+  gerente lo tiene; a los demás se lo da cada concesionaria en Roles.
+- **Las categorías de gasto** se apagan y se suman en Stock → Configuración.
+- **Cada renglón tiene su moneda.** Si no es la de la unidad, lleva cotización en pesos por dólar;
+  sin ella no entra en la suma, y la ficha lo dice. Un total inventado es peor que uno incompleto.
+- **No se modifica ni se borra**: se anula con motivo, y sigue a la vista.
+
+## Lo que todavía no está
 
 - Generar el comprobante del traslado: por ahora se anota su número.
-- El costo de la unidad, que llega con los gastos en el paso 2.
 - Vender: la unidad pasa a vendida con el paso 3.

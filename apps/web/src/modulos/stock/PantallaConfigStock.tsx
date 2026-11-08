@@ -12,6 +12,7 @@ import { usarSesion } from '../../sesion/almacen.ts'
 import { api } from '../../sesion/cliente.ts'
 import { mensajeGeneral } from '../../sesion/consultas.ts'
 import { useAtajo, useCambiosSinGuardar, useVolver } from '../../teclado/index.ts'
+import { CategoriasDeGasto } from './CategoriasDeGasto.tsx'
 
 /** Cada concesionaria trabaja distinto: lo que varía se elige acá. */
 export function PantallaConfigStock() {
@@ -34,6 +35,7 @@ export function PantallaConfigStock() {
         </p>
       )}
       {consulta.data && <Formulario inicial={consulta.data} />}
+      {consulta.data && <CategoriasDeGasto />}
     </Shell>
   )
 }

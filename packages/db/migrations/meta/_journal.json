@@ -323,6 +323,13 @@
       "when": 1794172984198,
       "tag": "0045_stock_de_unidades",
       "breakpoints": true
+    },
+    {
+      "idx": 46,
+      "version": "7",
+      "when": 1794175718648,
+      "tag": "0046_costos_de_unidad",
+      "breakpoints": true
     }
   ]
 }

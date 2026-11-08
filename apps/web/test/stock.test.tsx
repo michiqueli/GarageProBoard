@@ -18,6 +18,7 @@ const cartera = {
   retirar: vi.fn(),
 }
 const listarClientes = vi.fn()
+const costos = { ver: vi.fn(), agregar: vi.fn(), anular: vi.fn(), categorias: vi.fn() }
 const renovar = vi.fn()
 
 vi.mock('../src/sesion/cliente.ts', () => ({
@@ -25,6 +26,12 @@ vi.mock('../src/sesion/cliente.ts', () => ({
     auth: { iniciar: vi.fn(), cerrar: vi.fn().mockResolvedValue({}), cambiarSucursal: vi.fn() },
     clientes: { listar: (x: unknown) => listarClientes(x) },
     vehiculos: { listar: vi.fn().mockResolvedValue({ datos: [], total: 0 }) },
+    costosUnidad: {
+      ver: (x: unknown) => costos.ver(x),
+      agregar: (x: unknown) => costos.agregar(x),
+      anular: (x: unknown) => costos.anular(x),
+      categorias: () => costos.categorias(),
+    },
     cartera: Object.fromEntries(
       Object.keys(cartera).map((n) => [
         n,
@@ -86,6 +93,17 @@ const FICHA = {
   ],
 }
 
+const TOTALES_VACIOS = {
+  compra: '0.00',
+  gastos: '0.00',
+  bonificaciones: '0.00',
+  costo: '0.00',
+  margen: '35000.00',
+  margenPorcentaje: null,
+  sinConvertir: 0,
+}
+const SIN_COSTOS = { moneda: 'USD', precio: '35000.00', conceptos: [], totales: TOTALES_VACIOS }
+
 function entraComo(sesion: typeof SESION) {
   renovar.mockImplementation(async () => {
     usarSesion.getState().establecer(sesion)
@@ -94,7 +112,11 @@ function entraComo(sesion: typeof SESION) {
 }
 
 beforeEach(() => {
-  for (const f of [...Object.values(cartera), listarClientes, renovar]) f.mockReset()
+  for (const f of [...Object.values(cartera), ...Object.values(costos), listarClientes, renovar]) {
+    f.mockReset()
+  }
+  costos.ver.mockResolvedValue(SIN_COSTOS)
+  costos.categorias.mockResolvedValue({ datos: [{ id: 'k1', nombre: 'Flete', activo: true }] })
   usarSesion.getState().limpiar()
   cartera.config.mockResolvedValue(POR_OMISION)
   cartera.listar.mockResolvedValue({ datos: [UNIDAD], total: 1 })
@@ -202,6 +224,81 @@ describe('reservar', () => {
     await waitFor(() =>
       expect(cartera.reservar).toHaveBeenLastCalledWith(
         expect.objectContaining({ pasarPorEncima: 'Pagó el total', clienteId: 'c1' }),
+      ),
+    )
+  })
+})
+
+describe('los costos', () => {
+  it('muestra lo que deja, y avisa lo que no pudo convertir', async () => {
+    costos.ver.mockResolvedValue({
+      ...SIN_COSTOS,
+      conceptos: [
+        {
+          id: 'x1',
+          tipo: 'compra',
+          categoria: null,
+          descripcion: 'Compra a particular',
+          proveedor: null,
+          comprobante: null,
+          fecha: '2026-11-01',
+          importe: '30000.00',
+          moneda: 'USD',
+          cotizacion: null,
+          anulacionMotivo: null,
+        },
+      ],
+      totales: {
+        ...TOTALES_VACIOS,
+        compra: '30000.00',
+        costo: '30000.00',
+        margen: '5000.00',
+        margenPorcentaje: '16.7',
+        sinConvertir: 1,
+      },
+    })
+    await montarApp(`/stock/${ID}`)
+
+    const seccion = await screen.findByRole('region', { name: 'Costos y margen' })
+    expect(await within(seccion).findByText('US$ 5.000,00 · 16.7 %')).toBeDefined()
+    expect(within(seccion).getByText(/no entra en la suma/)).toBeDefined()
+  })
+
+  it('quien no tiene el permiso no ve los costos ni los pide', async () => {
+    entraComo({
+      ...SESION,
+      habilidades: [{ action: ['ver', 'editar'], subject: 'Unidad' }],
+    } as typeof SESION)
+    await montarApp(`/stock/${ID}`)
+
+    await screen.findByRole('region', { name: 'Datos' })
+    expect(screen.queryByRole('region', { name: 'Costos y margen' })).toBeNull()
+    expect(costos.ver).not.toHaveBeenCalled()
+  })
+
+  it('un gasto en otra moneda pide la cotización', async () => {
+    costos.agregar.mockResolvedValue(SIN_COSTOS)
+    await montarApp(`/stock/${ID}`)
+
+    const seccion = await screen.findByRole('region', { name: 'Costos y margen' })
+    await userEvent.click(await within(seccion).findByRole('button', { name: 'Agregar' }))
+    await userEvent.selectOptions(within(seccion).getByLabelText('Qué es'), 'gasto')
+    await userEvent.type(within(seccion).getByLabelText('Descripción'), 'Flete desde fábrica')
+    await userEvent.type(within(seccion).getByLabelText('Importe'), '150000')
+    await userEvent.selectOptions(within(seccion).getByLabelText('Moneda'), 'ARS')
+    await userEvent.type(within(seccion).getByLabelText('Cotización'), '1000')
+    await userEvent.click(
+      within(seccion).getAllByRole('button', { name: 'Agregar' })[0] as HTMLElement,
+    )
+
+    await waitFor(() =>
+      expect(costos.agregar).toHaveBeenCalledWith(
+        expect.objectContaining({
+          tipo: 'gasto',
+          importe: '150000',
+          moneda: 'ARS',
+          cotizacion: '1000',
+        }),
       ),
     )
   })

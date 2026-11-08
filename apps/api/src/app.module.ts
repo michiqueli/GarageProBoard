@@ -6,6 +6,7 @@ import { ControladorAuditoria } from './auditoria/auditoria.controller.ts'
 import { ServicioAuditoria } from './auditoria/auditoria.service.ts'
 import { ModuloAuth } from './auth/auth.module.ts'
 import { ControladorCartera, ServicioCartera } from './cartera/cartera.ts'
+import { ControladorCostosUnidad, ServicioCostosUnidad } from './cartera/costos.ts'
 import { ControladorCertificados } from './certificados/certificados.controller.ts'
 import { ServicioCertificados } from './certificados/certificados.service.ts'
 import { ControladorClientes } from './clientes/clientes.controller.ts'
@@ -107,6 +108,7 @@ import { ServicioVehiculos } from './vehiculos/vehiculos.service.ts'
     ControladorFotos,
     ControladorMotivosEspera,
     ControladorCartera,
+    ControladorCostosUnidad,
     ControladorCatalogoServices,
     ControladorPendientes,
     ControladorRepuestos,
@@ -138,6 +140,7 @@ import { ServicioVehiculos } from './vehiculos/vehiculos.service.ts'
     ServicioFotos,
     ServicioMotivosEspera,
     ServicioCartera,
+    ServicioCostosUnidad,
     ServicioCatalogoServices,
     ServicioPendientes,
     ServicioRepuestos,

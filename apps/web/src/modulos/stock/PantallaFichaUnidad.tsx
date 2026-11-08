@@ -17,6 +17,7 @@ import { api } from '../../sesion/cliente.ts'
 import { mensajeGeneral } from '../../sesion/consultas.ts'
 import { useAutorizacion, usePuedeUsar } from '../../sesion/permisos.ts'
 import { useVolver } from '../../teclado/index.ts'
+import { CostosDeUnidad } from './CostosDeUnidad.tsx'
 import {
   CONDICION,
   EstadoUnidad,
@@ -253,6 +254,10 @@ export function PantallaFichaUnidad() {
               />
             </div>
           )}
+
+          <div className="md:col-span-2">
+            <CostosDeUnidad id={u.id} />
+          </div>
 
           <div className="md:col-span-2">
             <Bloque titulo="Historia">

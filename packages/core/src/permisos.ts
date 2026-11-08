@@ -62,6 +62,7 @@ export const SUJETOS = [
   'Visita',
   'Turno',
   'Unidad',
+  'CostoUnidad',
   'all',
 ] as const
 
@@ -103,6 +104,7 @@ const SUSTANTIVOS: Record<Sujeto, string> = {
   Visita: 'las visitas de la recepción',
   Turno: 'los turnos del taller',
   Unidad: 'el stock de unidades',
+  CostoUnidad: 'lo que costó cada unidad',
   all: 'todo el sistema',
 }
 

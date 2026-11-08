@@ -743,6 +743,8 @@ const NOMBRE_TABLA: Record<string, string> = {
   unidad: 'una unidad del stock',
   unidad_reserva: 'una reserva de una unidad',
   cartera_config: 'cómo trabaja el stock',
+  unidad_categoria: 'una categoría de gasto',
+  unidad_concepto: 'un costo de una unidad',
   marca: 'la marca',
   modelo: 'el modelo',
   vehiculo: 'el vehículo',

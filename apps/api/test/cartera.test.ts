@@ -91,7 +91,7 @@ const configurar = (parcial: object) =>
 beforeAll(async () => {
   api = await levantarApi()
   app = api.app
-  const vehiculos = Array.from({ length: 14 }, (_, i) => ({
+  const vehiculos = Array.from({ length: 20 }, (_, i) => ({
     chasis: `8AJFB8CD5N12345${String(i).padStart(2, '0')}`,
     dominio: `AE${String(100 + i)}BC`,
   }))
@@ -99,7 +99,10 @@ beforeAll(async () => {
     slug: 'cartera',
     email: 'gerente@cartera.test',
     sucursales: ['Central', 'Norte'],
-    otros: [{ email: 'asesor@cartera.test', rol: 'Asesor de servicios' }],
+    otros: [
+      { email: 'asesor@cartera.test', rol: 'Asesor de servicios' },
+      { email: 'vendedor@cartera.test', rol: 'Vendedor' },
+    ],
     vehiculos,
   })
   tenantId = semilla.tenant.id
@@ -224,6 +227,68 @@ describe('el traslado entre razones sociales', () => {
     const u = await ingresar({ sucursalId: central })
     const r = await pedir('POST', `/stock/${u.id}/traslado`, { sucursalId: misma })
     expect(r.statusCode, r.body).toBe(200)
+  })
+})
+
+describe('los costos', () => {
+  const agregar = (id: string, parcial: object) =>
+    pedir('POST', `/stock/${id}/costos`, {
+      tipo: 'gasto',
+      descripcion: 'Flete',
+      importe: '100',
+      moneda: 'USD',
+      ...parcial,
+    })
+
+  it('suma compra y gastos, resta bonificaciones, y calcula lo que deja', async () => {
+    const u = await ingresar({ precio: '1500', moneda: 'USD' })
+    await agregar(u.id, { tipo: 'compra', descripcion: 'Compra', importe: '1000' })
+    await agregar(u.id, { importe: '50' })
+    const r = await agregar(u.id, { tipo: 'bonificacion', descripcion: 'Fábrica', importe: '25' })
+
+    expect(r.statusCode, r.body).toBe(201)
+    expect(r.json().totales).toMatchObject({
+      compra: '1000.00',
+      gastos: '50.00',
+      bonificaciones: '25.00',
+      costo: '1025.00',
+      margen: '475.00',
+    })
+  })
+
+  it('en otra moneda usa la cotización; sin ella no suma y lo dice', async () => {
+    const u = await ingresar({ moneda: 'USD' })
+    const con = await agregar(u.id, { importe: '100000', moneda: 'ARS', cotizacion: '1000' })
+    expect(con.json().totales.gastos).toBe('100.00')
+    const sin = await agregar(u.id, { importe: '5000', moneda: 'ARS' })
+    expect(sin.json().totales).toMatchObject({ gastos: '100.00', sinConvertir: 1 })
+  })
+
+  it('anular deja de sumar, con motivo, y no se anula dos veces', async () => {
+    const u = await ingresar({ moneda: 'USD' })
+    const r = (await agregar(u.id, {})).json()
+    const url = `/stock/${u.id}/costos/${r.conceptos[0].id}/anular`
+
+    const anulado = await pedir('POST', url, { motivo: 'Se cargó dos veces' })
+    expect(anulado.json().totales.gastos).toBe('0.00')
+    expect(anulado.json().conceptos[0].anulacionMotivo).toBe('Se cargó dos veces')
+    expect((await pedir('POST', url, { motivo: 'Se cargó dos veces' })).statusCode).toBe(409)
+  })
+
+  it('las categorías vienen sembradas, y se apagan y se suman', async () => {
+    const primeras = (await pedir('GET', '/stock-categorias')).json().datos
+    expect(primeras.map((c: { nombre: string }) => c.nombre)).toContain('Flete')
+
+    const sumada = await pedir('POST', '/stock-categorias', { nombre: 'Lavado' })
+    expect(sumada.statusCode, sumada.body).toBe(201)
+    expect((await pedir('POST', '/stock-categorias', { nombre: 'lavado' })).statusCode).toBe(409)
+  })
+
+  it('el costo es un permiso aparte: el vendedor ve la unidad y no lo que costó', async () => {
+    const u = await ingresar()
+    const vendedor = await entrar('vendedor@cartera.test')
+    expect((await pedir('GET', `/stock/${u.id}`, undefined, vendedor)).statusCode).toBe(200)
+    expect((await pedir('GET', `/stock/${u.id}/costos`, undefined, vendedor)).statusCode).toBe(403)
   })
 })
 

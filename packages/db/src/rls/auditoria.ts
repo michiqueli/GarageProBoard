@@ -75,6 +75,11 @@ export const TABLAS_AUDITADAS: readonly TablaAuditada[] = [
     nota: 'Cómo trabaja el stock: cambiarlo cambia lo que se puede reservar y trasladar.',
   },
   { tabla: 'unidad' },
+  { tabla: 'unidad_categoria' },
+  {
+    tabla: 'unidad_concepto',
+    nota: 'Lo que costó cada unidad: es de donde sale el margen, y lo que se mira si no cierra.',
+  },
   {
     tabla: 'unidad_reserva',
     nota: 'Quién reservó, con qué seña y quién la liberó o la pasó por encima: es lo que se mira cuando alguien reclama.',

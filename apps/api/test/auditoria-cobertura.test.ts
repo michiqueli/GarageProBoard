@@ -86,6 +86,8 @@ const AUDITAN: readonly string[] = [
   'cartera.reservar',
   'cartera.liberar',
   'cartera.retirar',
+  'costosUnidad.agregar',
+  'costosUnidad.anular',
   'ordenes.terminar',
   'ordenes.entregar',
   'ordenes.reabrir',
@@ -164,6 +166,10 @@ const NO_AUDITAN: Readonly<Record<string, string>> = {
   'hojas.quitar':
     'Marca la imagen propia como reemplazada, y eso es una sola columna que el trigger ya cuenta.',
   'services.previsualizar': 'Mira las filas y contesta: no guarda nada.',
+  'costosUnidad.crearCategoria':
+    'El trigger de unidad_categoria guarda el nombre con quién y cuándo: es todo lo que tiene.',
+  'costosUnidad.editarCategoria':
+    'Cambiar el nombre o apagarla son dos columnas que el trigger ya cuenta.',
   'motivosEspera.crear':
     'El trigger de motivo_espera guarda el motivo entero con quién y cuándo: un nombre es todo lo que tiene.',
   'motivosEspera.editar':
