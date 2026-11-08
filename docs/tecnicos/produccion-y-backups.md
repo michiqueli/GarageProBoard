@@ -77,6 +77,11 @@ Con la base detenida y su volumen vacío:
 
 Para volver a un momento anterior: `--type=time --target="2026-11-08 14:30:00-03" --target-action=promote`.
 
+## La landing
+
+El VPS ya atiende los puertos 80 y 443 con nginx para otros proyectos: la landing es un sitio más,
+en `/var/www/garageproboard`, con `infra/produccion/nginx/garageproboard.conf`.
+
 ## El almacén de archivos
 
 En producción es el **MinIO que ya está en el VPS**, y en desarrollo Garage: a la API le da igual,
@@ -85,4 +90,4 @@ habla S3. Hay que crearle un bucket y una clave propios: el VPS lo comparte con 
 ## Lo que queda
 
 - El aviso cuando un backup o la prueba mensual fallan.
-- Publicar la API y la web: hoy el compose trae la base, Redis y la landing.
+- Publicar la API y la web: hoy el compose trae la base y Redis.
