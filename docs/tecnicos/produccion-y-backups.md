@@ -19,6 +19,15 @@ Todo va a **Cloudflare R2**, en otro proveedor: una copia dentro del VPS se pier
 - **Todo sale cifrado.** La base con AES-256 de pgBackRest, los archivos con `rclone crypt`.
 - **Los archivos son `copy` y no `sync`**: lo que se borre del almacén sigue en la copia.
 
+Dentro del bucket `garageproboard`:
+
+    postgres/          La base entera: es una sola, con todas las concesionarias adentro.
+    archivos/demo/     Los archivos de cada concesionaria, en la carpeta de su slug.
+
+Las carpetas se ven con el nombre del cliente; los nombres de los archivos y su contenido van
+cifrados. Una carpeta aparece con su primer archivo. Cambiarle el slug a una concesionaria abre
+una carpeta nueva.
+
 ## Lo que hay que guardar afuera del VPS
 
 En un gestor de contraseñas, porque **sin esto los backups no sirven**:
@@ -29,7 +38,7 @@ En un gestor de contraseñas, porque **sin esto los backups no sirven**:
 
 ## Poner en marcha
 
-1. En R2, crear el bucket `gpb-backups` y una clave con permiso sólo sobre él.
+1. En R2, una clave con permiso sólo sobre el bucket `garageproboard`.
 2. En el VPS, clonar el repositorio en `/opt/garageproboard`, copiar `.env.example` a `.env`
    (`chmod 600`) y completarlo.
 3. `docker compose up -d --build postgres redis`.

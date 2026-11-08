@@ -16,6 +16,18 @@ pg() { docker exec -u postgres gpb-prod-pg pgbackrest "$@"; }
 archivos() {
   local clave
   clave="$(docker run --rm "$RCLONE" obscure "$ARCHIVOS_CIFRADO_PASS")"
+  # Una carpeta por concesionaria, con su slug: archivos/demo/… Los nombres de carpeta quedan a
+  # la vista para poder encontrar a un cliente; los de los archivos y su contenido van cifrados.
+  local hay id slug
+  hay="$(docker exec gpb-prod-pg psql -U gpb -d gpb -Atc "select to_regclass('public.tenant') is not null")"
+  [ "$hay" = "t" ] || { echo "Todavía no hay concesionarias: nada que copiar."; return 0; }
+  while IFS='|' read -r id slug; do
+    copiar_tenant "$clave" "$id" "$slug"
+  done < <(docker exec gpb-prod-pg psql -U gpb -d gpb -Atc "select id, slug from tenant order by slug")
+}
+
+copiar_tenant() {
+  local clave="$1" id="$2" slug="$3"
   # `copy` y no `sync`: lo que se borre del almacén no se borra de la copia.
   docker run --rm --network host \
     -e RCLONE_CONFIG_ORIGEN_TYPE=s3 \
@@ -32,7 +44,8 @@ archivos() {
     -e RCLONE_CONFIG_CIFRADO_TYPE=crypt \
     -e RCLONE_CONFIG_CIFRADO_REMOTE="r2:$R2_BUCKET_BACKUPS/archivos" \
     -e RCLONE_CONFIG_CIFRADO_PASSWORD="$clave" \
-    "$RCLONE" copy "origen:$ALMACEN_BUCKET" cifrado: --fast-list --transfers 8
+    -e RCLONE_CONFIG_CIFRADO_DIRECTORY_NAME_ENCRYPTION=false \
+    "$RCLONE" copy "origen:$ALMACEN_BUCKET/t/$id" "cifrado:$slug" --fast-list --transfers 8
 }
 
 probar() {

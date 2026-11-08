@@ -455,7 +455,7 @@ puesto por el dispositivo. Por qué no una app ahora y por qué no un usuario co
 
 ---
 
-### Landing y presencia pública ⬜
+### Landing y presencia pública 🔨
 
 **Va antes de lo que parece.** No es sólo hacer ruido: Mercado Pago y Meta —y casi cualquier
 plataforma donde haya que registrar una aplicación— piden una **URL del producto** con
@@ -465,10 +465,10 @@ esto**, no por código.
 
 Y cuanto antes esté, antes empieza a indexar: la competencia lleva treinta años de dominio.
 
-- ⬜ Landing de **GarageProBoard** con qué es, para quién y los módulos. La marca se presentó
+- 🔨 Hecha el 08/11/2026, falta publicarla. Landing de **GarageProBoard** con qué es, para quién y los módulos. La marca se presentó
       en el INPI el 16/09/2026
-- ⬜ Dominio propio y correo de contacto en ese dominio
-- ⬜ **Política de privacidad y términos y condiciones.** Es el requisito formal de Meta y de
+- 🔨 Dominio propio comprado. Falta el correo de contacto en ese dominio
+- 🔨 Borrador escrito; faltan los datos del titular y que los revise un abogado. **Política de privacidad y términos y condiciones.** Es el requisito formal de Meta y de
       Mercado Pago, y además vamos a tratar datos de terceros —clientes de la concesionaria—
       con obligación de conservación
 - ⬜ Capturas de verdad del sistema. Las tres pantallas que más venden hoy: la orden de
@@ -496,13 +496,9 @@ tenemos ninguna pensada más allá de AFIP.
 Cosas que sabemos que faltan, para que no se descubran de golpe:
 
 
-- **Backups de Postgres antes del primer cliente en producción.** Pendiente de decidir dónde
-  corre producción; si no, se arma y se prueba el circuito en local primero. Vamos a guardar
-  comprobantes fiscales de terceros con obligación legal de conservación. `pgBackRest`
-  o `wal-g` contra un bucket S3-compatible, con restauración **probada**, no solo
-  configurada. Un VPS autogestionado sin backup probado es la forma de perder el
-  negocio en una tarde. **El almacén S3 entra en el mismo backup**: desde octubre guarda las
-  firmas de los clientes, las fotos del vehículo y los dibujos de cada hoja.
+- **Backups**: construidos el 08/11/2026 y restaurados en un ensayo: la base con su WAL y los
+  archivos, cifrados, a Cloudflare R2. Falta ponerlos en marcha en el VPS, restaurar una vez desde
+  R2 y que avisen si fallan. Ver [producción y backups](../tecnicos/produccion-y-backups.md).
 - **Los dibujos de VW por omisión** son capturas, puestas el 13/10/2026 con un «después vemos
   de cambiarlas». Antes de venderle a otra marca hacen falta imágenes con licencia comercial.
 - **La suite de la API falló a ratos y no se pudo reproducir**: siete corridas en verde el
