@@ -152,9 +152,9 @@ Las entidades ya están modeladas; falta poder operarlas.
       transferencia de titular que cierra la anterior sin borrarla
 - ✅ Búsqueda única en el encabezado (`F3`): por patente, por chasis, por cliente, por CUIT,
       cada grupo según los permisos de quien busca
-- 🔨 Ficha del vehículo con su historia: titulares anteriores con sus fechas y los cambios
-      contados en palabras. Faltan las órdenes de trabajo: el taller ya existe, y la ficha
-      todavía no las muestra
+- ✅ Ficha del vehículo con su historia: titulares anteriores con sus fechas, los cambios
+      contados en palabras y las órdenes de trabajo de todas las sucursales, cada una con quién
+      era el titular entonces
 - ✅ **Patrón de listado responsive** resuelto en la pantalla de OT: tabla densa en
       escritorio, tarjetas en teléfono, eligiendo cuál renderizar en vez de ocultar
       una con CSS.

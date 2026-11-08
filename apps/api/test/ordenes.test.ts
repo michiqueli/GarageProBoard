@@ -6,6 +6,7 @@ import {
   marca,
   modelo,
   orden,
+  sucursal,
   titularidad,
   usuario,
   vehiculo,
@@ -35,6 +36,8 @@ let otroVehiculoId: string
 let pickupId: string
 let modeloId: string
 let titularId: string
+let tenantId: string
+let empresaId: string
 
 beforeAll(async () => {
   api = await levantarApi()
@@ -49,7 +52,8 @@ beforeAll(async () => {
     ],
   })
   const db = api.pg.dbDuenio
-  const tenantId = semilla.tenant.id
+  tenantId = semilla.tenant.id
+  empresaId = semilla.empresa.id
   const autos = await db.select().from(vehiculo).where(eq(vehiculo.tenantId, tenantId))
   vehiculoId = autos.find((a) => a.dominio === 'AE123BC')?.id as string
   otroVehiculoId = autos.find((a) => a.dominio === 'AB123CD')?.id as string
@@ -259,6 +263,49 @@ describe('la recepción', () => {
     expect(porPatente.datos.map((o: { numero: number }) => o.numero)).toEqual([1])
     const porNumero = (await pedir(gerente, 'GET', '/ordenes?buscar=0002')).json()
     expect(porNumero.datos.map((o: { numero: number }) => o.numero)).toEqual([2])
+  })
+
+  it('las órdenes de un auto son las de todas las sucursales, y sólo las de ese auto', async () => {
+    const db = api.pg.dbDuenio
+    const [norte] = await db
+      .insert(sucursal)
+      .values({ tenantId, empresaId, nombre: 'Norte' })
+      .returning()
+    const [antes] = await db.select().from(orden).where(eq(orden.id, ordenId))
+    await db
+      .update(orden)
+      .set({ sucursalId: norte?.id as string })
+      .where(eq(orden.id, ordenId))
+
+    try {
+      const delAuto = (
+        await pedir(gerente, 'GET', `/ordenes?estado=todas&vehiculoId=${vehiculoId}`)
+      ).json()
+      expect(delAuto.total).toBe(1)
+      expect(delAuto.datos[0]).toMatchObject({ id: ordenId, sucursal: 'Norte' })
+
+      // Sin el vehículo, el listado sigue siendo el de la sucursal activa.
+      const deLaSucursal = (await pedir(gerente, 'GET', '/ordenes?estado=todas')).json()
+      expect(deLaSucursal.datos.map((o: { id: string }) => o.id)).not.toContain(ordenId)
+    } finally {
+      await db
+        .update(orden)
+        .set({ sucursalId: antes?.sucursalId as string })
+        .where(eq(orden.id, ordenId))
+    }
+  })
+
+  it('el auto de otra concesionaria no trae órdenes', async () => {
+    const ajena = await sembrarConcesionaria(api.pg.dbDuenio, {
+      slug: 'ordenes-ajena',
+      email: 'gerente@ajena.test',
+      vehiculos: [{ chasis: '8AJFB8CD5N7777777', dominio: 'AA111BB' }],
+    })
+    expect(ajena.tenant.id).not.toBe(tenantId)
+    const otro = await entrar('gerente@ajena.test')
+
+    const r = (await pedir(otro, 'GET', `/ordenes?estado=todas&vehiculoId=${vehiculoId}`)).json()
+    expect(r).toMatchObject({ total: 0, datos: [] })
   })
 })
 

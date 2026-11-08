@@ -275,13 +275,16 @@ export class ServicioOrdenes {
     pagina: number
     porPagina: number
     buscar?: string | undefined
+    vehiculoId?: string | undefined
     estado: EstadoOrden | 'en_taller' | 'para_entregar' | 'todas'
   }) {
     return this.datos.transaccion(async (tx, sesion) => {
       const texto = filtro.buscar?.trim()
       const compacto = texto?.toUpperCase().replace(/[\s-]/g, '')
       const condiciones = [
-        eq(orden.sucursalId, sesion.sucursalId),
+        filtro.vehiculoId
+          ? eq(orden.vehiculoId, filtro.vehiculoId)
+          : eq(orden.sucursalId, sesion.sucursalId),
         filtro.estado === 'todas'
           ? undefined
           : filtro.estado === 'en_taller'
@@ -1752,12 +1755,14 @@ export class ServicioOrdenes {
     const filas = await tx
       .select({
         o: orden,
+        sucursal: sucursal.nombre,
         dominio: vehiculo.dominio,
         chasis: vehiculo.chasis,
         marca: marca.nombre,
         modelo: modelo.nombre,
       })
       .from(orden)
+      .innerJoin(sucursal, eq(sucursal.id, orden.sucursalId))
       .innerJoin(vehiculo, eq(vehiculo.id, orden.vehiculoId))
       .leftJoin(modelo, eq(modelo.id, vehiculo.modeloId))
       .leftJoin(marca, eq(marca.id, modelo.marcaId))
@@ -1817,6 +1822,7 @@ export class ServicioOrdenes {
         id: f.o.id,
         numero: f.o.numero,
         estado: f.o.estado as EstadoOrden,
+        sucursal: f.sucursal,
         vehiculo: {
           id: f.o.vehiculoId,
           dominio: f.dominio,

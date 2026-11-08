@@ -14,7 +14,7 @@ import { Shell } from '../../componentes/Shell.tsx'
 import { usarSesion } from '../../sesion/almacen.ts'
 import { api } from '../../sesion/cliente.ts'
 import { usePuedeUsar } from '../../sesion/permisos.ts'
-import { useAtajo, useVolver } from '../../teclado/index.ts'
+import { useAtajo, useFilasConTeclado, useVolver } from '../../teclado/index.ts'
 import {
   CamposVehiculo,
   COMBUSTIBLE,
@@ -25,6 +25,7 @@ import {
   paraEnviar,
   problemas,
 } from './datos-vehiculo.tsx'
+import { OrdenesDelVehiculo } from './OrdenesDelVehiculo.tsx'
 import { mensajeDeGuardar, nombreVehiculo } from './PantallaVehiculos.tsx'
 
 const ruta = getRouteApi('/con-sesion/vehiculos/$id')
@@ -35,22 +36,37 @@ type Ficha = Awaited<ReturnType<typeof api.vehiculos.ficha>>
 type Edicion = null | 'datos' | 'transferir'
 
 /**
- * La ficha de un vehículo: sus datos, quién lo tiene, quiénes lo tuvieron y qué se le
- * cambió.
+ * La ficha de un vehículo: sus datos, quién lo tiene, quiénes lo tuvieron, qué se le hizo en
+ * el taller y qué se le cambió a la ficha.
  *
- * Los titulares anteriores están a la vista y no escondidos en un historial: cuando
- * existan las órdenes de trabajo, la pregunta «¿de quién era cuando se le hizo esto?» se
- * contesta mirando esta lista.
+ * Cada orden dice quién era el titular entonces: «¿de quién era cuando se le hizo esto?» se
+ * contesta sin cruzar fechas con la lista de titulares.
  */
 export function PantallaFichaVehiculo() {
-  const irAlListado = useNavigate()
-  // Esc o ⌫, sin estar escribiendo, vuelven a donde se venía.
-  useVolver(() => void irAlListado({ to: '/vehiculos' }))
+  const navegar = useNavigate()
   const { id } = ruta.useParams()
   const tenantId = usarSesion((e) => e.datos?.tenant.id)
   const puedeVer = usePuedeUsar(contrato.vehiculos.ficha)
   const puedeEditar = usePuedeUsar(contrato.vehiculos.editar)
+  const puedeVerOrdenes = usePuedeUsar(contrato.ordenes.listar)
   const [edicion, setEdicion] = useState<Edicion>(null)
+
+  const ordenes = useQuery({
+    queryKey: ['ordenes', tenantId, 'vehiculo', id],
+    queryFn: () =>
+      api.ordenes.listar({ pagina: 1, porPagina: 50, estado: 'todas', vehiculoId: id }),
+    enabled: puedeVerOrdenes,
+  })
+  const datosOrdenes = ordenes.data?.datos ?? []
+  const abrirOrden = (orden: string) => void navegar({ to: '/ordenes/$id', params: { id: orden } })
+  // Con un formulario abierto, las flechas y el Enter son del formulario.
+  const { activa, propsFila } = useFilasConTeclado(edicion ? [] : datosOrdenes, (o) =>
+    abrirOrden(o.id),
+  )
+  // Esc o ⌫, sin estar escribiendo, vuelven a donde se venía; con una fila marcada, Esc primero
+  // la suelta.
+  useVolver(() => void navegar({ to: '/vehiculos' }), activa === null)
+
   const historia = useRef<HTMLElement>(null)
 
   const consulta = useQuery({
@@ -212,6 +228,17 @@ export function PantallaFichaVehiculo() {
             )}
           </Seccion>
 
+          {puedeVerOrdenes && (
+            <OrdenesDelVehiculo
+              cargando={ordenes.isPending}
+              error={ordenes.error}
+              datos={datosOrdenes}
+              total={ordenes.data?.total ?? 0}
+              propsFila={propsFila}
+              abrir={abrirOrden}
+            />
+          )}
+
           <section
             ref={historia}
             tabIndex={-1}
@@ -238,9 +265,6 @@ export function PantallaFichaVehiculo() {
                 </li>
               ))}
             </ol>
-            <p className="border-t border-borde-suave px-3 py-2 text-etiqueta text-texto-tenue">
-              Las órdenes de trabajo se van a sumar a esta historia cuando esté el taller.
-            </p>
           </section>
         </div>
       )}

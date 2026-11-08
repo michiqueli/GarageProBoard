@@ -127,6 +127,8 @@ export const ordenResumen = z.object({
   id: z.uuid(),
   numero: z.number().int(),
   estado: z.enum(ESTADOS_ORDEN),
+  /** El número es por sucursal: en la historia de un auto, es lo que distingue dos iguales. */
+  sucursal: z.string(),
   vehiculo: z.object({
     id: z.uuid(),
     dominio: z.string().nullable(),
@@ -373,11 +375,14 @@ export const contratoOrdenes = {
       operationId: 'listarOrdenes',
       summary: 'Órdenes de la sucursal activa, las más nuevas primero',
       description:
-        'Por omisión, las que están en el taller: todo lo que no está entregado ni anulado.',
+        'Por omisión, las que están en el taller: todo lo que no está entregado ni anulado. ' +
+        'Con `vehiculoId`, las de ese vehículo en todas las sucursales.',
     })
     .input(
       paginado.extend({
         buscar: z.string().trim().max(60).optional(),
+        /** La historia de un auto: el auto es el mismo, lo haya atendido la sucursal que sea. */
+        vehiculoId: z.uuid().optional(),
         /** `para_entregar`: terminadas o facturadas, la cola del egreso. */
         estado: z
           .enum([...ESTADOS_ORDEN, 'en_taller', 'para_entregar', 'todas'])

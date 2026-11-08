@@ -3,7 +3,13 @@ import { cleanup, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { usarSesion } from '../src/sesion/almacen.ts'
-import { montarApp, SESION, SESION_MECANICO, textoDelError } from './montar.tsx'
+import {
+  montarApp,
+  SESION,
+  SESION_MECANICO,
+  SESION_SIN_TALLER_NI_CAJA,
+  textoDelError,
+} from './montar.tsx'
 
 const vehiculos = {
   listar: vi.fn(),
@@ -14,12 +20,14 @@ const vehiculos = {
   transferir: vi.fn(),
 }
 const listarClientes = vi.fn()
+const listarOrdenes = vi.fn()
 const renovar = vi.fn()
 
 vi.mock('../src/sesion/cliente.ts', () => ({
   api: {
     auth: { iniciar: vi.fn(), cerrar: vi.fn().mockResolvedValue({}), cambiarSucursal: vi.fn() },
     clientes: { listar: (x: unknown) => listarClientes(x) },
+    ordenes: { listar: (x: unknown) => listarOrdenes(x), ficha: vi.fn() },
     vehiculos: Object.fromEntries(
       Object.keys({
         listar: 0,
@@ -91,6 +99,24 @@ const FICHA = {
   ],
 }
 
+const ID_ORDEN = '1c8f4a8b-6b9f-4d2c-8eaf-3a4d5c6b7e8f'
+
+const ORDEN = {
+  id: ID_ORDEN,
+  numero: 12,
+  estado: 'entregada',
+  sucursal: 'Casa central',
+  vehiculo: { ...HILUX, id: ID },
+  titular: { id: 'c1', razonSocial: 'Transportes del Sur SRL' },
+  paga: null,
+  pedido: 'Service de 40.000 km',
+  asesor: 'Martín Gutiérrez',
+  mecanico: null,
+  entregaEstimada: null,
+  creadoEn: '2025-03-10T12:00:00.000Z',
+  total: '252003.00',
+}
+
 function entraComo(sesion: typeof SESION) {
   renovar.mockImplementation(async () => {
     usarSesion.getState().establecer(sesion)
@@ -99,7 +125,10 @@ function entraComo(sesion: typeof SESION) {
 }
 
 beforeEach(() => {
-  for (const f of [...Object.values(vehiculos), listarClientes, renovar]) f.mockReset()
+  for (const f of [...Object.values(vehiculos), listarClientes, listarOrdenes, renovar]) {
+    f.mockReset()
+  }
+  listarOrdenes.mockResolvedValue({ datos: [ORDEN], total: 1 })
   usarSesion.getState().limpiar()
   vehiculos.listar.mockResolvedValue({
     datos: [
@@ -400,6 +429,75 @@ describe('la ficha', () => {
 
     expect(within(datos).queryByRole('button', { name: 'Modificar' })).toBeNull()
     expect(screen.queryByRole('button', { name: /Transferir/ })).toBeNull()
+  })
+
+  it('cuenta las órdenes del auto, con quién era el titular cada vez', async () => {
+    entraComo(SESION)
+    await montarApp(`/vehiculos/${ID}`)
+    const seccion = await screen.findByRole('region', { name: 'Órdenes de trabajo' })
+
+    expect(await within(seccion).findByRole('link', { name: 'OT 000012' })).toBeDefined()
+    expect(within(seccion).getByText('Service de 40.000 km')).toBeDefined()
+    expect(within(seccion).getByText('Transportes del Sur SRL')).toBeDefined()
+    // Una sola sucursal: no hay nada que distinguir.
+    expect(within(seccion).queryByText('Sucursal')).toBeNull()
+    expect(listarOrdenes).toHaveBeenCalledWith(
+      expect.objectContaining({ vehiculoId: ID, estado: 'todas' }),
+    )
+  })
+
+  it('la sucursal aparece cuando el auto pasó por más de una', async () => {
+    listarOrdenes.mockResolvedValue({
+      datos: [ORDEN, { ...ORDEN, id: 'o2', numero: 3, sucursal: 'Norte' }],
+      total: 2,
+    })
+    entraComo(SESION)
+    await montarApp(`/vehiculos/${ID}`)
+    const seccion = await screen.findByRole('region', { name: 'Órdenes de trabajo' })
+
+    expect(await within(seccion).findByText('Norte')).toBeDefined()
+    expect(within(seccion).getByText('Sucursal')).toBeDefined()
+  })
+
+  it('↓ marca la orden, Enter la abre', async () => {
+    entraComo(SESION)
+    const router = await montarApp(`/vehiculos/${ID}`)
+    await screen.findByRole('link', { name: 'OT 000012' })
+
+    await userEvent.keyboard('{ArrowDown}{Enter}')
+
+    await waitFor(() => expect(router.state.location.pathname).toBe(`/ordenes/${ID_ORDEN}`))
+  })
+
+  it('con una orden marcada, Esc la suelta y no se va de la ficha', async () => {
+    entraComo(SESION)
+    const router = await montarApp(`/vehiculos/${ID}`)
+    const enlace = await screen.findByRole('link', { name: 'OT 000012' })
+    const fila = enlace.closest('tr') as HTMLElement
+
+    await userEvent.keyboard('{ArrowDown}')
+    await waitFor(() => expect(fila.getAttribute('data-activa')).toBe('true'))
+    await userEvent.keyboard('{Escape}')
+
+    await waitFor(() => expect(fila.getAttribute('data-activa')).toBeNull())
+    expect(router.state.location.pathname).toBe(`/vehiculos/${ID}`)
+  })
+
+  it('un auto que nunca vino lo dice', async () => {
+    listarOrdenes.mockResolvedValue({ datos: [], total: 0 })
+    entraComo(SESION)
+    await montarApp(`/vehiculos/${ID}`)
+
+    expect(await screen.findByText(/todavía no pasó por el taller/)).toBeDefined()
+  })
+
+  it('sin el módulo del taller no hay órdenes que mostrar ni que pedir', async () => {
+    entraComo(SESION_SIN_TALLER_NI_CAJA)
+    await montarApp(`/vehiculos/${ID}`)
+    await screen.findByRole('region', { name: 'Datos' })
+
+    expect(screen.queryByRole('region', { name: 'Órdenes de trabajo' })).toBeNull()
+    expect(listarOrdenes).not.toHaveBeenCalled()
   })
 
   it('un vehículo que no existe lo dice, con salida', async () => {
