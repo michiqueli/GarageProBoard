@@ -329,7 +329,7 @@ const ESTATICAS: EntradaIndice[] = [
     id: 'taller.services.importar',
     titulo: 'Importar services de una planilla',
     donde: 'Taller → Catálogo de services → Importar',
-    claves: ['importar', 'excel', 'csv', 'planilla', 'plantilla', 'renault', 'wizard', 'subir'],
+    claves: ['importar', 'excel', 'csv', 'planilla', 'plantilla', 'wizard', 'subir'],
     destino: { to: '/taller/services/importar' },
     requiere: accesoDeRuta(contrato.services.importar),
   },

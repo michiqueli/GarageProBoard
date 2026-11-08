@@ -247,8 +247,7 @@ verdad. Qué se trae y qué cambia ahora que el DMS es nuestro, en
       trabajos, repuestos y **tiempo estipulado**. Se cargan a mano o con un wizard de importación
       —plantilla, archivo y preview donde se corrige cada error—, y en la orden se cargan de un
       toque y comparan lo estipulado con lo real. En
-      [el catálogo de services](../tecnicos/catalogo-de-services.md). Falta importar el Excel de
-      Renault, pasándolo a la plantilla
+      [el catálogo de services](../tecnicos/catalogo-de-services.md)
 - ✅ Facturación de la OT: panel «Órdenes para facturar» en caja; anular la factura la devuelve
 - ✅ **Tablero de piso en tiempo real**: qué auto, quién lo tiene, cuánto lleva. En dos vistas
       del mismo tablero: la del jefe de taller, con sesión y desde donde se abre la orden, y el

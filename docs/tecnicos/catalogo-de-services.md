@@ -70,6 +70,5 @@ resaltada si se pasó.
 
 ## Lo que queda
 
-- Pasar el Excel de Renault a la plantilla: no está en el repositorio.
 - Comparar lo estipulado con lo real en el tablero del piso.
 - Sumarlo en la recepción: hoy se carga desde la ficha de la orden.
