@@ -370,10 +370,14 @@ compra en vez de un inventario.
 
 ---
 
-### Hito 8 — Ventas de unidades ⬜
+### Hito 8 — Ventas de unidades 🔨
 
-- ⬜ Stock de 0km, usados y rodados: pedidos, reservas, asignaciones, consignaciones,
-      transferencias entre sucursales y entre concesionarias
+Lo que varía entre concesionarias se configura. El diseño y los pasos, en
+[ventas de unidades](../tecnicos/ventas-de-unidades.md).
+
+- 🔨 Stock de 0km y usados, desde el 08/11/2026: propios o en consignación, traslados entre
+      sucursales y reservas con seña, todo configurable. Faltan rodados, pedidos, asignaciones y
+      transferencias entre concesionarias
 - ⬜ Unidades **en producción**, por interfaz con la fábrica
 - ⬜ La operación de venta con su financiación, sus gastos y sus bonificaciones **pegados al
       vehículo**: si el flete y la patente viven en otro lado, el margen es un número

@@ -159,6 +159,18 @@ export const PRINCIPALES: Seccion[] = [
     ),
   },
   {
+    id: 'stock',
+    etiqueta: 'Stock de unidades',
+    to: '/stock',
+    requiere: accesoDeRuta(contrato.cartera.listar),
+    icono: (
+      <svg viewBox="0 0 16 16" {...trazo} aria-hidden="true">
+        <path d="M2 13V6l6-3.5L14 6v7" />
+        <path d="M5 13V9h6v4M5 11h6" />
+      </svg>
+    ),
+  },
+  {
     id: 'clientes',
     etiqueta: 'Clientes',
     to: '/clientes',

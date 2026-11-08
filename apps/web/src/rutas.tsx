@@ -407,6 +407,39 @@ const rutaEditarService = createRoute({
   ),
 })
 
+const rutaStock = createRoute({
+  getParentRoute: () => conSesion,
+  path: 'stock',
+  component: lazyRouteComponent(() => import('./modulos/stock/PantallaStock.tsx'), 'PantallaStock'),
+})
+
+const rutaIngresarUnidad = createRoute({
+  getParentRoute: () => conSesion,
+  path: 'stock/ingresar',
+  component: lazyRouteComponent(
+    () => import('./modulos/stock/PantallaIngresarUnidad.tsx'),
+    'PantallaIngresarUnidad',
+  ),
+})
+
+const rutaConfigStock = createRoute({
+  getParentRoute: () => conSesion,
+  path: 'stock/configuracion',
+  component: lazyRouteComponent(
+    () => import('./modulos/stock/PantallaConfigStock.tsx'),
+    'PantallaConfigStock',
+  ),
+})
+
+const rutaFichaUnidad = createRoute({
+  getParentRoute: () => conSesion,
+  path: 'stock/$id',
+  component: lazyRouteComponent(
+    () => import('./modulos/stock/PantallaFichaUnidad.tsx'),
+    'PantallaFichaUnidad',
+  ),
+})
+
 const rutaEstaciones = createRoute({
   getParentRoute: () => conSesion,
   path: 'estaciones',
@@ -606,6 +639,10 @@ const arbol = raiz.addChildren([
     rutaRrhh,
     rutaTablero,
     rutaMotivosEspera,
+    rutaStock,
+    rutaIngresarUnidad,
+    rutaConfigStock,
+    rutaFichaUnidad,
     rutaServices,
     rutaNuevoService,
     rutaImportarServices,
