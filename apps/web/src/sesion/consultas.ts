@@ -22,7 +22,11 @@ declare module '@tanstack/react-query' {
 
 /** Lo que dice la API, o qué hacer si ni siquiera se llegó a hablar con ella. */
 export function mensajeGeneral(error: unknown): string {
-  if (error instanceof ORPCError) return error.message
+  if (error instanceof ORPCError) {
+    // El motivo dice qué pasó en este caso; el mensaje es el general del error.
+    const motivo = (error.data as { motivo?: unknown } | undefined)?.motivo
+    return typeof motivo === 'string' && motivo ? motivo : error.message
+  }
   return 'No se pudo conectar con el servidor. Probá de nuevo en un momento.'
 }
 
