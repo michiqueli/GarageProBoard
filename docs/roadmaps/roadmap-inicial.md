@@ -188,6 +188,7 @@ La barrera de entrada más alta. Nada se vende sin esto.
       comprobantes con PDF y verificación de inciertos
 - ✅ Importar un certificado que ya se usa en otro sistema
 - ⬜ Cola de reintentos en BullMQ para cuando AFIP no responde
+- ⬜ **Mandar el comprobante por WhatsApp**, con la API de Meta: `wa.me` no deja adjuntar archivos
 - ⬜ **Precios con IVA o más IVA**, a elección de cada concesionaria y con el precio final por
       omisión. Afecta a Caja, órdenes, presupuestos, repuestos y el catálogo de services
 - 🔨 Circuito probado contra AFIP: una Factura B real en producción (16/09/2026, punto de
