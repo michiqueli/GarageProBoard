@@ -276,6 +276,17 @@ const CLASES_ITEM =
   'flex h-[30px] w-full items-center gap-2.5 rounded-base px-2.5 text-left text-dato'
 
 function Nav({ secciones }: { secciones: Seccion[] }) {
+  const ruta = useRouterState({ select: (e) => e.location.pathname })
+  // /taller/services es del Catálogo y no de Taller: si otra sección es más específica, ésta
+  // sólo se marca en su propia dirección.
+  const cede = (to: string) =>
+    [...PRINCIPALES, ...SECUNDARIAS].some(
+      (o) =>
+        o.to &&
+        o.to !== to &&
+        String(o.to).startsWith(`${to}/`) &&
+        (ruta === o.to || ruta.startsWith(`${o.to}/`)),
+    )
   return (
     <nav className="flex flex-col gap-px">
       {secciones.map((s) => {
@@ -309,7 +320,7 @@ function Nav({ secciones }: { secciones: Seccion[] }) {
             to={s.to}
             // El listado filtrado sigue siendo la misma sección: sin esto, buscar una
             // patente apagaría el resaltado del menú.
-            activeOptions={{ includeSearch: false }}
+            activeOptions={{ includeSearch: false, exact: cede(String(s.to)) }}
             className={CLASES_ITEM}
             activeProps={{ className: 'bg-marca-suave font-semibold text-marca' }}
             inactiveProps={{ className: 'text-texto-suave hover:bg-superficie-2 hover:text-texto' }}

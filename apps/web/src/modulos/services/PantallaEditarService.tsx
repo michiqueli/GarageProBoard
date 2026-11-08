@@ -215,7 +215,6 @@ function Formulario({ inicial }: { inicial: Ficha | null }) {
 
   useAtajo('global.guardar', () => guardable && guardar.mutate(activo), cambios || !inicial)
   useAtajo('global.nuevo', () => agregar('trabajo'))
-  useAtajo('ordenes.agregarRepuesto', () => agregar('repuesto'))
 
   return (
     <>
@@ -361,12 +360,7 @@ function Formulario({ inicial }: { inicial: Ficha | null }) {
           >
             Trabajo
           </Boton>
-          <Boton
-            tamano="chico"
-            accion="ordenes.agregarRepuesto"
-            icono={<IconoAgregar />}
-            onClick={() => agregar('repuesto')}
-          >
+          <Boton tamano="chico" icono={<IconoAgregar />} onClick={() => agregar('repuesto')}>
             Repuesto
           </Boton>
           <span className="ml-auto flex flex-wrap items-center gap-2">

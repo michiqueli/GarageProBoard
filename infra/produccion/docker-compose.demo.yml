@@ -65,8 +65,12 @@ services:
         condition: service_healthy
     ports:
       - "127.0.0.1:3081:3080"
+    volumes:
+      - ../../../secretos:/secretos:ro
+      - afiptickets:/var/afip-tickets
 
 volumes:
   pgdata:
   redisdata:
   garagedata:
+  afiptickets:

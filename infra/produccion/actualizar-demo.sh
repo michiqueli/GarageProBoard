@@ -36,6 +36,20 @@ ADMIN_PASSWORD=$(g | cut -c1-20)
 FIN
 fi
 
+# El padrón de AFIP, si están los certificados. Sólo lee datos públicos. El CUIT sale del propio
+# certificado. La carpeta de tickets sobrevive a los reinicios: AFIP rechaza pedir otro mientras
+# el anterior siga vigente.
+if [ -f "$BASE/secretos/afip/cert.crt" ] && ! grep -q '^AFIP_PADRON_CUIT=' "$BASE/.env.demo"; then
+  cuit="$(openssl x509 -in "$BASE/secretos/afip/cert.crt" -noout -subject | grep -oE 'CUIT [0-9]+' | cut -d' ' -f2)"
+  cat >> "$BASE/.env.demo" <<FIN
+AFIP_PADRON_CUIT=$cuit
+AFIP_PADRON_CERT=/secretos/afip/cert.crt
+AFIP_PADRON_KEY=/secretos/afip/key.key
+AFIP_PADRON_PRODUCCION=true
+AFIP_TICKETS=/var/afip-tickets
+FIN
+fi
+
 compose=(docker compose -f docker-compose.demo.yml)
 "${compose[@]}" build api
 "${compose[@]}" up -d --wait postgres redis garage

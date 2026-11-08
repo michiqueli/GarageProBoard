@@ -370,7 +370,6 @@ const rutaMotivosEspera = createRoute({
 const rutaServices = createRoute({
   getParentRoute: () => conSesion,
   path: 'taller/services',
-  staticData: { pantalla: 'ordenes' },
   component: lazyRouteComponent(
     () => import('./modulos/services/PantallaServices.tsx'),
     'PantallaServices',
@@ -380,7 +379,6 @@ const rutaServices = createRoute({
 const rutaNuevoService = createRoute({
   getParentRoute: () => conSesion,
   path: 'taller/services/nuevo',
-  staticData: { pantalla: 'ordenes' },
   component: lazyRouteComponent(
     () => import('./modulos/services/PantallaEditarService.tsx'),
     'PantallaNuevoService',
@@ -390,7 +388,6 @@ const rutaNuevoService = createRoute({
 const rutaImportarServices = createRoute({
   getParentRoute: () => conSesion,
   path: 'taller/services/importar',
-  staticData: { pantalla: 'ordenes' },
   component: lazyRouteComponent(
     () => import('./modulos/services/PantallaImportarServices.tsx'),
     'PantallaImportarServices',
@@ -400,7 +397,6 @@ const rutaImportarServices = createRoute({
 const rutaEditarService = createRoute({
   getParentRoute: () => conSesion,
   path: 'taller/services/$id',
-  staticData: { pantalla: 'ordenes' },
   component: lazyRouteComponent(
     () => import('./modulos/services/PantallaEditarService.tsx'),
     'PantallaEditarService',

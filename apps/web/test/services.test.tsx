@@ -125,6 +125,14 @@ describe('el listado', () => {
     expect(screen.getByText('1 h 30 min')).toBeDefined()
   })
 
+  it('en el menú se marca el Catálogo, y no también Taller', async () => {
+    await montarApp('/taller/services')
+    const catalogo = await screen.findByRole('link', { name: 'Catálogo de services' })
+
+    expect(catalogo.className).toMatch(/bg-marca-suave/)
+    expect(screen.getByRole('link', { name: 'Taller' }).className).not.toMatch(/bg-marca-suave/)
+  })
+
   it('el mecánico lo mira, sin cargar ni importar', async () => {
     entraComo(SESION_MECANICO)
     await montarApp('/taller/services')
