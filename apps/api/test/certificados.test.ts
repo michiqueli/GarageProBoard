@@ -101,6 +101,11 @@ describe('el certificado de una razón social', () => {
     ).toBe(403)
   })
 
+  it('el alias acepta guion bajo, como ARCA', async () => {
+    const { ALIAS_VALIDO } = await import('@gpb/afip')
+    expect(ALIAS_VALIDO.test('garageproboard_demo')).toBe(true)
+  })
+
   it('el alias no lleva espacios', async () => {
     const r = await pedir(gerente, 'POST', `${base()}/pedido`, { alias: 'mi taller' })
     expect(r.statusCode).toBe(400)

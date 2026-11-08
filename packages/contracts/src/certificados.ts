@@ -88,7 +88,7 @@ export const contratoCertificados = {
         alias: z
           .string()
           .trim()
-          .regex(/^[A-Za-z0-9-]{3,30}$/, 'De 3 a 30 letras, números o guiones, sin espacios'),
+          .regex(/^[A-Za-z0-9_-]{3,30}$/, 'De 3 a 30 letras, números o guiones, sin espacios'),
       }),
     )
     .errors(ERRORES)

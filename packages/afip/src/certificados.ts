@@ -25,7 +25,7 @@ const ALGORITMO = {
 const OID_SERIAL_NUMBER = '2.5.4.5'
 
 /** Letras, números y guiones: lo que ARCA acepta como nombre del computador. */
-export const ALIAS_VALIDO = /^[A-Za-z0-9-]{3,30}$/
+export const ALIAS_VALIDO = /^[A-Za-z0-9_-]{3,30}$/
 
 export interface PedidoCertificado {
   /** El CSR, para cargar en ARCA. */
