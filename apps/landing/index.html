@@ -1,0 +1,247 @@
+<!doctype html>
+<html lang="es-AR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>GarageProBoard: el sistema de gestión para concesionarias</title>
+    <meta
+      name="description"
+      content="Recepción, taller, repuestos, entregas y facturación electrónica en un solo sistema, para concesionarias de cualquier marca en Argentina."
+    />
+    <link rel="canonical" href="https://garageproboard.com/" />
+    <meta property="og:type" content="website" />
+    <meta property="og:locale" content="es_AR" />
+    <meta property="og:title" content="GarageProBoard: el sistema de gestión para concesionarias" />
+    <meta
+      property="og:description"
+      content="De la puerta a la factura, en un solo sistema y con el teclado."
+    />
+    <meta property="og:url" content="https://garageproboard.com/" />
+    <meta name="theme-color" content="#0e1412" />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="./estilos.css" />
+  </head>
+  <body class="overflow-x-hidden">
+    <header class="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-5 sm:px-6">
+      <a href="/" class="font-display text-lg font-bold tracking-tight">
+        GaragePro<span class="text-marca">Board</span>
+      </a>
+      <a
+        href="mailto:hola@garageproboard.com?subject=Quiero%20ver%20GarageProBoard"
+        class="rounded-base border border-marca bg-marca-suave px-3 py-1.5 text-ui font-semibold text-marca"
+      >
+        Pedí una demo
+      </a>
+    </header>
+
+    <main>
+      <section class="mx-auto max-w-6xl px-4 pt-10 pb-14 sm:px-6 sm:pt-16">
+        <p class="font-mono text-etiqueta tracking-widest text-marca uppercase">
+          Para concesionarias de cualquier marca
+        </p>
+        <h1 class="mt-4 max-w-4xl font-display text-portada leading-none font-bold tracking-tight">
+          De la puerta a la factura, sin cambiar de sistema.
+        </h1>
+        <p class="mt-6 max-w-2xl text-lg leading-relaxed text-texto-suave">
+          El cliente que llega, el auto que se recibe, el mecánico que ficha, el repuesto que sale
+          del depósito y el comprobante contra ARCA. Todo en el mismo lugar, y todo con el teclado.
+        </p>
+        <div class="mt-8 flex flex-wrap gap-3">
+          <a
+            href="mailto:hola@garageproboard.com?subject=Quiero%20ver%20GarageProBoard"
+            class="rounded-base bg-marca px-5 py-3 font-semibold text-fondo"
+          >
+            Quiero verlo funcionando
+          </a>
+          <a href="#modulos" class="rounded-base border border-borde px-5 py-3 font-semibold">
+            Qué hace
+          </a>
+        </div>
+
+        <figure class="mt-14">
+          <div
+            aria-hidden="true"
+            class="overflow-hidden rounded-base border border-borde bg-superficie"
+          >
+            <div class="flex items-center justify-between border-b border-borde px-4 py-2.5">
+              <span class="font-display font-semibold">Taller, ahora</span>
+              <span class="font-mono text-etiqueta text-ok">● en vivo</span>
+            </div>
+            <div class="grid gap-px bg-borde-suave sm:grid-cols-2 lg:grid-cols-3">
+              <div class="bg-superficie p-4">
+                <div class="flex items-center justify-between">
+                  <span class="patente">AE 123 BC</span>
+                  <span class="rounded-full border border-ok px-2 text-etiqueta text-ok">
+                    Trabajando
+                  </span>
+                </div>
+                <p class="mt-3 text-ui">Service de 40.000 km</p>
+                <p class="mt-1 text-etiqueta text-texto-suave">Diego S. · hace 1 h 12 min</p>
+                <dl class="mt-4 flex gap-6 font-mono text-dato">
+                  <div><dt class="text-etiqueta text-texto-tenue">Mano de obra</dt><dd>1 h 12</dd></div>
+                  <div><dt class="text-etiqueta text-texto-tenue">En taller</dt><dd>1 h 40</dd></div>
+                </dl>
+              </div>
+              <div class="bg-superficie p-4">
+                <div class="flex items-center justify-between">
+                  <span class="patente">AF 456 GH</span>
+                  <span class="rounded-full bg-atencion-suave px-2 text-etiqueta text-atencion">
+                    Espera: repuestos
+                  </span>
+                </div>
+                <p class="mt-3 text-ui">Ruido en el tren delantero</p>
+                <p class="mt-1 text-etiqueta text-texto-suave">Desde las 10:30</p>
+                <dl class="mt-4 flex gap-6 font-mono text-dato">
+                  <div><dt class="text-etiqueta text-texto-tenue">Mano de obra</dt><dd>0 h 45</dd></div>
+                  <div><dt class="text-etiqueta text-texto-tenue">En taller</dt><dd>5 h 10</dd></div>
+                </dl>
+              </div>
+              <div class="bg-superficie p-4 sm:col-span-2 lg:col-span-1">
+                <div class="flex items-center justify-between">
+                  <span class="patente">AB 789 CD</span>
+                  <span class="rounded-full border border-borde px-2 text-etiqueta text-texto-suave">
+                    Para entregar
+                  </span>
+                </div>
+                <p class="mt-3 text-ui">Cambio de embrague</p>
+                <p class="mt-1 text-etiqueta text-texto-suave">Estipulado 4 h · llevó 3 h 50</p>
+                <dl class="mt-4 flex gap-6 font-mono text-dato">
+                  <div><dt class="text-etiqueta text-texto-tenue">Mano de obra</dt><dd>3 h 50</dd></div>
+                  <div><dt class="text-etiqueta text-texto-tenue">En taller</dt><dd>6 h 05</dd></div>
+                </dl>
+              </div>
+            </div>
+          </div>
+          <figcaption class="mt-2 text-etiqueta text-texto-tenue">
+            Ilustración del tablero de piso, con datos de ejemplo.
+          </figcaption>
+        </figure>
+      </section>
+
+      <section id="modulos" class="border-y border-borde-suave bg-superficie">
+        <div class="mx-auto max-w-6xl px-4 py-16 sm:px-6">
+          <h2 class="max-w-2xl font-display text-seccion leading-tight font-semibold">
+            Cada parte de la concesionaria, hablando con las demás.
+          </h2>
+          <div class="mt-10 grid gap-x-10 gap-y-9 md:grid-cols-2 lg:grid-cols-3">
+            <article>
+              <h3 class="font-display text-lg font-semibold">La puerta</h3>
+              <p class="mt-2 leading-relaxed text-texto-suave">
+                Tótem de turnos que sigue andando sin red, llamador de sala de espera y agenda con
+                cupo. Queda registrado también el que vino a preguntar y se fue.
+              </p>
+            </article>
+            <article>
+              <h3 class="font-display text-lg font-semibold">La recepción</h3>
+              <p class="mt-2 leading-relaxed text-texto-suave">
+                En la PC o en la tablet: daños marcados sobre el dibujo del auto, revisión con
+                semáforo, fotos y la firma del cliente en la pantalla.
+              </p>
+            </article>
+            <article>
+              <h3 class="font-display text-lg font-semibold">El taller</h3>
+              <p class="mt-2 leading-relaxed text-texto-suave">
+                El mecánico ficha con un QR, sin usuario ni contraseña. El tablero dice qué auto,
+                quién lo tiene, por qué está parado y cuánto tiempo se fue en nada.
+              </p>
+            </article>
+            <article>
+              <h3 class="font-display text-lg font-semibold">Los services</h3>
+              <p class="mt-2 leading-relaxed text-texto-suave">
+                Tu catálogo por marca y modelo, cargado a mano o importado de una planilla. Se suma
+                a la orden de un toque, y compara lo estipulado con lo que llevó de verdad.
+              </p>
+            </article>
+            <article>
+              <h3 class="font-display text-lg font-semibold">Los repuestos</h3>
+              <p class="mt-2 leading-relaxed text-texto-suave">
+                Stock que sigue a la orden, pedidos, compras y códigos de barras. El cliente puede
+                comparar las cajas que se lleva con lo que le pusieron al auto.
+              </p>
+            </article>
+            <article>
+              <h3 class="font-display text-lg font-semibold">La caja</h3>
+              <p class="mt-2 leading-relaxed text-texto-suave">
+                Facturación electrónica contra ARCA, con PDF y QR, por razón social y punto de
+                venta. La orden terminada llega a caja sin volver a cargar nada.
+              </p>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <section class="mx-auto grid max-w-6xl gap-10 px-4 py-16 sm:px-6 lg:grid-cols-2 lg:items-center">
+        <div>
+          <h2 class="font-display text-seccion leading-tight font-semibold">
+            Hecho para el que lo usa todo el día.
+          </h2>
+          <p class="mt-4 max-w-xl leading-relaxed text-texto-suave">
+            Patente, Enter, Tab, guardar: una recepción entera sin agarrar el mouse. Las teclas se
+            ven escritas en cada botón, así que el que recién llega las aprende mirando, y cada
+            usuario puede cambiarlas por las suyas.
+          </p>
+        </div>
+        <ul class="grid gap-3 sm:grid-cols-2">
+          <li class="flex items-center gap-3"><span class="tecla">F2</span> Guardar</li>
+          <li class="flex items-center gap-3"><span class="tecla">F3</span> Buscar patente o chasis</li>
+          <li class="flex items-center gap-3"><span class="tecla">F4</span> Facturar, entregar, cerrar</li>
+          <li class="flex items-center gap-3"><span class="tecla">F10</span> Ir a cualquier pantalla</li>
+          <li class="flex items-center gap-3"><span class="tecla">Ins</span> Nuevo</li>
+          <li class="flex items-center gap-3"><span class="tecla">Esc</span> Volver</li>
+        </ul>
+      </section>
+
+      <section class="border-t border-borde-suave">
+        <div class="mx-auto grid max-w-6xl gap-10 px-4 py-16 sm:px-6 md:grid-cols-2">
+          <div>
+            <h2 class="font-display text-2xl font-semibold">Para quien responde por el negocio</h2>
+            <ul class="mt-5 grid gap-3 text-texto-suave">
+              <li>Varias sucursales y razones sociales en una sola cuenta.</li>
+              <li>Permisos por rol: cada uno ve lo suyo.</li>
+              <li>Toda modificación queda registrada, con quién y cuándo.</li>
+              <li>Pagás los módulos que usás.</li>
+            </ul>
+          </div>
+          <div>
+            <h2 class="font-display text-2xl font-semibold">Lo que estamos construyendo</h2>
+            <p class="mt-5 leading-relaxed text-texto-suave">
+              Vamos por el sistema completo de la concesionaria, y preferimos decir qué falta:
+              venta de unidades y plan de ahorro, contabilidad y tesorería, liquidación de sueldos
+              y avisos por WhatsApp.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <section class="bg-marca text-fondo">
+        <div class="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-6 px-4 py-14 sm:px-6">
+          <h2 class="max-w-xl font-display text-seccion leading-tight font-bold">
+            Mirá cómo quedaría en tu concesionaria.
+          </h2>
+          <a
+            href="mailto:hola@garageproboard.com?subject=Quiero%20ver%20GarageProBoard"
+            class="rounded-base bg-fondo px-5 py-3 font-semibold text-texto"
+          >
+            hola@garageproboard.com
+          </a>
+        </div>
+      </section>
+    </main>
+
+    <footer
+      class="mx-auto flex max-w-6xl flex-wrap justify-between gap-4 px-4 py-8 text-dato text-texto-suave sm:px-6"
+    >
+      <span>GarageProBoard · Argentina</span>
+      <nav aria-label="Legales" class="flex gap-5">
+        <a href="/privacidad" class="hover:text-texto">Privacidad</a>
+        <a href="/terminos" class="hover:text-texto">Términos</a>
+      </nav>
+    </footer>
+  </body>
+</html>

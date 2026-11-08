@@ -7,7 +7,7 @@
     "node": ">=24"
   },
   "scripts": {
-    "dev": "turbo run dev --filter=!@gpb/backoffice-api --filter=!@gpb/backoffice-web",
+    "dev": "turbo run dev --filter=!@gpb/backoffice-api --filter=!@gpb/backoffice-web --filter=!@gpb/landing",
     "dev:backoffice": "turbo run dev --filter=@gpb/backoffice-api --filter=@gpb/backoffice-web",
     "build": "turbo run build",
     "test": "turbo run test",

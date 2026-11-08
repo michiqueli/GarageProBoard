@@ -1,0 +1,85 @@
+@import "tailwindcss";
+@import "@gpb/ui-tokens/tokens.css";
+
+@theme {
+  --text-portada: clamp(2.5rem, 7vw, 5.25rem);
+  --text-seccion: clamp(1.625rem, 3.5vw, 2.5rem);
+}
+
+html {
+  background: var(--color-fondo);
+  color: var(--color-texto);
+  font-family: var(--font-sans);
+  scroll-behavior: smooth;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+}
+
+:focus-visible {
+  outline: 2px solid var(--color-marca);
+  outline-offset: 2px;
+}
+
+/* La tecla, como en la aplicación: es la idea que más nos separa de los demás. */
+.tecla {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 2.5rem;
+  height: 2.25rem;
+  padding: 0 0.625rem;
+  border: 1px solid var(--color-borde);
+  border-bottom-width: 3px;
+  border-radius: var(--radius-base);
+  background: var(--color-superficie-2);
+  font-family: var(--font-mono);
+  font-size: var(--text-dato);
+  font-weight: 600;
+}
+
+/* Las patentes del tablero, con los colores de la chapa real. */
+.patente {
+  display: inline-block;
+  border-top: 4px solid var(--color-patente-banda);
+  border-radius: 2px;
+  background: var(--color-patente);
+  color: var(--color-patente-tinta);
+  font-family: var(--font-mono);
+  font-size: var(--text-etiqueta);
+  font-weight: 600;
+  padding: 0 0.375rem;
+  letter-spacing: 0.04em;
+}
+
+.legal h2 {
+  margin-top: 2.25rem;
+  font-family: var(--font-display);
+  font-size: 1.25rem;
+  font-weight: 600;
+}
+
+.legal p,
+.legal ul {
+  margin-top: 0.75rem;
+  color: var(--color-texto-suave);
+  line-height: 1.65;
+}
+
+.legal ul {
+  list-style: disc;
+  padding-left: 1.25rem;
+}
+
+.legal strong {
+  color: var(--color-texto);
+  font-weight: 600;
+}
+
+.legal a {
+  color: var(--color-marca);
+  text-decoration: underline;
+}

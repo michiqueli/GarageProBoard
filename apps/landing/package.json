@@ -1,0 +1,17 @@
+{
+  "name": "@gpb/landing",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "publicable": "vite build && node scripts/comprobar-publicable.mjs"
+  },
+  "devDependencies": {
+    "@gpb/ui-tokens": "workspace:*",
+    "@tailwindcss/vite": "4.3.3",
+    "tailwindcss": "4.3.3",
+    "vite": "8.3.0"
+  }
+}
