@@ -367,6 +367,46 @@ const rutaMotivosEspera = createRoute({
   ),
 })
 
+const rutaServices = createRoute({
+  getParentRoute: () => conSesion,
+  path: 'taller/services',
+  staticData: { pantalla: 'ordenes' },
+  component: lazyRouteComponent(
+    () => import('./modulos/services/PantallaServices.tsx'),
+    'PantallaServices',
+  ),
+})
+
+const rutaNuevoService = createRoute({
+  getParentRoute: () => conSesion,
+  path: 'taller/services/nuevo',
+  staticData: { pantalla: 'ordenes' },
+  component: lazyRouteComponent(
+    () => import('./modulos/services/PantallaEditarService.tsx'),
+    'PantallaNuevoService',
+  ),
+})
+
+const rutaImportarServices = createRoute({
+  getParentRoute: () => conSesion,
+  path: 'taller/services/importar',
+  staticData: { pantalla: 'ordenes' },
+  component: lazyRouteComponent(
+    () => import('./modulos/services/PantallaImportarServices.tsx'),
+    'PantallaImportarServices',
+  ),
+})
+
+const rutaEditarService = createRoute({
+  getParentRoute: () => conSesion,
+  path: 'taller/services/$id',
+  staticData: { pantalla: 'ordenes' },
+  component: lazyRouteComponent(
+    () => import('./modulos/services/PantallaEditarService.tsx'),
+    'PantallaEditarService',
+  ),
+})
+
 const rutaEstaciones = createRoute({
   getParentRoute: () => conSesion,
   path: 'estaciones',
@@ -566,6 +606,10 @@ const arbol = raiz.addChildren([
     rutaRrhh,
     rutaTablero,
     rutaMotivosEspera,
+    rutaServices,
+    rutaNuevoService,
+    rutaImportarServices,
+    rutaEditarService,
     rutaEstaciones,
     rutaHojaRecepcion,
     rutaRoles,

@@ -227,6 +227,18 @@ export const SECUNDARIAS: Seccion[] = [
     ),
   },
   {
+    id: 'services',
+    etiqueta: 'Catálogo de services',
+    to: '/taller/services',
+    requiere: accesoDeRuta(contrato.services.listar),
+    icono: (
+      <svg viewBox="0 0 16 16" {...trazo} aria-hidden="true">
+        <path d="M3 2.5h10v11H3z" />
+        <path d="M5.5 5.5h5M5.5 8h5M5.5 10.5h3" />
+      </svg>
+    ),
+  },
+  {
     // Las PC que fichan. Va acá y no en RRHH porque es equipamiento del taller: quien lo
     // configura es el que configura el módulo de servicios, no el que lleva los legajos.
     id: 'estaciones',

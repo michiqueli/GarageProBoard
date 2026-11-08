@@ -22,6 +22,12 @@ export const ESTADOS_EN_TALLER = [
 /** «OT 000123». */
 export const nombreOrden = (numero: number) => `OT ${String(numero).padStart(6, '0')}`
 
+/** «2 h 14 min». Lo que se mira de un trabajo es cuánto, no los minutos sueltos. */
+export function enHorasYMinutos(minutos: number): string {
+  if (minutos < 60) return `${minutos} min`
+  return `${Math.floor(minutos / 60)} h ${String(minutos % 60).padStart(2, '0')} min`
+}
+
 /**
  * La orden impresa, en otra pestaña donde se imprime. La pestaña se abre antes de pedir el
  * PDF: si se abre después de esperar, el navegador la toma por una ventana emergente.
