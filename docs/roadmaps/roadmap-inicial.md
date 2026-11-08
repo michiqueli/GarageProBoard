@@ -471,7 +471,7 @@ Y cuanto antes esté, antes empieza a indexar: la competencia lleva treinta año
 
 - ✅ Publicada el 08/11/2026 en https://garageproboard.com. Landing de **GarageProBoard** con qué es, para quién y los módulos. La marca se presentó
       en el INPI el 16/09/2026
-- 🔨 Dominio propio comprado. Falta el correo de contacto en ese dominio
+- ✅ Dominio propio y correo de contacto en ese dominio
 - 🔨 Publicadas; falta que las revise un abogado. **Política de privacidad y términos y condiciones.** Es el requisito formal de Meta y de
       Mercado Pago, y además vamos a tratar datos de terceros —clientes de la concesionaria—
       con obligación de conservación
