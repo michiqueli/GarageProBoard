@@ -19,6 +19,10 @@ Lo nuevo se trabaja en `developer`, se prueba en demo y recién ahí pasa a `mai
 y no una concesionaria de prueba dentro de producción porque el código y los cambios de la base
 les llegan a todas las concesionarias a la vez.
 
+Demo se publica desde la PC con `infra/produccion/publicar-demo.sh`: copia lo versionado de
+`developer` a `/var/www/garageproboard-demo/repo`, compila, migra y reemplaza la web. Los secretos
+están en `/var/www/garageproboard-demo/.env.demo` y se generan una sola vez.
+
 ## Qué se respalda y a dónde
 
 Todo va a **Cloudflare R2**, en otro proveedor: una copia dentro del VPS se pierde con el VPS.
