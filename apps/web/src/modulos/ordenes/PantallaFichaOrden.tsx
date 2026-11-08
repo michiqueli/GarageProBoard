@@ -45,6 +45,7 @@ import {
   COMBUSTIBLES,
   type Combustible,
   ESTADOS_EN_TALLER,
+  enHorasYMinutos,
   imprimirOrden,
   nombreOrden,
 } from './ordenes.ts'
@@ -71,6 +72,8 @@ interface Item {
   codigoAlicuota: (typeof ALICUOTAS)[number]['valor']
   /** Los de las cajas que se escanearon en el depósito. Se muestran; no se editan acá. */
   codigosBarras: string[]
+  /** El tiempo estipulado, si vino de un service del catálogo. */
+  minutosEstipulados: number | null
 }
 
 let proxima = 1
@@ -86,6 +89,7 @@ const itemNuevo = (tipo: Item['tipo']): Item => ({
   precioUnitario: '',
   codigoAlicuota: 5,
   codigosBarras: [],
+  minutosEstipulados: null,
 })
 
 /** «1.234,50» o «1234.50» → «1234.50». */
@@ -800,6 +804,7 @@ function Items({
       precioUnitario: sinCeros(i.precioUnitario),
       codigoAlicuota: i.codigoAlicuota as Item['codigoAlicuota'],
       codigosBarras: i.codigosBarras,
+      minutosEstipulados: i.minutosEstipulados,
     }))
   const [items, setItems] = useState<Item[]>(desdeOrden)
   const [cambios, setCambios] = useState(false)
@@ -850,6 +855,7 @@ function Items({
           cantidad: aDecimal(i.cantidad),
           precioUnitario: aDecimal(i.precioUnitario),
           codigoAlicuota: i.codigoAlicuota,
+          minutosEstipulados: i.minutosEstipulados,
         })),
       }),
     onSuccess: async (nueva) => {
@@ -857,6 +863,50 @@ function Items({
       await guardada(nueva)
     },
     meta: { exito: 'Trabajos y repuestos guardados' },
+  })
+
+  // Los services que le van a este auto: los de su marca y los genéricos.
+  const tenantId = usarSesion((e) => e.datos?.tenant.id)
+  const puedeVerServices = usePuedeUsar(contrato.services.listar)
+  const marca = o.vehiculo.marca
+  const services = useQuery({
+    queryKey: ['services', tenantId, 'para-orden', marca],
+    queryFn: () =>
+      api.services.listar({
+        pagina: 1,
+        porPagina: 200,
+        estado: 'activos',
+        ...(marca ? { marca } : {}),
+      }),
+    enabled: editable && puedeVerServices,
+  })
+  const cargarService = useMutation({
+    mutationFn: (id: string) => api.services.ficha({ id }),
+    onSuccess: (s) => {
+      setCambios(true)
+      // Se copian: cambiar el catálogo después no le cambia nada a este auto.
+      setItems((xs) => [
+        ...xs,
+        ...s.renglones.map((r) => ({
+          clave: proxima++,
+          id: null,
+          autorizacion: null,
+          tipo: r.tipo,
+          repuestoId: r.repuestoId,
+          codigo: r.codigo,
+          descripcion: r.descripcion,
+          cantidad: sinCeros(r.cantidad),
+          precioUnitario: sinCeros(r.precioUnitario),
+          codigoAlicuota: r.codigoAlicuota as Item['codigoAlicuota'],
+          codigosBarras: [],
+          minutosEstipulados: r.minutos,
+        })),
+      ])
+    },
+    meta: {
+      exito: (s) => `Se sumó «${(s as { nombre: string }).nombre}». Revisalo y guardá`,
+      error: mensajeGeneral,
+    },
   })
 
   const cambiar = (clave: number, parcial: Partial<Item>) => {
@@ -1056,6 +1106,21 @@ function Items({
           >
             Repuesto
           </Boton>
+          {(services.data?.datos.length ?? 0) > 0 && (
+            <Selector
+              etiqueta="Cargar un service"
+              valor={null}
+              vacio="Elegí uno"
+              onChange={(id) => id && cargarService.mutate(id)}
+              opciones={(services.data?.datos ?? []).map((s) => ({
+                valor: s.id,
+                texto: [
+                  s.nombre,
+                  s.marca ? [s.marca, s.modelo].filter(Boolean).join(' ') : 'Genérico',
+                ].join(' · '),
+              }))}
+            />
+          )}
           {cambios && (
             <span className="ml-auto flex items-center gap-2">
               {invalidos && (
@@ -1604,8 +1669,24 @@ function Tiempos({
               {abiertas === 1 ? 'Alguien trabajando' : `${abiertas} trabajando`}
             </span>
           )}
+          {orden.minutosEstipulados !== null && (
+            <>
+              <span className="text-texto-tenue">Estipulado</span>
+              <span className="font-mono tabular-nums">
+                {enHorasYMinutos(orden.minutosEstipulados)}
+              </span>
+            </>
+          )}
           <span className="text-texto-tenue">Mano de obra</span>
-          <span className="font-mono tabular-nums">{enHorasYMinutos(orden.manoDeObraMin)}</span>
+          <span
+            className={`font-mono tabular-nums ${
+              orden.minutosEstipulados !== null && orden.manoDeObraMin > orden.minutosEstipulados
+                ? 'font-semibold text-atencion'
+                : ''
+            }`}
+          >
+            {enHorasYMinutos(orden.manoDeObraMin)}
+          </span>
         </span>
       }
     >
@@ -1690,12 +1771,6 @@ const RELOJ = new Intl.DateTimeFormat('es-AR', {
   hour: '2-digit',
   minute: '2-digit',
 })
-
-/** «2 h 14 min». Lo que se mira de un trabajo es cuánto, no los minutos sueltos. */
-function enHorasYMinutos(minutos: number): string {
-  if (minutos < 60) return `${minutos} min`
-  return `${Math.floor(minutos / 60)} h ${String(minutos % 60).padStart(2, '0')} min`
-}
 
 /** Las firmas del cliente en la pantalla: al recibir el auto y al devolverlo. */
 function Firmas({ orden: o }: { orden: Orden }) {

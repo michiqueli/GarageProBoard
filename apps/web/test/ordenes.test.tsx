@@ -38,6 +38,7 @@ const listarPuntos = vi.fn()
 const listarMotivos = vi.fn()
 const listarRepuestos = vi.fn()
 const listarPedidos = vi.fn()
+const services = { listar: vi.fn(), ficha: vi.fn() }
 const renovar = vi.fn()
 const crearVehiculo = vi.fn()
 const recepcion = { hoy: vi.fn(), atender: vi.fn(), soltar: vi.fn() }
@@ -52,6 +53,10 @@ vi.mock('../src/sesion/cliente.ts', () => ({
     },
     repuestos: { listar: (x: unknown) => listarRepuestos(x) },
     pedidosRepuestos: { listar: (x: unknown) => listarPedidos(x) },
+    services: {
+      listar: (x: unknown) => services.listar(x),
+      ficha: (x: unknown) => services.ficha(x),
+    },
     clientes: { listar: vi.fn().mockResolvedValue({ datos: [], total: 0 }) },
     revision: { listar: () => listarPuntos() },
     motivosEspera: { listar: () => listarMotivos() },
@@ -119,6 +124,7 @@ const FICHA = {
   // se prueban en las suyas.
   sesiones: [],
   manoDeObraMin: 0,
+  minutosEstipulados: null,
   kilometraje: 48210,
   combustible: 'medio',
   observaciones: null,
@@ -168,6 +174,9 @@ const [BOCINA, CORREAS, PASTILLAS] = PUNTOS as [
 ]
 
 beforeEach(() => {
+  services.listar.mockReset()
+  services.ficha.mockReset()
+  services.listar.mockResolvedValue({ datos: [], total: 0 })
   for (const f of [
     crearVehiculo,
     ...Object.values(ordenes),
@@ -1183,6 +1192,84 @@ describe('anular la orden', () => {
     expect(
       await within(tiempos).findByText('corregida: Se fue a las 14 sin pasar la credencial'),
     ).toBeDefined()
+  })
+
+  it('cargar un service suma sus renglones con el tiempo, y se guardan juntos', async () => {
+    ordenes.ficha.mockResolvedValue(FICHA)
+    ordenes.items.mockResolvedValue(FICHA)
+    services.listar.mockResolvedValue({
+      datos: [{ id: 'sv1', nombre: 'Service 10.000 km', marca: 'Volkswagen', modelo: null }],
+      total: 1,
+    })
+    services.ficha.mockResolvedValue({
+      id: 'sv1',
+      nombre: 'Service 10.000 km',
+      renglones: [
+        {
+          id: 'r1',
+          tipo: 'trabajo',
+          repuestoId: null,
+          codigo: null,
+          descripcion: 'Cambio de aceite',
+          cantidad: '1.0000',
+          precioUnitario: '25000.0000',
+          codigoAlicuota: 5,
+          minutos: 30,
+        },
+      ],
+    })
+    await montarApp(`/ordenes/${ORDEN.id}`)
+
+    await userEvent.selectOptions(
+      await screen.findByLabelText('Cargar un service'),
+      'Service 10.000 km · Volkswagen',
+    )
+
+    expect(await screen.findByDisplayValue('Cambio de aceite')).toBeDefined()
+    expect(services.listar).toHaveBeenCalledWith(
+      expect.objectContaining({ marca: 'Volkswagen', estado: 'activos' }),
+    )
+    await userEvent.click(screen.getByRole('button', { name: /Guardar/ }))
+    await waitFor(() =>
+      expect(ordenes.items).toHaveBeenCalledWith(
+        expect.objectContaining({
+          items: expect.arrayContaining([
+            expect.objectContaining({
+              descripcion: 'Cambio de aceite',
+              precioUnitario: '25000',
+              minutosEstipulados: 30,
+            }),
+          ]),
+        }),
+      ),
+    )
+  })
+
+  it('compara lo estipulado con lo real, y avisa si se pasó', async () => {
+    ordenes.ficha.mockResolvedValue({
+      ...FICHA,
+      manoDeObraMin: 95,
+      minutosEstipulados: 60,
+      sesiones: [
+        {
+          id: 's1',
+          nombre: 'Diego Sosa',
+          legajo: '0001',
+          inicio: '2026-09-20T12:00:00.000Z',
+          fin: '2026-09-20T13:35:00.000Z',
+          minutos: 95,
+          cerradaPor: 'mecanico',
+          motivoCorreccion: null,
+          motivoAnulacion: null,
+        },
+      ],
+    })
+    await montarApp(`/ordenes/${ORDEN.id}`)
+
+    const tiempos = await screen.findByRole('region', { name: 'Tiempos de taller' })
+    expect(within(tiempos).getByText('Estipulado')).toBeDefined()
+    expect(within(tiempos).getByText('1 h 00 min')).toBeDefined()
+    expect(within(tiempos).getAllByText('1 h 35 min')[0]?.className).toMatch(/text-atencion/)
   })
 
   it('anular un tiempo pide motivo, y queda tachado con el porqué', async () => {
