@@ -65,6 +65,7 @@ probar() {
     -e PGBACKREST_REPO1_CIPHER_TYPE=aes-256-cbc \
     -e PGBACKREST_REPO1_CIPHER_PASS="$PGBACKREST_CIPHER_PASS" \
     -e PGBACKREST_LOG_LEVEL_FILE=off \
+    -e CONSULTA_DE_PRUEBA="${CONSULTA_DE_PRUEBA:-}" \
     --entrypoint gpb-probar-restauracion \
     gpb-postgres:18
   docker volume rm -f gpb-prod-restauracion >/dev/null

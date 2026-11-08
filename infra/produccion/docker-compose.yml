@@ -22,6 +22,10 @@ services:
       PGBACKREST_LOG_LEVEL_FILE: "off"
       PGBACKREST_LOG_LEVEL_CONSOLE: info
       PGBACKREST_START_FAST: "y"
+      PGBACKREST_PROCESS_MAX: "2"
+      # Junta los archivos chicos: subidos de a uno, el primer backup tardó quince minutos, y R2
+      # cobra por operación.
+      PGBACKREST_REPO1_BUNDLE: "y"
       PGBACKREST_REPO1_TYPE: ${PGBACKREST_REPO1_TYPE:-s3}
       PGBACKREST_REPO1_PATH: /postgres
       PGBACKREST_REPO1_S3_ENDPOINT: ${R2_ENDPOINT:-}

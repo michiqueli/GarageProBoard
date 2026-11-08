@@ -497,8 +497,8 @@ Cosas que sabemos que faltan, para que no se descubran de golpe:
 
 
 - **Backups**: construidos el 08/11/2026 y restaurados en un ensayo: la base con su WAL y los
-  archivos, cifrados, a Cloudflare R2. Falta ponerlos en marcha en el VPS, restaurar una vez desde
-  R2 y que avisen si fallan. Ver [producción y backups](../tecnicos/produccion-y-backups.md).
+  archivos, cifrados, a Cloudflare R2. En marcha en el VPS y restaurados desde R2. Falta que avisen
+  si fallan. Ver [producción y backups](../tecnicos/produccion-y-backups.md).
 - **Los dibujos de VW por omisión** son capturas, puestas el 13/10/2026 con un «después vemos
   de cambiarlas». Antes de venderle a otra marca hacen falta imágenes con licencia comercial.
 - **La suite de la API falló a ratos y no se pudo reproducir**: siete corridas en verde el
