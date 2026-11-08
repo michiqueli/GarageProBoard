@@ -1,5 +1,6 @@
 import { and, asc, count, type Db, eq, inArray, ne } from '@gpb/db'
 import {
+  comprobante,
   condicionIva,
   empresa,
   provincia,
@@ -20,6 +21,7 @@ export class ErrorOrganizacion extends Error {
       | 'REFERENCIA_INVALIDA'
       | 'CUIT_DUPLICADO'
       | 'PUNTO_VENTA_DUPLICADO'
+      | 'PUNTO_VENTA_USADO'
       | 'SUCURSAL_CON_USUARIOS',
     readonly datos?: { usuarios: string[] },
   ) {
@@ -246,12 +248,29 @@ export class ServicioOrganizacion {
 
   editarPuntoVenta(
     id: string,
-    entrada: { uso: Uso; modo: Modo; predeterminado: boolean; activo: boolean },
+    entrada: {
+      uso: Uso
+      modo: Modo
+      predeterminado: boolean
+      activo: boolean
+      numero?: number | undefined
+    },
     ip?: string,
   ) {
     return this.datos.transaccion(async (tx, sesion) => {
       const [antes] = await tx.select().from(puntoVenta).where(eq(puntoVenta.id, id)).limit(1)
       if (!antes) throw new ErrorOrganizacion('NO_ENCONTRADA')
+
+      const numero = entrada.numero ?? antes.numero
+      if (numero !== antes.numero) {
+        // Un comprobante emitido lleva ese número ante AFIP: cambiarlo sería mentir sobre él.
+        const [usado] = await tx
+          .select({ id: comprobante.id })
+          .from(comprobante)
+          .where(eq(comprobante.puntoVentaId, id))
+          .limit(1)
+        if (usado) throw new ErrorOrganizacion('PUNTO_VENTA_USADO')
+      }
 
       // Uno desactivado no puede ser el que toma la sucursal para facturar.
       const predeterminado = entrada.activo && entrada.predeterminado
@@ -259,8 +278,14 @@ export class ServicioOrganizacion {
 
       await tx
         .update(puntoVenta)
-        .set({ ...entrada, predeterminado, actualizadoEn: new Date() })
+        .set({ ...entrada, numero, predeterminado, actualizadoEn: new Date() })
         .where(eq(puntoVenta.id, id))
+        .catch((error: unknown) => {
+          if (indiceDuplicado(error) === 'punto_venta_empresa_numero_uq') {
+            throw new ErrorOrganizacion('PUNTO_VENTA_DUPLICADO')
+          }
+          throw error
+        })
 
       await this.auditar(
         tx,
@@ -269,7 +294,7 @@ export class ServicioOrganizacion {
         id,
         antes.activo && !entrada.activo ? 'baja' : 'modificacion',
         antes,
-        { ...antes, ...entrada, predeterminado },
+        { ...antes, ...entrada, numero, predeterminado },
         ip,
       )
       return this.una(tx, antes.empresaId)
@@ -387,6 +412,18 @@ export class ServicioOrganizacion {
       .from(puntoVenta)
       .where(inArray(puntoVenta.empresaId, ids))
       .orderBy(asc(puntoVenta.numero))
+    const conComprobantes = puntos.length
+      ? await tx
+          .selectDistinct({ id: comprobante.puntoVentaId })
+          .from(comprobante)
+          .where(
+            inArray(
+              comprobante.puntoVentaId,
+              puntos.map((p) => p.id),
+            ),
+          )
+      : []
+    const usados = new Set(conComprobantes.map((c) => c.id))
     const usuarios = sucursales.length
       ? await tx
           .select({ sucursalId: usuarioSucursal.sucursalId, cantidad: count() })
@@ -431,6 +468,7 @@ export class ServicioOrganizacion {
               modo: p.modo as Modo,
               predeterminado: p.predeterminado,
               activo: p.activo,
+              usado: usados.has(p.id),
             })),
         })),
     }))

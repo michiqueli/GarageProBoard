@@ -167,6 +167,39 @@ describe('una SAS por sucursal', () => {
   })
 })
 
+describe('corregir el número', () => {
+  it('se corrige si no emitió nada, pero no a uno que ya exista', async () => {
+    const access = await entrar('gerente@organizacion.test')
+    const { datos } = (await pedir(access, 'GET', '/empresas')).json()
+    const empresa = datos.find((e: Empresa) => e.cuit === '30712345671')
+    const sucursalId = empresa.sucursales[0].id
+    const uno = (
+      await pedir(access, 'POST', `/sucursales/${sucursalId}/puntos-venta`, {
+        numero: 71,
+        uso: 'remito',
+        modo: 'CAE',
+        predeterminado: false,
+      })
+    )
+      .json()
+      .sucursales[0].puntosVenta.find((p: { numero: number }) => p.numero === 71)
+    expect(uno.usado).toBe(false)
+    const datosPv = { uso: 'remito', modo: 'CAE', predeterminado: false, activo: true }
+
+    const corregido = await pedir(access, 'PUT', `/puntos-venta/${uno.id}`, {
+      ...datosPv,
+      numero: 72,
+    })
+    expect(corregido.statusCode, corregido.body).toBe(200)
+
+    const repetido = await pedir(access, 'PUT', `/puntos-venta/${uno.id}`, {
+      ...datosPv,
+      numero: 1,
+    })
+    expect(repetido.json().code).toBe('PUNTO_VENTA_DUPLICADO')
+  })
+})
+
 describe('el punto de venta predeterminado', () => {
   it('marcar otro desmarca al anterior, y desactivarlo le saca la marca', async () => {
     const access = await entrar('gerente@organizacion.test')

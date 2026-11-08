@@ -14,6 +14,8 @@ export const puntoVentaSalida = z.object({
   modo: z.enum(MODOS_PUNTO_VENTA),
   predeterminado: z.boolean(),
   activo: z.boolean(),
+  /** Si ya emitió comprobantes: desde ahí el número no se toca. */
+  usado: z.boolean(),
 })
 
 export const sucursalDeEmpresa = z.object({
@@ -213,10 +215,26 @@ export const contratoOrganizacion = {
       operationId: 'editarPuntoVenta',
       summary: 'Modificar un punto de venta, o desactivarlo',
       description:
-        'El número no se cambia: es el de AFIP. Marcarlo como predeterminado desmarca al ' +
+        'El número se corrige mientras no haya emitido comprobantes. Marcarlo como predeterminado desmarca al ' +
         'que lo era para la misma sucursal y el mismo uso.',
     })
-    .input(datosPuntoVenta.extend({ id: z.uuid(), activo: z.boolean() }))
-    .errors(NO_ENCONTRADA)
+    .input(
+      datosPuntoVenta.extend({
+        id: z.uuid(),
+        activo: z.boolean(),
+        numero: z.number().int().min(1, 'Va de 1 a 99999').max(99999, 'Va de 1 a 99999').optional(),
+      }),
+    )
+    .errors({
+      ...NO_ENCONTRADA,
+      PUNTO_VENTA_DUPLICADO: {
+        status: 409,
+        message: 'Esa razón social ya tiene un punto de venta con ese número',
+      },
+      PUNTO_VENTA_USADO: {
+        status: 409,
+        message: 'Ya emitió comprobantes con ese número: no se puede cambiar. Creá otro',
+      },
+    })
     .output(empresaConSucursales),
 }

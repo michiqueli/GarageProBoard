@@ -629,6 +629,7 @@ function FormPuntoVenta({
         puntoVenta
           ? api.organizacion.editarPuntoVenta({
               id: puntoVenta.id,
+              ...(puntoVenta.usado ? {} : { numero: Number(numero) }),
               uso,
               modo,
               predeterminado,
@@ -658,10 +659,14 @@ function FormPuntoVenta({
         min={1}
         max={99999}
         required
-        disabled={Boolean(puntoVenta)}
+        disabled={Boolean(puntoVenta?.usado)}
         value={numero}
         onChange={(e) => setNumero(e.target.value)}
-        ayuda={puntoVenta ? 'Es el de AFIP: no se cambia' : 'El que te dio AFIP al darlo de alta'}
+        ayuda={
+          puntoVenta?.usado
+            ? 'Ya emitió comprobantes: no se cambia'
+            : 'El que te dio AFIP al darlo de alta'
+        }
       />
       <Selector
         etiqueta="Uso"
