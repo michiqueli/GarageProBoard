@@ -162,6 +162,13 @@ export const sesionTrabajo = pgTable(
     estacionFinId: uuid().references(() => estacionFichaje.id),
     /** El motivo, cuando la corrigió el jefe de taller. */
     nota: text(),
+    /**
+     * Fichada en la orden equivocada: **no se borra**, deja de sumar. Una anulada siempre tiene
+     * fin, así que todo lo que busca sesiones abiertas la ignora sin mirar esto.
+     */
+    anuladaEn: timestamp({ withTimezone: true }),
+    anuladaPor: uuid().references(() => usuario.id),
+    anulacionMotivo: text(),
     creadoEn: creadoEn(),
   },
   (t) => [
@@ -172,6 +179,10 @@ export const sesionTrabajo = pgTable(
     index('sesion_trabajo_rango_idx').on(t.tenantId, t.empleadoId, t.inicio),
     check('sesion_trabajo_cierre_valido', sql`${t.cerradaPor} in ('mecanico', 'auto', 'jefe')`),
     check('sesion_trabajo_fin_despues', sql`${t.fin} is null or ${t.fin} >= ${t.inicio}`),
+    check(
+      'sesion_trabajo_anulada_valida',
+      sql`${t.anuladaEn} is null or (${t.fin} is not null and length(btrim(${t.anulacionMotivo})) >= 5)`,
+    ),
   ],
 )
 

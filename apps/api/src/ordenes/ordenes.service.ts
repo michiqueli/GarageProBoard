@@ -804,6 +804,7 @@ export class ServicioOrdenes {
         const inicio = new Date(entrada.inicio)
         const fin = new Date(entrada.fin)
         const invalido = (motivo: string) => new ErrorOrdenes('TIEMPO_INVALIDO', { motivo })
+        if (s.anuladaEn) throw invalido('Esa sesión está anulada: no suma, no hay qué corregir.')
         if (fin <= inicio) throw invalido('El fin tiene que ser después del inicio.')
         // Un minuto de gracia: el reloj de la PC del jefe no es el del servidor.
         if (fin.getTime() > Date.now() + 60_000) {
@@ -845,6 +846,74 @@ export class ServicioOrdenes {
           {
             numero: o.numero,
             texto: `Corrigió un tiempo: ${rango(s.inicio, s.fin)} pasó a ${rango(inicio, fin)}, porque ${entrada.motivo}`,
+          },
+          ip,
+        )
+      },
+    )
+  }
+
+  /**
+   * Anula una sesión fichada en la orden equivocada. No se borra —«yo fiché» tiene que tener
+   * respuesta—: deja de sumar y queda a la vista con su motivo.
+   *
+   * El primer fichaje le puso mecánico a la orden y la pasó a en proceso. Si no queda nadie que
+   * la haya trabajado, las dos cosas se deshacen: si no, el auto figura en proceso a nombre de
+   * alguien que nunca lo tocó.
+   */
+  anularSesion(id: string, sesionId: string, motivo: string, ip?: string) {
+    return this.conOrdenEn(
+      id,
+      [...EN_TALLER, 'terminada', 'facturada'],
+      'Una orden entregada o anulada ya no se corrige: sus tiempos quedan como están.',
+      async (tx, sesion, o) => {
+        const [s] = await tx
+          .select()
+          .from(sesionTrabajo)
+          .where(and(eq(sesionTrabajo.id, sesionId), eq(sesionTrabajo.ordenId, id)))
+          .for('update')
+        if (!s) throw new ErrorOrdenes('NO_ENCONTRADA')
+        if (s.anuladaEn) {
+          throw new ErrorOrdenes('TIEMPO_INVALIDO', { motivo: 'Esa sesión ya está anulada.' })
+        }
+
+        const ahora = new Date()
+        await tx
+          .update(sesionTrabajo)
+          .set({
+            anuladaEn: ahora,
+            anuladaPor: sesion.usuarioId,
+            anulacionMotivo: motivo,
+            fin: s.fin ?? (ahora < s.inicio ? s.inicio : ahora),
+            cerradaPor: s.cerradaPor ?? 'jefe',
+          })
+          .where(eq(sesionTrabajo.id, sesionId))
+
+        const quedan = await tx
+          .select({ empleadoId: sesionTrabajo.empleadoId })
+          .from(sesionTrabajo)
+          .where(and(eq(sesionTrabajo.ordenId, id), isNull(sesionTrabajo.anuladaEn)))
+          .orderBy(asc(sesionTrabajo.inicio))
+        const sinElMecanico =
+          o.mecanicoId === s.empleadoId && !quedan.some((q) => q.empleadoId === s.empleadoId)
+        if (sinElMecanico || (!quedan.length && o.estado === 'en_proceso')) {
+          await tx
+            .update(orden)
+            .set({
+              ...(sinElMecanico ? { mecanicoId: quedan[0]?.empleadoId ?? null } : {}),
+              ...(!quedan.length && o.estado === 'en_proceso' ? { estado: 'recibida' } : {}),
+            })
+            .where(eq(orden.id, id))
+        }
+
+        await this.auditar(
+          tx,
+          sesion,
+          id,
+          'modificacion',
+          {
+            numero: o.numero,
+            texto: `Anuló un tiempo de las ${HORA_TALLER.format(s.inicio)}, porque ${motivo}`,
           },
           ip,
         )
@@ -1654,6 +1723,7 @@ export class ServicioOrdenes {
         fin: sesionTrabajo.fin,
         cerradaPor: sesionTrabajo.cerradaPor,
         nota: sesionTrabajo.nota,
+        anulacionMotivo: sesionTrabajo.anulacionMotivo,
         legajo: empleado.legajo,
         nombre: entidadComercial.nombre,
         apellido: entidadComercial.apellido,
@@ -1675,6 +1745,7 @@ export class ServicioOrdenes {
       minutos: Math.max(0, Math.round(((f.fin?.getTime() ?? ahora) - f.inicio.getTime()) / 60_000)),
       cerradaPor: f.cerradaPor as 'mecanico' | 'auto' | 'jefe' | null,
       motivoCorreccion: f.nota,
+      motivoAnulacion: f.anulacionMotivo,
     }))
     const [paga] = o.pagaId
       ? await tx
@@ -1744,7 +1815,7 @@ export class ServicioOrdenes {
         respondidoEn: p.respondidoEn?.toISOString() ?? null,
       })),
       sesiones,
-      manoDeObraMin: sesiones.reduce((a, x) => a + x.minutos, 0),
+      manoDeObraMin: sesiones.reduce((a, x) => (x.motivoAnulacion ? a : a + x.minutos), 0),
       factura: factura ?? null,
     }
   }

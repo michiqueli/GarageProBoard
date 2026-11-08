@@ -115,7 +115,9 @@ explicar por qué un auto estuvo seis días.
    la sesión se corrige en su lugar y `ajuste_sesion` guarda el antes, el después, el motivo y
    quién; lo permite la acción «corregir órdenes», aparte de editar y de autorizar. No pasa un
    fin antes del inicio o en el futuro, un inicio anterior a la entrada del auto, más de 16
-   horas seguidas, ni una orden entregada o anulada.
+   horas seguidas, ni una orden entregada o anulada. Desde el 08/11/2026 también se **anula** la
+   sesión fichada en la orden equivocada: no se borra, deja de sumar y queda tachada con su
+   motivo. Si no queda nadie que haya trabajado la orden, vuelve a recibida y sin mecánico.
 4. **Auto-cierre de fin de turno**, y no sólo con un job a las 20:00: también **al
    arrancar**, poniéndose al día con lo que quedó abierto. Si el servidor se reinició
    antes de las 20:00, el job no corrió nunca. Se marca como cierre automático para que

@@ -107,7 +107,7 @@ export async function armarTablero(tx: Db, sucursalId: string) {
       segundos: sql<string>`coalesce(sum(coalesce(${sesionTrabajo.duracionSeg}, extract(epoch from (now() - ${sesionTrabajo.inicio})))), 0)`,
     })
     .from(sesionTrabajo)
-    .where(inArray(sesionTrabajo.ordenId, ids))
+    .where(and(inArray(sesionTrabajo.ordenId, ids), isNull(sesionTrabajo.anuladaEn)))
     .groupBy(sesionTrabajo.ordenId)
 
   // Por qué está parado y cuánto lleva esperado: la parte del tiempo muerto que tiene motivo.

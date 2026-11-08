@@ -128,6 +128,15 @@ export class ControladorOrdenes {
     )
   }
 
+  @Operacion(c.anularSesion)
+  anularSesion(@Req() pedido: FastifyRequest) {
+    return implement(c.anularSesion).handler(({ input, errors }) =>
+      this.servicio
+        .anularSesion(input.id, input.sesionId, input.motivo, pedido.ip)
+        .catch((e) => traducir(e, errors)),
+    )
+  }
+
   @Operacion(c.terminar)
   terminar(@Req() pedido: FastifyRequest) {
     return implement(c.terminar).handler(({ input, errors }) =>

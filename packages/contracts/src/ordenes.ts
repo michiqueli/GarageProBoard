@@ -213,6 +213,8 @@ export const sesionDeTrabajo = z.object({
   cerradaPor: z.enum(['mecanico', 'auto', 'jefe']).nullable(),
   /** Por qué se corrigió, si la corrigió alguien a mano. */
   motivoCorreccion: z.string().nullable(),
+  /** Por qué se anuló. Una anulada se sigue mostrando, y no suma. */
+  motivoAnulacion: z.string().nullable(),
 })
 
 /** Lo que se le recomendó a un auto y no se hizo. */
@@ -612,6 +614,38 @@ export const contratoOrdenes = {
       TIEMPO_INVALIDO: {
         status: 422,
         message: 'Esos horarios no pueden ser',
+        data: z.object({ motivo: z.string() }),
+      },
+    })
+    .output(ordenDetalle),
+
+  anularSesion: conPermiso('servicios', 'corregir', 'Orden')
+    .route({
+      method: 'POST',
+      path: '/ordenes/{id}/sesiones/{sesionId}/anular',
+      tags: [TAG],
+      operationId: 'anularSesionDeTrabajo',
+      summary: 'Anular una sesión fichada en la orden equivocada, con motivo',
+      description:
+        'No se borra: deja de sumar mano de obra y queda a la vista con su motivo. Una abierta ' +
+        'se cierra acá. Si era la única de la orden, la orden vuelve a recibida y sin mecánico.',
+    })
+    .input(
+      conId.extend({
+        sesionId: z.uuid(),
+        motivo: z
+          .string()
+          .trim()
+          .min(MINIMO_MOTIVO_CORRECCION, 'Decí por qué se anula: queda escrito')
+          .max(MAXIMO_MOTIVO_CORRECCION, `Es largo: hasta ${MAXIMO_MOTIVO_CORRECCION} letras`),
+      }),
+    )
+    .errors({
+      ...NO_ENCONTRADA,
+      ...ESTADO_INVALIDO,
+      TIEMPO_INVALIDO: {
+        status: 422,
+        message: 'Esa sesión no se puede anular',
         data: z.object({ motivo: z.string() }),
       },
     })

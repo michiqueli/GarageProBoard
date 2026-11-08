@@ -30,6 +30,7 @@ const ordenes = {
   ponerEnEspera: vi.fn(),
   terminarEspera: vi.fn(),
   corregirSesion: vi.fn(),
+  anularSesion: vi.fn(),
 }
 const listarVehiculos = vi.fn()
 const listarHojas = vi.fn()
@@ -1182,6 +1183,52 @@ describe('anular la orden', () => {
     expect(
       await within(tiempos).findByText('corregida: Se fue a las 14 sin pasar la credencial'),
     ).toBeDefined()
+  })
+
+  it('anular un tiempo pide motivo, y queda tachado con el porqué', async () => {
+    const sesion = {
+      id: 's1',
+      nombre: 'Diego Sosa',
+      legajo: '0001',
+      inicio: '2026-09-20T12:00:00.000Z',
+      fin: '2026-09-20T13:35:00.000Z',
+      minutos: 95,
+      cerradaPor: 'mecanico' as const,
+      motivoCorreccion: null,
+      motivoAnulacion: null,
+    }
+    ordenes.ficha.mockResolvedValue({ ...FICHA, manoDeObraMin: 95, sesiones: [sesion] })
+    const anulada = {
+      ...FICHA,
+      manoDeObraMin: 0,
+      sesiones: [{ ...sesion, motivoAnulacion: 'Fichó en la orden de al lado' }],
+    }
+    ordenes.anularSesion.mockImplementation(async () => {
+      ordenes.ficha.mockResolvedValue(anulada)
+      return anulada
+    })
+    await montarApp(`/ordenes/${ORDEN.id}`)
+
+    const tiempos = await screen.findByRole('region', { name: 'Tiempos de taller' })
+    await userEvent.click(within(tiempos).getByRole('button', { name: 'Anular' }))
+    const dialogo = await screen.findByRole('alertdialog')
+    await userEvent.type(
+      within(dialogo).getByLabelText('Por qué se anula'),
+      'Fichó en la orden de al lado',
+    )
+    await userEvent.click(within(dialogo).getByRole('button', { name: 'Anular' }))
+
+    await waitFor(() =>
+      expect(ordenes.anularSesion).toHaveBeenCalledWith({
+        id: FICHA.id,
+        sesionId: 's1',
+        motivo: 'Fichó en la orden de al lado',
+      }),
+    )
+    expect(await within(tiempos).findByText('anulada: Fichó en la orden de al lado')).toBeDefined()
+    // Una anulada ya no se toca.
+    expect(within(tiempos).queryByRole('button', { name: 'Anular' })).toBeNull()
+    expect(within(tiempos).queryByRole('button', { name: /Corregir/ })).toBeNull()
   })
 
   it('sin nadie que haya fichado, explica de dónde salen los minutos', async () => {

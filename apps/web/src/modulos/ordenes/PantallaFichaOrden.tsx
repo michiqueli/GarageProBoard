@@ -1,5 +1,11 @@
 import { accesoDeRuta, contrato } from '@gpb/contracts'
-import { ESTADOS_CON_TRABAJO, formatearImporte, plata, trabajoDePunto } from '@gpb/core'
+import {
+  ESTADOS_CON_TRABAJO,
+  formatearImporte,
+  MINIMO_MOTIVO_CORRECCION,
+  plata,
+  trabajoDePunto,
+} from '@gpb/core'
 import { ORPCError } from '@orpc/client'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { getRouteApi, Link, useNavigate } from '@tanstack/react-router'
@@ -1550,6 +1556,31 @@ function Tiempos({
     [...EN_TALLER, 'terminada', 'facturada'].includes(orden.estado)
   const [corrigiendo, setCorrigiendo] = useState<string | null>(null)
 
+  const anular = useMutation({
+    mutationFn: (v: { sesionId: string; motivo: string }) =>
+      api.ordenes.anularSesion({ id: orden.id, ...v }),
+    onSuccess: guardada,
+    meta: { exito: 'Tiempo anulado: ya no suma', error: mensajeGeneral },
+  })
+
+  async function preguntarAnular(s: Orden['sesiones'][number]) {
+    const motivo = await preguntar({
+      titulo: `¿Anular el tiempo de ${s.nombre}?`,
+      texto: 'Deja de sumar mano de obra. Sigue a la vista, tachado y con el motivo.',
+      confirmar: 'Anular',
+      peligro: true,
+      campo: {
+        etiqueta: 'Por qué se anula',
+        valor: '',
+        validar: (v) =>
+          v.trim().length < MINIMO_MOTIVO_CORRECCION
+            ? 'Decí por qué: fichó en la orden de al lado, pasó la credencial de otro'
+            : null,
+      },
+    })
+    if (motivo) anular.mutate({ sesionId: s.id, motivo: motivo.trim() })
+  }
+
   if (orden.sesiones.length === 0) {
     return (
       <Seccion titulo="Tiempos de taller">
@@ -1581,36 +1612,61 @@ function Tiempos({
       <ul className="divide-y divide-borde-suave">
         {orden.sesiones.map((s) => (
           <li key={s.id} className="flex flex-wrap items-baseline gap-x-3 gap-y-1 px-3 py-2">
-            <span className="font-medium">{s.nombre}</span>
+            <span className={`font-medium ${s.motivoAnulacion ? 'line-through' : ''}`}>
+              {s.nombre}
+            </span>
             <span className="font-mono text-etiqueta text-texto-tenue">{s.legajo}</span>
-            <span className="text-etiqueta text-texto-suave">
+            <span
+              className={`text-etiqueta text-texto-suave ${s.motivoAnulacion ? 'line-through' : ''}`}
+            >
               {RELOJ.format(new Date(s.inicio))} →{' '}
               {s.fin ? RELOJ.format(new Date(s.fin)) : 'sigue adentro'}
             </span>
             <span className="ml-auto flex flex-wrap items-baseline gap-2">
-              {s.cerradaPor === 'auto' && (
-                <span className="text-etiqueta text-atencion">
-                  cerrada al fin del turno{puedeCorregir ? ': corregila' : ''}
-                </span>
+              {s.motivoAnulacion ? (
+                <span className="text-etiqueta text-texto-suave">anulada: {s.motivoAnulacion}</span>
+              ) : (
+                <>
+                  {s.cerradaPor === 'auto' && (
+                    <span className="text-etiqueta text-atencion">
+                      cerrada al fin del turno{puedeCorregir ? ': corregila' : ''}
+                    </span>
+                  )}
+                  {s.cerradaPor === 'jefe' && s.motivoCorreccion && (
+                    <span className="text-etiqueta text-texto-suave">
+                      corregida: {s.motivoCorreccion}
+                    </span>
+                  )}
+                  {s.cerradaPor === 'jefe' && !s.motivoCorreccion && (
+                    <span className="text-etiqueta text-atencion">
+                      cerrada al terminar la orden
+                    </span>
+                  )}
+                </>
               )}
-              {s.cerradaPor === 'jefe' && s.motivoCorreccion && (
-                <span className="text-etiqueta text-texto-suave">
-                  corregida: {s.motivoCorreccion}
-                </span>
-              )}
-              {s.cerradaPor === 'jefe' && !s.motivoCorreccion && (
-                <span className="text-etiqueta text-atencion">cerrada al terminar la orden</span>
-              )}
-              <span className="font-mono tabular-nums">{enHorasYMinutos(s.minutos)}</span>
-              {puedeCorregir && corrigiendo !== s.id && (
-                <Boton
-                  tamano="chico"
-                  icono={<IconoEditar />}
-                  variante={s.cerradaPor === 'auto' ? 'principal' : 'normal'}
-                  onClick={() => setCorrigiendo(s.id)}
-                >
-                  Corregir
-                </Boton>
+              <span
+                className={`font-mono tabular-nums ${s.motivoAnulacion ? 'text-texto-tenue line-through' : ''}`}
+              >
+                {enHorasYMinutos(s.minutos)}
+              </span>
+              {puedeCorregir && !s.motivoAnulacion && corrigiendo !== s.id && (
+                <>
+                  <Boton
+                    tamano="chico"
+                    icono={<IconoEditar />}
+                    variante={s.cerradaPor === 'auto' ? 'principal' : 'normal'}
+                    onClick={() => setCorrigiendo(s.id)}
+                  >
+                    Corregir
+                  </Boton>
+                  <Boton
+                    tamano="chico"
+                    deshabilitado={anular.isPending}
+                    onClick={() => void preguntarAnular(s)}
+                  >
+                    Anular
+                  </Boton>
+                </>
               )}
             </span>
             {corrigiendo === s.id && (

@@ -233,7 +233,8 @@ verdad. Qué se trae y qué cambia ahora que el DMS es nuestro, en
 - ✅ **Correcciones de tiempo**, desde el 13/10/2026: desde Tiempos en la ficha, con motivo
       obligatorio, y el antes y el después en `ajuste_sesion`. Una acción propia, «corregir
       órdenes», que cada concesionaria le da a quien haga de jefe de taller
-- ⬜ **Anular una sesión** fichada en la orden equivocada: toca todas las sumas de mano de obra
+- ✅ **Anular una sesión** fichada en la orden equivocada, desde el 08/11/2026: con motivo, sin
+      borrarla, y deja de sumar. Si era la única, la orden vuelve a recibida y sin mecánico
 - ✅ Repuestos consumidos, con descuento de stock: la orden busca en el catálogo y el stock
       sigue a sus renglones; los pedidos de repuestos del taller pasan a la orden al entregarlos.
       Ver [repuestos](../tecnicos/repuestos.md)

@@ -302,6 +302,13 @@
       "when": 1791942841428,
       "tag": "0042_ajuste_sesion",
       "breakpoints": true
+    },
+    {
+      "idx": 43,
+      "version": "7",
+      "when": 1794163989351,
+      "tag": "0043_anular_sesion",
+      "breakpoints": true
     }
   ]
 }

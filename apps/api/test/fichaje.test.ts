@@ -510,6 +510,71 @@ describe('corregir un tiempo', () => {
     expect(r.statusCode).toBe(409)
     expect(r.json().code).toBe('ESTADO_INVALIDO')
   })
+
+  function anular(token: string, sesionId: string, motivo: string) {
+    return app.inject({
+      method: 'POST',
+      url: `/api/ordenes/${ordenId}/sesiones/${sesionId}/anular`,
+      headers: { authorization: `Bearer ${token}` },
+      payload: { motivo },
+    })
+  }
+
+  it('anular la única sesión: no suma, y la orden vuelve a recibida y sin mecánico', async () => {
+    const sesionId = await unaSesion()
+    const gerente = await entrar('gerente@fichaje.test')
+
+    const r = await anular(gerente, sesionId, 'Fichó en la orden de al lado')
+    expect(r.statusCode).toBe(200)
+    expect(r.json()).toMatchObject({
+      estado: 'recibida',
+      mecanico: null,
+      manoDeObraMin: 0,
+      sesiones: [{ id: sesionId, motivoAnulacion: 'Fichó en la orden de al lado' }],
+    })
+    // No se borró, y quedó cerrada: ningún escaneo la va a encontrar abierta.
+    const [s] = await api.pg.dbDuenio.select().from(sesionTrabajo)
+    expect(s?.fin).not.toBeNull()
+    expect(s?.anuladaEn).not.toBeNull()
+  })
+
+  it('anular una de dos: la otra sigue sumando y la orden no cambia', async () => {
+    const sesionId = await unaSesion()
+    const [abierta] = await api.pg.dbDuenio.select().from(sesionTrabajo)
+    await api.pg.dbDuenio.insert(sesionTrabajo).values({
+      tenantId: abierta?.tenantId as string,
+      ordenId,
+      empleadoId: abierta?.empleadoId as string,
+      inicio: new Date(hace(2 * HORA)),
+      fin: new Date(hace(1 * HORA)),
+      cerradaPor: 'mecanico',
+    })
+    const gerente = await entrar('gerente@fichaje.test')
+
+    const r = await anular(gerente, sesionId, 'Fichó en la orden de al lado')
+    expect(r.json().estado).toBe('en_proceso')
+    expect(r.json().mecanico).not.toBeNull()
+    expect(r.json().manoDeObraMin).toBe(60)
+  })
+
+  it('una anulada no se corrige ni se anula de nuevo; y hace falta motivo y permiso', async () => {
+    const sesionId = await unaSesion()
+    const gerente = await entrar('gerente@fichaje.test')
+    const asesor = await entrar('asesor@fichaje.test')
+
+    expect((await anular(gerente, sesionId, 'no')).statusCode).toBe(400)
+    expect((await anular(asesor, sesionId, 'Fichó en otra orden')).statusCode).toBe(403)
+    expect((await anular(gerente, sesionId, 'Fichó en otra orden')).statusCode).toBe(200)
+
+    const otraVez = await anular(gerente, sesionId, 'Fichó en otra orden')
+    expect(otraVez.statusCode).toBe(422)
+    const corregida = await corregir(gerente, sesionId, {
+      inicio: hace(3 * HORA),
+      fin: hace(1 * HORA),
+      motivo: 'Corrección de prueba',
+    })
+    expect(corregida.statusCode).toBe(422)
+  })
 })
 
 describe('el cierre de fin de turno', () => {
