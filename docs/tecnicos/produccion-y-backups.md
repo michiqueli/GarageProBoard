@@ -6,6 +6,19 @@ Producción corre en el VPS; el desarrollo sigue en cada PC. Los archivos están
 Vamos a guardar comprobantes fiscales de terceros, con obligación legal de conservación, y firmas
 de sus clientes. **Un backup que nunca se restauró es una suposición.**
 
+## Dos copias del sistema en el VPS
+
+| | Producción | Demo |
+| --- | --- | --- |
+| Rama | `main` | `developer` |
+| Dirección | `app.garageproboard.com` | `demo.garageproboard.com` |
+| Base y archivos | Los reales | Propios, con datos de prueba |
+| Backups | Sí | No: se puede rehacer |
+
+Lo nuevo se trabaja en `developer`, se prueba en demo y recién ahí pasa a `main`. Son dos copias
+y no una concesionaria de prueba dentro de producción porque el código y los cambios de la base
+les llegan a todas las concesionarias a la vez.
+
 ## Qué se respalda y a dónde
 
 Todo va a **Cloudflare R2**, en otro proveedor: una copia dentro del VPS se pierde con el VPS.
