@@ -234,6 +234,7 @@ export interface RespuestaEntrada {
 }
 
 export interface ItemEntrada {
+  minutosEstipulados?: number | null | undefined
   id?: string | null | undefined
   tipo: 'trabajo' | 'repuesto'
   repuestoId?: string | null | undefined
@@ -665,6 +666,7 @@ export class ServicioOrdenes {
             presupuestoId: previo?.presupuestoId ?? null,
             // Los códigos de las cajas vienen del depósito: la orden no los edita, los conserva.
             codigosBarras: (previo?.codigosBarras ?? []) as string[],
+            minutosEstipulados: i.minutosEstipulados ?? previo?.minutosEstipulados ?? null,
           }
         })
         await tx.delete(ordenItem).where(eq(ordenItem.ordenId, id))
@@ -1672,6 +1674,7 @@ export class ServicioOrdenes {
         precioUnitario: i.precioUnitario,
         codigoAlicuota: i.codigoAlicuota,
         codigosBarras: i.codigosBarras ?? [],
+        minutosEstipulados: i.minutosEstipulados ?? null,
       })),
     )
   }
@@ -1782,6 +1785,7 @@ export class ServicioOrdenes {
       entregadaEn: o.entregadaEn?.toISOString() ?? null,
       items: items.map((i) => ({
         id: i.id,
+        minutosEstipulados: i.minutosEstipulados,
         tipo: i.tipo as 'trabajo' | 'repuesto',
         repuestoId: i.repuestoId,
         codigo: i.codigo,
@@ -1816,6 +1820,7 @@ export class ServicioOrdenes {
       })),
       sesiones,
       manoDeObraMin: sesiones.reduce((a, x) => (x.motivoAnulacion ? a : a + x.minutos), 0),
+      minutosEstipulados: minutosEstipuladosDe(items),
       factura: factura ?? null,
     }
   }
@@ -2025,4 +2030,16 @@ async function egresoDe(tx: Db, o: typeof orden.$inferSelect) {
           }
         : null,
   }
+}
+
+/** Lo que debería llevar la orden: lo rechazado no se hace. Null si ningún renglón trae tiempo. */
+function minutosEstipuladosDe(
+  items: Array<{ minutosEstipulados: number | null; autorizacion: string | null }>,
+): number | null {
+  const conTiempo = items.filter(
+    (i) => i.minutosEstipulados !== null && i.autorizacion !== 'rechazado',
+  )
+  return conTiempo.length
+    ? conTiempo.reduce((total, i) => total + (i.minutosEstipulados as number), 0)
+    : null
 }

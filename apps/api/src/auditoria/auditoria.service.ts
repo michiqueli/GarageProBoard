@@ -739,6 +739,7 @@ const NOMBRE_TABLA: Record<string, string> = {
   estacion_fichaje: 'la estación de fichaje',
   jornada: 'la jornada',
   sesion_trabajo: 'una sesión de trabajo',
+  service_catalogo: 'un service del catálogo',
   marca: 'la marca',
   modelo: 'el modelo',
   vehiculo: 'el vehículo',

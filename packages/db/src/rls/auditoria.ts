@@ -71,6 +71,10 @@ export const TABLAS_AUDITADAS: readonly TablaAuditada[] = [
   },
   { tabla: 'orden' },
   {
+    tabla: 'service_catalogo',
+    nota: 'Qué services ofrece el taller. Sus renglones se reemplazan enteros y no se auditan uno por uno: importar un catálogo serían miles de filas de ruido.',
+  },
+  {
     tabla: 'vehiculo_pendiente',
     nota: 'Lo que se le recomendó y no autorizó, y quién lo descartó y por qué: es lo que se discute cuando falla lo que se había avisado.',
   },
@@ -182,6 +186,8 @@ export const TABLAS_SIN_AUDITAR: Readonly<
   orden_secuencia: 'Es un contador: la numeración sin huecos se verifica en las órdenes.',
   repuestos_secuencia: 'Es un contador: lo numerado se audita en el pedido y en la compra.',
   visita_secuencia: 'Es un contador: el número del día es para llamar, no un comprobante.',
+  service_catalogo_item:
+    'Se reemplazan enteros con su service, que sí se audita: importar un catálogo serían miles de filas de ruido.',
   orden_item:
     'La orden se guarda entera en cada edición, así que auditar el renglón sería una fila por ' +
     'renglón en cada guardado. Lo material —el total y el estado— cambia en la orden, y lo ' +

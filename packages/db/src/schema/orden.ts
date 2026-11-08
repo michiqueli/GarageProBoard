@@ -264,6 +264,8 @@ export const ordenItem = pgTable(
      * el depósito. El cliente los compara con las cajas que se lleva. Vacío si se cargó a mano.
      */
     codigosBarras: text().array().notNull().default(sql`'{}'::text[]`),
+    /** El tiempo estipulado, si vino de un service del catálogo: contra esto se compara el real. */
+    minutosEstipulados: integer(),
     creadoEn: creadoEn(),
   },
   (t) => [

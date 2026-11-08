@@ -76,6 +76,9 @@ const AUDITAN: readonly string[] = [
   'ordenes.terminarEspera',
   'ordenes.corregirSesion',
   'ordenes.anularSesion',
+  'services.crear',
+  'services.editar',
+  'services.importar',
   'ordenes.terminar',
   'ordenes.entregar',
   'ordenes.reabrir',
@@ -153,6 +156,7 @@ const NO_AUDITAN: Readonly<Record<string, string>> = {
     'subir inserta una y marca la anterior. La narracion diria lo mismo que las dos filas.',
   'hojas.quitar':
     'Marca la imagen propia como reemplazada, y eso es una sola columna que el trigger ya cuenta.',
+  'services.previsualizar': 'Mira las filas y contesta: no guarda nada.',
   'motivosEspera.crear':
     'El trigger de motivo_espera guarda el motivo entero con quién y cuándo: un nombre es todo lo que tiene.',
   'motivosEspera.editar':

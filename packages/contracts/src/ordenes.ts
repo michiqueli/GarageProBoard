@@ -155,6 +155,8 @@ export const ordenResumen = z.object({
 })
 
 export const itemOrden = z.object({
+  /** El tiempo estipulado, si vino de un service del catálogo. */
+  minutosEstipulados: z.number().int().nullable(),
   id: z.uuid(),
   tipo: z.enum(TIPOS_ITEM),
   /** Si es del catálogo: cargarlo descontó el stock de la sucursal. */
@@ -308,6 +310,8 @@ export const ordenDetalle = ordenResumen.extend({
   sesiones: z.array(sesionDeTrabajo),
   /** La suma, incluyendo lo que se está trabajando ahora mismo. */
   manoDeObraMin: z.number().int(),
+  /** La suma de lo estipulado en los renglones que se van a hacer. Null si ninguno trae tiempo. */
+  minutosEstipulados: z.number().int().nullable(),
   /** La factura vigente, si ya se facturó. */
   factura: z
     .object({
@@ -357,6 +361,8 @@ const itemEntrada = z.object({
   cantidad: importe.refine((v) => Number(v) > 0, 'La cantidad tiene que ser mayor a cero'),
   precioUnitario: importe.refine((v) => Number(v) >= 0, 'El precio no puede ser negativo'),
   codigoAlicuota: z.union(CODIGOS_ALICUOTA.map((c) => z.literal(c))).default(5),
+  /** El tiempo estipulado, si el renglón vino de un service del catálogo. */
+  minutosEstipulados: z.number().int().min(0).nullish(),
 })
 
 const conId = z.object({ id: z.uuid() })

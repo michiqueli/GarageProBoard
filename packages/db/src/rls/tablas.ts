@@ -23,6 +23,8 @@ export const TABLAS_CON_TENANT = [
   'orden_espera',
   'ajuste_sesion',
   'motivo_espera',
+  'service_catalogo',
+  'service_catalogo_item',
   'vehiculo_pendiente',
   'repuesto',
   'repuesto_stock',

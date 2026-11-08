@@ -39,6 +39,7 @@ export type TablaAuditada =
   | 'rol'
   | 'usuario'
   | 'vehiculo'
+  | 'service_catalogo'
   | 'titularidad'
   | 'dispositivo'
 

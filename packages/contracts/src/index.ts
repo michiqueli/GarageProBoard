@@ -10,6 +10,7 @@ import { contratoConfiguracion } from './configuracion.ts'
 import { contratoFichaje } from './fichaje.ts'
 import { contratoHojas } from './hojas.ts'
 import { contratoMotivosEspera } from './motivos-espera.ts'
+import { contratoServices } from './services-catalogo.ts'
 import { contratoOrdenes } from './ordenes.ts'
 import { contratoOrganizacion } from './organizacion.ts'
 import { contratoPadron } from './padron.ts'
@@ -39,6 +40,7 @@ export * from './configuracion.ts'
 export * from './fichaje.ts'
 export * from './hojas.ts'
 export * from './motivos-espera.ts'
+export * from './services-catalogo.ts'
 export * from './ordenes.ts'
 export * from './organizacion.ts'
 export * from './padron.ts'
@@ -77,6 +79,7 @@ export const contrato = {
   hojas: contratoHojas,
   revision: contratoRevision,
   motivosEspera: contratoMotivosEspera,
+  services: contratoServices,
   recepcion: contratoRecepcion,
   turnos: contratoTurnos,
   totem: contratoTotem,

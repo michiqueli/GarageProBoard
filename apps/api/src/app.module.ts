@@ -25,6 +25,10 @@ import { ServicioFirmas } from './ordenes/firmas.service.ts'
 import { ControladorFotos } from './ordenes/fotos.controller.ts'
 import { ServicioFotos } from './ordenes/fotos.service.ts'
 import { ControladorMotivosEspera, ServicioMotivosEspera } from './ordenes/motivos-espera.ts'
+import {
+  ControladorCatalogoServices,
+  ServicioCatalogoServices,
+} from './ordenes/services-catalogo.ts'
 import { ControladorOrdenes } from './ordenes/ordenes.controller.ts'
 import { ServicioOrdenes } from './ordenes/ordenes.service.ts'
 import { ControladorPendientes } from './ordenes/pendientes.controller.ts'
@@ -101,6 +105,7 @@ import { ServicioVehiculos } from './vehiculos/vehiculos.service.ts'
     ControladorFirmas,
     ControladorFotos,
     ControladorMotivosEspera,
+    ControladorCatalogoServices,
     ControladorPendientes,
     ControladorRepuestos,
     ControladorPedidosRepuestos,
@@ -130,6 +135,7 @@ import { ServicioVehiculos } from './vehiculos/vehiculos.service.ts'
     ServicioFirmas,
     ServicioFotos,
     ServicioMotivosEspera,
+    ServicioCatalogoServices,
     ServicioPendientes,
     ServicioRepuestos,
     ServicioPedidosRepuestos,
