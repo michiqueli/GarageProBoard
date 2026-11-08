@@ -52,7 +52,7 @@ En un gestor de contraseñas, porque **sin esto los backups no sirven**:
 ## Poner en marcha
 
 1. En R2, una clave con permiso sólo sobre el bucket `garageproboard`.
-2. En el VPS, clonar el repositorio en `/opt/garageproboard`, copiar `.env.example` a `.env`
+2. En el VPS, clonar el repositorio en `/var/www/garageproboard`, copiar `.env.example` a `.env`
    (`chmod 600`) y completarlo.
 3. `docker compose up -d --build postgres redis`.
 4. `./respaldar.sh iniciar`, y después `./respaldar.sh archivos`.
@@ -80,7 +80,7 @@ Para volver a un momento anterior: `--type=time --target="2026-11-08 14:30:00-03
 ## La landing
 
 El VPS ya atiende los puertos 80 y 443 con nginx para otros proyectos: la landing es un sitio más,
-en `/var/www/garageproboard`, con `infra/produccion/nginx/garageproboard.conf`.
+en `/var/www/garageproboard/landing`, con `infra/produccion/nginx/garageproboard.conf`.
 
 ## El almacén de archivos
 

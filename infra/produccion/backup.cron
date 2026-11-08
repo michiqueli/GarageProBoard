@@ -2,11 +2,11 @@
 # Fuera del horario de los talleres. Lo del WAL no está acá: sale solo, cada cinco minutos como mucho.
 
 # Completo los domingos, diferencial el resto.
-30 5 * * 0   root /opt/garageproboard/infra/produccion/respaldar.sh completo >> /var/log/gpb-backup.log 2>&1
-30 5 * * 1-6 root /opt/garageproboard/infra/produccion/respaldar.sh diario   >> /var/log/gpb-backup.log 2>&1
+30 5 * * 0   root /var/www/garageproboard/infra/produccion/respaldar.sh completo >> /var/log/gpb-backup.log 2>&1
+30 5 * * 1-6 root /var/www/garageproboard/infra/produccion/respaldar.sh diario   >> /var/log/gpb-backup.log 2>&1
 
 # Firmas, fotos y dibujos: cada hora.
-10 * * * *   root /opt/garageproboard/infra/produccion/respaldar.sh archivos >> /var/log/gpb-backup.log 2>&1
+10 * * * *   root /var/www/garageproboard/infra/produccion/respaldar.sh archivos >> /var/log/gpb-backup.log 2>&1
 
 # El primero de cada mes se restaura de verdad. Si esto falla, los backups no sirven.
-0 8 1 * *    root /opt/garageproboard/infra/produccion/respaldar.sh probar   >> /var/log/gpb-backup.log 2>&1
+0 8 1 * *    root /var/www/garageproboard/infra/produccion/respaldar.sh probar   >> /var/log/gpb-backup.log 2>&1
