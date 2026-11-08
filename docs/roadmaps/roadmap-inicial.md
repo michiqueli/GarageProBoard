@@ -212,8 +212,8 @@ verdad. Qué se trae y qué cambia ahora que el DMS es nuestro, en
 - ⬜ Operaciones con tiempos de referencia por terminal
 - ✅ **Fichaje de mecánicos por QR**: dos escaneos, tres segundos, sin login. La PC del taller
       se registra como estación y se autentica sola; la credencial abre y cierra la sesión de
-      trabajo sobre la orden, con fallback numérico y todo escaneo registrado. Falta comparar
-      contra el tiempo de referencia, que llega con el catálogo de services
+      trabajo sobre la orden, con fallback numérico y todo escaneo registrado. Se compara contra
+      lo estipulado en la orden; falta llevarlo al tablero
 - ✅ **Reloj de entrada y salida** para todo el personal, con la misma credencial, y la
       asistencia del día en RRHH
 - ✅ QR firmado impreso en la propia OT (`GT1:O:…`), con el número para tipear. Copia taller y
@@ -243,10 +243,12 @@ verdad. Qué se trae y qué cambia ahora que el DMS es nuestro, en
       renglón, por mail), la orden espera autorización y lo presupuestado no se toca. La respuesta
       dice quién autorizó y por qué medio; lo rechazado no se cobra y sus repuestos vuelven al
       stock. Sin respuesta, la orden no se termina
-- ⬜ **Catálogo de services**: los services de cada marca (10.000, 20.000, …) con sus trabajos,
-      repuestos y **tiempo estipulado**, más un service genérico que se completa a mano. Cargarlos
-      en una OT la completa de un toque, y el tiempo estipulado sirve para comparar con el real.
-      Hay un Excel de Renault con los tiempos para importar como primer catálogo
+- ✅ **Catálogo de services**, desde el 08/11/2026: por marca y modelo, o genéricos, con sus
+      trabajos, repuestos y **tiempo estipulado**. Se cargan a mano o con un wizard de importación
+      —plantilla, archivo y preview donde se corrige cada error—, y en la orden se cargan de un
+      toque y comparan lo estipulado con lo real. En
+      [el catálogo de services](../tecnicos/catalogo-de-services.md). Falta importar el Excel de
+      Renault, pasándolo a la plantilla
 - ✅ Facturación de la OT: panel «Órdenes para facturar» en caja; anular la factura la devuelve
 - ✅ **Tablero de piso en tiempo real**: qué auto, quién lo tiene, cuánto lleva. En dos vistas
       del mismo tablero: la del jefe de taller, con sesión y desde donde se abre la orden, y el
