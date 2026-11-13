@@ -77,6 +77,11 @@ export const TABLAS_AUDITADAS: readonly TablaAuditada[] = [
   { tabla: 'unidad' },
   { tabla: 'unidad_categoria' },
   {
+    tabla: 'ventas_config',
+    nota: 'Cómo trabaja las ventas: el descuento que se permite sin autorización.',
+  },
+  { tabla: 'venta' },
+  {
     tabla: 'unidad_concepto',
     nota: 'Lo que costó cada unidad: es de donde sale el margen, y lo que se mira si no cierra.',
   },
@@ -202,6 +207,10 @@ export const TABLAS_SIN_AUDITAR: Readonly<
   visita_secuencia: 'Es un contador: el número del día es para llamar, no un comprobante.',
   unidad_movimiento:
     'Es la bitácora de la unidad, sólo se agrega: lo que cuenta ya se audita en la unidad.',
+  venta_secuencia: 'Es un contador: lo numerado se audita en la venta.',
+  venta_concepto:
+    'Se reemplazan enteros con el borrador, que sí se audita; confirmada, ya no se tocan.',
+  venta_pago: 'Igual que los conceptos: van con la venta, que se audita.',
   service_catalogo_item:
     'Se reemplazan enteros con su service, que sí se audita: importar un catálogo serían miles de filas de ruido.',
   orden_item:

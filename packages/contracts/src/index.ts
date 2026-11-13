@@ -31,6 +31,7 @@ import { contratoRoles } from './roles.ts'
 import { contratoServices } from './services-catalogo.ts'
 import { contratoUsuarios } from './usuarios.ts'
 import { contratoVehiculos } from './vehiculos.ts'
+import { contratoVentas } from './ventas.ts'
 
 export * from './acceso.ts'
 export * from './auditoria.ts'
@@ -58,6 +59,7 @@ export * from './roles.ts'
 export * from './services-catalogo.ts'
 export * from './usuarios.ts'
 export * from './vehiculos.ts'
+export * from './ventas.ts'
 
 /**
  * El contrato vive acá y no dentro de la API a propósito: es lo que hace que
@@ -89,6 +91,7 @@ export const contrato = {
   cartera: contratoCartera,
   costosUnidad: contratoCostosUnidad,
   contacto: contratoContacto,
+  ventas: contratoVentas,
   recepcion: contratoRecepcion,
   turnos: contratoTurnos,
   totem: contratoTotem,

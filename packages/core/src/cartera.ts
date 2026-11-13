@@ -13,7 +13,13 @@ export const ORIGENES_UNIDAD = [
   'otro',
 ] as const
 export const ESTADOS_UNIDAD = ['disponible', 'reservada', 'vendida', 'retirada'] as const
-export const ESTADOS_RESERVA = ['activa', 'vencida', 'liberada', 'desplazada'] as const
+export const ESTADOS_RESERVA = [
+  'activa',
+  'vencida',
+  'liberada',
+  'desplazada',
+  'convertida',
+] as const
 export const MONEDAS_UNIDAD = ['ARS', 'USD'] as const
 
 export const MODOS_RESERVA = ['bloquea', 'avisa'] as const

@@ -42,6 +42,8 @@ export type TablaAuditada =
   | 'service_catalogo'
   | 'unidad'
   | 'cartera_config'
+  | 'venta'
+  | 'ventas_config'
   | 'titularidad'
   | 'dispositivo'
 

@@ -50,7 +50,8 @@ export const DEPENDENCIAS: Readonly<Record<Modulo, readonly Modulo[]>> = {
   servicios: ['nucleo'],
   repuestos: ['nucleo'],
   cartera: ['nucleo'],
-  ventas: ['nucleo'],
+  // Se vende lo que hay en stock.
+  ventas: ['nucleo', 'cartera'],
   rrhh: ['nucleo'],
 }
 

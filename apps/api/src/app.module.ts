@@ -70,6 +70,7 @@ import { ControladorUsuarios } from './usuarios/usuarios.controller.ts'
 import { ServicioUsuarios } from './usuarios/usuarios.service.ts'
 import { ControladorVehiculos } from './vehiculos/vehiculos.controller.ts'
 import { ServicioVehiculos } from './vehiculos/vehiculos.service.ts'
+import { ControladorVentas, ServicioVentas } from './ventas/ventas.ts'
 
 @Module({
   imports: [
@@ -109,6 +110,7 @@ import { ServicioVehiculos } from './vehiculos/vehiculos.service.ts'
     ControladorFotos,
     ControladorMotivosEspera,
     ControladorCartera,
+    ControladorVentas,
     ControladorContacto,
     ControladorCostosUnidad,
     ControladorCatalogoServices,
@@ -142,6 +144,7 @@ import { ServicioVehiculos } from './vehiculos/vehiculos.service.ts'
     ServicioFotos,
     ServicioMotivosEspera,
     ServicioCartera,
+    ServicioVentas,
     ServicioContacto,
     ServicioCostosUnidad,
     ServicioCatalogoServices,

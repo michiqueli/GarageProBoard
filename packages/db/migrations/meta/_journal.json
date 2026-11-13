@@ -330,6 +330,13 @@
       "when": 1794175718648,
       "tag": "0046_costos_de_unidad",
       "breakpoints": true
+    },
+    {
+      "idx": 47,
+      "version": "7",
+      "when": 1794591503211,
+      "tag": "0047_ventas",
+      "breakpoints": true
     }
   ]
 }

@@ -591,7 +591,7 @@ export class ServicioCartera {
       historialReservas: historial.map(({ r, nombre }) => ({
         id: r.id,
         cliente: { id: r.clienteId, nombre },
-        estado: r.estado as 'activa' | 'vencida' | 'liberada' | 'desplazada',
+        estado: r.estado as 'activa' | 'vencida' | 'liberada' | 'desplazada' | 'convertida',
         sena: r.sena,
         moneda: r.moneda as Moneda,
         vence: r.vence,

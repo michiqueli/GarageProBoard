@@ -39,6 +39,7 @@ const ESTADO_RESERVA = {
   vencida: 'Venció',
   liberada: 'Liberada',
   desplazada: 'Desplazada',
+  convertida: 'Se vendió',
 } as const
 
 export function PantallaFichaUnidad() {

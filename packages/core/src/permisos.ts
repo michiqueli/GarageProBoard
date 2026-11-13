@@ -63,6 +63,7 @@ export const SUJETOS = [
   'Turno',
   'Unidad',
   'CostoUnidad',
+  'Venta',
   'all',
 ] as const
 
@@ -105,6 +106,7 @@ const SUSTANTIVOS: Record<Sujeto, string> = {
   Turno: 'los turnos del taller',
   Unidad: 'el stock de unidades',
   CostoUnidad: 'lo que costó cada unidad',
+  Venta: 'las ventas de unidades',
   all: 'todo el sistema',
 }
 
@@ -350,6 +352,7 @@ export const ROLES_PREDEFINIDOS: RolPredefinido[] = [
       { action: ['ver', 'crear', 'editar'], subject: ['Visita', 'Cliente'] },
       { action: 'ver', subject: 'Vehiculo' },
       { action: ['ver', 'editar'], subject: 'Unidad' },
+      { action: ['ver', 'crear', 'editar'], subject: 'Venta' },
     ],
   },
   {

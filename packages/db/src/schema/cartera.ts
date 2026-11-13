@@ -139,7 +139,7 @@ export const unidadReserva = pgTable(
     index('unidad_reserva_unidad_idx').on(t.unidadId, t.estado),
     check(
       'unidad_reserva_estado_valido',
-      sql`${t.estado} in ('activa', 'vencida', 'liberada', 'desplazada')`,
+      sql`${t.estado} in ('activa', 'vencida', 'liberada', 'desplazada', 'convertida')`,
     ),
     check('unidad_reserva_sena_no_negativa', sql`${t.sena} is null or ${t.sena} >= 0`),
     check('unidad_reserva_moneda_valida', sql`${t.moneda} in ('ARS', 'USD')`),
@@ -166,7 +166,7 @@ export const unidadMovimiento = pgTable(
     index('unidad_movimiento_unidad_idx').on(t.unidadId, t.creadoEn),
     check(
       'unidad_movimiento_tipo_valido',
-      sql`${t.tipo} in ('ingreso', 'traslado', 'reserva', 'liberacion', 'precio', 'retiro')`,
+      sql`${t.tipo} in ('ingreso', 'traslado', 'reserva', 'liberacion', 'precio', 'retiro', 'venta')`,
     ),
   ],
 )
