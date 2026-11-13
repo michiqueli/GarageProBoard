@@ -49,6 +49,7 @@ export function PantallaFichaUnidad() {
   const tenantId = usarSesion((e) => e.datos?.tenant.id)
   const puedeEditar = usePuedeUsar(contrato.cartera.editar)
   const puedeRetirar = usePuedeUsar(contrato.cartera.retirar)
+  const puedeVender = usePuedeUsar(contrato.ventas.crear)
   const [abierto, setAbierto] = useState<Abierto>(null)
   useVolver(() => void navegar({ to: '/stock' }), abierto === null)
 
@@ -136,6 +137,11 @@ export function PantallaFichaUnidad() {
       acciones={
         u && enStock && puedeEditar ? (
           <>
+            {puedeVender && (
+              <Link to="/ventas/nueva" search={{ unidad: u.id }} className={clasesBoton()}>
+                Vender
+              </Link>
+            )}
             <Boton onClick={() => void pedirPrecio()}>Cambiar precio</Boton>
             <Boton onClick={() => setAbierto('traslado')}>Trasladar</Boton>
             <Boton variante="principal" onClick={() => setAbierto('reserva')}>

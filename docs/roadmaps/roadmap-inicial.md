@@ -385,14 +385,14 @@ Lo que varía entre concesionarias se configura. El diseño y los pasos, en
       sucursales y reservas con seña, todo configurable. Faltan rodados, pedidos, asignaciones y
       transferencias entre concesionarias
 - ⬜ Unidades **en producción**, por interfaz con la fábrica
-- ⬜ La operación de venta con su financiación, sus gastos y sus bonificaciones **pegados al
-      vehículo**: si el flete y la patente viven en otro lado, el margen es un número
-      inventado
+- ✅ La operación de venta, desde el 13/11/2026: borrador, gastos al cliente, descuentos,
+      costos de la venta, pagos con financiación, seña y usado en parte de pago, en pesos o
+      dólares; descuento máximo y saldo cero configurables. Falta facturarla y entregarla
 - ⬜ **Gestoría**: formularios asignados, trámites y su cuenta corriente
 - ⬜ Patentamiento y prenda
 - ⬜ Agenda de preparación y entrega, con autorización de entrega
 - ⬜ **Liquidación de comisiones a vendedores**
-- ⬜ Rentabilidad por operación
+- ✅ Rentabilidad por operación, para quien ve los costos
 - ⬜ **Plan de ahorro**: suscripciones, agrupamientos, adjudicaciones, transferencias,
       renuncias, rescisiones, scoring, cuenta corriente por contrato, cobranza de la primera
       cuota y licitaciones. En Argentina un porcentaje enorme de los 0km se vende por plan:

@@ -18,9 +18,9 @@ Son dos módulos, ya separados en [el mapa](modulos-del-sistema.md): **cartera**
 
 | Paso | Qué | Módulo |
 | --- | --- | --- |
-| **1** | **Stock de unidades**: 0km, usados, consignación, traslados y reservas | cartera |
-| 2 | Compra de la unidad, y gastos y bonificaciones pegados a ella | cartera |
-| 3 | La operación de venta, con financiación, y su rentabilidad | ventas |
+| ✅ 1 | Stock de unidades: 0km, usados, consignación, traslados y reservas | cartera |
+| ✅ 2 | Compra de la unidad, y gastos y bonificaciones pegados a ella | cartera |
+| ✅ 3 | La operación de venta, con financiación, y su rentabilidad | ventas |
 | 4 | Preparación y entrega, con autorización | ventas |
 | 5 | Gestoría, patentamiento y prenda | ventas |
 | 6 | Comisiones de los vendedores | ventas |
@@ -79,7 +79,43 @@ patente vivieran en otro lado, el margen sería un número inventado.
   sin ella no entra en la suma, y la ficha lo dice. Un total inventado es peor que uno incompleto.
 - **No se modifica ni se borra**: se anula con motivo, y sigue a la vista.
 
+## Paso 3: la venta
+
+Se empieza desde la unidad (**Vender**, en su ficha) o desde Ventas. Nace en **borrador** con el
+precio de la unidad y, si el comprador la tenía reservada, con la seña como primer pago.
+
+- **El borrador se guarda entero**: comprador, precio y moneda, y los renglones. Hasta confirmar se
+  cambia todo; después, sólo se anula con motivo.
+- **Tres clases de concepto**: gastos que paga el cliente (patentamiento, flete) suman al total;
+  descuentos restan; **costos de la venta** (una comisión externa, un regalo) no los ve el cliente
+  pero restan del margen.
+- **Los pagos** dicen el medio: efectivo, transferencia, cheque, tarjeta, financiación (entidad y
+  cuotas), seña, otro, o un **usado en parte de pago**, que tiene que estar ingresado en el stock.
+- **Cada renglón tiene su moneda**, con cotización si no es la de la venta; sin ella no suma, como
+  en los costos.
+- **Confirmar** deja la unidad vendida: la reserva del comprador queda «se vendió» y las de otros se
+  liberan, con el motivo. Venderla estando reservada para otro pide motivo y el permiso de
+  autorizar sobre unidades.
+- **La rentabilidad** —precio menos descuentos, menos lo que costó la unidad (paso 2), menos los
+  costos de la venta— sólo la ve quien ve los costos, y si la venta está en la moneda de la unidad.
+- **Anular** una confirmada devuelve la unidad al stock y lo deja en su historia.
+- Numeración propia por concesionaria; la venta queda en la sucursal y con el vendedor de quien la
+  empezó.
+
+### Las opciones
+
+En Ventas → Configuración.
+
+| Opción | Por omisión | Qué cambia |
+| --- | --- | --- |
+| Descuento máximo sin autorización | Sin límite | Pasarlo pide motivo y el permiso `autorizar Venta` |
+| Confirmar sólo con todo pagado | No | Con saldo, no confirma |
+
+El rol Vendedor ve, empieza y completa ventas; anular, autorizar y configurar quedan para el gerente
+o quien cada concesionaria elija en Roles.
+
 ## Lo que todavía no está
 
 - Generar el comprobante del traslado: por ahora se anota su número.
-- Vender: la unidad pasa a vendida con el paso 3.
+- La factura de la venta y la entrega: paso 4.
+- El boleto de compraventa impreso.

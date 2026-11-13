@@ -171,6 +171,18 @@ export const PRINCIPALES: Seccion[] = [
     ),
   },
   {
+    id: 'ventas',
+    etiqueta: 'Ventas',
+    to: '/ventas',
+    requiere: accesoDeRuta(contrato.ventas.listar),
+    icono: (
+      <svg viewBox="0 0 16 16" {...trazo} aria-hidden="true">
+        <path d="M2.5 8.5l5-5H13v5.5l-5 5z" />
+        <circle cx="10.5" cy="5.5" r="1" />
+      </svg>
+    ),
+  },
+  {
     id: 'clientes',
     etiqueta: 'Clientes',
     to: '/clientes',

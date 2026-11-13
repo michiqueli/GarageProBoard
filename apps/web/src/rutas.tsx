@@ -80,6 +80,10 @@ const conVolver = z.object({
   volver: z.string().refine(esRutaPropia).optional().catch(undefined),
 })
 
+const conUnidad = z.object({
+  unidad: z.uuid().optional().catch(undefined),
+})
+
 const conVisita = z.object({
   visita: z.uuid().optional().catch(undefined),
 })
@@ -436,6 +440,43 @@ const rutaFichaUnidad = createRoute({
   ),
 })
 
+const rutaVentas = createRoute({
+  getParentRoute: () => conSesion,
+  path: 'ventas',
+  component: lazyRouteComponent(
+    () => import('./modulos/ventas/PantallaVentas.tsx'),
+    'PantallaVentas',
+  ),
+})
+
+const rutaNuevaVenta = createRoute({
+  getParentRoute: () => conSesion,
+  path: 'ventas/nueva',
+  validateSearch: conUnidad,
+  component: lazyRouteComponent(
+    () => import('./modulos/ventas/PantallaNuevaVenta.tsx'),
+    'PantallaNuevaVenta',
+  ),
+})
+
+const rutaConfigVentas = createRoute({
+  getParentRoute: () => conSesion,
+  path: 'ventas/configuracion',
+  component: lazyRouteComponent(
+    () => import('./modulos/ventas/PantallaConfigVentas.tsx'),
+    'PantallaConfigVentas',
+  ),
+})
+
+const rutaVenta = createRoute({
+  getParentRoute: () => conSesion,
+  path: 'ventas/$id',
+  component: lazyRouteComponent(
+    () => import('./modulos/ventas/PantallaVenta.tsx'),
+    'PantallaVenta',
+  ),
+})
+
 const rutaEstaciones = createRoute({
   getParentRoute: () => conSesion,
   path: 'estaciones',
@@ -639,6 +680,10 @@ const arbol = raiz.addChildren([
     rutaIngresarUnidad,
     rutaConfigStock,
     rutaFichaUnidad,
+    rutaVentas,
+    rutaNuevaVenta,
+    rutaConfigVentas,
+    rutaVenta,
     rutaServices,
     rutaNuevoService,
     rutaImportarServices,
