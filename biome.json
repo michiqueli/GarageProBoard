@@ -12,7 +12,8 @@
       "!**/node_modules",
       "!**/.turbo",
       "!**/migrations/**/*.sql",
-      "!para_sacar_codigo"
+      "!para_sacar_codigo",
+      "!apps/web/src/datos/localidades.json"
     ]
   },
   "formatter": {

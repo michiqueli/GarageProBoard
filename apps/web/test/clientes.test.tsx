@@ -143,6 +143,24 @@ describe('un cliente nuevo', () => {
     return screen.findByRole('region', { name: 'Nuevo cliente' })
   }
 
+  it('con la provincia elegida sugiere sus localidades, y acepta otra', async () => {
+    const formulario = await abrirAlta()
+    const localidad = within(formulario).getByLabelText('Localidad') as HTMLInputElement
+    expect(localidad.getAttribute('list')).toBeNull()
+
+    await userEvent.selectOptions(within(formulario).getByLabelText('Provincia'), 'Santa Fe')
+    await waitFor(() => expect(localidad.getAttribute('list')).not.toBeNull())
+    const sugeridas = [
+      ...(document
+        .getElementById(localidad.getAttribute('list') as string)
+        ?.querySelectorAll('option') ?? []),
+    ].map((o) => o.value)
+    expect(sugeridas).toContain('Rafaela')
+
+    await userEvent.type(localidad, 'Paraje que no está')
+    expect(localidad.value).toBe('Paraje que no está')
+  })
+
   it('con el CUIT mal escrito avisa al lado del campo y no manda nada', async () => {
     const formulario = await abrirAlta()
     await userEvent.type(within(formulario).getByLabelText('CUIT'), '30-71111111-2')

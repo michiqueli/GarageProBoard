@@ -7,6 +7,7 @@ import { type FormEvent, useEffect, useRef, useState } from 'react'
 import { confirmar, notificar } from '../../componentes/avisos.ts'
 import { Boton, clasesBoton } from '../../componentes/Boton.tsx'
 import { Campo } from '../../componentes/Campo.tsx'
+import { CampoLocalidad } from '../../componentes/CampoLocalidad.tsx'
 import { IconoAgregar, IconoCertificado, IconoEditar } from '../../componentes/iconos.tsx'
 import { ResultadoPadron } from '../../componentes/ResultadoPadron.tsx'
 import { Selector } from '../../componentes/Selector.tsx'
@@ -556,11 +557,6 @@ function FormSucursal({
         value={domicilio}
         onChange={(e) => setDomicilio(e.target.value)}
       />
-      <Campo
-        etiqueta="Localidad"
-        value={localidad}
-        onChange={(e) => setLocalidad(e.target.value)}
-      />
       <Selector
         etiqueta="Provincia"
         valor={provinciaCodigo}
@@ -568,6 +564,7 @@ function FormSucursal({
         onChange={setProvincia}
         opciones={catalogos.provincias.map((p) => ({ valor: p.codigo, texto: p.nombre }))}
       />
+      <CampoLocalidad provinciaCodigo={provinciaCodigo} value={localidad} onChange={setLocalidad} />
       <Campo etiqueta="Teléfono" value={telefono} onChange={(e) => setTelefono(e.target.value)} />
       {sucursal && (
         <label className="flex items-center gap-2 self-end pb-2 text-dato">

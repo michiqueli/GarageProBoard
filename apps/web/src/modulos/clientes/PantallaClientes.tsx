@@ -7,6 +7,7 @@ import { type FormEvent, useEffect, useRef, useState } from 'react'
 import { confirmar } from '../../componentes/avisos.ts'
 import { Boton } from '../../componentes/Boton.tsx'
 import { Campo } from '../../componentes/Campo.tsx'
+import { CampoLocalidad } from '../../componentes/CampoLocalidad.tsx'
 import { clicEnFila, FILA_CLICABLE } from '../../componentes/filas.ts'
 import { IconoEditar } from '../../componentes/iconos.tsx'
 import { ResultadoPadron } from '../../componentes/ResultadoPadron.tsx'
@@ -579,25 +580,23 @@ export function Formulario({
           value={domicilio}
           onChange={(e) => setDomicilio(e.target.value)}
         />
-        <Campo
-          etiqueta="Localidad"
-          value={localidad}
-          onChange={(e) => setLocalidad(e.target.value)}
+        <Selector
+          etiqueta="Provincia"
+          valor={provinciaCodigo}
+          vacio="Sin especificar"
+          onChange={setProvincia}
+          opciones={catalogos.provincias.map((p) => ({ valor: p.codigo, texto: p.nombre }))}
         />
-        <div className="grid gap-3">
-          <Selector
-            etiqueta="Provincia"
-            valor={provinciaCodigo}
-            vacio="Sin especificar"
-            onChange={setProvincia}
-            opciones={catalogos.provincias.map((p) => ({ valor: p.codigo, texto: p.nombre }))}
-          />
-          <Campo
-            etiqueta="Código postal"
-            value={codigoPostal}
-            onChange={(e) => setCodigoPostal(e.target.value)}
-          />
-        </div>
+        <CampoLocalidad
+          provinciaCodigo={provinciaCodigo}
+          value={localidad}
+          onChange={setLocalidad}
+        />
+        <Campo
+          etiqueta="Código postal"
+          value={codigoPostal}
+          onChange={(e) => setCodigoPostal(e.target.value)}
+        />
 
         <Campo
           etiqueta="Correo"
