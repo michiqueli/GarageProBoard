@@ -236,6 +236,71 @@ export class ServicioVehiculos {
     })
   }
 
+  /**
+   * El vehículo de una unidad que entra al stock, dentro de esa misma transacción. Si el
+   * chasis ya está (un usado que el taller conoce) se usa ese y se completa lo que le falte,
+   * sin pisar nada; si no, se crea. Quien ingresa la unidad no tiene por qué saber que existe.
+   */
+  async porChasis(tx: Db, sesion: Sesion, d: DatosVehiculo & { chasis: string }, ip?: string) {
+    const [existente] = await tx.select().from(vehiculo).where(eq(vehiculo.chasis, d.chasis))
+    if (!existente) {
+      await this.verificarDominio(tx, d.dominio)
+      const valores = await this.valores(tx, sesion, d)
+      const [creado] = await tx
+        .insert(vehiculo)
+        .values({ tenantId: sesion.tenantId, chasis: d.chasis, ...valores })
+        .returning({ id: vehiculo.id })
+        .catch((error: unknown) => this.traducirDuplicado(error))
+      if (!creado) throw new Error('No se pudo crear el vehículo.')
+      const { modeloId: _, ...datos } = valores
+      await this.auditar(
+        tx,
+        sesion,
+        'vehiculo',
+        creado.id,
+        'alta',
+        null,
+        { chasis: d.chasis, ...datos, marca: d.marca ?? null, modelo: d.modelo ?? null },
+        ip,
+      )
+      return creado.id
+    }
+
+    const faltan: Partial<typeof vehiculo.$inferInsert> = {}
+    if (!existente.dominio && d.dominio) {
+      await this.verificarDominio(tx, d.dominio, existente.id)
+      faltan.dominio = d.dominio
+    }
+    if (!existente.motor && d.motor) faltan.motor = d.motor
+    if (!existente.color && d.color) faltan.color = d.color
+    if (existente.anio === null && d.anio) faltan.anio = d.anio
+    if (!existente.combustible && d.combustible) faltan.combustible = d.combustible
+    if (d.kilometraje && (existente.kilometraje ?? 0) < d.kilometraje) {
+      faltan.kilometraje = d.kilometraje
+    }
+    if (!existente.modeloId && d.marca && d.modelo) {
+      faltan.modeloId = await this.modeloId(tx, sesion, d.marca, d.modelo)
+    }
+    if (Object.keys(faltan).length) {
+      await tx
+        .update(vehiculo)
+        .set({ ...faltan, actualizadoEn: new Date() })
+        .where(eq(vehiculo.id, existente.id))
+        .catch((error: unknown) => this.traducirDuplicado(error))
+      await this.auditar(
+        tx,
+        sesion,
+        'vehiculo',
+        existente.id,
+        'modificacion',
+        existente,
+        faltan,
+        ip,
+      )
+    }
+    return existente.id
+  }
+
   editar(id: string, entrada: DatosVehiculo, ip?: string) {
     return this.datos.transaccion(async (tx, sesion) => {
       const antes = await this.armarFicha(tx, id)

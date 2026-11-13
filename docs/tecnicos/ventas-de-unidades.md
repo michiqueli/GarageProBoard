@@ -79,8 +79,12 @@ patente vivieran en otro lado, el margen sería un número inventado.
   sin ella no entra en la suma, y la ficha lo dice. Un total inventado es peor que uno incompleto.
 - **No se modifica ni se borra**: se anula con motivo, y sigue a la vista.
 - **La factura de compra se carga al ingresar la unidad**: número, fecha e importe, y queda como el
-  renglón de compra. En un 0km es la de la fábrica; el chasis, el motor y el color salen de ella, y
-  el vehículo se busca y se da de alta por chasis porque todavía no tiene patente.
+  renglón de compra. En un 0km es la de la fábrica.
+- **La unidad se ingresa con sus datos**, no buscándola en Vehículos: chasis, motor, color, marca,
+  modelo y año; patente y kilómetros sólo si es usada. Por abajo es la misma ficha de vehículo que
+  usa el taller, identificada por el chasis: si ya existe (un usado que se atendió acá) se usa esa
+  y se le completa lo que falte, sin pisar nada. Así el 0km que se vende hoy llega al taller con
+  su historia.
 
 ## Paso 3: la venta
 

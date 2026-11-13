@@ -192,6 +192,77 @@ describe('el ingreso', () => {
     expect(r.json().code).toBe('YA_EN_STOCK')
   })
 
+  it('con los datos de la unidad: un 0km nuevo crea su vehículo, sin patente', async () => {
+    const r = await pedir('POST', '/stock', {
+      vehiculo: {
+        chasis: '9BGEN69K0VG160495',
+        motor: 'L4F262094693',
+        marca: 'Chevrolet',
+        modelo: 'Onix',
+        anio: 2026,
+        color: 'Jinx Met',
+      },
+      condicion: '0km',
+      tenencia: 'propia',
+      origen: 'fabrica',
+    })
+    expect(r.statusCode, r.body).toBe(201)
+    expect(r.json().vehiculo).toMatchObject({
+      chasis: '9BGEN69K0VG160495',
+      dominio: null,
+      marca: 'Chevrolet',
+      modelo: 'Onix',
+    })
+  })
+
+  it('un usado que el taller ya conoce usa ese vehículo y completa lo que le falta', async () => {
+    const conocido = await pedir('POST', '/vehiculos', {
+      chasis: '9BWZZZ377VT004999',
+      dominio: 'AB123CD',
+      color: 'Gris',
+    })
+    expect(conocido.statusCode, conocido.body).toBe(201)
+
+    const r = await pedir('POST', '/stock', {
+      vehiculo: {
+        chasis: '9BWZZZ377VT004999',
+        color: 'Rojo',
+        motor: 'CFZ123456',
+        kilometraje: 80000,
+      },
+      condicion: 'usado',
+      tenencia: 'propia',
+      origen: 'parte_de_pago',
+    })
+    expect(r.statusCode, r.body).toBe(201)
+    expect(r.json().vehiculo.id).toBe(conocido.json().id)
+    const auto = (await pedir('GET', `/vehiculos/${conocido.json().id}`)).json()
+    // Lo cargado no se pisa: sólo se completa lo que faltaba.
+    expect(auto).toMatchObject({ color: 'Gris', motor: 'CFZ123456', dominio: 'AB123CD' })
+  })
+
+  it('una patente que ya es de otro chasis no se acepta', async () => {
+    const r = await pedir('POST', '/stock', {
+      vehiculo: { chasis: '9BWZZZ377VT004998', dominio: 'AB123CD' },
+      condicion: 'usado',
+      tenencia: 'propia',
+      origen: 'compra',
+    })
+    expect(r.json()).toMatchObject({
+      code: 'DOMINIO_DUPLICADO',
+      data: { chasis: '9BWZZZ377VT004999' },
+    })
+  })
+
+  it('va el vehículo por id o con sus datos, no los dos', async () => {
+    const r = await pedir('POST', '/stock', {
+      condicion: 'usado',
+      tenencia: 'propia',
+      origen: 'compra',
+    })
+    expect(r.statusCode).toBe(400)
+  })
+
   it('el asesor no tiene la cartera', async () => {
     expect((await pedir('GET', '/stock', undefined, asesor)).statusCode).toBe(403)
   })

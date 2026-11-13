@@ -346,36 +346,37 @@ describe('trasladar', () => {
   })
 })
 
-describe('ingresar un 0km', () => {
-  it('buscado por chasis, el alta lo pone en el chasis; la factura de la fábrica queda como la compra', async () => {
-    crearVehiculo.mockImplementation(async (d: object) => ({ id: 'v9', ...d }))
+describe('ingresar una unidad', () => {
+  it('un 0km se carga con los datos de la factura, sin patente, y la factura queda como la compra', async () => {
     cartera.ingresar.mockResolvedValue({ ...UNIDAD, condicion: '0km' })
     await montarApp('/stock/ingresar')
 
-    await userEvent.type(await screen.findByLabelText('Vehículo'), '9BGEN69K0VG160495')
-    await userEvent.click(await screen.findByRole('button', { name: 'Darlo de alta' }))
-    const alta = await screen.findByRole('region', { name: 'Nuevo vehículo' })
-    expect((within(alta).getByLabelText('Chasis') as HTMLInputElement).value).toBe(
-      '9BGEN69K0VG160495',
-    )
-    expect((within(alta).getByLabelText('Patente') as HTMLInputElement).value).toBe('')
-    await userEvent.type(within(alta).getByLabelText('Número de motor'), 'L4F262094693')
-    await userEvent.click(within(alta).getByRole('button', { name: /Guardar/ }))
-    await waitFor(() =>
-      expect(crearVehiculo).toHaveBeenCalledWith(
-        expect.objectContaining({
-          chasis: '9BGEN69K0VG160495',
-          motor: 'L4F262094693',
-          dominio: null,
-        }),
-      ),
-    )
-
-    await userEvent.selectOptions(screen.getByLabelText('Condición'), '0km')
+    await userEvent.selectOptions(await screen.findByLabelText('Condición'), '0km')
+    expect(screen.queryByLabelText('Patente')).toBeNull()
+    await userEvent.type(screen.getByLabelText('Chasis'), '9bgen69k0vg160495')
+    await userEvent.type(screen.getByLabelText('Número de motor'), 'L4F262094693')
+    await userEvent.type(screen.getByLabelText('Color'), 'Jinx Met')
+    await userEvent.type(screen.getByLabelText('Marca'), 'Chevrolet')
+    await userEvent.type(screen.getByLabelText('Modelo'), 'Onix')
     await userEvent.type(screen.getByLabelText('Número de factura'), '0065-00710617')
     await userEvent.type(screen.getByLabelText('Importe (pesos)'), '15000000')
     await userEvent.click(screen.getByRole('button', { name: /Ingresar al stock/ }))
 
+    await waitFor(() =>
+      expect(cartera.ingresar).toHaveBeenCalledWith(
+        expect.objectContaining({
+          condicion: '0km',
+          vehiculo: expect.objectContaining({
+            chasis: '9BGEN69K0VG160495',
+            motor: 'L4F262094693',
+            marca: 'Chevrolet',
+            modelo: 'Onix',
+            color: 'Jinx Met',
+            dominio: null,
+          }),
+        }),
+      ),
+    )
     await waitFor(() =>
       expect(costos.agregar).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -384,9 +385,18 @@ describe('ingresar un 0km', () => {
           descripcion: 'Compra a fábrica',
           comprobante: '0065-00710617',
           importe: '15000000',
-          moneda: 'ARS',
         }),
       ),
     )
+  })
+
+  it('un usado pide patente y kilómetros, y sin chasis no ingresa', async () => {
+    await montarApp('/stock/ingresar')
+
+    await userEvent.type(await screen.findByLabelText('Patente'), 'ab123cd')
+    expect(screen.getByText('Falta el chasis')).toBeDefined()
+    expect(
+      (screen.getByRole('button', { name: /Ingresar al stock/ }) as HTMLButtonElement).disabled,
+    ).toBe(true)
   })
 })

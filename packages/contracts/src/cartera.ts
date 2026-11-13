@@ -13,7 +13,8 @@ import {
 } from '@gpb/core'
 import { z } from 'zod'
 import { conPermiso } from './acceso.ts'
-import { importe, paginado } from './comunes.ts'
+import { chasis, importe, paginado } from './comunes.ts'
+import { conMarca, datosVehiculo, SIN_MARCA } from './vehiculos.ts'
 
 const TAG = 'Stock de unidades'
 
@@ -178,12 +179,15 @@ export const contratoCartera = {
       successStatus: 201,
       description:
         'Una propia queda a nombre de la razón social que se indique o, si no, la de la ' +
-        'sucursal donde entra. Una en consignación lleva su consignante.',
+        'sucursal donde entra. Una en consignación lleva su consignante. El vehículo va por ' +
+        'id, o con sus datos: si el chasis ya está cargado (un usado que se atendió en el ' +
+        'taller) se usa ese, completando lo que le falte; si no, se crea.',
     })
     .input(
       z
         .object({
-          vehiculoId: z.uuid(),
+          vehiculoId: z.uuid().nullish(),
+          vehiculo: datosVehiculo.extend({ chasis }).refine(conMarca, SIN_MARCA).nullish(),
           condicion: z.enum(CONDICIONES_UNIDAD),
           tenencia: z.enum(TENENCIAS_UNIDAD),
           origen: z.enum(ORIGENES_UNIDAD),
@@ -198,10 +202,19 @@ export const contratoCartera = {
         .refine((d) => d.tenencia !== 'consignacion' || d.consignanteId, {
           path: ['consignanteId'],
           message: 'Falta de quién es la unidad',
+        })
+        .refine((d) => Boolean(d.vehiculoId) !== Boolean(d.vehiculo), {
+          path: ['vehiculo'],
+          message: 'Va el vehículo: por id o con sus datos, uno de los dos',
         }),
     )
     .errors({
       YA_EN_STOCK: { status: 409, message: 'Ese vehículo ya está en stock' },
+      DOMINIO_DUPLICADO: {
+        status: 409,
+        message: 'Esa patente ya la tiene otro vehículo, con otro chasis',
+        data: z.object({ id: z.uuid(), chasis: z.string() }),
+      },
       DATO_INVALIDO: {
         status: 422,
         message: 'El vehículo, la razón social, la sucursal o el consignante no existen',

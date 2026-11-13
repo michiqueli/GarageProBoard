@@ -22,6 +22,7 @@ import { auditar } from '../comun/auditoria.ts'
 import { contextoDelPedido, type Sesion } from '../comun/contexto.ts'
 import { DatosDelTenant } from '../comun/datos.ts'
 import { Operacion } from '../comun/operacion.ts'
+import { ErrorVehiculos, ServicioVehiculos } from '../vehiculos/vehiculos.service.ts'
 
 type Moneda = 'ARS' | 'USD'
 type Condicion = '0km' | 'usado'
@@ -48,7 +49,10 @@ const EN_STOCK: Estado[] = ['disponible', 'reservada']
  */
 @Injectable()
 export class ServicioCartera {
-  constructor(@Inject(DatosDelTenant) private readonly datos: DatosDelTenant) {}
+  constructor(
+    @Inject(DatosDelTenant) private readonly datos: DatosDelTenant,
+    @Inject(ServicioVehiculos) private readonly vehiculos: ServicioVehiculos,
+  ) {}
 
   config() {
     return this.datos.transaccion((tx) => this.leerConfig(tx))
@@ -136,7 +140,8 @@ export class ServicioCartera {
 
   ingresar(
     d: {
-      vehiculoId: string
+      vehiculoId?: string | null | undefined
+      vehiculo?: Parameters<ServicioVehiculos['porChasis']>[2] | null | undefined
       condicion: Condicion
       tenencia: Tenencia
       origen: Origen
@@ -153,10 +158,18 @@ export class ServicioCartera {
     return this.datos.transaccion(async (tx, sesion) => {
       const sucursalId = d.sucursalId ?? sesion.sucursalId
       const [suc] = await tx.select().from(sucursal).where(eq(sucursal.id, sucursalId))
+      const vehiculoId = d.vehiculo
+        ? await this.vehiculos.porChasis(tx, sesion, d.vehiculo, ip).catch((e: unknown) => {
+            if (e instanceof ErrorVehiculos && e.codigo === 'DOMINIO_DUPLICADO') {
+              throw new ErrorCartera('DOMINIO_DUPLICADO', e.datos as Record<string, unknown>)
+            }
+            throw e
+          })
+        : (d.vehiculoId as string)
       const [auto] = await tx
         .select({ id: vehiculo.id, dominio: vehiculo.dominio, chasis: vehiculo.chasis })
         .from(vehiculo)
-        .where(eq(vehiculo.id, d.vehiculoId))
+        .where(eq(vehiculo.id, vehiculoId))
       if (!suc || !auto) throw new ErrorCartera('DATO_INVALIDO')
 
       let empresaId: string | null = null
@@ -180,7 +193,7 @@ export class ServicioCartera {
       const [yaEsta] = await tx
         .select({ id: unidad.id })
         .from(unidad)
-        .where(and(eq(unidad.vehiculoId, d.vehiculoId), inArray(unidad.estado, EN_STOCK)))
+        .where(and(eq(unidad.vehiculoId, vehiculoId), inArray(unidad.estado, EN_STOCK)))
       if (yaEsta) throw new ErrorCartera('YA_EN_STOCK')
 
       const config = await this.leerConfig(tx)
@@ -188,7 +201,7 @@ export class ServicioCartera {
         .insert(unidad)
         .values({
           tenantId: sesion.tenantId,
-          vehiculoId: d.vehiculoId,
+          vehiculoId,
           condicion: d.condicion,
           tenencia: d.tenencia,
           origen: d.origen,

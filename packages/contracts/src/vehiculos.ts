@@ -65,7 +65,7 @@ const kilometraje = z.number().int().min(0, 'Los kilómetros no pueden ser negat
 const anio = z.number().int().min(1900).max(2100).nullish()
 
 /** Lo que se carga igual en el alta que al modificar. */
-const datosVehiculo = z.object({
+export const datosVehiculo = z.object({
   dominio: dominio.nullish(),
   anio,
   color: opcional,
@@ -82,9 +82,11 @@ const datosVehiculo = z.object({
 })
 
 /** El vehículo guarda el modelo, y el modelo sabe su marca: una marca sola se perdería. */
-const conMarca = (d: { marca?: string | null | undefined; modelo?: string | null | undefined }) =>
-  Boolean(d.marca) === Boolean(d.modelo)
-const SIN_MARCA = {
+export const conMarca = (d: {
+  marca?: string | null | undefined
+  modelo?: string | null | undefined
+}) => Boolean(d.marca) === Boolean(d.modelo)
+export const SIN_MARCA = {
   message: 'Marca y modelo van juntos: completá los dos, o ninguno',
   path: ['modelo'],
 }
