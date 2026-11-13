@@ -118,7 +118,9 @@ export function formatearImporte(valor: string): string {
   return `${negativo ? '-' : ''}${conPuntos},${dec}`
 }
 
+// Sin fecha cargada va en blanco: «undefined/undefined/» en un comprobante fiscal no puede salir.
 const fecha = (iso: string) => {
+  if (!iso) return ''
   const [a, m, d] = iso.slice(0, 10).split('-')
   return `${d}/${m}/${a}`
 }

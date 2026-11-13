@@ -529,7 +529,7 @@ describe('mandar por mail', () => {
     const m = enviados.at(-1)
     expect(m).toMatchObject({
       para: 'juan@correo.test',
-      asunto: 'Factura B 00005-00000901 · Casa Central',
+      asunto: 'Factura B 00005-00000901 · facturacion SAS (Casa Central)',
     })
     expect(m?.texto).toMatch(/Hola, Juan Pérez/)
     expect(m?.adjuntos?.[0]?.nombre).toBe('Factura-B-00005-00000901.pdf')

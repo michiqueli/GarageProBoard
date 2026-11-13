@@ -4,6 +4,7 @@ import { armarCorreoComprobante } from '../src/comprobantes/correo-comprobante.t
 const DATOS = {
   titulo: 'Factura B 00008-00000012',
   receptor: 'Gómez, Ana',
+  empresa: 'Autos del Litoral',
   sucursal: 'Casa Central',
   razonSocial: 'MENNICHELLI, NICOLAS GUSTAVO',
   cuit: '20295544040',
@@ -13,9 +14,10 @@ const DATOS = {
 }
 
 describe('el mail de un comprobante', () => {
-  it('habla en nombre de la sucursal, con el total y el CAE', () => {
+  it('dice la empresa y la sucursal, con el total y el CAE', () => {
     const m = armarCorreoComprobante(DATOS)
-    expect(m.asunto).toBe('Factura B 00008-00000012 · Casa Central')
+    expect(m.asunto).toBe('Factura B 00008-00000012 · Autos del Litoral (Casa Central)')
+    expect(m.html).toContain('Autos del Litoral')
     expect(m.html).toContain('Casa Central')
     expect(m.html).toContain('$ 1.234,50')
     expect(m.html).toContain('08/11/2026')

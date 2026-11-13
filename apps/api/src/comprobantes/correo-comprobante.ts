@@ -2,7 +2,9 @@ export interface DatosCorreoComprobante {
   /** «Factura B 00008-00000012». */
   titulo: string
   receptor: string
-  /** Lo que ve el cliente como remitente: el lugar donde lo atendieron. */
+  /** El nombre con el que la conoce el cliente: el de fantasía o, si no tiene, la razón social. */
+  empresa: string
+  /** Dónde lo atendieron. */
   sucursal: string
   razonSocial: string
   cuit: string
@@ -37,6 +39,7 @@ const fila = (nombre: string, valor: string) =>
 export function armarCorreoComprobante(d: DatosCorreoComprobante) {
   const total = importe(d.total)
   const sucursal = escapar(d.sucursal)
+  const empresa = escapar(d.empresa)
   const titulo = escapar(d.titulo)
 
   const html = `<!doctype html>
@@ -45,7 +48,10 @@ export function armarCorreoComprobante(d: DatosCorreoComprobante) {
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#eef1ef;padding:24px 12px">
 <tr><td align="center">
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:520px;background:#ffffff;border-radius:8px;overflow:hidden;font-family:Arial,Helvetica,sans-serif">
-<tr><td style="background:#0e1412;border-bottom:4px solid #f0a621;padding:20px 24px;color:#ffffff;font-size:20px;font-weight:700">${sucursal}</td></tr>
+<tr><td style="background:#0e1412;border-bottom:4px solid #f0a621;padding:20px 24px">
+<div style="color:#ffffff;font-size:20px;font-weight:700">${empresa}</div>
+<div style="color:#f0a621;font-size:13px;margin-top:4px">${sucursal}</div>
+</td></tr>
 <tr><td style="padding:24px 24px 8px;color:#151d1a;font-size:15px;line-height:1.5">
 Hola, <b>${escapar(d.receptor)}</b>:<br>te enviamos tu comprobante. Va adjunto en PDF.
 </td></tr>
@@ -76,9 +82,9 @@ ${escapar(d.razonSocial)} · CUIT ${escapar(cuitConGuiones(d.cuit))}
     '',
     `Te enviamos la ${d.titulo} por ${total}. Va adjunta en PDF.`,
     '',
-    d.sucursal,
+    `${d.empresa} · ${d.sucursal}`,
     `${d.razonSocial} · CUIT ${cuitConGuiones(d.cuit)}`,
   ].join('\n')
 
-  return { asunto: `${d.titulo} · ${d.sucursal}`, texto, html }
+  return { asunto: `${d.titulo} · ${d.empresa} (${d.sucursal})`, texto, html }
 }

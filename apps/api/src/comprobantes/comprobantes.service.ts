@@ -209,6 +209,7 @@ export class ServicioComprobantes {
         ...armarCorreoComprobante({
           titulo,
           receptor: d.receptorNombre,
+          empresa: datos.emisor.nombreFantasia ?? datos.emisor.razonSocial,
           sucursal: datos.sucursal,
           razonSocial: datos.emisor.razonSocial,
           cuit: datos.emisor.cuit,
@@ -216,7 +217,7 @@ export class ServicioComprobantes {
           total: d.importeTotal,
           cae: d.cae as string,
         }),
-        nombreRemitente: datos.sucursal,
+        nombreRemitente: `${datos.emisor.nombreFantasia ?? datos.emisor.razonSocial} · ${datos.sucursal}`,
         adjuntos: [{ nombre, contenido: bytes, tipo: 'application/pdf' }],
       })
     } catch (error) {
