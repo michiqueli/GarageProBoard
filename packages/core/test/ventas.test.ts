@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { totalesDeVenta } from '../src/ventas.ts'
+import { importeDePorcentaje, totalesDeVenta } from '../src/ventas.ts'
 
 const pesos = (importe: string) => ({ importe, moneda: 'ARS' as const, cotizacion: null })
 
@@ -43,5 +43,13 @@ describe('los totales de una venta', () => {
       costoUnidad: null,
     })
     expect(t).toMatchObject({ pagado: '500000.00', sinConvertir: 1, rentabilidad: null })
+  })
+})
+
+describe('un porcentaje del precio', () => {
+  it('es un importe al centavo', () => {
+    expect(importeDePorcentaje('1000000', '3')).toBe('30000.00')
+    expect(importeDePorcentaje('18350000', '1.5')).toBe('275250.00')
+    expect(importeDePorcentaje('999.99', '3.333')).toBe('33.33')
   })
 })

@@ -2,6 +2,7 @@ import { contrato, type ventaFicha, type ventaResumen } from '@gpb/contracts'
 import {
   CONFIG_VENTAS_POR_OMISION,
   type ConfigVentas,
+  importeDePorcentaje,
   type MedioPagoVenta,
   type MonedaUnidad,
   type TipoConceptoVenta,
@@ -52,7 +53,8 @@ class ErrorVentas extends Error {
 interface ConceptoEntrada {
   tipo: TipoConceptoVenta
   descripcion: string
-  importe: string
+  importe?: string | null | undefined
+  porcentaje?: string | null | undefined
   moneda: MonedaUnidad
   cotizacion?: string | null | undefined
 }
@@ -275,9 +277,19 @@ export class ServicioVentas {
             orden: n + 1,
             tipo: c.tipo,
             descripcion: c.descripcion,
-            importe: c.importe,
-            moneda: c.moneda,
-            cotizacion: c.cotizacion ?? null,
+            // El porcentaje es del precio, y en su moneda.
+            ...(c.porcentaje
+              ? {
+                  importe: importeDePorcentaje(d.precio, c.porcentaje),
+                  moneda: d.moneda,
+                  cotizacion: null,
+                  porcentaje: c.porcentaje,
+                }
+              : {
+                  importe: c.importe as string,
+                  moneda: c.moneda,
+                  cotizacion: c.cotizacion ?? null,
+                }),
           })),
         )
       }
@@ -623,6 +635,7 @@ export class ServicioVentas {
         importe: c.importe,
         moneda: c.moneda as MonedaUnidad,
         cotizacion: c.cotizacion,
+        porcentaje: c.porcentaje,
       })),
       pagos: t.pagos.map((p) => {
         const usado = usados.find((x) => x.id === p.unidadUsadaId)

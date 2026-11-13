@@ -1,5 +1,5 @@
 import { accesoDeRuta, contrato } from '@gpb/contracts'
-import { MINIMO_MOTIVO_CARTERA, numeroDeHoja, totalesDeVenta } from '@gpb/core'
+import { importeDePorcentaje, MINIMO_MOTIVO_CARTERA, numeroDeHoja, totalesDeVenta } from '@gpb/core'
 import { ORPCError } from '@orpc/client'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { getRouteApi, Link, useNavigate } from '@tanstack/react-router'
@@ -28,10 +28,18 @@ interface Concepto {
   clave: number
   tipo: Tipo
   descripcion: string
+  /** Fijo, o un porcentaje del precio que se recalcula si el precio cambia. */
+  modo: 'fijo' | 'porcentaje'
   importe: string
+  porcentaje: string
   moneda: Moneda
   cotizacion: string
 }
+
+const MODOS = [
+  { valor: 'porcentaje' as const, texto: '% del precio' },
+  { valor: 'fijo' as const, texto: 'Importe fijo' },
+]
 
 interface Pago {
   clave: number
@@ -106,7 +114,9 @@ function Formulario({ venta: v }: { venta: Venta }) {
       clave: proxima++,
       tipo: c.tipo,
       descripcion: c.descripcion,
+      modo: c.porcentaje ? ('porcentaje' as const) : ('fijo' as const),
       importe: sinCeros(c.importe),
+      porcentaje: sinCeros(c.porcentaje),
       moneda: c.moneda,
       cotizacion: sinCeros(c.cotizacion),
     })),
@@ -154,16 +164,30 @@ function Formulario({ venta: v }: { venta: Venta }) {
       precio: numero(precio) ?? '0',
       moneda,
       conceptos: conceptos.flatMap((c) =>
-        valido(c.importe)
-          ? [
-              {
-                tipo: c.tipo,
-                importe: valido(c.importe) as string,
-                moneda: c.moneda,
-                cotizacion: valido(c.cotizacion),
-              },
-            ]
-          : [],
+        c.modo === 'porcentaje'
+          ? valido(c.porcentaje) && numero(precio) !== null
+            ? [
+                {
+                  tipo: c.tipo,
+                  importe: importeDePorcentaje(
+                    numero(precio) as string,
+                    valido(c.porcentaje) as string,
+                  ),
+                  moneda,
+                  cotizacion: null,
+                },
+              ]
+            : []
+          : valido(c.importe)
+            ? [
+                {
+                  tipo: c.tipo,
+                  importe: valido(c.importe) as string,
+                  moneda: c.moneda,
+                  cotizacion: valido(c.cotizacion),
+                },
+              ]
+            : [],
       ),
       pagos: pagos.flatMap((p) =>
         valido(p.importe)
@@ -184,7 +208,13 @@ function Formulario({ venta: v }: { venta: Venta }) {
     ? 'Falta el comprador'
     : numero(precio) === null
       ? 'El precio tiene que ser un número'
-      : conceptos.some((c) => !c.descripcion.trim() || malo(c.importe) || malo(c.cotizacion, false))
+      : conceptos.some(
+            (c) =>
+              !c.descripcion.trim() ||
+              (c.modo === 'porcentaje'
+                ? malo(c.porcentaje) || Number(numero(c.porcentaje)) > 100
+                : malo(c.importe) || malo(c.cotizacion, false)),
+          )
         ? 'Revisá los conceptos: descripción e importe'
         : pagos.some(
               (p) =>
@@ -213,9 +243,14 @@ function Formulario({ venta: v }: { venta: Venta }) {
         conceptos: conceptos.map((c) => ({
           tipo: c.tipo,
           descripcion: c.descripcion.trim(),
-          importe: numero(c.importe) as string,
-          moneda: c.moneda,
-          cotizacion: c.cotizacion.trim() ? numero(c.cotizacion) : null,
+          ...(c.modo === 'porcentaje'
+            ? { importe: null, porcentaje: numero(c.porcentaje), moneda, cotizacion: null }
+            : {
+                importe: numero(c.importe),
+                porcentaje: null,
+                moneda: c.moneda,
+                cotizacion: c.cotizacion.trim() ? numero(c.cotizacion) : null,
+              }),
         })),
         pagos: pagos.map((p) => ({
           medio: p.medio,
@@ -389,7 +424,9 @@ function Formulario({ venta: v }: { venta: Venta }) {
                       clave: proxima++,
                       tipo: 'gasto_cliente',
                       descripcion: '',
+                      modo: 'porcentaje',
                       importe: '',
+                      porcentaje: '',
                       moneda,
                       cotizacion: '',
                     },
@@ -412,7 +449,7 @@ function Formulario({ venta: v }: { venta: Venta }) {
                 <li
                   key={c.clave}
                   aria-label={`Concepto ${n + 1}`}
-                  className="grid items-end gap-2 px-3 py-2.5 md:grid-cols-[12rem_1fr_8rem_7rem_7rem_auto]"
+                  className="grid items-end gap-2 px-3 py-2.5 md:grid-cols-[11rem_1fr_9rem_8rem_7rem_7rem_auto]"
                 >
                   <Selector
                     etiqueta="Qué es"
@@ -426,19 +463,49 @@ function Formulario({ venta: v }: { venta: Venta }) {
                     maxLength={200}
                     onChange={(e) => cambiarConcepto(c.clave, { descripcion: e.target.value })}
                   />
-                  <Campo
-                    etiqueta="Importe"
-                    inputMode="decimal"
-                    value={c.importe}
-                    onChange={(e) => cambiarConcepto(c.clave, { importe: e.target.value })}
-                  />
                   <Selector
-                    etiqueta="Moneda"
-                    valor={c.moneda}
-                    opciones={MONEDAS}
-                    onChange={(m) => m && cambiarConcepto(c.clave, { moneda: m })}
+                    etiqueta="Cómo"
+                    valor={c.modo}
+                    opciones={MODOS}
+                    onChange={(m) => m && cambiarConcepto(c.clave, { modo: m })}
                   />
-                  {c.moneda !== moneda ? (
+                  {c.modo === 'porcentaje' ? (
+                    <>
+                      <Campo
+                        etiqueta="Porcentaje"
+                        inputMode="decimal"
+                        value={c.porcentaje}
+                        onChange={(e) => cambiarConcepto(c.clave, { porcentaje: e.target.value })}
+                      />
+                      <span className="tabular self-center pt-4 font-mono text-etiqueta text-texto-suave">
+                        {numero(c.porcentaje) && numero(precio)
+                          ? importeUnidad(
+                              importeDePorcentaje(
+                                numero(precio) as string,
+                                numero(c.porcentaje) as string,
+                              ),
+                              moneda,
+                            )
+                          : ''}
+                      </span>
+                    </>
+                  ) : (
+                    <>
+                      <Campo
+                        etiqueta="Importe"
+                        inputMode="decimal"
+                        value={c.importe}
+                        onChange={(e) => cambiarConcepto(c.clave, { importe: e.target.value })}
+                      />
+                      <Selector
+                        etiqueta="Moneda"
+                        valor={c.moneda}
+                        opciones={MONEDAS}
+                        onChange={(m) => m && cambiarConcepto(c.clave, { moneda: m })}
+                      />
+                    </>
+                  )}
+                  {c.modo === 'fijo' && c.moneda !== moneda ? (
                     <Campo
                       etiqueta="Cotización"
                       inputMode="decimal"
@@ -463,7 +530,10 @@ function Formulario({ venta: v }: { venta: Venta }) {
               ) : (
                 <li key={c.clave} className="flex flex-wrap gap-x-3 px-3 py-2 text-dato">
                   <span>{c.descripcion}</span>
-                  <span className="text-etiqueta text-texto-suave">{TIPO_CONCEPTO[c.tipo]}</span>
+                  <span className="text-etiqueta text-texto-suave">
+                    {TIPO_CONCEPTO[c.tipo]}
+                    {c.modo === 'porcentaje' ? ` · ${c.porcentaje} % del precio` : ''}
+                  </span>
                   <span className="tabular ml-auto font-mono">
                     {c.tipo === 'descuento' ? '− ' : ''}
                     {importeUnidad(numero(c.importe) ?? '0', c.moneda)}

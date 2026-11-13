@@ -1,0 +1,2 @@
+ALTER TABLE "venta_concepto" ADD COLUMN "porcentaje" numeric(7, 4);--> statement-breakpoint
+ALTER TABLE "venta_concepto" ADD CONSTRAINT "venta_concepto_porcentaje_valido" CHECK ("venta_concepto"."porcentaje" is null or ("venta_concepto"."porcentaje" > 0 and "venta_concepto"."porcentaje" <= 100));

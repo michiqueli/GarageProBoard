@@ -170,6 +170,33 @@ describe('la venta', () => {
     expect(within(totales).getAllByText('$ 0,00').length).toBeGreaterThan(0)
   })
 
+  it('un gasto nuevo va en porcentaje del precio, y muestra cuánto es', async () => {
+    ventas.guardar.mockResolvedValue(FICHA)
+    await montarApp(`/ventas/${ID}`)
+
+    const bloque = await screen.findByRole('region', { name: 'Gastos, descuentos y costos' })
+    await userEvent.click(within(bloque).getByRole('button', { name: /Agregar/ }))
+    const gasto = within(bloque).getByRole('listitem', { name: 'Concepto 3' })
+    await userEvent.type(within(gasto).getByLabelText('Descripción'), 'Patentamiento')
+    await userEvent.type(within(gasto).getByLabelText('Porcentaje'), '3')
+    expect(within(gasto).getByText('$ 30.000,00')).toBeDefined()
+
+    await userEvent.click(screen.getByRole('button', { name: /^Guardar/ }))
+    await waitFor(() =>
+      expect(ventas.guardar).toHaveBeenCalledWith(
+        expect.objectContaining({
+          conceptos: expect.arrayContaining([
+            expect.objectContaining({
+              descripcion: 'Patentamiento',
+              porcentaje: '3',
+              importe: null,
+            }),
+          ]),
+        }),
+      ),
+    )
+  })
+
   it('si el descuento pasa el máximo, confirmar pide el motivo y lo manda', async () => {
     ventas.confirmar
       .mockRejectedValueOnce(

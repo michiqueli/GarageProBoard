@@ -112,10 +112,16 @@ export const ventaConcepto = pgTable(
     importe: numeric({ precision: 18, scale: 2 }).notNull(),
     moneda: text().notNull(),
     cotizacion: numeric({ precision: 18, scale: 4 }),
+    /** Si es un porcentaje del precio: el importe se recalcula con él cada vez que se guarda. */
+    porcentaje: numeric({ precision: 7, scale: 4 }),
     creadoEn: creadoEn(),
   },
   (t) => [
     index('venta_concepto_venta_idx').on(t.ventaId, t.orden),
+    check(
+      'venta_concepto_porcentaje_valido',
+      sql`${t.porcentaje} is null or (${t.porcentaje} > 0 and ${t.porcentaje} <= 100)`,
+    ),
     check(
       'venta_concepto_tipo_valido',
       sql`${t.tipo} in ('gasto_cliente', 'descuento', 'costo_venta')`,

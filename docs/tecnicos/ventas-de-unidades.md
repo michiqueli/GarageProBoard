@@ -96,6 +96,9 @@ precio de la unidad y, si el comprador la tenía reservada, con la seña como pr
 - **Tres clases de concepto**: gastos que paga el cliente (patentamiento, flete) suman al total;
   descuentos restan; **costos de la venta** (una comisión externa, un regalo) no los ve el cliente
   pero restan del margen.
+- **Cada concepto va como importe fijo o como porcentaje del precio**: patentamiento, sellos y
+  formularios se cobran así. Se guarda el porcentaje y el importe se recalcula con el precio cada vez
+  que se guarda el borrador. Un gasto nuevo arranca en porcentaje.
 - **Los pagos** dicen el medio: efectivo, transferencia, cheque, tarjeta, financiación (entidad y
   cuotas), seña, otro, o un **usado en parte de pago**, que tiene que estar ingresado en el stock.
 - **Cada renglón tiene su moneda**, con cotización si no es la de la venta; sin ella no suma, como

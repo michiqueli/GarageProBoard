@@ -184,6 +184,52 @@ describe('el borrador', () => {
   })
 })
 
+describe('los gastos en porcentaje', () => {
+  it('se calculan sobre el precio, y se recalculan si el precio cambia', async () => {
+    const { venta } = await ventaEnBorrador()
+    const gasto = {
+      tipo: 'gasto_cliente',
+      descripcion: 'Patentamiento',
+      porcentaje: '3',
+      moneda: 'ARS',
+    }
+    const r = await pedir('PUT', `/ventas/${venta.id}`, {
+      ...BORRADOR,
+      clienteId: comprador,
+      conceptos: [gasto],
+    })
+    expect(r.statusCode, r.body).toBe(200)
+    expect(r.json().conceptos[0]).toMatchObject({ importe: '30000.00', porcentaje: '3.0000' })
+
+    const caro = await pedir('PUT', `/ventas/${venta.id}`, {
+      ...BORRADOR,
+      precio: '2000000',
+      clienteId: comprador,
+      conceptos: [gasto],
+    })
+    expect(caro.json().conceptos[0].importe).toBe('60000.00')
+    expect(caro.json().totales.total).toBe('2060000.00')
+  })
+
+  it('va el importe o el porcentaje, no los dos', async () => {
+    const { venta } = await ventaEnBorrador()
+    const r = await pedir('PUT', `/ventas/${venta.id}`, {
+      ...BORRADOR,
+      clienteId: comprador,
+      conceptos: [
+        {
+          tipo: 'gasto_cliente',
+          descripcion: 'Sellos',
+          importe: '1',
+          porcentaje: '1',
+          moneda: 'ARS',
+        },
+      ],
+    })
+    expect(r.statusCode).toBe(400)
+  })
+})
+
 describe('confirmar', () => {
   it('deja la unidad vendida, cumple la reserva del comprador y libera las otras', async () => {
     await configurar({})

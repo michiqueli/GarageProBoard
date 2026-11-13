@@ -48,6 +48,14 @@ export interface ImporteEnMoneda {
   cotizacion: string | null
 }
 
+/**
+ * Lo que es un porcentaje del precio: patentamiento, sellos y formularios se cobran así. Se
+ * guarda el porcentaje y el importe se recalcula con el precio, al centavo.
+ */
+export function importeDePorcentaje(precio: string, porcentaje: string): string {
+  return new Decimal(precio).times(porcentaje).div(100).toDecimalPlaces(2).toFixed(2)
+}
+
 /** Un importe en otra moneda, o `null` si hace falta cotización y no la hay. */
 export function aMoneda(c: ImporteEnMoneda, moneda: MonedaUnidad): Decimal | null {
   const importe = new Decimal(c.importe)

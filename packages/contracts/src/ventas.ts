@@ -58,6 +58,8 @@ const concepto = z.object({
   importe: z.string(),
   moneda,
   cotizacion: z.string().nullable(),
+  /** Si es un porcentaje del precio; el importe ya viene calculado. */
+  porcentaje: z.string().nullable(),
 })
 
 const pago = z.object({
@@ -102,13 +104,20 @@ export const ventaFicha = ventaResumen.extend({
   anulacionMotivo: z.string().nullable(),
 })
 
-const conceptoEntrada = z.object({
-  tipo: z.enum(TIPOS_CONCEPTO_VENTA),
-  descripcion: z.string().trim().min(1, 'Falta la descripción').max(200),
-  importe: positivo,
-  moneda,
-  cotizacion: positivo.nullish(),
-})
+/** Un importe fijo, o un porcentaje del precio: con porcentaje, el importe lo calcula la API. */
+const conceptoEntrada = z
+  .object({
+    tipo: z.enum(TIPOS_CONCEPTO_VENTA),
+    descripcion: z.string().trim().min(1, 'Falta la descripción').max(200),
+    importe: positivo.nullish(),
+    porcentaje: positivo.refine((v) => Number(v) <= 100, 'Es un porcentaje: hasta 100').nullish(),
+    moneda,
+    cotizacion: positivo.nullish(),
+  })
+  .refine((c) => Boolean(c.importe) !== Boolean(c.porcentaje), {
+    path: ['importe'],
+    message: 'Va el importe o el porcentaje del precio, uno de los dos',
+  })
 
 const pagoEntrada = z
   .object({
