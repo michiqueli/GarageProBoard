@@ -388,6 +388,9 @@ Lo que varía entre concesionarias se configura. El diseño y los pasos, en
 - ✅ La operación de venta, desde el 13/11/2026: borrador, gastos al cliente, descuentos,
       costos de la venta, pagos con financiación, seña y usado en parte de pago, en pesos o
       dólares; descuento máximo y saldo cero configurables. Falta facturarla y entregarla
+- ⬜ **Financiación propia**: anticipo y el resto en cuotas que financia la concesionaria —plan
+      de cuotas, cuenta corriente del cliente, cobranza en Caja, mora y pagarés o prenda—,
+      configurable y opcional
 - ⬜ **Gestoría**: formularios asignados, trámites y su cuenta corriente
 - ⬜ Patentamiento y prenda
 - ⬜ Agenda de preparación y entrega, con autorización de entrega

@@ -20,7 +20,8 @@ Son dos módulos, ya separados en [el mapa](modulos-del-sistema.md): **cartera**
 | --- | --- | --- |
 | ✅ 1 | Stock de unidades: 0km, usados, consignación, traslados y reservas | cartera |
 | ✅ 2 | Compra de la unidad, y gastos y bonificaciones pegados a ella | cartera |
-| ✅ 3 | La operación de venta, con financiación, y su rentabilidad | ventas |
+| ✅ 3 | La operación de venta, con financiación de terceros, y su rentabilidad | ventas |
+| 3 b | Financiación propia: anticipo, plan de cuotas, cobranza y mora | ventas |
 | 4 | Preparación y entrega, con autorización | ventas |
 | 5 | Gestoría, patentamiento y prenda | ventas |
 | 6 | Comisiones de los vendedores | ventas |
@@ -123,6 +124,22 @@ En Ventas → Configuración.
 
 El rol Vendedor ve, empieza y completa ventas; anular, autorizar y configurar quedan para el gerente
 o quien cada concesionaria elija en Roles.
+
+## Paso 3 b: la financiación propia (por hacer)
+
+Hoy «Financiación» es un pago: un banco o la financiera de la marca le paga a la concesionaria.
+Muchas financian ellas mismas: el cliente entrega un anticipo y el resto lo paga en cuotas. Eso es
+un crédito, no un renglón:
+
+- **El plan**: anticipo, cantidad de cuotas, tasa o cuota fija, primer vencimiento y frecuencia.
+- **La cuenta corriente del cliente**, cuota por cuota, con su vencimiento.
+- **La cobranza en Caja**, con su recibo, y la imputación a las cuotas.
+- **La mora**: punitorios, avisos y el listado de atrasados.
+- **Los papeles**: pagarés o prenda a favor de la concesionaria.
+
+Configurable y opcional: tasa por omisión, cuotas máximas, punitorios sí o no, prenda exigida o
+no. La que no financia, no lo ve. El plan de ahorro es otra cosa (paso 7): lo cobra la
+administradora, y una adjudicación termina en una venta de estas.
 
 ## Lo que todavía no está
 
