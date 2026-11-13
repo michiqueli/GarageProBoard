@@ -24,7 +24,8 @@ const ruta = getRouteApi('/con-sesion/clientes')
 
 export type Cliente = Awaited<ReturnType<typeof api.clientes.listar>>['datos'][number]
 export type Catalogos = Awaited<ReturnType<typeof api.organizacion.catalogos>>
-type TipoDocumento = 80 | 86 | 96
+export type TipoDocumento = 80 | 86 | 96
+type Contribuyente = Awaited<ReturnType<typeof api.padron.consultar>>
 type CondicionIibb = (typeof CONDICIONES_IIBB)[number]
 
 /** Qué se está editando. Uno por vez: el formulario abierto es el único lugar de F2 y Esc. */
@@ -307,10 +308,18 @@ export function Formulario({
   cliente,
   catalogos,
   alTerminar,
+  inicial,
+  alCrear,
 }: {
   cliente: Cliente | undefined
   catalogos: Catalogos
   alTerminar: () => void
+  /** El documento ya tipeado en otro lado y, si se consultó, lo que dijo AFIP. */
+  inicial?:
+    | { tipoDocumento: TipoDocumento; numero: string; afip?: Contribuyente | undefined }
+    | undefined
+  /** Dado de alta desde otra pantalla: se lo devuelve para elegirlo ahí. */
+  alCrear?: (c: { id: string; razonSocial: string }) => void
 }) {
   const cache = useQueryClient()
   const navegar = useNavigate()
@@ -321,10 +330,12 @@ export function Formulario({
   }, [])
 
   const [tipoDocumento, setTipo] = useState<TipoDocumento>(
-    (cliente?.tipoDocumento as TipoDocumento | undefined) ?? 80,
+    (cliente?.tipoDocumento as TipoDocumento | undefined) ?? inicial?.tipoDocumento ?? 80,
   )
   const [numero, setNumero] = useState(
-    cliente ? formatearDocumento(cliente.tipoDocumento, cliente.numeroDocumento) : '',
+    cliente
+      ? formatearDocumento(cliente.tipoDocumento, cliente.numeroDocumento)
+      : (inicial?.numero ?? ''),
   )
   const [razonSocial, setRazonSocial] = useState(cliente?.razonSocial ?? '')
   const [condicionIva, setCondicionIva] = useState(cliente?.condicionIva ?? CONSUMIDOR_FINAL)
@@ -365,9 +376,10 @@ export function Formulario({
         ? api.clientes.editar({ ...datos, id: cliente.id, activo })
         : api.clientes.crear({ ...datos, tipoDocumento, numeroDocumento: normalizado })
     },
-    onSuccess: async () => {
+    onSuccess: async (guardado) => {
       await cache.invalidateQueries({ queryKey: ['clientes', tenantId] })
-      alTerminar()
+      if (!cliente && alCrear) alCrear({ id: guardado.id, razonSocial: guardado.razonSocial })
+      else alTerminar()
     },
     meta: {
       exito: () =>
@@ -382,13 +394,18 @@ export function Formulario({
           const d = error.data as { id: string; razonSocial: string }
           return {
             texto: `Ese documento ya está cargado como cliente, a nombre de ${d.razonSocial}.`,
-            accion: {
-              texto: 'Abrir su ficha',
-              alHacer: () => {
-                alTerminar()
-                void navegar({ to: '/clientes/$id', params: { id: d.id } })
-              },
-            },
+            accion: alCrear
+              ? {
+                  texto: 'Elegirlo',
+                  alHacer: () => alCrear({ id: d.id, razonSocial: d.razonSocial }),
+                }
+              : {
+                  texto: 'Abrir su ficha',
+                  alHacer: () => {
+                    alTerminar()
+                    void navegar({ to: '/clientes/$id', params: { id: d.id } })
+                  },
+                },
           }
         }
         return mensajeGeneral(error)
@@ -403,25 +420,42 @@ export function Formulario({
   const padron = useMutation({
     // El resultado, bueno o malo, se muestra al lado del CUIT.
     meta: { error: false },
-    mutationFn: () => api.padron.consultar({ cuit: normalizado }),
-    onSuccess: (c) => {
-      setRazonSocial(c.razonSocial)
+    mutationFn: () =>
+      esDni
+        ? api.padron.porDocumento({ dni: normalizado })
+        : api.padron.consultar({ cuit: normalizado }),
+    onSuccess: (c) => completarConAfip(c),
+  })
+
+  function completarConAfip(c: Contribuyente) {
+    setRazonSocial(c.razonSocial)
+    const inscripto = c.condicionIva.codigo !== null && c.condicionIva.codigo !== CONSUMIDOR_FINAL
+    // Con el DNI se queda el DNI, salvo que esté inscripto: para facturarle hace falta su CUIT.
+    if (esDni && inscripto) setNumero(formatearCuit(c.cuit))
+    if (!esDni || inscripto) {
       // Si escribió un CUIL eligiendo CUIT, lo corrige AFIP y no la persona.
       if (c.tipoClave === 'CUIL') setTipo(86)
       if (c.tipoClave === 'CUIT') setTipo(80)
-      if (c.condicionIva.codigo !== null) setCondicionIva(c.condicionIva.codigo)
-      if (c.domicilio) {
-        setDomicilio(c.domicilio.direccion ?? '')
-        setLocalidad(c.domicilio.localidad ?? '')
-        setCodigoPostal(c.domicilio.codigoPostal ?? '')
-        setProvincia(c.domicilio.provinciaCodigo)
-      }
-    },
-  })
+    }
+    if (c.condicionIva.codigo !== null) setCondicionIva(c.condicionIva.codigo)
+    if (c.domicilio) {
+      setDomicilio(c.domicilio.direccion ?? '')
+      setLocalidad(c.domicilio.localidad ?? '')
+      setCodigoPostal(c.domicilio.codigoPostal ?? '')
+      setProvincia(c.domicilio.provinciaCodigo)
+    }
+  }
+
+  // Lo que ya trajo el buscador de otra pantalla se completa al abrir, sin volver a preguntar.
+  const afipInicial = useRef(inicial?.afip)
+  // biome-ignore lint/correctness/useExhaustiveDependencies: sólo al abrir
+  useEffect(() => {
+    if (afipInicial.current) completarConAfip(afipInicial.current)
+  }, [])
 
   function consultarPadron() {
     setTocado(true)
-    if (!esDni && cuitValido(normalizado)) padron.mutate()
+    if (documentoValido) padron.mutate()
   }
 
   async function enviar(evento: FormEvent) {
@@ -445,7 +479,7 @@ export function Formulario({
   }
 
   const titulo = cliente ? `Modificar ${cliente.razonSocial}` : 'Nuevo cliente'
-  const puedeConsultar = !cliente && !esDni
+  const puedeConsultar = !cliente
 
   return (
     <section
@@ -505,6 +539,14 @@ export function Formulario({
         {puedeConsultar && (padron.isError || padron.data) && (
           <div className="md:col-span-3">
             <ResultadoPadron consulta={padron} avisarCuil={false} />
+          </div>
+        )}
+        {puedeConsultar && !padron.data && !padron.isError && inicial?.afip && (
+          <div className="md:col-span-3">
+            <ResultadoPadron
+              consulta={{ isError: false, error: null, data: inicial.afip }}
+              avisarCuil={false}
+            />
           </div>
         )}
 

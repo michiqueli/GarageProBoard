@@ -160,8 +160,8 @@ describe('un cliente nuevo', () => {
     await userEvent.selectOptions(within(formulario).getByLabelText('Tipo de documento'), 'DNI')
     await userEvent.type(within(formulario).getByLabelText('DNI'), '20.123.457')
     await userEvent.type(within(formulario).getByLabelText('Apellido y nombre'), 'Pérez, Juan')
-    // Con DNI no hay padrón que consultar.
-    expect(within(formulario).queryByRole('button', { name: /Completar con AFIP/ })).toBeNull()
+    // Con DNI también se puede consultar a AFIP, pero no hace falta.
+    expect(within(formulario).getByRole('button', { name: /Completar con AFIP/ })).toBeDefined()
     await userEvent.keyboard('{F2}')
 
     expect(clientes.crear).toHaveBeenCalledWith(

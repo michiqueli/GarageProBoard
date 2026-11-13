@@ -16,11 +16,29 @@ const ventas = {
   anular: vi.fn(),
 }
 const renovar = vi.fn()
+const clientes = { listar: vi.fn(), crear: vi.fn() }
+const padron = { consultar: vi.fn(), porDocumento: vi.fn() }
 
 vi.mock('../src/sesion/cliente.ts', () => ({
   api: {
     auth: { iniciar: vi.fn(), cerrar: vi.fn().mockResolvedValue({}), cambiarSucursal: vi.fn() },
-    clientes: { listar: vi.fn().mockResolvedValue({ datos: [], total: 0 }) },
+    clientes: {
+      listar: (x: unknown) => clientes.listar(x),
+      crear: (x: unknown) => clientes.crear(x),
+    },
+    padron: {
+      consultar: (x: unknown) => padron.consultar(x),
+      porDocumento: (x: unknown) => padron.porDocumento(x),
+    },
+    organizacion: {
+      catalogos: vi.fn().mockResolvedValue({
+        condicionesIva: [
+          { codigo: 1, descripcion: 'IVA Responsable Inscripto' },
+          { codigo: 5, descripcion: 'Consumidor Final' },
+        ],
+        provincias: [{ codigo: 1, nombre: 'Buenos Aires' }],
+      }),
+    },
     cartera: { listar: vi.fn().mockResolvedValue({ datos: [], total: 0 }) },
     ventas: Object.fromEntries(
       Object.keys(ventas).map((n) => [
@@ -106,7 +124,15 @@ const FICHA = {
 }
 
 beforeEach(() => {
-  for (const f of [...Object.values(ventas), renovar]) f.mockReset()
+  for (const f of [
+    ...Object.values(ventas),
+    ...Object.values(clientes),
+    ...Object.values(padron),
+    renovar,
+  ]) {
+    f.mockReset()
+  }
+  clientes.listar.mockResolvedValue({ datos: [], total: 0 })
   usarSesion.getState().limpiar()
   ventas.listar.mockResolvedValue({ datos: [RESUMEN], total: 1 })
   ventas.ficha.mockResolvedValue(FICHA)
@@ -170,5 +196,54 @@ describe('la venta', () => {
         autorizacion: 'Cliente de muchos años',
       }),
     )
+  })
+})
+
+describe('el comprador que no es cliente', () => {
+  it('lo busca en AFIP por el CUIT y lo da de alta ahí mismo', async () => {
+    padron.consultar.mockResolvedValue({
+      cuit: '30712345671',
+      razonSocial: 'Transportes del Sur SA',
+      tipoPersona: 'juridica',
+      tipoClave: 'CUIT',
+      activo: true,
+      condicionIva: { codigo: 1, fuente: 'afip', motivo: '' },
+      domicilio: {
+        direccion: 'San Martín 100',
+        localidad: 'Neuquén',
+        codigoPostal: '8300',
+        provinciaCodigo: 1,
+      },
+      origen: 'constancia',
+    })
+    clientes.crear.mockImplementation(async (d: { razonSocial: string }) => ({ id: 'nuevo', ...d }))
+    await montarApp('/ventas/nueva')
+
+    await userEvent.type(await screen.findByLabelText('Comprador'), '30-71234567-1')
+    expect(await screen.findByText('Transportes del Sur SA')).toBeDefined()
+    expect(padron.consultar).toHaveBeenCalledWith({ cuit: '30712345671' })
+    await userEvent.click(screen.getByRole('button', { name: 'Darlo de alta con estos datos' }))
+
+    const modal = await screen.findByRole('dialog', { name: 'Nuevo cliente' })
+    await waitFor(() =>
+      expect((within(modal).getByLabelText('Razón social') as HTMLInputElement).value).toBe(
+        'Transportes del Sur SA',
+      ),
+    )
+    await userEvent.click(within(modal).getByRole('button', { name: /Guardar/ }))
+
+    await waitFor(() =>
+      expect(clientes.crear).toHaveBeenCalledWith(
+        expect.objectContaining({
+          tipoDocumento: 80,
+          numeroDocumento: '30712345671',
+          condicionIva: 1,
+          localidad: 'Neuquén',
+        }),
+      ),
+    )
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
+    expect(screen.getByText('Transportes del Sur SA')).toBeDefined()
+    expect(screen.getByRole('button', { name: 'Cambiar' })).toBeDefined()
   })
 })
