@@ -9,7 +9,9 @@ import {
   CamposVehiculo,
   DATOS_VACIOS,
   type Datos,
+  dominioValido,
   hoy,
+  normalizarDominio,
   paraEnviar,
   problemas,
 } from './datos-vehiculo.tsx'
@@ -39,7 +41,7 @@ export function AltaVehiculo({
   alCrear,
   alCancelar,
 }: {
-  /** La patente que se buscó y no estaba. */
+  /** Lo que se buscó y no estaba: una patente, o el chasis de un 0km que todavía no tiene. */
   dominio?: string
   titular?: ClienteElegido | null
   alCrear: (vehiculo: VehiculoCreado) => void
@@ -52,8 +54,15 @@ export function AltaVehiculo({
     primerCampo.current?.focus()
   }, [])
 
-  const [chasis, setChasis] = useState('')
-  const [datos, setDatos] = useState<Datos>({ ...DATOS_VACIOS, dominio: dominio.toUpperCase() })
+  // Un 0km se busca por chasis: lo tipeado va donde corresponde.
+  const buscado = dominio.toUpperCase().replace(/\s/g, '')
+  const esChasis =
+    !dominioValido(normalizarDominio(buscado)) && /^[A-HJ-NPR-Z0-9]{10,17}$/.test(buscado)
+  const [chasis, setChasis] = useState(esChasis ? buscado : '')
+  const [datos, setDatos] = useState<Datos>({
+    ...DATOS_VACIOS,
+    dominio: esChasis ? '' : dominio.toUpperCase(),
+  })
   const [titular, setTitular] = useState<ClienteElegido | null>(titularInicial)
   const [desde, setDesde] = useState(hoy())
   const [tocado, setTocado] = useState(false)
@@ -91,7 +100,7 @@ export function AltaVehiculo({
       <h2 className="font-display text-dato font-semibold">Nuevo vehículo</h2>
       <form id={id} onSubmit={enviar} className="grid gap-3 md:grid-cols-3">
         <Campo
-          ref={primerCampo}
+          ref={esChasis ? undefined : primerCampo}
           etiqueta="Chasis"
           required
           value={chasis}
@@ -100,7 +109,7 @@ export function AltaVehiculo({
           ayuda={
             chasisMal
               ? 'De 6 a 17 letras y números, sin I, O ni Q'
-              : 'Está en la cédula verde: es la identidad del vehículo'
+              : 'En la cédula verde, o en la factura de la fábrica si es 0km'
           }
         />
         <CamposVehiculo

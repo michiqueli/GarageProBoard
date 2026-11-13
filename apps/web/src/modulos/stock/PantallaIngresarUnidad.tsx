@@ -3,6 +3,7 @@ import { numeroDeHoja } from '@gpb/core'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link, useNavigate } from '@tanstack/react-router'
 import { useState } from 'react'
+import { notificar } from '../../componentes/avisos.ts'
 import { Boton, clasesBoton } from '../../componentes/Boton.tsx'
 import { Campo } from '../../componentes/Campo.tsx'
 import { IconoVolver } from '../../componentes/iconos.tsx'
@@ -13,6 +14,7 @@ import { Shell } from '../../componentes/Shell.tsx'
 import { usarSesion } from '../../sesion/almacen.ts'
 import { api } from '../../sesion/cliente.ts'
 import { mensajeGeneral } from '../../sesion/consultas.ts'
+import { usePuedeUsar } from '../../sesion/permisos.ts'
 import { useAtajo, useVolver } from '../../teclado/index.ts'
 import { AltaVehiculo } from '../vehiculos/AltaVehiculo.tsx'
 import { CONDICION, ORIGEN, TENENCIA, type Unidad } from './stock.tsx'
@@ -44,6 +46,11 @@ export function PantallaIngresarUnidad() {
   const [precio, setPrecio] = useState('')
   const [monedaElegida, setMoneda] = useState<Unidad['moneda'] | null>(null)
   const [observaciones, setObservaciones] = useState('')
+  // La factura con la que se compró: la de la fábrica en un 0km. Queda como el costo de compra.
+  const puedeCargarCompra = usePuedeUsar(contrato.costosUnidad.agregar)
+  const [factura, setFactura] = useState('')
+  const [fechaFactura, setFechaFactura] = useState('')
+  const [importeCompra, setImporteCompra] = useState('')
 
   // La configuración sólo pone el valor inicial: lo que se elige acá, manda.
   const tenencia =
@@ -54,13 +61,23 @@ export function PantallaIngresarUnidad() {
   const moneda = monedaElegida ?? config.data?.moneda ?? 'ARS'
 
   const precioMalo = precio.trim() !== '' && numeroDeHoja(precio) === null
+  const conCompra = puedeCargarCompra && tenencia === 'propia'
+  const importeCompraMalo =
+    importeCompra.trim() !== '' &&
+    (numeroDeHoja(importeCompra) === null || Number(numeroDeHoja(importeCompra)) <= 0)
+  const compraIncompleta =
+    conCompra && !importeCompra.trim() && Boolean(factura.trim() || fechaFactura)
   const falta = !vehiculo
     ? 'Elegí el vehículo'
     : tenencia === 'consignacion' && !consignante
       ? 'Falta de quién es la unidad'
       : precioMalo
         ? 'El precio tiene que ser un número: 15000000'
-        : null
+        : importeCompraMalo
+          ? 'El importe de la factura tiene que ser un número'
+          : compraIncompleta
+            ? 'Falta el importe de la factura de compra'
+            : null
 
   const ingresar = useMutation({
     mutationFn: () =>
@@ -76,6 +93,21 @@ export function PantallaIngresarUnidad() {
         observaciones: observaciones.trim() || null,
       }),
     onSuccess: async (u) => {
+      if (conCompra && importeCompra.trim()) {
+        try {
+          await api.costosUnidad.agregar({
+            id: u.id,
+            tipo: 'compra',
+            descripcion: condicion === '0km' ? 'Compra a fábrica' : 'Compra',
+            comprobante: factura.trim() || null,
+            fecha: fechaFactura || null,
+            importe: numeroDeHoja(importeCompra) as string,
+            moneda,
+          })
+        } catch (error) {
+          notificar.error(`La unidad entró, pero la factura de compra no: ${mensajeGeneral(error)}`)
+        }
+      }
       await cache.invalidateQueries({ queryKey: ['stock', tenantId] })
       void navegar({ to: '/stock/$id', params: { id: u.id } })
     },
@@ -163,6 +195,33 @@ export function PantallaIngresarUnidad() {
           ]}
           onChange={(v) => v && setMoneda(v)}
         />
+        {conCompra && (
+          <fieldset className="grid gap-3 border-t border-borde-suave pt-3 md:col-span-3 md:grid-cols-3">
+            <legend className="text-etiqueta font-medium text-texto-suave">
+              Factura de compra (opcional)
+            </legend>
+            <Campo
+              etiqueta="Número de factura"
+              value={factura}
+              maxLength={60}
+              onChange={(e) => setFactura(e.target.value)}
+              ayuda={condicion === '0km' ? 'La de la fábrica: 0065-00710617' : undefined}
+            />
+            <Campo
+              etiqueta="Fecha de la factura"
+              type="date"
+              value={fechaFactura}
+              onChange={(e) => setFechaFactura(e.target.value)}
+            />
+            <Campo
+              etiqueta={`Importe (${moneda === 'USD' ? 'dólares' : 'pesos'})`}
+              inputMode="decimal"
+              value={importeCompra}
+              onChange={(e) => setImporteCompra(e.target.value)}
+              ayuda="Queda como el costo de compra de la unidad"
+            />
+          </fieldset>
+        )}
         <div className="md:col-span-3">
           <Campo
             etiqueta="Observaciones"

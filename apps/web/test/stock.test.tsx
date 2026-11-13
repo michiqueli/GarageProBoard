@@ -20,12 +20,17 @@ const cartera = {
 const listarClientes = vi.fn()
 const costos = { ver: vi.fn(), agregar: vi.fn(), anular: vi.fn(), categorias: vi.fn() }
 const renovar = vi.fn()
+const crearVehiculo = vi.fn()
 
 vi.mock('../src/sesion/cliente.ts', () => ({
   api: {
     auth: { iniciar: vi.fn(), cerrar: vi.fn().mockResolvedValue({}), cambiarSucursal: vi.fn() },
     clientes: { listar: (x: unknown) => listarClientes(x) },
-    vehiculos: { listar: vi.fn().mockResolvedValue({ datos: [], total: 0 }) },
+    vehiculos: {
+      listar: vi.fn().mockResolvedValue({ datos: [], total: 0 }),
+      marcas: vi.fn().mockResolvedValue({ datos: [] }),
+      crear: (x: unknown) => crearVehiculo(x),
+    },
     costosUnidad: {
       ver: (x: unknown) => costos.ver(x),
       agregar: (x: unknown) => costos.agregar(x),
@@ -336,6 +341,51 @@ describe('trasladar', () => {
     await waitFor(() =>
       expect(cartera.trasladar).toHaveBeenCalledWith(
         expect.objectContaining({ sucursalId: 's2', comprobante: 'R-0001-123' }),
+      ),
+    )
+  })
+})
+
+describe('ingresar un 0km', () => {
+  it('buscado por chasis, el alta lo pone en el chasis; la factura de la fábrica queda como la compra', async () => {
+    crearVehiculo.mockImplementation(async (d: object) => ({ id: 'v9', ...d }))
+    cartera.ingresar.mockResolvedValue({ ...UNIDAD, condicion: '0km' })
+    await montarApp('/stock/ingresar')
+
+    await userEvent.type(await screen.findByLabelText('Vehículo'), '9BGEN69K0VG160495')
+    await userEvent.click(await screen.findByRole('button', { name: 'Darlo de alta' }))
+    const alta = await screen.findByRole('region', { name: 'Nuevo vehículo' })
+    expect((within(alta).getByLabelText('Chasis') as HTMLInputElement).value).toBe(
+      '9BGEN69K0VG160495',
+    )
+    expect((within(alta).getByLabelText('Patente') as HTMLInputElement).value).toBe('')
+    await userEvent.type(within(alta).getByLabelText('Número de motor'), 'L4F262094693')
+    await userEvent.click(within(alta).getByRole('button', { name: /Guardar/ }))
+    await waitFor(() =>
+      expect(crearVehiculo).toHaveBeenCalledWith(
+        expect.objectContaining({
+          chasis: '9BGEN69K0VG160495',
+          motor: 'L4F262094693',
+          dominio: null,
+        }),
+      ),
+    )
+
+    await userEvent.selectOptions(screen.getByLabelText('Condición'), '0km')
+    await userEvent.type(screen.getByLabelText('Número de factura'), '0065-00710617')
+    await userEvent.type(screen.getByLabelText('Importe (pesos)'), '15000000')
+    await userEvent.click(screen.getByRole('button', { name: /Ingresar al stock/ }))
+
+    await waitFor(() =>
+      expect(costos.agregar).toHaveBeenCalledWith(
+        expect.objectContaining({
+          id: ID,
+          tipo: 'compra',
+          descripcion: 'Compra a fábrica',
+          comprobante: '0065-00710617',
+          importe: '15000000',
+          moneda: 'ARS',
+        }),
       ),
     )
   })
