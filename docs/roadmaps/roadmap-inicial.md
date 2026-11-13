@@ -1,6 +1,6 @@
 # Roadmap inicial
 
-Estado al 08/11/2026. Los hitos están ordenados por dependencia, no por deseo: cada uno
+Estado al 13/11/2026. Los hitos están ordenados por dependencia, no por deseo: cada uno
 necesita el anterior. Lo que no está acá no está decidido todavía.
 
 Del 5 en adelante se escribieron ese mismo día, después de relevar a la competencia: el
@@ -181,7 +181,8 @@ La barrera de entrada más alta. Nada se vende sin esto.
       CUIT, la condición del receptor sale del padrón al emitir
 - ✅ PDF del comprobante con QR (`@gpb/pdf`: el formato de «Comprobantes en línea»; sin
       código de barras, que la RG 4.892 reemplazó por el QR), conectado a la emisión
-- ✅ Mandar el PDF por mail al receptor (SMTP; Mailpit en desarrollo)
+- ✅ Mandar el PDF por mail al receptor (SMTP; Mailpit en desarrollo), con diseño y a nombre de
+      la empresa y la sucursal. En producción hace falta un servicio de envío: Gmail tiene tope
 - 🔨 Notas de crédito ✅, con el comprobante asociado: anular una factura la devuelve a caja.
       Faltan las notas de débito
 - ✅ Pantalla de Caja: facturar a consumidor final, a un cliente o a un CUIT; últimos
@@ -191,8 +192,9 @@ La barrera de entrada más alta. Nada se vende sin esto.
 - ⬜ **Mandar el comprobante por WhatsApp**, con la API de Meta: `wa.me` no deja adjuntar archivos
 - ⬜ **Precios con IVA o más IVA**, a elección de cada concesionaria y con el precio final por
       omisión. Afecta a Caja, órdenes, presupuestos, repuestos y el catálogo de services
-- 🔨 Circuito probado contra AFIP: una Factura B real en producción (16/09/2026, punto de
-      venta 8). Falta hacerlo desde la aplicación, con numeración, comprobante guardado y PDF
+- ✅ Circuito probado contra AFIP desde la aplicación, en la copia demo: facturas B reales en
+      producción con el certificado propio de demo, punto de venta 8, comprobante guardado, PDF y
+      mail. El 16/09/2026 había sido una sola, por script
 
 **Criterio de terminado:** se emite una factura A y una B en homologación, con CAE,
 y el PDF valida contra el QR.
@@ -338,9 +340,8 @@ la visita, la cola de las tablets, la derivación a una persona y el tótem, en
       verificación de que el vendedor hizo lo que tenía que hacer**
 - ⬜ **Gestor de eventos**: notificaciones por mail, SMS y WhatsApp — recordatorio de turno,
       **«su auto está listo»**, vencimiento del service, cumpleaños. Lo más barato que más se
-      nota, y el caño del mail ya está andando desde el Hito 3. **WhatsApp depende de la
-      landing**: Meta no da credenciales sin una URL del producto con su política de
-      privacidad
+      nota, y el caño del mail ya está andando desde el Hito 3. **La landing ya está**: falta
+      registrar la aplicación en Meta para WhatsApp
 - ⬜ **Cuestionarios de satisfacción** en venta y en posventa. Las terminales los exigen y
       los miden
 - ⬜ **Quejas y reclamos** centralizados, con alerta al responsable y seguimiento hasta que
@@ -378,6 +379,8 @@ compra en vez de un inventario.
 Lo que varía entre concesionarias se configura. El diseño y los pasos, en
 [ventas de unidades](../tecnicos/ventas-de-unidades.md).
 
+- ✅ Lo que costó cada unidad —compra, gastos y bonificaciones— y el margen, con un permiso
+      aparte para verlo. Desde el 08/11/2026
 - 🔨 Stock de 0km y usados, desde el 08/11/2026: propios o en consignación, traslados entre
       sucursales y reservas con seña, todo configurable. Faltan rodados, pedidos, asignaciones y
       transferencias entre concesionarias
@@ -464,6 +467,9 @@ puesto por el dispositivo. Por qué no una app ahora y por qué no un usuario co
 
 ### Landing y presencia pública 🔨
 
+Publicada el 08/11/2026, con formulario de contacto: ya se puede registrar una aplicación en
+Meta y en Mercado Pago. Falta la revisión del abogado.
+
 **Va antes de lo que parece.** No es sólo hacer ruido: Mercado Pago y Meta —y casi cualquier
 plataforma donde haya que registrar una aplicación— piden una **URL del producto** con
 política de privacidad y términos antes de darte credenciales. O sea que el gestor de
@@ -480,7 +486,7 @@ Y cuanto antes esté, antes empieza a indexar: la competencia lleva treinta año
       con obligación de conservación
 - ⬜ Capturas de verdad del sistema. Las tres pantallas que más venden hoy: la orden de
       trabajo, la caja facturando contra AFIP y el presupuesto con su PDF
-- ⬜ Formulario de contacto y pedido de demo
+- ✅ Formulario de contacto y pedido de demo: llega por mail, con trampa para robots y tope
 - ⬜ Novedades o blog: los tres competidores tienen uno, y es por donde se entra buscando
 
 **Criterio de terminado:** se puede registrar una aplicación en Meta y en Mercado Pago sin
@@ -510,6 +516,11 @@ Cosas que sabemos que faltan, para que no se descubran de golpe:
   de cambiarlas». Antes de venderle a otra marca hacen falta imágenes con licencia comercial.
 - **La suite de la API falló a ratos y no se pudo reproducir**: siete corridas en verde el
   13/10/2026. La próxima vez, el detalle queda en `apps/api/test-results/ultima-corrida.json`.
+- **La aplicación no está publicada en producción**: hoy corren la landing, la base vacía con sus
+  backups y, aparte, la copia demo. Antes del primer cliente: publicar `main`, con su propio
+  servicio de envío de mails y el formulario de contacto apuntando a producción y no a demo.
+- **El firewall del VPS está apagado**, y desde internet se llega a servicios de otros proyectos
+  de Michi (MinIO, un Postgres, RabbitMQ). Hay que cerrarlo sin cortarles nada.
 - **Convenio Multilateral de Ingresos Brutos**: los campos están en el esquema, la lógica de
   coeficientes y retenciones por jurisdicción no. Dejó de ser deuda suelta: es parte del
   Hito 5, y se decide con un contable.
