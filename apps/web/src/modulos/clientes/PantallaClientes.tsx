@@ -584,7 +584,7 @@ export function Formulario({
           value={localidad}
           onChange={(e) => setLocalidad(e.target.value)}
         />
-        <div className="grid grid-cols-[1fr_7rem] gap-3">
+        <div className="grid gap-3">
           <Selector
             etiqueta="Provincia"
             valor={provinciaCodigo}
